@@ -6,36 +6,30 @@
   <title>LifeOS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@300;400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <style>
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    html, body {
-      height: 100%;
-    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { min-height: 100%; }
 
     body {
       background-color: #0a0f1e;
       color: #f5f5f7;
-      font-family: 'Montserrat', 'Sweet Sans Pro', sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
+      font-family: 'Montserrat', sans-serif;
+      padding: 2rem 1.5rem 4rem;
+      line-height: 1.4;
     }
 
-    .center {
-      text-align: center;
-      padding: 0 1.5rem;
+    header {
+      max-width: 1200px;
+      margin: 0 auto 2.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
     }
 
     h1 {
-      font-family: 'Scotch Display', 'Playfair Display', Georgia, serif;
-      font-size: clamp(3.5rem, 12vw, 8rem);
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(2.75rem, 6vw, 4.5rem);
       font-weight: 700;
       color: #f5f5f7;
       line-height: 1;
@@ -44,31 +38,175 @@
       display: inline-block;
     }
 
-    .sub {
-      margin-top: 1.75rem;
-      font-size: clamp(0.75rem, 2.5vw, 0.9rem);
+    header .sub {
+      margin-top: 1.25rem;
+      font-size: 0.75rem;
       font-weight: 300;
       color: #a7c140;
       letter-spacing: 0.35em;
       text-transform: uppercase;
     }
 
+    .grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background-color: #131a30;
+      border: 1px solid rgba(245, 245, 247, 0.06);
+      border-radius: 14px;
+      padding: 1.5rem;
+    }
+
+    .card h2 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: #f5f5f7;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .card h2 .count {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: #a7c140;
+      background-color: rgba(167, 193, 64, 0.12);
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      letter-spacing: 0.08em;
+    }
+
+    ul { list-style: none; }
+
+    li {
+      padding: 0.75rem 0;
+      border-bottom: 1px solid rgba(245, 245, 247, 0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    li:last-child { border-bottom: none; }
+
+    li a {
+      color: #f5f5f7;
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 400;
+    }
+
+    li a:hover { color: #a7c140; }
+
+    .meta {
+      display: flex;
+      gap: 0.75rem;
+      font-size: 0.7rem;
+      color: rgba(245, 245, 247, 0.5);
+      letter-spacing: 0.05em;
+    }
+
+    .meta .status, .meta .due, .meta .priority { display: inline-flex; align-items: center; gap: 0.3rem; }
+
+    .meta .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background-color: #a7c140;
+    }
+
+    .empty { color: rgba(245, 245, 247, 0.4); font-size: 0.85rem; padding: 0.5rem 0; }
+    .err { color: #ff6b6b; font-size: 0.85rem; padding: 0.5rem 0; }
+    .loading { color: rgba(245, 245, 247, 0.4); font-size: 0.85rem; padding: 0.5rem 0; }
+
     .version {
       position: fixed;
-      bottom: 1rem;
-      right: 1rem;
+      bottom: 0.75rem;
+      right: 0.75rem;
       font-size: 0.65rem;
-      color: rgba(245, 245, 247, 0.3);
+      color: rgba(245, 245, 247, 0.25);
       letter-spacing: 0.1em;
-      font-family: 'Montserrat', sans-serif;
     }
   </style>
 </head>
 <body>
-  <div class="center">
+  <header>
     <h1>LifeOS</h1>
-    <p class="sub">Coming online</p>
+    <p class="sub">My Day</p>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Work <span class="count" id="work-count">—</span></h2>
+      <ul id="work-list"><li class="loading">loading…</li></ul>
+    </section>
+    <section class="card">
+      <h2>Life <span class="count" id="life-count">—</span></h2>
+      <ul id="life-list"><li class="loading">loading…</li></ul>
+    </section>
   </div>
-  <span class="version">v: day-1</span>
+
+  <span class="version">v: day-2</span>
+
+  <script>
+    function fmtDue(iso) {
+      if (!iso) return null;
+      const d = new Date(iso.length === 10 ? iso + 'T00:00:00' : iso);
+      if (isNaN(d)) return iso;
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function renderTasks(listEl, countEl, tasks) {
+      countEl.textContent = tasks.length;
+      if (!tasks.length) {
+        listEl.innerHTML = '<li class="empty">nothing on the list</li>';
+        return;
+      }
+      listEl.innerHTML = tasks.map(t => {
+        const due = fmtDue(t.due);
+        const meta = [
+          t.status ? `<span class="status"><span class="dot"></span>${t.status}</span>` : '',
+          due ? `<span class="due">${due}</span>` : '',
+          t.priority ? `<span class="priority">${t.priority}</span>` : '',
+        ].filter(Boolean).join('');
+        return `<li>
+          <a href="${t.url}" target="_blank" rel="noopener">${escapeHtml(t.title)}</a>
+          ${meta ? `<div class="meta">${meta}</div>` : ''}
+        </li>`;
+      }).join('');
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    async function load(path, listEl, countEl) {
+      try {
+        const res = await fetch(path);
+        const data = await res.json();
+        if (data.error) {
+          listEl.innerHTML = `<li class="err">${escapeHtml(data.error)}</li>`;
+          countEl.textContent = '!';
+          return;
+        }
+        renderTasks(listEl, countEl, data.tasks || []);
+      } catch (err) {
+        listEl.innerHTML = `<li class="err">${escapeHtml(err.message)}</li>`;
+        countEl.textContent = '!';
+      }
+    }
+
+    load('/api/tasks/work-myday', document.getElementById('work-list'), document.getElementById('work-count'));
+    load('/api/tasks/life-myday', document.getElementById('life-list'), document.getElementById('life-count'));
+  </script>
 </body>
 </html>

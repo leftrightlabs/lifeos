@@ -10,6 +10,7 @@
     "dev": "node --watch server.js"
   },
   "dependencies": {
+    "@notionhq/client": "^5.22.0",
     "express": "^4.19.2"
   },
   "devDependencies": {
