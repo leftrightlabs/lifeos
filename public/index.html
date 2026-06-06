@@ -947,7 +947,7 @@ function renderTodayQuests(){
       taskDiv.innerHTML = '<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">Nothing on My Day</div>';
     } else {
       taskDiv.innerHTML = TODAY_TASKS.map(t=>{
-        const tag = t.source === 'work' ? '<span class="quest-tag tag-work">work</span>' : '<span class="quest-tag tag-personal">life</span>';
+        const tag = t.source === 'work' ? '<span class="quest-tag tag-work">work</span>' : '<span class="quest-tag tag-personal">personal</span>';
         return `<div class="quest-item" onclick="window.open('${t.url}','_blank')">
           <div class="quest-check"></div>
           <div class="quest-text">${escapeHtml(t.name)}</div>
