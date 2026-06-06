@@ -1,6 +1,6 @@
 # LifeOS
 
-Personal command center dashboard for Gretchen Cawthon.
+Personal command center dashboard for Gretchen Cawthon. Deployed on Railway.
 
 ## Local dev
 
