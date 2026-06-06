@@ -36,29 +36,35 @@ async function cached(key, fn) {
   return value;
 }
 
-async function queryMyDay(dataSourceId, peopleProp) {
-  const and = [
-    { property: 'Status', status: { does_not_equal: 'Done' } },
-    { property: 'My Day', checkbox: { equals: true } },
-  ];
-  if (peopleProp) {
-    and.push({ property: peopleProp, people: { contains: GRETCHEN_USER_ID } });
-  }
+async function queryTasks(dataSourceId, { peopleProp, myDayOnly } = {}) {
+  const and = [{ property: 'Status', status: { does_not_equal: 'Done' } }];
+  if (myDayOnly) and.push({ property: 'My Day', checkbox: { equals: true } });
+  if (peopleProp) and.push({ property: peopleProp, people: { contains: GRETCHEN_USER_ID } });
   return notion.dataSources.query({
     data_source_id: dataSourceId,
     filter: { and },
     sorts: [{ property: 'Due', direction: 'ascending' }],
+    page_size: 100,
   });
 }
 
-function simplifyTask(page) {
+function simplifyTask(page, source) {
   const props = page.properties || {};
+  const due = props.Due?.date || {};
   return {
     id: page.id,
-    title: props.Name?.title?.[0]?.plain_text || '(untitled)',
+    name: props.Name?.title?.[0]?.plain_text || '(untitled)',
+    source,
     status: props.Status?.status?.name || null,
-    due: props.Due?.date?.start || null,
-    priority: props.Priority?.status?.name || null,
+    dueStart: due.start || null,
+    dueEnd: due.end || null,
+    edited: page.last_edited_time || null,
+    myDay: !!props['My Day']?.checkbox,
+    recurring: !!props['Recurring?']?.checkbox,
+    recurUnit: props['Recur Unit']?.select?.name || null,
+    recurInterval: props['Recur Interval']?.number || null,
+    priority: props['Priority 2']?.select?.name || props.Priority?.status?.name || null,
+    project: null,
     url: page.url,
   };
 }
@@ -94,14 +100,23 @@ function chicagoTodayRange() {
 app.use(express.static(join(__dirname, 'public')));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, ts: new Date().toISOString(), version: 'day-4' });
+  res.json({ ok: true, ts: new Date().toISOString(), version: 'day-5' });
 });
+
+async function workTasks({ myDayOnly }) {
+  const data = await queryTasks(WORK_TASKS_DS, { peopleProp: 'Assigned', myDayOnly });
+  return data.results.map((p) => simplifyTask(p, 'work'));
+}
+async function lifeTasks({ myDayOnly }) {
+  const data = await queryTasks(LIFE_TASKS_DS, { myDayOnly });
+  return data.results.map((p) => simplifyTask(p, 'personal'));
+}
 
 app.get('/api/tasks/work-myday', async (_req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
-    const data = await cached('work', () => queryMyDay(WORK_TASKS_DS, 'Assigned'));
-    res.json({ tasks: data.results.map(simplifyTask) });
+    const tasks = await cached('work-myday', () => workTasks({ myDayOnly: true }));
+    res.json({ tasks });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -110,8 +125,44 @@ app.get('/api/tasks/work-myday', async (_req, res) => {
 app.get('/api/tasks/life-myday', async (_req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
-    const data = await cached('life', () => queryMyDay(LIFE_TASKS_DS, null));
-    res.json({ tasks: data.results.map(simplifyTask) });
+    const tasks = await cached('life-myday', () => lifeTasks({ myDayOnly: true }));
+    res.json({ tasks });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/tasks/work-all', async (_req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    const tasks = await cached('work-all', () => workTasks({ myDayOnly: false }));
+    res.json({ tasks });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/tasks/life-all', async (_req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    const tasks = await cached('life-all', () => lifeTasks({ myDayOnly: false }));
+    res.json({ tasks });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/tasks/all', async (_req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    const tasks = await cached('tasks-all', async () => {
+      const [w, l] = await Promise.all([
+        workTasks({ myDayOnly: false }),
+        lifeTasks({ myDayOnly: false }),
+      ]);
+      return [...w, ...l];
+    });
+    res.json({ tasks });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
