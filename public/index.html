@@ -111,6 +111,13 @@
   .panel { background: var(--white); border-radius: 6px; padding: 20px 22px; border: 1px solid var(--navy-faint); }
   .panel-title { font-family: var(--font-display); font-weight: 700; font-size: 20px; color: var(--navy); margin-bottom: 16px; line-height: 1; }
   .panel-title span { display: inline-block; transform: scaleY(1.2); transform-origin: top left; }
+  .panel-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .panel-title-row .panel-title { margin-bottom: 0; }
+  .tqf-group { display: inline-flex; gap: 2px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; padding: 3px; }
+  .tqf-btn { background: transparent; border: none; padding: 4px 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; color: rgba(245,245,247,0.55); cursor: pointer; border-radius: 999px; font-family: var(--font-body); transition: all 0.15s; text-transform: uppercase; }
+  .tqf-btn:hover { color: var(--navy); }
+  .tqf-btn.active { background: var(--lime); color: var(--navy-accent); }
+  .tqf-btn[data-tqf="personal"].active { background: #5d9cec; color: var(--navy-accent); }
   .quest-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--cream-2); cursor: pointer; font-size: 14px; }
   .quest-item:last-child { border-bottom: none; }
   .quest-check { width: 18px; height: 18px; border: 1.5px solid var(--navy-dim); border-radius: 4px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
@@ -577,7 +584,14 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
 
     <div class="quest-row">
       <div class="panel">
-        <div class="panel-title"><span>Today's Quest</span></div>
+        <div class="panel-title-row">
+          <div class="panel-title"><span>Today's Quest</span></div>
+          <div class="tqf-group">
+            <button class="tqf-btn active" data-tqf="all">All</button>
+            <button class="tqf-btn" data-tqf="work">Work</button>
+            <button class="tqf-btn" data-tqf="personal">Personal</button>
+          </div>
+        </div>
         <div id="today-quests"><div style="color:var(--navy-dim);font-size:13px;padding:8px 0">loading…</div></div>
       </div>
       <div class="panel">
@@ -909,6 +923,7 @@ el('refreshbtn').addEventListener('click',async()=>{await fetchTasks();render();
 let COMMS_DATA = [];
 let TODAY_EVENTS = [];
 let TODAY_TASKS = [];
+let todayFilter = localStorage.getItem('lrl-today-filter') || 'all';
 
 async function fetchComms(){
   try {
@@ -951,10 +966,12 @@ function renderTodayQuests(){
   const taskDiv = document.getElementById('today-quests');
   const calDiv = document.getElementById('today-calendar');
   if (taskDiv){
-    if (!TODAY_TASKS.length){
-      taskDiv.innerHTML = '<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">Nothing on My Day</div>';
+    const filtered = todayFilter === 'all' ? TODAY_TASKS : TODAY_TASKS.filter(t => t.source === todayFilter);
+    if (!filtered.length){
+      const msg = todayFilter === 'all' ? 'Nothing on My Day' : `No ${todayFilter} tasks today`;
+      taskDiv.innerHTML = `<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">${msg}</div>`;
     } else {
-      taskDiv.innerHTML = TODAY_TASKS.map(t=>{
+      taskDiv.innerHTML = filtered.map(t=>{
         const tag = t.source === 'work' ? '<span class="quest-tag tag-work">work</span>' : '<span class="quest-tag tag-personal">personal</span>';
         return `<div class="quest-item" onclick="window.open('${t.url}','_blank')">
           <div class="quest-check"></div>
@@ -980,6 +997,16 @@ function renderTodayQuests(){
     }
   }
 }
+
+document.querySelectorAll('.tqf-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    todayFilter = btn.dataset.tqf;
+    localStorage.setItem('lrl-today-filter', todayFilter);
+    document.querySelectorAll('.tqf-btn').forEach(b => b.classList.toggle('active', b.dataset.tqf === todayFilter));
+    renderTodayQuests();
+  });
+});
+document.querySelectorAll('.tqf-btn').forEach(b => b.classList.toggle('active', b.dataset.tqf === todayFilter));
 
 // Tab switching
 document.querySelectorAll('.tab').forEach(tab => {
