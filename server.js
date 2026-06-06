@@ -1,4 +1,5 @@
 import express from 'express';
+import session from 'express-session';
 import { Client } from '@notionhq/client';
 import { google } from 'googleapis';
 import { fileURLToPath } from 'url';
@@ -12,16 +13,40 @@ if (process.env.NODE_ENV !== 'production') {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
+const IS_PROD = process.env.NODE_ENV === 'production';
 
 const GRETCHEN_USER_ID = 'cfe628e1-e7b8-4aed-8151-009b8bee5c9d';
+const ALLOWED_EMAIL = 'gretchen@leftrightlabs.com';
 const WORK_TASKS_DS = '28c458f08cd9818599e7000bc2115872';
 const LIFE_TASKS_DS = '265458f08cd981699efe000b4de14ca4';
 const CACHE_TTL_MS = 60_000;
 const TZ = 'America/Chicago';
-const GOOGLE_SCOPES = [
+const DATA_SCOPES = [
   'https://www.googleapis.com/auth/calendar.readonly',
   'https://www.googleapis.com/auth/gmail.readonly',
 ];
+const LOGIN_SCOPES = ['openid', 'email', 'profile'];
+
+const ACCOUNT_ENVS = {
+  work: 'GOOGLE_REFRESH_TOKEN',
+  personal: 'GOOGLE_REFRESH_TOKEN_PERSONAL',
+};
+const ACCOUNTS = ['work', 'personal'];
+
+app.set('trust proxy', 1);
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'lifeos-dev-secret-please-set-in-prod',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: IS_PROD,
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 1000 * 60 * 60 * 24 * 60,
+  },
+  name: 'lifeos.sid',
+}));
 
 const notion = process.env.NOTION_TOKEN
   ? new Client({ auth: process.env.NOTION_TOKEN })
@@ -34,6 +59,20 @@ async function cached(key, fn) {
   const value = await fn();
   cache.set(key, { v: value, t: Date.now() });
   return value;
+}
+
+function originFromReq(req) {
+  if (req) return `${req.protocol}://${req.get('host')}`;
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+  return `http://localhost:${PORT}`;
+}
+
+function makeOAuthClient(req, callbackPath = '/auth/google/callback') {
+  return new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    `${originFromReq(req)}${callbackPath}`,
+  );
 }
 
 async function queryTasks(dataSourceId, { peopleProp, myDayOnly } = {}) {
@@ -69,15 +108,13 @@ function simplifyTask(page, source) {
   };
 }
 
-function makeOAuthClient() {
-  const host = process.env.RAILWAY_PUBLIC_DOMAIN
-    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-    : `http://localhost:${PORT}`;
-  return new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    `${host}/auth/google/callback`,
-  );
+async function workTasks({ myDayOnly }) {
+  const data = await queryTasks(WORK_TASKS_DS, { peopleProp: 'Assigned', myDayOnly });
+  return data.results.map((p) => simplifyTask(p, 'work'));
+}
+async function lifeTasks({ myDayOnly }) {
+  const data = await queryTasks(LIFE_TASKS_DS, { myDayOnly });
+  return data.results.map((p) => simplifyTask(p, 'personal'));
 }
 
 function chicagoTodayRange() {
@@ -97,20 +134,168 @@ function chicagoTodayRange() {
   };
 }
 
-app.use(express.static(join(__dirname, 'public')));
+function decodeEntities(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&(amp|lt|gt|quot|apos|nbsp);/g, (_, name) =>
+      ({ amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' })[name],
+    );
+}
+
+function parseFromHeader(value) {
+  if (!value) return { name: '', email: '' };
+  const m = value.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
+  if (m) return { name: m[1].trim(), email: m[2].trim() };
+  return { name: '', email: value.trim() };
+}
+
+function authedClient(account = 'work') {
+  const token = process.env[ACCOUNT_ENVS[account]];
+  if (!token) return null;
+  const oauth = makeOAuthClient();
+  oauth.setCredentials({ refresh_token: token });
+  return oauth;
+}
+
+function configuredAccounts() {
+  return ACCOUNTS.filter((a) => !!process.env[ACCOUNT_ENVS[a]]);
+}
+
+// ----- PUBLIC ROUTES (before requireAuth) -----
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, ts: new Date().toISOString(), version: 'day-5' });
+  res.json({ ok: true, ts: new Date().toISOString(), version: 'day-6' });
 });
 
-async function workTasks({ myDayOnly }) {
-  const data = await queryTasks(WORK_TASKS_DS, { peopleProp: 'Assigned', myDayOnly });
-  return data.results.map((p) => simplifyTask(p, 'work'));
+app.get('/login', (req, res) => {
+  if (req.session?.userEmail === ALLOWED_EMAIL) return res.redirect('/');
+  const errMsg = req.query.error === 'denied'
+    ? '<p style="color:#ff6b6b;margin-top:1rem;font-size:0.85rem">Access denied. This LifeOS is private.</p>'
+    : '';
+  res.type('html').send(`<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LifeOS — Sign in</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#0a0f1e;color:#f5f5f7;font-family:'Montserrat',sans-serif}
+  body{display:flex;align-items:center;justify-content:center;padding:1.5rem}
+  .card{text-align:center;max-width:380px}
+  h1{font-family:'Playfair Display',Georgia,serif;font-size:clamp(3rem,9vw,5.5rem);font-weight:700;transform:scaleY(1.2);transform-origin:top left;display:inline-block;line-height:1}
+  .sub{margin-top:1.25rem;font-size:0.7rem;color:#a7c140;letter-spacing:0.35em;text-transform:uppercase}
+  .signin{margin-top:2.5rem;display:inline-flex;align-items:center;gap:0.7rem;padding:0.85rem 1.5rem;background:#a7c140;color:#0a0f1e;border:none;border-radius:999px;font-family:'Montserrat',sans-serif;font-weight:600;font-size:0.85rem;letter-spacing:0.1em;text-transform:uppercase;text-decoration:none;cursor:pointer;transition:all 0.15s}
+  .signin:hover{background:#c5dc78}
+  .signin svg{width:16px;height:16px}
+</style>
+</head><body>
+  <div class="card">
+    <h1>LifeOS</h1>
+    <div class="sub">Private command center</div>
+    <a class="signin" href="/auth/login">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.35 11.1H12v3.2h5.35c-.5 2.4-2.55 4.1-5.35 4.1a6 6 0 1 1 0-12c1.5 0 2.85.55 3.9 1.45l2.4-2.4A9.4 9.4 0 0 0 12 2.4 9.6 9.6 0 1 0 21.35 14a8.7 8.7 0 0 0 0-2.9z"/></svg>
+      Sign in with Google
+    </a>
+    ${errMsg}
+  </div>
+</body></html>`);
+});
+
+app.get('/auth/login', (req, res) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return res.status(500).send('GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not configured');
+  }
+  const oauth = makeOAuthClient(req, '/auth/login/callback');
+  const url = oauth.generateAuthUrl({
+    access_type: 'online',
+    prompt: 'select_account',
+    scope: LOGIN_SCOPES,
+  });
+  res.redirect(url);
+});
+
+app.get('/auth/login/callback', async (req, res) => {
+  try {
+    const { code } = req.query;
+    if (!code) return res.status(400).send('Missing code');
+    const oauth = makeOAuthClient(req, '/auth/login/callback');
+    const { tokens } = await oauth.getToken(code);
+    oauth.setCredentials(tokens);
+    const oauth2 = google.oauth2({ version: 'v2', auth: oauth });
+    const { data } = await oauth2.userinfo.get();
+    if (data.email !== ALLOWED_EMAIL) {
+      return res.redirect('/login?error=denied');
+    }
+    req.session.userEmail = data.email;
+    req.session.userName = data.name || data.email;
+    res.redirect('/');
+  } catch (err) {
+    res.status(500).send('Login error: ' + err.message);
+  }
+});
+
+app.get('/auth/logout', (req, res) => {
+  req.session.destroy(() => res.redirect('/login'));
+});
+
+// ----- AUTH GATE -----
+
+function requireAuth(req, res, next) {
+  if (req.session?.userEmail === ALLOWED_EMAIL) return next();
+  if (req.path.startsWith('/api/')) {
+    return res.status(401).json({ error: 'auth required' });
+  }
+  res.redirect('/login');
 }
-async function lifeTasks({ myDayOnly }) {
-  const data = await queryTasks(LIFE_TASKS_DS, { myDayOnly });
-  return data.results.map((p) => simplifyTask(p, 'personal'));
-}
+
+app.use(requireAuth);
+
+// ----- PROTECTED ROUTES (below this point require login) -----
+
+app.use(express.static(join(__dirname, 'public')));
+
+app.get('/api/me', (req, res) => {
+  res.json({ email: req.session.userEmail, name: req.session.userName });
+});
+
+app.get('/auth/google', (req, res) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return res.status(500).send('GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not configured');
+  }
+  const account = req.query.account === 'personal' ? 'personal' : 'work';
+  const oauth = makeOAuthClient(req);
+  const url = oauth.generateAuthUrl({
+    access_type: 'offline',
+    prompt: 'consent',
+    scope: DATA_SCOPES,
+    state: account,
+  });
+  res.redirect(url);
+});
+
+app.get('/auth/google/callback', async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    if (!code) return res.status(400).send('Missing code');
+    const account = state === 'personal' ? 'personal' : 'work';
+    const envName = ACCOUNT_ENVS[account];
+    const oauth = makeOAuthClient(req);
+    const { tokens } = await oauth.getToken(code);
+    const refresh = tokens.refresh_token || '(none — revoke prior consent and try again)';
+    res.type('html').send(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"/><title>LifeOS — auth (${account})</title></head>
+<body style="background:#0a0f1e;color:#f5f5f7;font-family:ui-monospace,Menlo,monospace;padding:2rem;line-height:1.5">
+  <h1 style="color:#a7c140;font-family:Georgia,serif">Refresh token captured — ${account}</h1>
+  <p>Copy this and add to Railway as <code style="background:#131a30;padding:0.1rem 0.4rem;border-radius:4px">${envName}</code>:</p>
+  <pre style="background:#131a30;padding:1rem;border-radius:8px;overflow-x:auto;user-select:all">${refresh}</pre>
+  <p style="opacity:0.6;font-size:0.85rem">Then redeploy. Do not share this token.</p>
+</body></html>`);
+  } catch (err) {
+    res.status(500).send('OAuth error: ' + err.message);
+  }
+});
 
 app.get('/api/tasks/work-myday', async (_req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
@@ -167,78 +352,6 @@ app.get('/api/tasks/all', async (_req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-app.get('/auth/google', (req, res) => {
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    return res.status(500).send('GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not configured');
-  }
-  const account = req.query.account === 'personal' ? 'personal' : 'work';
-  const oauth = makeOAuthClient();
-  const url = oauth.generateAuthUrl({
-    access_type: 'offline',
-    prompt: 'consent',
-    scope: GOOGLE_SCOPES,
-    state: account,
-  });
-  res.redirect(url);
-});
-
-app.get('/auth/google/callback', async (req, res) => {
-  try {
-    const { code, state } = req.query;
-    if (!code) return res.status(400).send('Missing code');
-    const account = state === 'personal' ? 'personal' : 'work';
-    const envName = ACCOUNT_ENVS[account];
-    const oauth = makeOAuthClient();
-    const { tokens } = await oauth.getToken(code);
-    const refresh = tokens.refresh_token || '(none — revoke prior consent and try again)';
-    res.type('html').send(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"/><title>LifeOS — auth (${account})</title></head>
-<body style="background:#0a0f1e;color:#f5f5f7;font-family:ui-monospace,Menlo,monospace;padding:2rem;line-height:1.5">
-  <h1 style="color:#a7c140;font-family:Georgia,serif">Refresh token captured — ${account}</h1>
-  <p>Copy this and add to Railway as <code style="background:#131a30;padding:0.1rem 0.4rem;border-radius:4px">${envName}</code>:</p>
-  <pre style="background:#131a30;padding:1rem;border-radius:8px;overflow-x:auto;user-select:all">${refresh}</pre>
-  <p style="opacity:0.6;font-size:0.85rem">Then redeploy. Do not share this token.</p>
-</body></html>`);
-  } catch (err) {
-    res.status(500).send('OAuth error: ' + err.message);
-  }
-});
-
-function decodeEntities(s) {
-  if (!s) return '';
-  return String(s)
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
-    .replace(/&(amp|lt|gt|quot|apos|nbsp);/g, (_, name) =>
-      ({ amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' })[name],
-    );
-}
-
-function parseFromHeader(value) {
-  if (!value) return { name: '', email: '' };
-  const m = value.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
-  if (m) return { name: m[1].trim(), email: m[2].trim() };
-  return { name: '', email: value.trim() };
-}
-
-const ACCOUNT_ENVS = {
-  work: 'GOOGLE_REFRESH_TOKEN',
-  personal: 'GOOGLE_REFRESH_TOKEN_PERSONAL',
-};
-const ACCOUNTS = ['work', 'personal'];
-
-function authedClient(account = 'work') {
-  const token = process.env[ACCOUNT_ENVS[account]];
-  if (!token) return null;
-  const oauth = makeOAuthClient();
-  oauth.setCredentials({ refresh_token: token });
-  return oauth;
-}
-
-function configuredAccounts() {
-  return ACCOUNTS.filter((a) => !!process.env[ACCOUNT_ENVS[a]]);
-}
 
 async function fetchInbox(account, userIndex) {
   const auth = authedClient(account);

@@ -12,6 +12,7 @@
   "dependencies": {
     "@notionhq/client": "^5.22.0",
     "express": "^4.19.2",
+    "express-session": "^1.19.0",
     "googleapis": "^173.0.0"
   },
   "devDependencies": {
