@@ -384,9 +384,17 @@
     --faint: rgba(245,245,247,0.45);
     --line: rgba(255,255,255,0.08);
     --line-2: rgba(255,255,255,0.16);
+    --work: #5d9cec;
+    --personal: #a7c140;
     color: var(--ink);
     font-family: var(--font-b);
   }
+  .autofocus-app .stat.s-open { border-top-color: rgba(245,245,247,0.45); }
+  .autofocus-app .stat.s-work { border-top-color: #5d9cec; }
+  .autofocus-app .stat.s-personal { border-top-color: #a7c140; }
+  .autofocus-app .row { border-left-color: #5d9cec; }
+  .autofocus-app .row.personal { border-left-color: #a7c140; }
+  .autofocus-app .tag.src-work { background: rgba(93,156,236,0.15); color: #9cc5f5; }
   .autofocus-app .stat, .autofocus-app .syncbar, .autofocus-app .row, .autofocus-app .note,
   .autofocus-app .chips, .autofocus-app .search input, .autofocus-app select.sel,
   .autofocus-app .tg, .autofocus-app .check, .autofocus-app .mini, .autofocus-app .btn-ghost { background: var(--card); color: var(--ink); }
