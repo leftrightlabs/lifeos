@@ -117,31 +117,35 @@ app.get('/api/tasks/life-myday', async (_req, res) => {
   }
 });
 
-app.get('/auth/google', (_req, res) => {
+app.get('/auth/google', (req, res) => {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return res.status(500).send('GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not configured');
   }
+  const account = req.query.account === 'personal' ? 'personal' : 'work';
   const oauth = makeOAuthClient();
   const url = oauth.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
     scope: GOOGLE_SCOPES,
+    state: account,
   });
   res.redirect(url);
 });
 
 app.get('/auth/google/callback', async (req, res) => {
   try {
-    const { code } = req.query;
+    const { code, state } = req.query;
     if (!code) return res.status(400).send('Missing code');
+    const account = state === 'personal' ? 'personal' : 'work';
+    const envName = ACCOUNT_ENVS[account];
     const oauth = makeOAuthClient();
     const { tokens } = await oauth.getToken(code);
-    const refresh = tokens.refresh_token || '(none — try /auth/google again, may need to revoke prior consent)';
+    const refresh = tokens.refresh_token || '(none — revoke prior consent and try again)';
     res.type('html').send(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"/><title>LifeOS — auth</title></head>
+<html><head><meta charset="utf-8"/><title>LifeOS — auth (${account})</title></head>
 <body style="background:#0a0f1e;color:#f5f5f7;font-family:ui-monospace,Menlo,monospace;padding:2rem;line-height:1.5">
-  <h1 style="color:#a7c140;font-family:Georgia,serif">Refresh token captured</h1>
-  <p>Copy this and add to Railway as <code style="background:#131a30;padding:0.1rem 0.4rem;border-radius:4px">GOOGLE_REFRESH_TOKEN</code>:</p>
+  <h1 style="color:#a7c140;font-family:Georgia,serif">Refresh token captured — ${account}</h1>
+  <p>Copy this and add to Railway as <code style="background:#131a30;padding:0.1rem 0.4rem;border-radius:4px">${envName}</code>:</p>
   <pre style="background:#131a30;padding:1rem;border-radius:8px;overflow-x:auto;user-select:all">${refresh}</pre>
   <p style="opacity:0.6;font-size:0.85rem">Then redeploy. Do not share this token.</p>
 </body></html>`);
@@ -167,54 +171,80 @@ function parseFromHeader(value) {
   return { name: '', email: value.trim() };
 }
 
-function authedClient() {
+const ACCOUNT_ENVS = {
+  work: 'GOOGLE_REFRESH_TOKEN',
+  personal: 'GOOGLE_REFRESH_TOKEN_PERSONAL',
+};
+const ACCOUNTS = ['work', 'personal'];
+
+function authedClient(account = 'work') {
+  const token = process.env[ACCOUNT_ENVS[account]];
+  if (!token) return null;
   const oauth = makeOAuthClient();
-  oauth.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+  oauth.setCredentials({ refresh_token: token });
   return oauth;
 }
 
+function configuredAccounts() {
+  return ACCOUNTS.filter((a) => !!process.env[ACCOUNT_ENVS[a]]);
+}
+
+async function fetchInbox(account, userIndex) {
+  const auth = authedClient(account);
+  if (!auth) return [];
+  const gmail = google.gmail({ version: 'v1', auth });
+  const list = await gmail.users.messages.list({
+    userId: 'me',
+    q: 'in:inbox is:unread newer_than:7d',
+    maxResults: 15,
+  });
+  const ids = (list.data.messages || []).map((m) => m.id);
+  if (!ids.length) return [];
+  const details = await Promise.all(
+    ids.map((id) =>
+      gmail.users.messages.get({
+        userId: 'me',
+        id,
+        format: 'metadata',
+        metadataHeaders: ['From', 'Subject', 'Date'],
+      }),
+    ),
+  );
+  return details.map((d) => {
+    const msg = d.data;
+    const headers = Object.fromEntries(
+      (msg.payload?.headers || []).map((h) => [h.name, h.value]),
+    );
+    const from = parseFromHeader(headers.From);
+    return {
+      id: msg.id,
+      account,
+      threadId: msg.threadId,
+      subject: headers.Subject || '(no subject)',
+      fromName: from.name || from.email,
+      fromEmail: from.email,
+      snippet: decodeEntities(msg.snippet || ''),
+      date: headers.Date || null,
+      internalDate: msg.internalDate ? Number(msg.internalDate) : null,
+      url: `https://mail.google.com/mail/u/${userIndex}/#inbox/${msg.threadId}`,
+    };
+  });
+}
+
 app.get('/api/comms/gmail', async (_req, res) => {
-  if (!process.env.GOOGLE_REFRESH_TOKEN) {
-    return res.status(500).json({ error: 'GOOGLE_REFRESH_TOKEN not configured' });
+  const accounts = configuredAccounts();
+  if (!accounts.length) {
+    return res.status(500).json({ error: 'No Google refresh tokens configured' });
   }
   try {
     const threads = await cached('gmail-inbox', async () => {
-      const gmail = google.gmail({ version: 'v1', auth: authedClient() });
-      const list = await gmail.users.messages.list({
-        userId: 'me',
-        q: 'in:inbox is:unread newer_than:7d',
-        maxResults: 15,
-      });
-      const ids = (list.data.messages || []).map((m) => m.id);
-      if (!ids.length) return [];
-      const details = await Promise.all(
-        ids.map((id) =>
-          gmail.users.messages.get({
-            userId: 'me',
-            id,
-            format: 'metadata',
-            metadataHeaders: ['From', 'Subject', 'Date'],
-          }),
-        ),
+      const results = await Promise.all(
+        accounts.map((a, i) => fetchInbox(a, i).catch((err) => {
+          console.error(`Gmail ${a} error:`, err.message);
+          return [];
+        })),
       );
-      return details.map((d) => {
-        const msg = d.data;
-        const headers = Object.fromEntries(
-          (msg.payload?.headers || []).map((h) => [h.name, h.value]),
-        );
-        const from = parseFromHeader(headers.From);
-        return {
-          id: msg.id,
-          threadId: msg.threadId,
-          subject: headers.Subject || '(no subject)',
-          fromName: from.name || from.email,
-          fromEmail: from.email,
-          snippet: decodeEntities(msg.snippet || ''),
-          date: headers.Date || null,
-          internalDate: msg.internalDate ? Number(msg.internalDate) : null,
-          url: `https://mail.google.com/mail/u/0/#inbox/${msg.threadId}`,
-        };
-      }).sort((a, b) => (b.internalDate || 0) - (a.internalDate || 0));
+      return results.flat().sort((a, b) => (b.internalDate || 0) - (a.internalDate || 0));
     });
     res.json({ threads });
   } catch (err) {
@@ -222,31 +252,49 @@ app.get('/api/comms/gmail', async (_req, res) => {
   }
 });
 
+async function fetchToday(account) {
+  const auth = authedClient(account);
+  if (!auth) return [];
+  const cal = google.calendar({ version: 'v3', auth });
+  const range = chicagoTodayRange();
+  const { data } = await cal.events.list({
+    calendarId: 'primary',
+    timeMin: range.start,
+    timeMax: range.end,
+    singleEvents: true,
+    orderBy: 'startTime',
+    timeZone: TZ,
+  });
+  return (data.items || []).map((e) => ({
+    id: e.id,
+    account,
+    title: e.summary || '(no title)',
+    start: e.start?.dateTime || e.start?.date,
+    end: e.end?.dateTime || e.end?.date,
+    allDay: !!e.start?.date,
+    location: e.location || null,
+    url: e.htmlLink,
+  }));
+}
+
 app.get('/api/calendar/today', async (_req, res) => {
-  if (!process.env.GOOGLE_REFRESH_TOKEN) {
-    return res.status(500).json({ error: 'GOOGLE_REFRESH_TOKEN not configured' });
+  const accounts = configuredAccounts();
+  if (!accounts.length) {
+    return res.status(500).json({ error: 'No Google refresh tokens configured' });
   }
   try {
     const events = await cached('calendar-today', async () => {
-      const cal = google.calendar({ version: 'v3', auth: authedClient() });
-      const range = chicagoTodayRange();
-      const { data } = await cal.events.list({
-        calendarId: 'primary',
-        timeMin: range.start,
-        timeMax: range.end,
-        singleEvents: true,
-        orderBy: 'startTime',
-        timeZone: TZ,
+      const results = await Promise.all(
+        accounts.map((a) => fetchToday(a).catch((err) => {
+          console.error(`Calendar ${a} error:`, err.message);
+          return [];
+        })),
+      );
+      return results.flat().sort((a, b) => {
+        if (a.allDay && !b.allDay) return -1;
+        if (!a.allDay && b.allDay) return 1;
+        return new Date(a.start).getTime() - new Date(b.start).getTime();
       });
-      return (data.items || []).map((e) => ({
-        id: e.id,
-        title: e.summary || '(no title)',
-        start: e.start?.dateTime || e.start?.date,
-        end: e.end?.dateTime || e.end?.date,
-        allDay: !!e.start?.date,
-        location: e.location || null,
-        url: e.htmlLink,
-      }));
     });
     res.json({ events });
   } catch (err) {

@@ -135,6 +135,18 @@
       letter-spacing: 0.02em;
     }
 
+    .acct {
+      display: inline-block;
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.1rem 0.4rem;
+      border-radius: 3px;
+      font-weight: 500;
+    }
+    .acct.work { background: rgba(167, 193, 64, 0.12); color: #a7c140; }
+    .acct.personal { background: rgba(180, 140, 255, 0.14); color: #c4a8ff; }
+
     .snippet {
       color: rgba(245, 245, 247, 0.55);
       font-size: 0.8rem;
@@ -246,7 +258,8 @@
       }
       listEl.innerHTML = threads.map(t => {
         const when = fmtRelative(t.internalDate);
-        const meta = `<div class="meta"><span class="sender">${escapeHtml(t.fromName || t.fromEmail)}</span>${when ? `<span>${when}</span>` : ''}</div>`;
+        const acct = t.account ? `<span class="acct ${escapeHtml(t.account)}">${escapeHtml(t.account)}</span>` : '';
+        const meta = `<div class="meta"><span class="sender">${escapeHtml(t.fromName || t.fromEmail)}</span>${when ? `<span>${when}</span>` : ''}${acct}</div>`;
         return `<li>
           ${meta}
           <a href="${t.url}" target="_blank" rel="noopener">${escapeHtml(t.subject)}</a>
@@ -263,7 +276,11 @@
       }
       listEl.innerHTML = events.map(e => {
         const when = e.allDay ? 'All day' : `${fmtTime(e.start)}${e.end ? ' – ' + fmtTime(e.end) : ''}`;
-        const meta = e.location ? `<div class="meta"><span class="loc">${escapeHtml(e.location)}</span></div>` : '';
+        const acct = e.account ? `<span class="acct ${escapeHtml(e.account)}">${escapeHtml(e.account)}</span>` : '';
+        const metaParts = [];
+        if (e.location) metaParts.push(`<span class="loc">${escapeHtml(e.location)}</span>`);
+        if (acct) metaParts.push(acct);
+        const meta = metaParts.length ? `<div class="meta">${metaParts.join('')}</div>` : '';
         return `<li>
           <div class="when">${when}</div>
           <a href="${e.url}" target="_blank" rel="noopener">${escapeHtml(e.title)}</a>
