@@ -20,11 +20,8 @@
     }
 
     header {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto 2.5rem;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
     }
 
     h1 {
@@ -48,16 +45,15 @@
     }
 
     .grid {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, 1fr);
       gap: 1.25rem;
     }
 
-    @media (max-width: 720px) {
-      .grid { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 1024px) { .grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
 
     .card {
       background-color: #131a30;
@@ -117,11 +113,19 @@
       letter-spacing: 0.05em;
     }
 
-    .meta .status, .meta .due, .meta .priority { display: inline-flex; align-items: center; gap: 0.3rem; }
+    .meta .status, .meta .due, .meta .priority, .meta .loc { display: inline-flex; align-items: center; gap: 0.3rem; }
 
     .meta .dot {
       width: 6px; height: 6px; border-radius: 50%;
       background-color: #a7c140;
+    }
+
+    .when {
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 500;
+      font-size: 0.8rem;
+      color: #a7c140;
+      letter-spacing: 0.05em;
     }
 
     .empty { color: rgba(245, 245, 247, 0.4); font-size: 0.85rem; padding: 0.5rem 0; }
@@ -146,6 +150,10 @@
 
   <div class="grid">
     <section class="card">
+      <h2>Today <span class="count" id="cal-count">—</span></h2>
+      <ul id="cal-list"><li class="loading">loading…</li></ul>
+    </section>
+    <section class="card">
       <h2>Work <span class="count" id="work-count">—</span></h2>
       <ul id="work-list"><li class="loading">loading…</li></ul>
     </section>
@@ -155,14 +163,27 @@
     </section>
   </div>
 
-  <span class="version">v: day-2</span>
+  <span class="version">v: day-3</span>
 
   <script>
+    const TZ = 'America/Chicago';
+
     function fmtDue(iso) {
       if (!iso) return null;
       const d = new Date(iso.length === 10 ? iso + 'T00:00:00' : iso);
       if (isNaN(d)) return iso;
       return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function fmtTime(iso) {
+      if (!iso) return null;
+      const d = new Date(iso);
+      if (isNaN(d)) return iso;
+      return d.toLocaleTimeString('en-US', { timeZone: TZ, hour: 'numeric', minute: '2-digit' });
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
     function renderTasks(listEl, countEl, tasks) {
@@ -174,9 +195,9 @@
       listEl.innerHTML = tasks.map(t => {
         const due = fmtDue(t.due);
         const meta = [
-          t.status ? `<span class="status"><span class="dot"></span>${t.status}</span>` : '',
+          t.status ? `<span class="status"><span class="dot"></span>${escapeHtml(t.status)}</span>` : '',
           due ? `<span class="due">${due}</span>` : '',
-          t.priority ? `<span class="priority">${t.priority}</span>` : '',
+          t.priority ? `<span class="priority">${escapeHtml(t.priority)}</span>` : '',
         ].filter(Boolean).join('');
         return `<li>
           <a href="${t.url}" target="_blank" rel="noopener">${escapeHtml(t.title)}</a>
@@ -185,11 +206,24 @@
       }).join('');
     }
 
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    function renderEvents(listEl, countEl, events) {
+      countEl.textContent = events.length;
+      if (!events.length) {
+        listEl.innerHTML = '<li class="empty">no events today</li>';
+        return;
+      }
+      listEl.innerHTML = events.map(e => {
+        const when = e.allDay ? 'All day' : `${fmtTime(e.start)}${e.end ? ' – ' + fmtTime(e.end) : ''}`;
+        const meta = e.location ? `<div class="meta"><span class="loc">${escapeHtml(e.location)}</span></div>` : '';
+        return `<li>
+          <div class="when">${when}</div>
+          <a href="${e.url}" target="_blank" rel="noopener">${escapeHtml(e.title)}</a>
+          ${meta}
+        </li>`;
+      }).join('');
     }
 
-    async function load(path, listEl, countEl) {
+    async function load(path, listEl, countEl, kind) {
       try {
         const res = await fetch(path);
         const data = await res.json();
@@ -198,13 +232,15 @@
           countEl.textContent = '!';
           return;
         }
-        renderTasks(listEl, countEl, data.tasks || []);
+        if (kind === 'events') renderEvents(listEl, countEl, data.events || []);
+        else renderTasks(listEl, countEl, data.tasks || []);
       } catch (err) {
         listEl.innerHTML = `<li class="err">${escapeHtml(err.message)}</li>`;
         countEl.textContent = '!';
       }
     }
 
+    load('/api/calendar/today', document.getElementById('cal-list'), document.getElementById('cal-count'), 'events');
     load('/api/tasks/work-myday', document.getElementById('work-list'), document.getElementById('work-count'));
     load('/api/tasks/life-myday', document.getElementById('life-list'), document.getElementById('life-count'));
   </script>
