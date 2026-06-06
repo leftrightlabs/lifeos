@@ -165,6 +165,20 @@ function configuredAccounts() {
 
 // ----- PUBLIC ROUTES (before requireAuth) -----
 
+const PUBLIC_FILES = new Set([
+  '/favicon.svg',
+  '/favicon-32.png',
+  '/apple-touch-icon.png',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/manifest.webmanifest',
+]);
+const publicStatic = express.static(join(__dirname, 'public'));
+app.use((req, res, next) => {
+  if (PUBLIC_FILES.has(req.path)) return publicStatic(req, res, next);
+  next();
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, ts: new Date().toISOString(), version: 'day-6' });
 });
@@ -178,6 +192,9 @@ app.get('/login', (req, res) => {
 <html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>LifeOS — Sign in</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+<meta name="theme-color" content="#0a0f1e"/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
