@@ -1,5 +1,5 @@
 import express from 'express';
-import session from 'express-session';
+import cookieSession from 'cookie-session';
 import { Client } from '@notionhq/client';
 import { google } from 'googleapis';
 import { fileURLToPath } from 'url';
@@ -35,18 +35,19 @@ const ACCOUNTS = ['work', 'personal'];
 
 app.set('trust proxy', 1);
 
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'lifeos-dev-secret-please-set-in-prod',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: IS_PROD,
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 1000 * 60 * 60 * 24 * 60,
-  },
+app.use(cookieSession({
   name: 'lifeos.sid',
+  keys: [process.env.SESSION_SECRET || 'lifeos-dev-secret-please-set-in-prod'],
+  maxAge: 1000 * 60 * 60 * 24 * 30,
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: IS_PROD,
 }));
+// Touch session on every request so the 30-day window rolls forward from last use.
+app.use((req, _res, next) => {
+  if (req.session) req.session.t = Date.now();
+  next();
+});
 
 const notion = process.env.NOTION_TOKEN
   ? new Client({ auth: process.env.NOTION_TOKEN })
@@ -274,7 +275,8 @@ app.get('/auth/login/callback', async (req, res) => {
 });
 
 app.get('/auth/logout', (req, res) => {
-  req.session.destroy(() => res.redirect('/login'));
+  req.session = null;
+  res.redirect('/login');
 });
 
 // ----- AUTH GATE -----
