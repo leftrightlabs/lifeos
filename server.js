@@ -38,7 +38,7 @@ app.set('trust proxy', 1);
 app.use(cookieSession({
   name: 'lifeos.sid',
   keys: [process.env.SESSION_SECRET || 'lifeos-dev-secret-please-set-in-prod'],
-  maxAge: 1000 * 60 * 60 * 24 * 30,
+  maxAge: 1000 * 60 * 60 * 24 * 60,
   httpOnly: true,
   sameSite: 'lax',
   secure: IS_PROD,
