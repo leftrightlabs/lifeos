@@ -184,7 +184,16 @@ const PUBLIC_FILES = new Set([
   '/icon-512.png',
   '/manifest.webmanifest',
 ]);
-const publicStatic = express.static(join(__dirname, 'public'));
+const staticOpts = {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-store, must-revalidate');
+    } else if (/\.(png|svg|ico|webmanifest)$/.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+    }
+  },
+};
+const publicStatic = express.static(join(__dirname, 'public'), staticOpts);
 app.use((req, res, next) => {
   if (PUBLIC_FILES.has(req.path)) return publicStatic(req, res, next);
   next();
@@ -282,7 +291,7 @@ app.use(requireAuth);
 
 // ----- PROTECTED ROUTES (below this point require login) -----
 
-app.use(express.static(join(__dirname, 'public')));
+app.use(express.static(join(__dirname, 'public'), staticOpts));
 
 app.get('/api/me', (req, res) => {
   res.json({ email: req.session.userEmail, name: req.session.userName });
