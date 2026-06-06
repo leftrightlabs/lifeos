@@ -48,11 +48,10 @@
       max-width: 1400px;
       margin: 0 auto;
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 1.25rem;
     }
 
-    @media (max-width: 1024px) { .grid { grid-template-columns: 1fr 1fr; } }
     @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
 
     .card {
@@ -128,6 +127,24 @@
       letter-spacing: 0.05em;
     }
 
+    .sender {
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 500;
+      font-size: 0.8rem;
+      color: #a7c140;
+      letter-spacing: 0.02em;
+    }
+
+    .snippet {
+      color: rgba(245, 245, 247, 0.55);
+      font-size: 0.8rem;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
     .empty { color: rgba(245, 245, 247, 0.4); font-size: 0.85rem; padding: 0.5rem 0; }
     .err { color: #ff6b6b; font-size: 0.85rem; padding: 0.5rem 0; }
     .loading { color: rgba(245, 245, 247, 0.4); font-size: 0.85rem; padding: 0.5rem 0; }
@@ -154,6 +171,10 @@
       <ul id="cal-list"><li class="loading">loading…</li></ul>
     </section>
     <section class="card">
+      <h2>Inbox <span class="count" id="gmail-count">—</span></h2>
+      <ul id="gmail-list"><li class="loading">loading…</li></ul>
+    </section>
+    <section class="card">
       <h2>Work <span class="count" id="work-count">—</span></h2>
       <ul id="work-list"><li class="loading">loading…</li></ul>
     </section>
@@ -163,7 +184,7 @@
     </section>
   </div>
 
-  <span class="version">v: day-3</span>
+  <span class="version">v: day-4</span>
 
   <script>
     const TZ = 'America/Chicago';
@@ -206,6 +227,34 @@
       }).join('');
     }
 
+    function fmtRelative(ms) {
+      if (!ms) return '';
+      const diff = Date.now() - ms;
+      const min = Math.floor(diff / 60000);
+      if (min < 60) return `${min}m`;
+      const hr = Math.floor(min / 60);
+      if (hr < 24) return `${hr}h`;
+      const day = Math.floor(hr / 24);
+      return `${day}d`;
+    }
+
+    function renderThreads(listEl, countEl, threads) {
+      countEl.textContent = threads.length;
+      if (!threads.length) {
+        listEl.innerHTML = '<li class="empty">inbox zero</li>';
+        return;
+      }
+      listEl.innerHTML = threads.map(t => {
+        const when = fmtRelative(t.internalDate);
+        const meta = `<div class="meta"><span class="sender">${escapeHtml(t.fromName || t.fromEmail)}</span>${when ? `<span>${when}</span>` : ''}</div>`;
+        return `<li>
+          ${meta}
+          <a href="${t.url}" target="_blank" rel="noopener">${escapeHtml(t.subject)}</a>
+          ${t.snippet ? `<div class="snippet">${escapeHtml(t.snippet)}</div>` : ''}
+        </li>`;
+      }).join('');
+    }
+
     function renderEvents(listEl, countEl, events) {
       countEl.textContent = events.length;
       if (!events.length) {
@@ -233,6 +282,7 @@
           return;
         }
         if (kind === 'events') renderEvents(listEl, countEl, data.events || []);
+        else if (kind === 'threads') renderThreads(listEl, countEl, data.threads || []);
         else renderTasks(listEl, countEl, data.tasks || []);
       } catch (err) {
         listEl.innerHTML = `<li class="err">${escapeHtml(err.message)}</li>`;
@@ -241,6 +291,7 @@
     }
 
     load('/api/calendar/today', document.getElementById('cal-list'), document.getElementById('cal-count'), 'events');
+    load('/api/comms/gmail', document.getElementById('gmail-list'), document.getElementById('gmail-count'), 'threads');
     load('/api/tasks/work-myday', document.getElementById('work-list'), document.getElementById('work-count'));
     load('/api/tasks/life-myday', document.getElementById('life-list'), document.getElementById('life-count'));
   </script>

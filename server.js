@@ -18,7 +18,10 @@ const WORK_TASKS_DS = '28c458f08cd9818599e7000bc2115872';
 const LIFE_TASKS_DS = '265458f08cd981699efe000b4de14ca4';
 const CACHE_TTL_MS = 60_000;
 const TZ = 'America/Chicago';
-const CALENDAR_SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
+const GOOGLE_SCOPES = [
+  'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/gmail.readonly',
+];
 
 const notion = process.env.NOTION_TOKEN
   ? new Client({ auth: process.env.NOTION_TOKEN })
@@ -91,7 +94,7 @@ function chicagoTodayRange() {
 app.use(express.static(join(__dirname, 'public')));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, ts: new Date().toISOString(), version: 'day-3' });
+  res.json({ ok: true, ts: new Date().toISOString(), version: 'day-4' });
 });
 
 app.get('/api/tasks/work-myday', async (_req, res) => {
@@ -122,7 +125,7 @@ app.get('/auth/google', (_req, res) => {
   const url = oauth.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
-    scope: CALENDAR_SCOPES,
+    scope: GOOGLE_SCOPES,
   });
   res.redirect(url);
 });
@@ -147,15 +150,85 @@ app.get('/auth/google/callback', async (req, res) => {
   }
 });
 
+function decodeEntities(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&(amp|lt|gt|quot|apos|nbsp);/g, (_, name) =>
+      ({ amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' })[name],
+    );
+}
+
+function parseFromHeader(value) {
+  if (!value) return { name: '', email: '' };
+  const m = value.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
+  if (m) return { name: m[1].trim(), email: m[2].trim() };
+  return { name: '', email: value.trim() };
+}
+
+function authedClient() {
+  const oauth = makeOAuthClient();
+  oauth.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+  return oauth;
+}
+
+app.get('/api/comms/gmail', async (_req, res) => {
+  if (!process.env.GOOGLE_REFRESH_TOKEN) {
+    return res.status(500).json({ error: 'GOOGLE_REFRESH_TOKEN not configured' });
+  }
+  try {
+    const threads = await cached('gmail-inbox', async () => {
+      const gmail = google.gmail({ version: 'v1', auth: authedClient() });
+      const list = await gmail.users.messages.list({
+        userId: 'me',
+        q: 'in:inbox is:unread newer_than:7d',
+        maxResults: 15,
+      });
+      const ids = (list.data.messages || []).map((m) => m.id);
+      if (!ids.length) return [];
+      const details = await Promise.all(
+        ids.map((id) =>
+          gmail.users.messages.get({
+            userId: 'me',
+            id,
+            format: 'metadata',
+            metadataHeaders: ['From', 'Subject', 'Date'],
+          }),
+        ),
+      );
+      return details.map((d) => {
+        const msg = d.data;
+        const headers = Object.fromEntries(
+          (msg.payload?.headers || []).map((h) => [h.name, h.value]),
+        );
+        const from = parseFromHeader(headers.From);
+        return {
+          id: msg.id,
+          threadId: msg.threadId,
+          subject: headers.Subject || '(no subject)',
+          fromName: from.name || from.email,
+          fromEmail: from.email,
+          snippet: decodeEntities(msg.snippet || ''),
+          date: headers.Date || null,
+          internalDate: msg.internalDate ? Number(msg.internalDate) : null,
+          url: `https://mail.google.com/mail/u/0/#inbox/${msg.threadId}`,
+        };
+      }).sort((a, b) => (b.internalDate || 0) - (a.internalDate || 0));
+    });
+    res.json({ threads });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/calendar/today', async (_req, res) => {
   if (!process.env.GOOGLE_REFRESH_TOKEN) {
     return res.status(500).json({ error: 'GOOGLE_REFRESH_TOKEN not configured' });
   }
   try {
     const events = await cached('calendar-today', async () => {
-      const oauth = makeOAuthClient();
-      oauth.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-      const cal = google.calendar({ version: 'v3', auth: oauth });
+      const cal = google.calendar({ version: 'v3', auth: authedClient() });
       const range = chicagoTodayRange();
       const { data } = await cal.events.list({
         calendarId: 'primary',
