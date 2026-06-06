@@ -430,9 +430,15 @@
 
   /* Chapter & Milestone System */
   .campaigns-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
-  .campaign-card { background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 18px 20px; position: relative; overflow: hidden; }
+  .campaign-card { background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 18px 20px; position: relative; overflow: hidden; cursor: pointer; transition: all 0.2s; }
+  .campaign-card:hover { background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); }
   .campaign-card.business { border-left: 3px solid var(--lime); }
   .campaign-card.life { border-left: 3px solid #7a9dd8; }
+  .campaign-card.active { border-color: var(--lime); box-shadow: 0 0 0 1px var(--lime), 0 0 24px rgba(167,193,64,0.15); background: linear-gradient(135deg, rgba(167,193,64,0.08), rgba(167,193,64,0.02)); }
+  .campaign-card.life.active { border-color: #a7c0e8; box-shadow: 0 0 0 1px #7a9dd8, 0 0 24px rgba(122,157,216,0.15); background: linear-gradient(135deg, rgba(122,157,216,0.08), rgba(122,157,216,0.02)); }
+  .cc-toggle-hint { position: absolute; bottom: 14px; right: 18px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,245,247,0.45); font-weight: 600; }
+  .campaign-card.active .cc-toggle-hint { color: var(--lime); }
+  .campaign-card.life.active .cc-toggle-hint { color: #a7c0e8; }
   .campaign-card.stub { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; min-height: 200px; }
   .cc-kicker { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(245,245,247,0.55); font-weight: 600; }
   .cc-chapter { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--navy); margin: 6px 0 2px; line-height: 1.1; transform: scaleY(1.15); transform-origin: top left; }
@@ -454,6 +460,9 @@
   .rock-milestones { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
   .rock-ms-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 6px; }
   .rock-ms-num { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--lime); line-height: 1; margin-right: 10px; transform: scaleY(1.15); display: inline-block; transform-origin: top; }
+  .rock-ms-num.life { color: #a7c0e8; }
+  .rock-milestones.life .ms-item { border-color: rgba(122,157,216,0.1); }
+  .rock-milestones.life .ms-item.unlocked { border-left-color: #a7c0e8; background: rgba(122,157,216,0.06); }
   .rock-ms-title { font-size: 13.5px; font-weight: 600; color: var(--navy); flex: 1; }
   .rock-ms-progress { font-size: 11.5px; color: rgba(245,245,247,0.55); font-weight: 600; }
   .ms-chain { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
@@ -555,39 +564,6 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
       <div class="chapter-meta">
         <span>67% through Q2 — 25 days remaining</span>
         <span id="rocks-summary">2 of 4 rocks complete</span>
-      </div>
-    </div>
-
-    <div class="rocks-bar">
-      <div class="rocks-bar-header">
-        <div class="section-label" style="margin-bottom: 0;">Main Quests — Q2 2026 Rocks</div>
-        <div style="font-size: 11px; color: var(--navy-dim);">Due Jun 30, 2026</div>
-      </div>
-      <div class="rocks-grid">
-        <div class="rock-card complete">
-          <div class="rock-num"><span>1</span></div>
-          <div class="rock-title">Network Partner program packaged & active</div>
-          <div class="rock-meta"><span>Trina</span><span>✓ Complete</span></div>
-          <div class="rock-progress-mini"><div class="rock-progress-mini-bar" style="width: 100%"></div></div>
-        </div>
-        <div class="rock-card">
-          <div class="rock-num"><span>2</span></div>
-          <div class="rock-title">Tier 2 customer journey mapped & in motion</div>
-          <div class="rock-meta"><span>Trina</span><span>60%</span></div>
-          <div class="rock-progress-mini"><div class="rock-progress-mini-bar" style="width: 60%"></div></div>
-        </div>
-        <div class="rock-card">
-          <div class="rock-num"><span>3</span></div>
-          <div class="rock-title">Messaging workshop pitched & scheduled</div>
-          <div class="rock-meta"><span>Trina</span><span>40%</span></div>
-          <div class="rock-progress-mini"><div class="rock-progress-mini-bar" style="width: 40%"></div></div>
-        </div>
-        <div class="rock-card">
-          <div class="rock-num"><span>4</span></div>
-          <div class="rock-title">Weekly content engine 2-3 weeks ahead</div>
-          <div class="rock-meta"><span>Gretchen</span><span>50%</span></div>
-          <div class="rock-progress-mini"><div class="rock-progress-mini-bar" style="width: 50%"></div></div>
-        </div>
       </div>
     </div>
 
@@ -1108,6 +1084,7 @@ function updateHeaderTimestamp(){
 const MILESTONES_DATA = {"business": {"chapter_name": "The Pipeline Forge", "chapter_num": 2, "quarter_label": "Q2 2026", "days_remaining": 25, "rocks": [{"num": 1, "name": "Tier 2 customer journey mapped & in motion", "owner": "Trina", "milestones": [{"id": "3fde10d1-799e-4b24-9105-587a10908d8d", "name": "Document the 8 journey stages, identify top 3 gaps", "hint": "Review the existing Tier 2 journey end-to-end"}, {"id": "69482b45-52d9-4025-affa-2e7be9878a99", "name": "Define 4 core stories addressing customer problems", "hint": "Map customer problems to story pillars"}, {"id": "83805664-f4e8-4c31-a3d4-a0d9de8e74e4", "name": "Create 4 pillar resources (videos/PDFs) for DM flow", "hint": "One resource per pillar, ready to deploy"}, {"id": "133e2ca5-8566-44eb-8888-17744d349d9c", "name": "DM workflow + response scripts drafted (Gretchen)", "hint": "Full DM journey from first touch to call booked"}]}, {"num": 2, "name": "Network Partner program packaged & active", "owner": "Trina", "milestones": [{"id": "cf4d6839-391f-4150-a222-10e442ab7678", "name": "Portal setup meeting held (coupons, affiliate links)", "hint": "Working session done, decisions logged"}, {"id": "a03fb852-9212-4766-8e4d-ba308eea3a8e", "name": "Network Partner landing page/portal updated", "hint": "Page reflects current program structure"}, {"id": "7bd08304-5428-496b-b0e3-a1613911b337", "name": "Branded partner pages complete (banner/snippets)", "hint": "All assets ready for partners to drop in"}, {"id": "a669ceb9-437c-4449-abd7-d703828ace9b", "name": "Cold + warm outreach email sequences refined", "hint": "Both flows tested and queued"}, {"id": "NEW-2-05", "name": "First Network Partner signed", "hint": "Manual unlock when first real partner agreement is in"}]}, {"num": 3, "name": "Weekly content engine 2-3 weeks ahead", "owner": "Gretchen", "milestones": [{"id": "a2a01b50-d6fc-4059-9fe7-588d988886b9", "name": "Posting cadence standardized for consistency", "hint": "Cadence locked in across all channels"}, {"id": "84c18fca-fbdf-4af4-9e36-19e481d2bc7c", "name": "YouTube videos recorded for 4 customer problems", "hint": "One video per main customer problem"}, {"id": "1c9f5e06-c4ec-4cfb-98d0-1e14e8fb5e77", "name": "Content library 2-3 weeks ahead (goal: 4)", "hint": "Publishing buffer is never reactive"}]}, {"num": 4, "name": "Messaging workshop pitched & scheduled", "owner": "Trina", "milestones": [{"id": "a4cc3f83-c53b-469f-b846-8e5f914b72a7", "name": "Workshop pitch finalized (promise, format, price)", "hint": "Offer locked in for May BEI group"}, {"id": "bd62c108-ed90-4c2c-a133-4faac7330aed", "name": "Landing page + interest list capture live", "hint": "Page captures leads from current audience"}, {"id": "89236d74-f53b-4eaa-9eb0-2e06a89adee6", "name": "Nurture campaign scheduled (post-BEI → workshop)", "hint": "Emails/DMs ready post-BEI"}, {"id": "NEW-4-04", "name": "First workshop scheduled with 5+ signups", "hint": "Real date on calendar, real signups confirmed"}]}]}, "life": {"chapter_name": null, "setup_required": true}};
 const MS_STORAGE_KEY = 'lrl-milestones-state-v1';
 let msState = { unlocked: {}, life_chapter: null };
+let selectedCampaign = null; // 'business' | 'life' | null
 async function loadMsState() { try { const r = await window.storage.get(MS_STORAGE_KEY); if (r && r.value) msState = Object.assign(msState, JSON.parse(r.value)); } catch(e) {} }
 async function saveMsState() { try { await window.storage.set(MS_STORAGE_KEY, JSON.stringify(msState)); } catch(e) {} }
 function isMsUnlocked(id) { return !!msState.unlocked[id]; }
@@ -1120,8 +1097,10 @@ function renderCampaigns() {
   const biz = MILESTONES_DATA.business;
   const bizProg = businessProgress();
   const nextMs = biz.rocks.flatMap(r => r.milestones).find(m => !isMsUnlocked(m.id));
+  const bizActive = selectedCampaign === 'business' ? ' active' : '';
+  const lifeActive = selectedCampaign === 'life' ? ' active' : '';
   let html = '<div class="campaigns-grid">';
-  html += `<div class="campaign-card business">
+  html += `<div class="campaign-card business${bizActive}" onclick="toggleCampaign('business')">
     <div class="cc-days">${biz.days_remaining} days left</div>
     <div class="cc-kicker">Business Campaign · Chapter ${biz.chapter_num}</div>
     <div class="cc-chapter">${biz.chapter_name}</div>
@@ -1129,43 +1108,81 @@ function renderCampaigns() {
     <div class="cc-progress-row"><b>${bizProg.done} of ${bizProg.total}</b> milestones unlocked</div>
     <div class="cc-bar"><div class="cc-bar-fill" style="width:${bizProg.pct}%"></div></div>
     ${nextMs ? `<div class="cc-next">Next: <b>${nextMs.name}</b></div>` : '<div class="cc-next">All milestones unlocked.</div>'}
+    <div class="cc-toggle-hint">${bizActive ? '▾ hide quests' : '▸ view quests'}</div>
   </div>`;
   const lifeChap = msState.life_chapter;
   if (lifeChap) {
-    html += `<div class="campaign-card life cc-life">
+    html += `<div class="campaign-card life cc-life${lifeActive}" onclick="toggleCampaign('life')">
       <div class="cc-days">${biz.days_remaining} days left</div>
       <div class="cc-kicker">Life Campaign · Chapter ${biz.chapter_num}</div>
       <div class="cc-chapter">${lifeChap.name}</div>
       <div class="cc-quarter">${biz.quarter_label}</div>
       <div class="cc-progress-row"><b>0 of 0</b> milestones · setup in progress</div>
       <div class="cc-bar"><div class="cc-bar-fill" style="width:0%"></div></div>
+      <div class="cc-toggle-hint">${lifeActive ? '▾ hide quests' : '▸ view quests'}</div>
     </div>`;
   } else {
-    html += `<div class="campaign-card life stub">
+    html += `<div class="campaign-card life cc-life stub${lifeActive}" onclick="toggleCampaign('life')">
       <div class="cc-kicker">Life Campaign · Not Started</div>
       <div class="cc-chapter" style="color:rgba(245,245,247,0.5)">Define your first Life Chapter</div>
       <div class="cc-quarter">What are you building this quarter?</div>
-      <button class="cc-setup-btn" onclick="setupLifeChapter()">+ Name this chapter</button>
+      <button class="cc-setup-btn" onclick="event.stopPropagation();setupLifeChapter()">+ Name this chapter</button>
+      <div class="cc-toggle-hint">${lifeActive ? '▾ hide preview' : '▸ preview structure'}</div>
     </div>`;
   }
   html += '</div>';
   container.innerHTML = html;
 }
+
+function toggleCampaign(which) {
+  selectedCampaign = selectedCampaign === which ? null : which;
+  renderCampaigns();
+  renderMilestones();
+}
+window.toggleCampaign = toggleCampaign;
 function setupLifeChapter() {
   const name = prompt('Name your first Life Chapter:');
   if (name && name.trim()) { msState.life_chapter = { name: name.trim(), created: new Date().toISOString() }; saveMsState(); renderCampaigns(); }
 }
 window.setupLifeChapter = setupLifeChapter;
+const LIFE_PREVIEW_ROCKS = [
+  { num: 1, name: 'HRV trending up — daily protocol', owner: 'Gretchen', milestones: [
+    { id: 'life-1-1', name: 'Wear Oura nightly for 14 days straight', hint: 'Baseline before adjusting anything' },
+    { id: 'life-1-2', name: 'Identify top 2 HRV drains from data', hint: 'Late caffeine? Late screens? Stress days?' },
+    { id: 'life-1-3', name: '7-day rolling average > 65ms', hint: 'Sustained, not a single spike' },
+  ]},
+  { num: 2, name: 'Weekly LEGO + restorative focus time', owner: 'Gretchen', milestones: [
+    { id: 'life-2-1', name: 'Block 2 hours every Sunday in studio', hint: 'Calendar event, repeating, non-negotiable' },
+    { id: 'life-2-2', name: 'Complete first MOC build', hint: 'Anything counts — start to finish' },
+  ]},
+  { num: 3, name: 'Schedule neuropsych evaluation', owner: 'Gretchen', milestones: [
+    { id: 'life-3-1', name: 'Get referral from primary care', hint: 'Email/call this week' },
+    { id: 'life-3-2', name: 'First appointment booked', hint: 'On calendar with confirmation' },
+  ]},
+];
+
 function renderMilestones() {
   const container = document.getElementById('milestones-container');
   if (!container) return;
-  let html = '<div class="milestones-header"><h3>Milestones</h3><span class="sub">Tap to unlock when achieved</span></div>';
-  MILESTONES_DATA.business.rocks.forEach(rock => {
-    const prog = rockProgress(rock);
-    html += `<div class="rock-milestones">
+  if (!selectedCampaign) {
+    container.innerHTML = '';
+    return;
+  }
+  const isLife = selectedCampaign === 'life';
+  const rocks = isLife ? LIFE_PREVIEW_ROCKS : MILESTONES_DATA.business.rocks;
+  const label = isLife ? 'Life Milestones' : 'Business Milestones';
+  const sub = isLife
+    ? (msState.life_chapter ? 'Tap to unlock when achieved' : 'Preview · define your real rocks in Notion to make this live')
+    : 'Tap to unlock when achieved';
+  let html = `<div class="milestones-header"><h3>${label}</h3><span class="sub">${sub}</span></div>`;
+  rocks.forEach(rock => {
+    const prog = isLife
+      ? { done: 0, total: rock.milestones.length, pct: 0 }
+      : rockProgress(rock);
+    html += `<div class="rock-milestones${isLife ? ' life' : ''}">
       <div class="rock-ms-head">
         <div style="display:flex;align-items:baseline">
-          <span class="rock-ms-num">${rock.num}</span>
+          <span class="rock-ms-num${isLife ? ' life' : ''}">${rock.num}</span>
           <div>
             <div class="rock-ms-title">${rock.name}</div>
             <div style="font-size:11px;color:rgba(245,245,247,0.45);margin-top:2px">Owner: ${rock.owner}</div>
@@ -1175,14 +1192,15 @@ function renderMilestones() {
       </div>
       <div class="ms-chain">`;
     rock.milestones.forEach(ms => {
-      const unlocked = isMsUnlocked(ms.id);
-      html += `<div class="ms-item ${unlocked ? 'unlocked' : 'locked'}" onclick="toggleMilestone('${ms.id}')">
+      const unlocked = !isLife && isMsUnlocked(ms.id);
+      const clickAttr = isLife ? '' : `onclick="toggleMilestone('${ms.id}')"`;
+      html += `<div class="ms-item ${unlocked ? 'unlocked' : 'locked'}" ${clickAttr}>
         <div class="ms-icon">${unlocked ? '✓' : '○'}</div>
         <div class="ms-body">
           <div class="ms-name">${ms.name}</div>
           ${!unlocked ? `<div class="ms-hint">${ms.hint}</div>` : ''}
         </div>
-        <div class="ms-action">${unlocked ? 'Unlocked' : 'Unlock'}</div>
+        <div class="ms-action">${unlocked ? 'Unlocked' : (isLife ? 'Preview' : 'Unlock')}</div>
       </div>`;
     });
     html += `</div></div>`;

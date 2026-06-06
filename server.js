@@ -163,6 +163,17 @@ function configuredAccounts() {
   return ACCOUNTS.filter((a) => !!process.env[ACCOUNT_ENVS[a]]);
 }
 
+// Dev-only: auto-authenticate so localhost preview doesn't need Google sign-in.
+if (!IS_PROD) {
+  app.use((req, _res, next) => {
+    if (!req.session.userEmail) {
+      req.session.userEmail = ALLOWED_EMAIL;
+      req.session.userName = 'Gretchen (dev)';
+    }
+    next();
+  });
+}
+
 // ----- PUBLIC ROUTES (before requireAuth) -----
 
 const PUBLIC_FILES = new Set([
