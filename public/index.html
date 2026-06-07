@@ -1480,7 +1480,6 @@ function renderTriagePlan(){
     const checked = triageSelected.has(i) ? 'checked' : '';
     const meta = [];
     if (a.dueStart) meta.push(`due ${a.dueStart}`);
-    if (a.myDay) meta.push('My Day');
     if (a.priority) meta.push(a.priority);
     if (a.projectId && triageProjects) {
       const proj = triageProjects.find(p => p.id === a.projectId);
