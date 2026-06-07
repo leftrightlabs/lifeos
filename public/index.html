@@ -731,7 +731,6 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
     <button class="tab active" data-tab="command" data-modes="all,work,personal">Command</button>
     <button class="tab" data-tab="autofocus" data-modes="all,work,personal">Autofocus</button>
     <button class="tab" data-tab="comms" data-modes="all,work,personal">Comms</button>
-    <button class="tab" data-tab="triage" data-modes="all,work,personal">Triage</button>
     <button class="tab" data-tab="pipeline" data-modes="work">Pipeline</button>
     <button class="tab" data-tab="projects" data-modes="work">Projects</button>
     <button class="tab" data-tab="marketing" data-modes="work">Marketing</button>
@@ -851,27 +850,6 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
 
     <div class="comms-list" id="comms-list">
       <div style="padding: 24px; text-align: center; color: var(--navy-dim);">loading…</div>
-    </div>
-  </div>
-
-  <!-- TRIAGE TAB -->
-  <div class="tab-content" data-content="triage">
-    <div class="section-label">Brain Dump</div>
-    <h1 class="page-title"><span>Triage</span></h1>
-    <div class="page-subtitle">Dump everything in your head. Claude turns it into a reviewable plan — tasks, events, due dates. You approve before anything writes.</div>
-
-    <div id="triage-form-tab-mount">
-      <div id="triage-form-host">
-        <div class="triage-pane">
-          <textarea id="triage-input" class="triage-input" placeholder="Example: Need to email Trina about Rock 3 by Friday, schedule a dentist for next week, Lisa wants a call Tuesday 2pm, pick up gift for Genny before her birthday..."></textarea>
-          <div class="triage-controls">
-            <button class="triage-btn primary" id="triage-plan-btn">Plan it</button>
-            <button class="triage-btn text" id="triage-clear-btn">Clear</button>
-            <span id="triage-status" style="font-size:12px;color:var(--navy-dim);margin-left:auto"></span>
-          </div>
-        </div>
-        <div id="triage-plan" class="triage-plan" style="display:none"></div>
-      </div>
     </div>
   </div>
 
@@ -1047,7 +1025,15 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
       <div class="triage-modal-title"><span>Quick Capture</span></div>
       <button class="triage-modal-close" id="triage-modal-close" title="Close">×</button>
     </div>
-    <div id="triage-modal-mount"></div>
+    <div class="triage-pane">
+      <textarea id="triage-input" class="triage-input" placeholder="Example: Need to email Trina about Rock 3 by Friday, schedule a dentist for next week, Lisa wants a call Tuesday 2pm, pick up gift for Genny before her birthday..."></textarea>
+      <div class="triage-controls">
+        <button class="triage-btn primary" id="triage-plan-btn">Plan it</button>
+        <button class="triage-btn text" id="triage-clear-btn">Clear</button>
+        <span id="triage-status" style="font-size:12px;color:var(--navy-dim);margin-left:auto"></span>
+      </div>
+    </div>
+    <div id="triage-plan" class="triage-plan" style="display:none"></div>
   </div>
 </div>
 
@@ -1745,19 +1731,12 @@ document.getElementById('triage-clear-btn')?.addEventListener('click', () => {
   document.getElementById('triage-status').textContent = '';
 });
 
-// Floating Triage button
+// Floating Quick Capture button
 function openTriageModal(){
-  const host = document.getElementById('triage-form-host');
-  const mount = document.getElementById('triage-modal-mount');
-  mount.appendChild(host);
-  const modal = document.getElementById('triage-modal');
-  modal.classList.add('open');
+  document.getElementById('triage-modal').classList.add('open');
   setTimeout(() => document.getElementById('triage-input')?.focus(), 50);
 }
 function closeTriageModal(){
-  const host = document.getElementById('triage-form-host');
-  const tabMount = document.getElementById('triage-form-tab-mount');
-  if (host && tabMount && host.parentElement !== tabMount) tabMount.appendChild(host);
   document.getElementById('triage-modal').classList.remove('open');
 }
 document.getElementById('triage-fab')?.addEventListener('click', openTriageModal);
