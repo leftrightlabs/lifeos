@@ -510,6 +510,24 @@
   .ms-action { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(167,193,64,0.7); font-weight: 600; padding: 2px 8px; border: 1px solid rgba(167,193,64,0.3); border-radius: 4px; flex-shrink: 0; align-self: center; opacity: 0; transition: opacity 0.15s; cursor: pointer; }
   .ms-item:hover .ms-action { opacity: 1; }
   .ms-item.unlocked .ms-action { color: rgba(245,245,247,0.5); border-color: rgba(245,245,247,0.15); }
+  .ms-item.just-unlocked { animation: msUnlock 1.4s ease-out; }
+  @keyframes msUnlock {
+    0% { background: rgba(167,193,64,0.06); box-shadow: 0 0 0 rgba(167,193,64,0); }
+    25% { background: rgba(167,193,64,0.4); box-shadow: 0 0 32px rgba(167,193,64,0.55); transform: scale(1.015); }
+    100% { background: rgba(167,193,64,0.06); box-shadow: 0 0 0 rgba(167,193,64,0); transform: scale(1); }
+  }
+  .ms-item.just-unlocked .ms-icon { animation: msIconPop 0.6s ease-out; color: var(--lime); }
+  @keyframes msIconPop {
+    0% { transform: scale(0.4) rotate(-30deg); opacity: 0.3; }
+    60% { transform: scale(1.4) rotate(10deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+  .ms-item.just-unlocked .ms-name { animation: msNamePulse 0.8s ease-out; }
+  @keyframes msNamePulse {
+    0% { color: var(--navy); }
+    50% { color: var(--lime); text-shadow: 0 0 12px rgba(167,193,64,0.6); }
+    100% { color: var(--navy); }
+  }
   .tab-locked-overlay { position: relative; min-height: 400px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 60px 20px; background: rgba(0,0,0,0.2); border-radius: 14px; border: 2px dashed rgba(255,255,255,0.1); }
   .tab-locked-icon { font-size: 48px; opacity: 0.3; margin-bottom: 16px; }
   .tab-locked-title { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--navy); margin: 0 0 8px; transform: scaleY(1.15); transform-origin: top; }
@@ -1271,6 +1289,7 @@ function triggerRefresh() {
     btn.classList.remove('refreshing');
     label.textContent = 'Refresh';
     updateHeaderTimestamp();
+    window.dispatchEvent(new CustomEvent('lrl-refresh'));
   });
 }
 window.triggerRefresh = triggerRefresh;
@@ -1307,15 +1326,69 @@ function updateHeaderTimestamp(){
 
 <!-- =========================== CHAPTER & MILESTONE SYSTEM =========================== -->
 <script>
-const MILESTONES_DATA = {"business": {"chapter_name": "The Pipeline Forge", "chapter_num": 2, "quarter_label": "Q2 2026", "days_remaining": 25, "rocks": [{"num": 1, "name": "Tier 2 customer journey mapped & in motion", "owner": "Trina", "milestones": [{"id": "3fde10d1-799e-4b24-9105-587a10908d8d", "name": "Document the 8 journey stages, identify top 3 gaps", "hint": "Review the existing Tier 2 journey end-to-end"}, {"id": "69482b45-52d9-4025-affa-2e7be9878a99", "name": "Define 4 core stories addressing customer problems", "hint": "Map customer problems to story pillars"}, {"id": "83805664-f4e8-4c31-a3d4-a0d9de8e74e4", "name": "Create 4 pillar resources (videos/PDFs) for DM flow", "hint": "One resource per pillar, ready to deploy"}, {"id": "133e2ca5-8566-44eb-8888-17744d349d9c", "name": "DM workflow + response scripts drafted (Gretchen)", "hint": "Full DM journey from first touch to call booked"}]}, {"num": 2, "name": "Network Partner program packaged & active", "owner": "Trina", "milestones": [{"id": "cf4d6839-391f-4150-a222-10e442ab7678", "name": "Portal setup meeting held (coupons, affiliate links)", "hint": "Working session done, decisions logged"}, {"id": "a03fb852-9212-4766-8e4d-ba308eea3a8e", "name": "Network Partner landing page/portal updated", "hint": "Page reflects current program structure"}, {"id": "7bd08304-5428-496b-b0e3-a1613911b337", "name": "Branded partner pages complete (banner/snippets)", "hint": "All assets ready for partners to drop in"}, {"id": "a669ceb9-437c-4449-abd7-d703828ace9b", "name": "Cold + warm outreach email sequences refined", "hint": "Both flows tested and queued"}, {"id": "NEW-2-05", "name": "First Network Partner signed", "hint": "Manual unlock when first real partner agreement is in"}]}, {"num": 3, "name": "Weekly content engine 2-3 weeks ahead", "owner": "Gretchen", "milestones": [{"id": "a2a01b50-d6fc-4059-9fe7-588d988886b9", "name": "Posting cadence standardized for consistency", "hint": "Cadence locked in across all channels"}, {"id": "84c18fca-fbdf-4af4-9e36-19e481d2bc7c", "name": "YouTube videos recorded for 4 customer problems", "hint": "One video per main customer problem"}, {"id": "1c9f5e06-c4ec-4cfb-98d0-1e14e8fb5e77", "name": "Content library 2-3 weeks ahead (goal: 4)", "hint": "Publishing buffer is never reactive"}]}, {"num": 4, "name": "Messaging workshop pitched & scheduled", "owner": "Trina", "milestones": [{"id": "a4cc3f83-c53b-469f-b846-8e5f914b72a7", "name": "Workshop pitch finalized (promise, format, price)", "hint": "Offer locked in for May BEI group"}, {"id": "bd62c108-ed90-4c2c-a133-4faac7330aed", "name": "Landing page + interest list capture live", "hint": "Page captures leads from current audience"}, {"id": "89236d74-f53b-4eaa-9eb0-2e06a89adee6", "name": "Nurture campaign scheduled (post-BEI → workshop)", "hint": "Emails/DMs ready post-BEI"}, {"id": "NEW-4-04", "name": "First workshop scheduled with 5+ signups", "hint": "Real date on calendar, real signups confirmed"}]}]}, "life": {"chapter_name": null, "setup_required": true}};
+let GOALS_DATA = []; // populated by fetchGoals()
 const MS_STORAGE_KEY = 'lrl-milestones-state-v1';
-let msState = { unlocked: {}, life_chapter: null };
+let msState = { life_chapter: null };
 let selectedCampaign = null; // 'business' | 'life' | null
+
+async function fetchGoals(){
+  try {
+    const r = await fetch('/api/goals');
+    const d = await r.json();
+    GOALS_DATA = d.goals || [];
+  } catch(e) { console.error('fetchGoals', e); GOALS_DATA = []; }
+}
+
+function goalsBySource(src){
+  const filterSrc = src === 'business' ? 'work' : 'personal';
+  return GOALS_DATA.filter(g => g.source === filterSrc);
+}
+function aggregateProgress(goals){
+  const total = goals.reduce((sum,g)=>sum+g.progress.total,0);
+  const done = goals.reduce((sum,g)=>sum+g.progress.done,0);
+  return { done, total, pct: total ? Math.round(done/total*100) : 0 };
+}
+function nextUnlock(goals){
+  for (const g of goals){
+    const ms = g.milestones.find(m => !m.done);
+    if (ms) return { goal: g, milestone: ms };
+  }
+  return null;
+}
 async function loadMsState() { try { const r = await window.storage.get(MS_STORAGE_KEY); if (r && r.value) msState = Object.assign(msState, JSON.parse(r.value)); } catch(e) {} }
 async function saveMsState() { try { await window.storage.set(MS_STORAGE_KEY, JSON.stringify(msState)); } catch(e) {} }
-function isMsUnlocked(id) { return !!msState.unlocked[id]; }
-function rockProgress(rock) { const total = rock.milestones.length; const done = rock.milestones.filter(m => isMsUnlocked(m.id)).length; return { done, total, pct: total ? Math.round(done/total*100) : 0 }; }
-function businessProgress() { const rocks = MILESTONES_DATA.business.rocks; let done = 0, total = 0; rocks.forEach(r => { done += r.milestones.filter(m => isMsUnlocked(m.id)).length; total += r.milestones.length; }); return { done, total, pct: total ? Math.round(done/total*100) : 0 }; }
+
+function campaignCardHTML(side){
+  const goals = goalsBySource(side);
+  const prog = aggregateProgress(goals);
+  const next = nextUnlock(goals);
+  const isActive = selectedCampaign === side;
+  const activeCls = isActive ? ' active' : '';
+  const sideLabel = side === 'business' ? 'Business' : 'Life';
+  const sideClass = side === 'business' ? 'business' : 'life cc-life';
+  const hint = isActive ? '▾ hide quests' : '▸ view quests';
+  if (!goals.length){
+    const emptyMsg = side === 'business'
+      ? 'No work goals yet. Flag a Work Project as GOAL = true in Notion.'
+      : 'No personal goals yet. Flag a LifeOS Project as GOAL = true in Notion.';
+    return `<div class="campaign-card ${sideClass} stub${activeCls}" onclick="toggleCampaign('${side}')">
+      <div class="cc-kicker">${sideLabel} Campaign</div>
+      <div class="cc-chapter" style="color:rgba(245,245,247,0.5)">No goals set</div>
+      <div class="cc-quarter">${emptyMsg}</div>
+      <div class="cc-toggle-hint">${isActive ? '▾ hide' : '▸ expand'}</div>
+    </div>`;
+  }
+  return `<div class="campaign-card ${sideClass}${activeCls}" onclick="toggleCampaign('${side}')">
+    <div class="cc-kicker">${sideLabel} Campaign</div>
+    <div class="cc-chapter">${goals.length} active goal${goals.length===1?'':'s'}</div>
+    <div class="cc-quarter">${prog.done} of ${prog.total} milestones unlocked</div>
+    <div class="cc-bar"><div class="cc-bar-fill" style="width:${prog.pct}%"></div></div>
+    ${next ? `<div class="cc-next">Next: <b>${escapeMs(next.milestone.name)}</b></div>` : (prog.total ? '<div class="cc-next">All milestones unlocked.</div>' : '')}
+    <div class="cc-toggle-hint">${hint}</div>
+  </div>`;
+}
+
+function escapeMs(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
 function renderCampaigns() {
   const container = document.getElementById('campaigns-container');
@@ -1323,53 +1396,13 @@ function renderCampaigns() {
   const currentMode = (typeof mode !== 'undefined' ? mode : (localStorage.getItem('lrl-mode') || 'all'));
   const showBiz = currentMode === 'all' || currentMode === 'work';
   const showLife = currentMode === 'all' || currentMode === 'personal';
-  // Auto-select the visible card if the previously selected one is hidden
   if (selectedCampaign === 'business' && !showBiz) selectedCampaign = showLife ? 'life' : null;
   if (selectedCampaign === 'life' && !showLife) selectedCampaign = showBiz ? 'business' : null;
-
-  const biz = MILESTONES_DATA.business;
-  const bizProg = businessProgress();
-  const nextMs = biz.rocks.flatMap(r => r.milestones).find(m => !isMsUnlocked(m.id));
-  const bizActive = selectedCampaign === 'business' ? ' active' : '';
-  const lifeActive = selectedCampaign === 'life' ? ' active' : '';
   let html = '<div class="campaigns-grid">';
-  if (showBiz) {
-    html += `<div class="campaign-card business${bizActive}" onclick="toggleCampaign('business')">
-      <div class="cc-days">${biz.days_remaining} days left</div>
-      <div class="cc-kicker">Business Campaign · Chapter ${biz.chapter_num}</div>
-      <div class="cc-chapter">${biz.chapter_name}</div>
-      <div class="cc-quarter">${biz.quarter_label}</div>
-      <div class="cc-progress-row"><b>${bizProg.done} of ${bizProg.total}</b> milestones unlocked</div>
-      <div class="cc-bar"><div class="cc-bar-fill" style="width:${bizProg.pct}%"></div></div>
-      ${nextMs ? `<div class="cc-next">Next: <b>${nextMs.name}</b></div>` : '<div class="cc-next">All milestones unlocked.</div>'}
-      <div class="cc-toggle-hint">${bizActive ? '▾ hide quests' : '▸ view quests'}</div>
-    </div>`;
-  }
-  if (showLife) {
-    const lifeChap = msState.life_chapter;
-    if (lifeChap) {
-      html += `<div class="campaign-card life cc-life${lifeActive}" onclick="toggleCampaign('life')">
-        <div class="cc-days">${biz.days_remaining} days left</div>
-        <div class="cc-kicker">Life Campaign · Chapter ${biz.chapter_num}</div>
-        <div class="cc-chapter">${lifeChap.name}</div>
-        <div class="cc-quarter">${biz.quarter_label}</div>
-        <div class="cc-progress-row"><b>0 of 0</b> milestones · setup in progress</div>
-        <div class="cc-bar"><div class="cc-bar-fill" style="width:0%"></div></div>
-        <div class="cc-toggle-hint">${lifeActive ? '▾ hide quests' : '▸ view quests'}</div>
-      </div>`;
-    } else {
-      html += `<div class="campaign-card life cc-life stub${lifeActive}" onclick="toggleCampaign('life')">
-        <div class="cc-kicker">Life Campaign · Not Started</div>
-        <div class="cc-chapter" style="color:rgba(245,245,247,0.5)">Define your first Life Chapter</div>
-        <div class="cc-quarter">What are you building this quarter?</div>
-        <button class="cc-setup-btn" onclick="event.stopPropagation();setupLifeChapter()">+ Name this chapter</button>
-        <div class="cc-toggle-hint">${lifeActive ? '▾ hide preview' : '▸ preview structure'}</div>
-      </div>`;
-    }
-  }
+  if (showBiz) html += campaignCardHTML('business');
+  if (showLife) html += campaignCardHTML('life');
   html += '</div>';
   container.innerHTML = html;
-  // Render milestones for whichever is selected
   renderMilestones();
 }
 
@@ -1386,22 +1419,6 @@ function setupLifeChapter() {
   if (name && name.trim()) { msState.life_chapter = { name: name.trim(), created: new Date().toISOString() }; saveMsState(); renderCampaigns(); }
 }
 window.setupLifeChapter = setupLifeChapter;
-const LIFE_PREVIEW_ROCKS = [
-  { num: 1, name: 'HRV trending up — daily protocol', owner: 'Gretchen', milestones: [
-    { id: 'life-1-1', name: 'Wear Oura nightly for 14 days straight', hint: 'Baseline before adjusting anything' },
-    { id: 'life-1-2', name: 'Identify top 2 HRV drains from data', hint: 'Late caffeine? Late screens? Stress days?' },
-    { id: 'life-1-3', name: '7-day rolling average > 65ms', hint: 'Sustained, not a single spike' },
-  ]},
-  { num: 2, name: 'Weekly LEGO + restorative focus time', owner: 'Gretchen', milestones: [
-    { id: 'life-2-1', name: 'Block 2 hours every Sunday in studio', hint: 'Calendar event, repeating, non-negotiable' },
-    { id: 'life-2-2', name: 'Complete first MOC build', hint: 'Anything counts — start to finish' },
-  ]},
-  { num: 3, name: 'Schedule neuropsych evaluation', owner: 'Gretchen', milestones: [
-    { id: 'life-3-1', name: 'Get referral from primary care', hint: 'Email/call this week' },
-    { id: 'life-3-2', name: 'First appointment booked', hint: 'On calendar with confirmation' },
-  ]},
-];
-
 function renderMilestones() {
   const container = document.getElementById('milestones-container');
   if (!container) return;
@@ -1410,55 +1427,94 @@ function renderMilestones() {
     return;
   }
   const isLife = selectedCampaign === 'life';
-  const rocks = isLife ? LIFE_PREVIEW_ROCKS : MILESTONES_DATA.business.rocks;
+  const goals = goalsBySource(selectedCampaign);
   const label = isLife ? 'Life Milestones' : 'Business Milestones';
-  const sub = isLife
-    ? (msState.life_chapter ? 'Tap to unlock when achieved' : 'Preview · define your real rocks in Notion to make this live')
-    : 'Tap to unlock when achieved';
+  const sub = goals.length ? 'Tap to unlock when achieved' : 'Flag a project as GOAL = true in Notion to see milestones';
   let html = `<div class="milestones-header"><h3>${label}</h3><span class="sub">${sub}</span></div>`;
-  rocks.forEach(rock => {
-    const prog = isLife
-      ? { done: 0, total: rock.milestones.length, pct: 0 }
-      : rockProgress(rock);
+  if (!goals.length){
+    container.innerHTML = html;
+    return;
+  }
+  goals.forEach((goal, idx) => {
+    const prog = goal.progress;
+    const pct = prog.total ? Math.round(prog.done/prog.total*100) : 0;
     html += `<div class="rock-milestones${isLife ? ' life' : ''}">
       <div class="rock-ms-head">
-        <div style="display:flex;align-items:baseline">
-          <span class="rock-ms-num${isLife ? ' life' : ''}">${rock.num}</span>
-          <div>
-            <div class="rock-ms-title">${rock.name}</div>
-            <div style="font-size:11px;color:rgba(245,245,247,0.45);margin-top:2px">Owner: ${rock.owner}</div>
+        <div style="display:flex;align-items:baseline;flex:1;min-width:0">
+          <span class="rock-ms-num${isLife ? ' life' : ''}">${idx + 1}</span>
+          <div style="min-width:0;flex:1">
+            <div class="rock-ms-title"><a href="${goal.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none">${escapeMs(goal.name)}</a></div>
+            <div style="font-size:11px;color:rgba(245,245,247,0.45);margin-top:2px">${goal.status || 'Active'}${goal.targetDeadline ? ' · due '+goal.targetDeadline : ''}</div>
           </div>
         </div>
-        <div class="rock-ms-progress">${prog.done}/${prog.total} · ${prog.pct}%</div>
+        <div class="rock-ms-progress">${prog.done}/${prog.total} · ${pct}%</div>
       </div>
       <div class="ms-chain">`;
-    rock.milestones.forEach(ms => {
-      const unlocked = !isLife && isMsUnlocked(ms.id);
-      const clickAttr = isLife ? '' : `onclick="toggleMilestone('${ms.id}')"`;
-      html += `<div class="ms-item ${unlocked ? 'unlocked' : 'locked'}" ${clickAttr}>
+    if (!goal.milestones.length){
+      html += `<div class="ms-item locked" style="opacity:0.5"><div class="ms-icon">○</div><div class="ms-body"><div class="ms-name" style="font-style:italic">No milestones flagged yet. Mark tasks under this project as Milestone = true.</div></div></div>`;
+    }
+    goal.milestones.forEach(ms => {
+      const unlocked = ms.done;
+      html += `<div class="ms-item ${unlocked ? 'unlocked' : 'locked'}" data-ms-id="${ms.id}" data-ms-url="${ms.url}">
         <div class="ms-icon">${unlocked ? '✓' : '○'}</div>
         <div class="ms-body">
-          <div class="ms-name">${ms.name}</div>
-          ${!unlocked ? `<div class="ms-hint">${ms.hint}</div>` : ''}
+          <div class="ms-name">${escapeMs(ms.name)}</div>
+          ${ms.dueStart && !unlocked ? `<div class="ms-hint">due ${ms.dueStart}</div>` : ''}
         </div>
-        <div class="ms-action">${unlocked ? 'Unlocked' : (isLife ? 'Preview' : 'Unlock')}</div>
+        <div class="ms-action">${unlocked ? 'Unlocked' : 'Unlock'}</div>
       </div>`;
     });
     html += `</div></div>`;
   });
   container.innerHTML = html;
 }
-function toggleMilestone(id) {
-  if (msState.unlocked[id]) {
-    if (!confirm('Re-lock this milestone?')) return;
-    delete msState.unlocked[id];
-  } else {
-    msState.unlocked[id] = new Date().toISOString();
+
+async function unlockMilestone(msId){
+  // find ms in GOALS_DATA
+  let ms = null, goal = null;
+  for (const g of GOALS_DATA){
+    const m = g.milestones.find(x => x.id === msId);
+    if (m){ ms = m; goal = g; break; }
   }
-  saveMsState(); renderMilestones(); renderCampaigns();
+  if (!ms || ms.done) return;
+  // Optimistic update
+  ms.done = true;
+  goal.progress.done += 1;
+  renderCampaigns();
+  // Trigger celebration on the newly-unlocked row
+  const row = document.querySelector(`.ms-item[data-ms-id="${msId}"]`);
+  if (row){ row.classList.add('just-unlocked'); setTimeout(()=>row?.classList.remove('just-unlocked'), 1600); }
+  try {
+    const r = await fetch(`/api/tasks/${msId}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status: 'Done' }) });
+    if (!r.ok) throw new Error('sync failed');
+  } catch (err){
+    ms.done = false;
+    goal.progress.done -= 1;
+    renderCampaigns();
+    alert('Could not unlock: ' + err.message);
+  }
 }
-window.toggleMilestone = toggleMilestone;
-(async () => { await loadMsState(); renderCampaigns(); renderMilestones(); })();
+window.unlockMilestone = unlockMilestone;
+
+// Delegated handler for milestone clicks
+document.addEventListener('click', (e) => {
+  const item = e.target.closest('.ms-item');
+  if (!item) return;
+  const action = e.target.closest('.ms-action');
+  const isLocked = item.classList.contains('locked');
+  if (action && isLocked){
+    e.stopPropagation();
+    const id = item.dataset.msId;
+    if (id) unlockMilestone(id);
+    return;
+  }
+  // Click anywhere else on the row → open in Notion (when not locked)
+  const url = item.dataset.msUrl;
+  if (url && !action) window.open(url, '_blank');
+});
+(async () => { await loadMsState(); await fetchGoals(); renderCampaigns(); })();
+// Refresh goals when refresh button clicked
+window.addEventListener('lrl-refresh', async () => { await fetchGoals(); renderCampaigns(); });
 </script>
 
 </body>

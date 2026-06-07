@@ -19,6 +19,8 @@ const GRETCHEN_USER_ID = 'cfe628e1-e7b8-4aed-8151-009b8bee5c9d';
 const ALLOWED_EMAIL = 'gretchen@leftrightlabs.com';
 const WORK_TASKS_DS = '28c458f08cd9818599e7000bc2115872';
 const LIFE_TASKS_DS = '265458f08cd981699efe000b4de14ca4';
+const WORK_PROJECTS_DS = '28c458f08cd98131a475000b81db3c1b';
+const LIFE_PROJECTS_DS = '265458f08cd9814eaf0e000bceaa7f80';
 const CACHE_TTL_MS = 60_000;
 const TZ = 'America/Chicago';
 const DATA_SCOPES = [
@@ -378,8 +380,71 @@ app.get('/api/tasks/life-all', async (_req, res) => {
 });
 
 function invalidateTaskCaches() {
-  ['work-myday', 'life-myday', 'work-all', 'life-all', 'tasks-all'].forEach(k => cache.delete(k));
+  ['work-myday', 'life-myday', 'work-all', 'life-all', 'tasks-all', 'goals'].forEach(k => cache.delete(k));
 }
+
+async function fetchGoalsForSource(projectsDs, tasksDs, source, projectPropName) {
+  const projectsRes = await notion.dataSources.query({
+    data_source_id: projectsDs,
+    filter: { property: 'GOAL', checkbox: { equals: true } },
+    page_size: 50,
+  });
+  return Promise.all(projectsRes.results.map(async (proj) => {
+    const props = proj.properties || {};
+    let milestones = [];
+    try {
+      const tasksRes = await notion.dataSources.query({
+        data_source_id: tasksDs,
+        filter: {
+          and: [
+            { property: projectPropName, relation: { contains: proj.id } },
+            { property: 'Milestone', checkbox: { equals: true } },
+          ],
+        },
+        sorts: [{ property: 'Due', direction: 'ascending' }],
+        page_size: 100,
+      });
+      milestones = tasksRes.results.map((t) => ({
+        id: t.id,
+        name: t.properties.Name?.title?.[0]?.plain_text || '(untitled)',
+        done: t.properties.Status?.status?.name === 'Done',
+        dueStart: t.properties.Due?.date?.start || null,
+        url: t.url,
+      }));
+    } catch (err) {
+      console.error(`Milestones for goal ${proj.id} failed:`, err.message);
+    }
+    return {
+      id: proj.id,
+      source,
+      name: props.Name?.title?.[0]?.plain_text || '(untitled)',
+      status: props.Status?.status?.name || null,
+      targetDeadline: props['Target Deadline']?.date?.start || null,
+      url: proj.url,
+      milestones,
+      progress: {
+        done: milestones.filter((m) => m.done).length,
+        total: milestones.length,
+      },
+    };
+  }));
+}
+
+app.get('/api/goals', async (_req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    const goals = await cached('goals', async () => {
+      const [work, life] = await Promise.all([
+        fetchGoalsForSource(WORK_PROJECTS_DS, WORK_TASKS_DS, 'work', 'Project'),
+        fetchGoalsForSource(LIFE_PROJECTS_DS, LIFE_TASKS_DS, 'personal', 'Project'),
+      ]);
+      return [...work, ...life];
+    });
+    res.json({ goals });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 app.patch('/api/tasks/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
