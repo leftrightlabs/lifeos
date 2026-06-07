@@ -680,14 +680,14 @@
   .autofocus-app .statgrid {display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin:14px 0 16px}
   .autofocus-app .stat {background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 14px;border-top:3px solid var(--line-2)}
   .autofocus-app .stat .statn {font-family:var(--font-d);font-weight:700;font-size:30px;color:var(--navy)}
-  .autofocus-app .stat .statl {font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-top:6px}
+  .autofocus-app .stat .statl {font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .autofocus-app .stat.s-open {border-top-color:var(--navy)}
   .autofocus-app .stat.s-work {border-top-color:var(--navy)}
   .autofocus-app .stat.s-personal {border-top-color:var(--lime-d)}
   .autofocus-app .stat.s-today {border-top-color:var(--today)}
   .autofocus-app .stat.s-over {border-top-color:var(--over)}
   .autofocus-app .stat.s-myday {border-top-color:var(--lime)}
-  @media(max-width:760px){.autofocus-app .statgrid {grid-template-columns:repeat(3,1fr)}.autofocus-app .stat .statn {font-size:24px}}
+  @media(max-width:760px){.autofocus-app .statgrid {grid-template-columns:repeat(3,1fr);gap:6px}.autofocus-app .stat {padding:8px 10px}.autofocus-app .stat .statn {font-size:22px}.autofocus-app .stat .statl {font-size:10px;margin-top:3px;letter-spacing:.06em}}
   .autofocus-app .dot {width:5px;height:5px;border-radius:50%;background:var(--lime);display:inline-block;margin-right:7px}
   .autofocus-app .syncbar {background:#fff;border:1px solid var(--line);border-left:3px solid var(--lime);border-radius:10px;padding:11px 14px;margin-bottom:12px;font-size:13px}
   .autofocus-app .syncrow {display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -1726,7 +1726,7 @@ function updateHeader(){
   const td=live.filter(t=>{const e=effDate(t);return e&&daysFrom(e)===0&&!notYetDue(t);}).length;
   const md=live.filter(t=>t.myDay).length;
   const tile=(n,label,cls)=>'<div class="stat '+cls+'"><div class="statn">'+n+'</div><div class="statl">'+label+'</div></div>';
-  el('hdrstats').innerHTML=tile(live.length,'Open','s-open')+tile(work,'Work','s-work')+tile(pers,'Personal','s-personal')+tile(td,'Due today','s-today')+tile(od,'Overdue','s-over')+tile(md,'My Day','s-myday');
+  el('hdrstats').innerHTML=tile(live.length,'Open','s-open')+tile(work,'Work','s-work')+tile(pers,'Personal','s-personal')+tile(td,'Today','s-today')+tile(od,'Overdue','s-over')+tile(md,'My Day','s-myday');
   const d=el('hdrdate'); if(d) d.innerHTML='<span class="dot"></span>'+TODAY.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 }
 
