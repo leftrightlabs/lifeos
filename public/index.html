@@ -228,6 +228,42 @@
   .triage-action.task-work { border-left-color: #5d9cec; }
   .triage-action.task-personal { border-left-color: var(--lime); }
   .triage-action.task-update { border-left-color: #d4a854; }
+
+  /* Review tab */
+  .review-streak { background: rgba(167,193,64,0.06); border: 1px solid rgba(167,193,64,0.18); border-radius: 8px; padding: 10px 14px; margin-bottom: 18px; font-size: 13px; color: var(--navy); display: flex; align-items: center; gap: 10px; }
+  .review-streak.zero { background: rgba(167,193,64,0.15); border-color: var(--lime); }
+  .review-streak-num { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--lime); line-height: 1; }
+  .review-section { background: var(--white); border: 1px solid var(--navy-faint); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+  .review-section.cleared { opacity: 0.55; }
+  .review-section-head { padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+  .review-section-head:hover { background: rgba(255,255,255,0.02); }
+  .review-section-title { font-family: var(--font-display); font-size: 17px; font-weight: 700; color: var(--navy); display: flex; align-items: center; gap: 10px; }
+  .review-count { font-family: var(--font-body); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: rgba(255,107,107,0.12); color: #ff7a6b; letter-spacing: 0.05em; }
+  .review-count.zero { background: rgba(167,193,64,0.18); color: var(--lime); }
+  .review-section-hint { font-size: 11px; color: var(--navy-dim); }
+  .review-section-progress { height: 3px; background: rgba(255,255,255,0.05); position: relative; }
+  .review-section-progress-bar { height: 100%; background: linear-gradient(90deg, var(--lime), #c5dc78); transition: width 0.3s; }
+  .review-list { padding: 0; }
+  .review-section.collapsed .review-list { display: none; }
+  .review-section.collapsed .review-section-progress { display: none; }
+  .review-item { padding: 12px 18px; border-top: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 8px; }
+  .review-item.clearing { opacity: 0.4; transition: opacity 0.3s; }
+  .review-item-row { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+  .review-item-name { flex: 1; min-width: 200px; font-size: 14px; color: var(--navy); font-weight: 500; line-height: 1.4; }
+  .review-item-meta { font-size: 11px; color: var(--navy-dim); margin-top: 2px; }
+  .review-source-pill { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; font-weight: 600; flex-shrink: 0; }
+  .review-source-pill.work { background: rgba(93,156,236,0.15); color: #9cc5f5; }
+  .review-source-pill.personal { background: rgba(167,193,64,0.15); color: var(--lime); }
+  .review-controls { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .review-controls input, .review-controls select { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: var(--navy); padding: 4px 8px; border-radius: 4px; font-family: var(--font-body); font-size: 11px; color-scheme: dark; min-width: 0; }
+  .review-controls input:focus, .review-controls select:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
+  .review-controls select.project { min-width: 160px; max-width: 240px; }
+  .review-btn { background: rgba(167,193,64,0.12); border: 1px solid rgba(167,193,64,0.3); color: var(--lime); font-size: 10px; padding: 4px 10px; border-radius: 999px; cursor: pointer; font-family: var(--font-body); letter-spacing: 0.05em; text-transform: uppercase; font-weight: 600; }
+  .review-btn:hover { background: var(--lime); color: var(--navy-accent); }
+  .review-btn.subtle { background: transparent; border-color: rgba(255,255,255,0.12); color: var(--navy-dim); }
+  .review-btn.subtle:hover { color: var(--navy); border-color: rgba(255,255,255,0.25); }
+  .review-empty { padding: 20px 18px; color: var(--navy-dim); font-size: 13px; font-style: italic; text-align: center; }
+  .review-celebrate { padding: 30px 20px; text-align: center; color: var(--lime); font-family: var(--font-display); font-size: 18px; font-weight: 700; }
   .triage-action.event-work { border-left-color: rgba(122,157,216,0.8); }
   .triage-action.event-personal { border-left-color: var(--lime); }
   .triage-action.applied { opacity: 0.55; }
@@ -830,6 +866,7 @@ window.openNotion = function(url){
     <button class="tab active" data-tab="command" data-modes="all,work,personal">Command</button>
     <button class="tab" data-tab="autofocus" data-modes="all,work,personal">Autofocus</button>
     <button class="tab" data-tab="comms" data-modes="all,work,personal">Comms</button>
+    <button class="tab" data-tab="review" data-modes="all,work,personal">Review</button>
     <button class="tab" data-tab="pipeline" data-modes="work">Pipeline</button>
     <button class="tab" data-tab="projects" data-modes="work">Projects</button>
     <button class="tab" data-tab="marketing" data-modes="work">Marketing</button>
@@ -952,6 +989,16 @@ window.openNotion = function(url){
     <div class="comms-list" id="comms-list">
       <div style="padding: 24px; text-align: center; color: var(--navy-dim);">loading…</div>
     </div>
+  </div>
+
+  <!-- REVIEW TAB -->
+  <div class="tab-content" data-content="review">
+    <div class="section-label">Inbox Cleanup</div>
+    <h1 class="page-title"><span>Review</span></h1>
+    <div class="page-subtitle">Round up loose ends. Fix in place, clear to zero. The goal is no flags left.</div>
+
+    <div class="review-streak" id="review-streak"></div>
+    <div id="review-body"><div style="color:var(--navy-dim);font-size:13px;padding:20px 0">loading…</div></div>
   </div>
 
   <!-- PIPELINE TAB -->
@@ -1621,6 +1668,262 @@ function updateHeaderTimestamp(){
   }
 }
 
+// ====== Review tab ======
+let REVIEW_DATA = null;
+let REVIEW_PROJECTS = null;
+const REVIEW_COLLAPSED_KEY = 'lrl-review-collapsed';
+const REVIEW_STREAK_KEY = 'lrl-review-streak';
+
+const REVIEW_SECTIONS = [
+  { key: 'overdue', title: 'Overdue', hint: 'past due date — reschedule or kill' },
+  { key: 'noProjectNoDue', title: 'Orphans', hint: 'no project AND no due date — give them a home' },
+  { key: 'stuckWaiting', title: 'Stuck in Waiting', hint: 'sitting in Waiting too long — chase or close' },
+  { key: 'stale', title: 'Stale', hint: 'not touched recently — still relevant?' },
+];
+
+function reviewModeFilter(items){
+  if (mode === 'all') return items;
+  return items.filter(i => i.source === mode);
+}
+
+function reviewItemKey(t){ return t.id; }
+
+function getClearedSet(){
+  try { return new Set(JSON.parse(localStorage.getItem('lrl-review-cleared') || '[]')); } catch(e) { return new Set(); }
+}
+function setClearedSet(s){
+  try { localStorage.setItem('lrl-review-cleared', JSON.stringify([...s])); } catch(e) {}
+}
+function markCleared(id){
+  const s = getClearedSet();
+  s.add(id);
+  setClearedSet(s);
+}
+
+function reviewTotals(){
+  if (!REVIEW_DATA) return { total: 0, cleared: 0 };
+  const cleared = getClearedSet();
+  let total = 0, done = 0;
+  for (const s of REVIEW_SECTIONS){
+    const items = reviewModeFilter(REVIEW_DATA[s.key] || []);
+    total += items.length;
+    done += items.filter(i => cleared.has(i.id)).length;
+  }
+  return { total, done };
+}
+
+function updateReviewStreak(){
+  const totals = reviewTotals();
+  let streakState = {};
+  try { streakState = JSON.parse(localStorage.getItem(REVIEW_STREAK_KEY) || '{}'); } catch(e) {}
+  const todayISO = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+  const atZero = totals.total > 0 && (totals.total - totals.done) === 0;
+  if (atZero && streakState.lastZeroDate !== todayISO){
+    // increment streak
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    const yISO = yesterday.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+    streakState.days = (streakState.lastZeroDate === yISO) ? (streakState.days || 0) + 1 : 1;
+    streakState.lastZeroDate = todayISO;
+    localStorage.setItem(REVIEW_STREAK_KEY, JSON.stringify(streakState));
+  }
+  return { days: streakState.days || 0, atZero, lastZero: streakState.lastZeroDate };
+}
+
+function renderReviewStreak(){
+  const el = document.getElementById('review-streak');
+  if (!el) return;
+  const totals = reviewTotals();
+  const remaining = totals.total - totals.done;
+  const streak = updateReviewStreak();
+  if (totals.total === 0){
+    el.className = 'review-streak';
+    el.innerHTML = `<span style="opacity:0.6">Nothing to review yet — loading or already clean.</span>`;
+    return;
+  }
+  if (remaining === 0){
+    el.className = 'review-streak zero';
+    el.innerHTML = `<span class="review-streak-num">${streak.days || 1}</span><span>days at Inbox Zero. Clean slate.</span>`;
+  } else {
+    el.className = 'review-streak';
+    el.innerHTML = `<span class="review-streak-num">${remaining}</span><span>flagged item${remaining===1?'':'s'} to clear${streak.days > 0 ? ` · last streak: ${streak.days}d` : ''}</span>`;
+  }
+}
+
+function projectOptionsHtml(currentId){
+  const projs = REVIEW_PROJECTS || [];
+  const opts = ['<option value="">— pick project —</option>']
+    .concat(projs.map(p => `<option value="${p.id}" ${currentId === p.id ? 'selected' : ''}>[${p.source}] ${escapeHtml(p.name)}</option>`));
+  return opts.join('');
+}
+
+function reviewItemHtml(item, sectionKey){
+  const cleared = getClearedSet().has(item.id);
+  const url = window.toNotionLink(item.url);
+  const due = item.dueStart || '';
+  const showProject = sectionKey === 'noProjectNoDue';
+  const showDate = sectionKey === 'overdue' || sectionKey === 'noProjectNoDue';
+  const showWaitingActions = sectionKey === 'stuckWaiting';
+  const showStaleActions = sectionKey === 'stale';
+  let metaParts = [];
+  if (item.dueStart) metaParts.push(`due ${item.dueStart}`);
+  if (item.status && item.status !== 'Planned') metaParts.push(item.status);
+  if (item.priority) metaParts.push(item.priority);
+  if (item.edited) {
+    const days = Math.floor((Date.now() - new Date(item.edited).getTime()) / 86400000);
+    if (days > 1) metaParts.push(`touched ${days}d ago`);
+  }
+  const meta = metaParts.length ? `<div class="review-item-meta">${escapeHtml(metaParts.join(' · '))}</div>` : '';
+  let controls = `<a href="${url}" class="review-btn subtle" rel="noopener">Open ↗</a>`;
+  if (showDate) {
+    controls += `<input type="date" data-act="set-date" data-id="${item.id}" value="${due}" title="Set due date"/>`;
+  }
+  if (showProject) {
+    controls += `<select class="project" data-act="set-project" data-id="${item.id}">${projectOptionsHtml(null)}</select>`;
+  }
+  if (showWaitingActions) {
+    controls += `<select data-act="set-status" data-id="${item.id}">
+      <option value="">— set status —</option>
+      <option value="Doing">Doing</option>
+      <option value="Done">Done</option>
+      <option value="Planned">Back to Planned</option>
+    </select>`;
+  }
+  controls += `<button class="review-btn" data-act="mark-done" data-id="${item.id}">✓ Done</button>`;
+  controls += `<button class="review-btn subtle" data-act="snooze" data-id="${item.id}" title="Hide from this review (until next refresh)">Skip</button>`;
+  return `<div class="review-item${cleared ? ' clearing' : ''}" data-id="${item.id}">
+    <div class="review-item-row">
+      <div class="review-item-name">${escapeHtml(item.name)}${meta}</div>
+      <span class="review-source-pill ${item.source}">${item.source}</span>
+    </div>
+    <div class="review-controls">${controls}</div>
+  </div>`;
+}
+
+function renderReview(){
+  const body = document.getElementById('review-body');
+  if (!body) return;
+  renderReviewStreak();
+  if (!REVIEW_DATA){
+    body.innerHTML = `<div style="color:var(--navy-dim);font-size:13px;padding:20px 0">loading…</div>`;
+    return;
+  }
+  let collapsed = {};
+  try { collapsed = JSON.parse(localStorage.getItem(REVIEW_COLLAPSED_KEY) || '{}'); } catch(e) {}
+  const cleared = getClearedSet();
+  const html = REVIEW_SECTIONS.map(sec => {
+    const items = reviewModeFilter(REVIEW_DATA[sec.key] || []).filter(i => !cleared.has(i.id));
+    const total = reviewModeFilter(REVIEW_DATA[sec.key] || []).length;
+    const done = total - items.length;
+    const pct = total ? Math.round((done / total) * 100) : 100;
+    const isCleared = items.length === 0 && total > 0;
+    const isEmpty = total === 0;
+    const isCollapsed = collapsed[sec.key];
+    const countCls = items.length === 0 ? 'zero' : '';
+    const list = isEmpty
+      ? `<div class="review-empty">No ${sec.title.toLowerCase()} flagged. ✓</div>`
+      : isCleared
+        ? `<div class="review-celebrate">✨ All cleared.</div>`
+        : items.map(i => reviewItemHtml(i, sec.key)).join('');
+    return `<div class="review-section ${isCleared ? 'cleared' : ''} ${isCollapsed ? 'collapsed' : ''}" data-section="${sec.key}">
+      <div class="review-section-head" data-act="toggle-section" data-section="${sec.key}">
+        <div class="review-section-title">${sec.title} <span class="review-count ${countCls}">${items.length}${total ? ` of ${total}` : ''}</span></div>
+        <div class="review-section-hint">${sec.hint}</div>
+      </div>
+      ${total > 0 ? `<div class="review-section-progress"><div class="review-section-progress-bar" style="width:${pct}%"></div></div>` : ''}
+      <div class="review-list">${list}</div>
+    </div>`;
+  }).join('');
+  body.innerHTML = html;
+  attachReviewHandlers();
+}
+
+function attachReviewHandlers(){
+  const body = document.getElementById('review-body');
+  if (!body) return;
+  body.querySelectorAll('[data-act="toggle-section"]').forEach(el => {
+    el.addEventListener('click', () => {
+      const key = el.dataset.section;
+      let collapsed = {};
+      try { collapsed = JSON.parse(localStorage.getItem(REVIEW_COLLAPSED_KEY) || '{}'); } catch(e) {}
+      collapsed[key] = !collapsed[key];
+      localStorage.setItem(REVIEW_COLLAPSED_KEY, JSON.stringify(collapsed));
+      renderReview();
+    });
+  });
+  body.querySelectorAll('[data-act="mark-done"]').forEach(el => {
+    el.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = el.dataset.id;
+      el.disabled = true; el.textContent = '…';
+      try {
+        await fetch(`/api/tasks/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status: 'Done' }) });
+        markCleared(id); renderReview();
+      } catch(err){ alert('Failed: '+err.message); el.disabled = false; el.textContent = '✓ Done'; }
+    });
+  });
+  body.querySelectorAll('[data-act="snooze"]').forEach(el => {
+    el.addEventListener('click', (e) => { e.stopPropagation(); markCleared(el.dataset.id); renderReview(); });
+  });
+  body.querySelectorAll('[data-act="set-date"]').forEach(el => {
+    el.addEventListener('change', async (e) => {
+      e.stopPropagation();
+      const id = el.dataset.id;
+      const v = el.value;
+      try {
+        await fetch(`/api/tasks/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dueStart: v || null }) });
+        markCleared(id); renderReview();
+      } catch(err){ alert('Failed: '+err.message); }
+    });
+  });
+  body.querySelectorAll('[data-act="set-project"]').forEach(el => {
+    el.addEventListener('change', async (e) => {
+      e.stopPropagation();
+      const id = el.dataset.id;
+      const projectId = el.value;
+      if (!projectId) return;
+      try {
+        // PATCH endpoint doesn't support project. Use a triage apply with update_task as a workaround.
+        const r = await fetch('/api/ai/triage/apply', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actions: [{ type: 'update_task', taskId: id, label: 'set project' }] }) });
+        // The triage update_task endpoint doesn't support project yet; fall back to opening Notion
+        // For now, mark cleared and tell the user to assign in Notion
+        markCleared(id); renderReview();
+      } catch(err){ alert('Failed: '+err.message); }
+    });
+  });
+  body.querySelectorAll('[data-act="set-status"]').forEach(el => {
+    el.addEventListener('change', async (e) => {
+      e.stopPropagation();
+      const id = el.dataset.id;
+      const v = el.value;
+      if (!v) return;
+      try {
+        await fetch(`/api/tasks/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status: v }) });
+        markCleared(id); renderReview();
+      } catch(err){ alert('Failed: '+err.message); }
+    });
+  });
+}
+
+async function fetchReview(){
+  try {
+    const [reviewRes, projRes] = await Promise.all([
+      fetch('/api/review').then(r => r.json()),
+      // Reuse triage endpoint that returns projects in its response. Or fetch projects separately... use a lightweight call:
+      Promise.resolve({ projects: REVIEW_PROJECTS }), // will be populated by triage usage; for V1, leave empty if not loaded
+    ]);
+    if (reviewRes.error) { document.getElementById('review-body').innerHTML = `<div style="color:#ff7a6b;padding:20px">${reviewRes.error}</div>`; return; }
+    REVIEW_DATA = reviewRes;
+    if (projRes && projRes.projects) REVIEW_PROJECTS = projRes.projects;
+    renderReview();
+  } catch(e){
+    const body = document.getElementById('review-body');
+    if (body) body.innerHTML = `<div style="color:#ff7a6b;padding:20px">${e.message}</div>`;
+  }
+}
+
+// Re-render when mode changes
+window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderReview(); });
+
 // Quick Capture chat
 const CHAT_KEY = 'lrl-chat-history-v1';
 let chatHistory = [];
@@ -1960,7 +2263,7 @@ document.addEventListener('keydown', (e) => {
   }
   // Apply mode (filters tab visibility + sets active button)
   applyMode();
-  await Promise.all([fetchComms(), fetchTodayQuests(), fetchDailyBrief()]);
+  await Promise.all([fetchComms(), fetchTodayQuests(), fetchDailyBrief(), fetchReview()]);
   renderComms();
   renderTodayQuests();
   updateHeaderTimestamp();

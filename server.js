@@ -385,7 +385,7 @@ app.get('/api/tasks/life-all', async (_req, res) => {
 });
 
 function invalidateTaskCaches() {
-  ['work-myday', 'life-myday', 'work-all', 'life-all', 'tasks-all', 'goals'].forEach(k => cache.delete(k));
+  ['work-myday', 'life-myday', 'work-all', 'life-all', 'tasks-all', 'goals', 'review'].forEach(k => cache.delete(k));
 }
 
 async function fetchGoalsForSource(projectsDs, tasksDs, source, projectPropName) {
@@ -658,6 +658,72 @@ function chicagoNowParts() {
 
 const briefCache = new Map();
 const BRIEF_TTL_MS = 1000 * 60 * 60 * 2;
+
+// ----- REVIEW (inbox-zero queries) -----
+
+const REVIEW_STALE_DAYS = 14;
+const REVIEW_WAITING_DAYS = 7;
+
+function daysSince(iso) {
+  if (!iso) return Infinity;
+  const ms = Date.now() - new Date(iso).getTime();
+  return Math.floor(ms / (1000 * 60 * 60 * 24));
+}
+
+async function reviewTasksForSource(taskDs, source, peopleProp) {
+  // Get all open tasks (Status != Done) — already have these helpers
+  const data = await queryTasks(taskDs, { peopleProp, myDayOnly: false });
+  const all = data.results.map((p) => {
+    const props = p.properties || {};
+    const due = props.Due?.date || {};
+    const projectRel = props.Project?.relation || [];
+    return {
+      id: p.id,
+      name: props.Name?.title?.[0]?.plain_text || '(untitled)',
+      source,
+      status: props.Status?.status?.name || null,
+      dueStart: due.start || null,
+      dueEnd: due.end || null,
+      priority: props['Priority 2']?.select?.name || props.Priority?.status?.name || null,
+      myDay: !!props['My Day']?.checkbox,
+      hasProject: projectRel.length > 0,
+      edited: p.last_edited_time || null,
+      url: p.url,
+    };
+  });
+  const todayISO = chicagoTodayISODate();
+  const overdue = all.filter((t) => {
+    const d = t.dueEnd || t.dueStart;
+    return d && d < todayISO && t.status !== 'Done';
+  });
+  const noProjectNoDue = all.filter((t) => !t.hasProject && !t.dueStart);
+  const stale = all.filter((t) => daysSince(t.edited) >= REVIEW_STALE_DAYS);
+  const stuckWaiting = all.filter((t) => t.status === 'Waiting' && daysSince(t.edited) >= REVIEW_WAITING_DAYS);
+  return { all, overdue, noProjectNoDue, stale, stuckWaiting };
+}
+
+app.get('/api/review', async (_req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    const data = await cached('review', async () => {
+      const [work, personal] = await Promise.all([
+        reviewTasksForSource(WORK_TASKS_DS, 'work', 'Assigned'),
+        reviewTasksForSource(LIFE_TASKS_DS, 'personal', null),
+      ]);
+      const combine = (k) => [...work[k], ...personal[k]];
+      return {
+        overdue: combine('overdue'),
+        noProjectNoDue: combine('noProjectNoDue'),
+        stale: combine('stale'),
+        stuckWaiting: combine('stuckWaiting'),
+        thresholds: { staleDays: REVIEW_STALE_DAYS, waitingDays: REVIEW_WAITING_DAYS },
+      };
+    });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 async function fetchActiveProjects() {
   if (!notion) return [];
