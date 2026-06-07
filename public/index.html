@@ -64,6 +64,13 @@
   .brand-name { font-family: var(--font-body); font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; font-size: 12px; color: var(--navy); }
   .header-meta { display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--navy-dim); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
   .level-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--navy); color: var(--lime); border-radius: 999px; font-size: 11px; letter-spacing: 0.1em; }
+  .mode-lens { display: inline-flex; gap: 0; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; padding: 3px; }
+  .mode-btn { background: transparent; border: none; padding: 6px 14px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: rgba(245,245,247,0.55); cursor: pointer; border-radius: 999px; font-family: var(--font-body); transition: all 0.15s; text-transform: uppercase; }
+  .mode-btn:hover { color: var(--navy); }
+  .mode-btn.active { background: var(--lime); color: var(--navy-accent); }
+  .mode-btn[data-mode="work"].active { background: #5d9cec; color: var(--navy-accent); }
+  .mode-btn[data-mode="personal"].active { background: #a7c0e8; color: var(--navy-accent); }
+  @media (max-width: 720px) { .mode-btn { padding: 5px 10px; font-size: 10px; } }
 
   /* TABS */
   .tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--navy-faint); margin-bottom: 32px; padding-bottom: 0; }
@@ -526,6 +533,11 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
         <path fill="#a7c140" d="M507.2,257.1c-125.4,19.1-225.5,115-250.7,238.3-.2.8-1.3.8-1.5,0-25.2-123.2-125.3-219.2-250.7-238.3-.9-.1-.9-1.4,0-1.5,125.4-19.1,225.5-115,250.7-238.3.2-.8,1.3-.8,1.5,0,25.2,123.2,125.3,219.2,250.7,238.3.9.1.9,1.4,0,1.5Z"/>
       </svg>
       <div class="brand-name">LifeOS</div>
+      <div class="mode-lens" id="mode-lens">
+        <button class="mode-btn active" data-mode="combined">Combined</button>
+        <button class="mode-btn" data-mode="work">Work</button>
+        <button class="mode-btn" data-mode="personal">Personal</button>
+      </div>
     </div>
     <div class="header-meta">
       <button class="refresh-btn" onclick="triggerRefresh()" title="Refresh dashboard from live APIs">
@@ -542,16 +554,19 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
   </div>
 
   <div class="tabs" id="tabs">
-    <button class="tab active" data-tab="command">Command</button>
-    <button class="tab" data-tab="autofocus">Autofocus</button>
-    <button class="tab" data-tab="comms">Comms</button>
-    <button class="tab" data-tab="pipeline">Pipeline</button>
-    <button class="tab" data-tab="projects">Projects</button>
-    <button class="tab" data-tab="marketing">Marketing</button>
-    <button class="tab" data-tab="finance">Finance</button>
-    <button class="tab" data-tab="team">Team</button>
-    <button class="tab" data-tab="personal">Personal</button>
-    <button class="tab" data-tab="inventory">Inventory</button>
+    <button class="tab active" data-tab="command" data-modes="combined,work,personal">Command</button>
+    <button class="tab" data-tab="autofocus" data-modes="combined,work,personal">Autofocus</button>
+    <button class="tab" data-tab="comms" data-modes="combined,work,personal">Comms</button>
+    <button class="tab" data-tab="pipeline" data-modes="work">Pipeline</button>
+    <button class="tab" data-tab="projects" data-modes="work">Projects</button>
+    <button class="tab" data-tab="marketing" data-modes="work">Marketing</button>
+    <button class="tab" data-tab="finance" data-modes="work">Finance</button>
+    <button class="tab" data-tab="team" data-modes="work">Team</button>
+    <button class="tab" data-tab="health" data-modes="personal">Health</button>
+    <button class="tab" data-tab="finance-personal" data-modes="personal">Finance</button>
+    <button class="tab" data-tab="lego" data-modes="personal">LEGO</button>
+    <button class="tab" data-tab="relationships" data-modes="personal">Relationships</button>
+    <button class="tab" data-tab="inventory" data-modes="combined">Inventory</button>
   </div>
 
   <!-- COMMAND TAB -->
@@ -579,14 +594,7 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
 
     <div class="quest-row">
       <div class="panel">
-        <div class="panel-title-row">
-          <div class="panel-title"><span>Today's Quest</span></div>
-          <div class="tqf-group">
-            <button class="tqf-btn active" data-tqf="all">All</button>
-            <button class="tqf-btn" data-tqf="work">Work</button>
-            <button class="tqf-btn" data-tqf="personal">Personal</button>
-          </div>
-        </div>
+        <div class="panel-title"><span>Today's Quest</span></div>
         <div id="today-quests"><div style="color:var(--navy-dim);font-size:13px;padding:8px 0">loading…</div></div>
       </div>
       <div class="panel">
@@ -617,11 +625,6 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
           <div class="search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
             <input id="q" placeholder="Search tasks or projects…"/>
-          </div>
-          <div class="chips" id="srcchips">
-            <button data-src="all" class="on">All</button>
-            <button data-src="work">Work</button>
-            <button data-src="personal">Personal</button>
           </div>
           <select class="sel" id="sortsel">
             <option value="due">Sort: Due date</option>
@@ -754,16 +757,55 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
     </div>
   </div>
 
-  <!-- PERSONAL TAB -->
-  <div class="tab-content" data-content="personal">
-    <div class="section-label">Personal OS</div>
-    <h1 class="page-title"><span>Personal</span></h1>
-    <div class="page-subtitle">Your own rocks, wellness inputs, and restorative time. (Static placeholder.)</div>
+  <!-- HEALTH TAB (Personal mode) -->
+  <div class="tab-content" data-content="health">
+    <div class="section-label">Personal Realm</div>
+    <h1 class="page-title"><span>Health</span></h1>
+    <div class="page-subtitle">HRV, sleep, movement, nutrition. (Placeholder — wires to JOURNAL [DB] in a later day.)</div>
     <div class="kpi-grid">
       <div class="kpi-card"><div class="kpi-label">7-Day Avg HRV</div><div class="kpi-value"><span>62ms</span></div><div class="kpi-change positive">↑ 4ms</div></div>
       <div class="kpi-card"><div class="kpi-label">Restorative Time</div><div class="kpi-value"><span>3.5h</span></div><div class="kpi-change">LEGO + reading</div></div>
       <div class="kpi-card"><div class="kpi-label">Journal Streak</div><div class="kpi-value"><span>14d</span></div><div class="kpi-change positive">Daily entries</div></div>
       <div class="kpi-card"><div class="kpi-label">Sleep Avg</div><div class="kpi-value"><span>6.8h</span></div><div class="kpi-change negative">Target: 7.5h</div></div>
+    </div>
+  </div>
+
+  <!-- PERSONAL FINANCE TAB -->
+  <div class="tab-content" data-content="finance-personal">
+    <div class="section-label">Personal Realm</div>
+    <h1 class="page-title"><span>Finance</span></h1>
+    <div class="page-subtitle">Personal income, expenses, debt paydown. (Placeholder.)</div>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">Debt Paydown</div><div class="kpi-value"><span>$11K</span></div><div class="kpi-change positive">44% to $25K</div></div>
+      <div class="kpi-card"><div class="kpi-label">Emergency Fund</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending YNAB integration</div></div>
+      <div class="kpi-card"><div class="kpi-label">Monthly Budget</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending YNAB integration</div></div>
+      <div class="kpi-card"><div class="kpi-label">Net Worth</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending integration</div></div>
+    </div>
+  </div>
+
+  <!-- LEGO TAB -->
+  <div class="tab-content" data-content="lego">
+    <div class="section-label">Personal Realm</div>
+    <h1 class="page-title"><span>LEGO</span></h1>
+    <div class="page-subtitle">Builds, conventions, inventory. (Placeholder — wires to LEGO MOCS [DB] in a later day.)</div>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">Active MOCs</div><div class="kpi-value"><span>3</span></div><div class="kpi-change">Texas Bluebonnets in progress</div></div>
+      <div class="kpi-card"><div class="kpi-label">Sets Owned</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending inventory sync</div></div>
+      <div class="kpi-card"><div class="kpi-label">Next Convention</div><div class="kpi-value"><span>Brick Rodeo</span></div><div class="kpi-change">Schedule pending review</div></div>
+      <div class="kpi-card"><div class="kpi-label">Studio Hours (Q)</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending time log</div></div>
+    </div>
+  </div>
+
+  <!-- RELATIONSHIPS TAB -->
+  <div class="tab-content" data-content="relationships">
+    <div class="section-label">Personal Realm</div>
+    <h1 class="page-title"><span>Relationships</span></h1>
+    <div class="page-subtitle">People you love. Touched-recently rolling window. (Placeholder — wires to CONTACTS [DB] in a later day.)</div>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">In-circle Touches (7d)</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending</div></div>
+      <div class="kpi-card"><div class="kpi-label">Companion Quests Done</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending</div></div>
+      <div class="kpi-card"><div class="kpi-label">Upcoming Birthdays</div><div class="kpi-value"><span>1</span></div><div class="kpi-change">Genny — Jun 14</div></div>
+      <div class="kpi-card"><div class="kpi-label">Cold Contacts</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending</div></div>
     </div>
   </div>
 
@@ -902,14 +944,20 @@ el('list').addEventListener('click',e=>{
 el('q').addEventListener('input',e=>{ui.q=e.target.value;render();});
 el('sortsel').addEventListener('change',e=>{ui.sort=e.target.value;render();});
 el('groupsel').addEventListener('change',e=>{ui.group=e.target.value;render();});
-el('srcchips').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;ui.src=b.dataset.src;[...el('srcchips').children].forEach(x=>x.classList.remove('on','personal'));b.classList.add('on');if(ui.src==='personal')b.classList.add('personal');render();});
+// Autofocus listens for global mode changes
+function syncAutofocusToMode(){
+  const m = localStorage.getItem('lrl-mode') || 'combined';
+  ui.src = m === 'combined' ? 'all' : m;
+  render();
+}
+window.addEventListener('lrl-mode-changed', syncAutofocusToMode);
 function bindTog(id,key,wrap){el(id).addEventListener('change',e=>{ui[key]=e.target.checked;el(wrap).classList.toggle('on',e.target.checked);render();});}
 bindTog('myday','myday','tg-myday');bindTog('routines','routines','tg-routines');bindTog('showdone','showdone','tg-done');
 el('expandall').addEventListener('click',()=>{state.collapsed[ui.group]={};saveState();render();});
 el('collapseall').addEventListener('click',()=>{document.querySelectorAll('.ghead').forEach(h=>setCollapsed(h.dataset.gkey,true));render();});
 el('refreshbtn').addEventListener('click',async()=>{await fetchTasks();render();});
 
-(async()=>{await loadState();await fetchTasks();render();})();
+(async()=>{await loadState();await fetchTasks();syncAutofocusToMode();})();
 })();
 </script>
 
@@ -918,7 +966,7 @@ el('refreshbtn').addEventListener('click',async()=>{await fetchTasks();render();
 let COMMS_DATA = [];
 let TODAY_EVENTS = [];
 let TODAY_TASKS = [];
-let todayFilter = localStorage.getItem('lrl-today-filter') || 'all';
+let mode = localStorage.getItem('lrl-mode') || 'combined';
 
 async function fetchComms(){
   try {
@@ -957,13 +1005,18 @@ function fmtTime(iso){
 }
 function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
+function filterBySource(items, srcKey){
+  if (mode === 'combined') return items;
+  return items.filter(i => i[srcKey] === mode);
+}
+
 function renderTodayQuests(){
   const taskDiv = document.getElementById('today-quests');
   const calDiv = document.getElementById('today-calendar');
   if (taskDiv){
-    const filtered = todayFilter === 'all' ? TODAY_TASKS : TODAY_TASKS.filter(t => t.source === todayFilter);
+    const filtered = filterBySource(TODAY_TASKS, 'source');
     if (!filtered.length){
-      const msg = todayFilter === 'all' ? 'Nothing on My Day' : `No ${todayFilter} tasks today`;
+      const msg = mode === 'combined' ? 'Nothing on My Day' : `No ${mode} tasks today`;
       taskDiv.innerHTML = `<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">${msg}</div>`;
     } else {
       taskDiv.innerHTML = filtered.map(t=>{
@@ -977,10 +1030,12 @@ function renderTodayQuests(){
     }
   }
   if (calDiv){
-    if (!TODAY_EVENTS.length){
-      calDiv.innerHTML = '<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">No events today</div>';
+    const filtered = filterBySource(TODAY_EVENTS, 'account');
+    if (!filtered.length){
+      const msg = mode === 'combined' ? 'No events today' : `No ${mode} events today`;
+      calDiv.innerHTML = `<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">${msg}</div>`;
     } else {
-      calDiv.innerHTML = TODAY_EVENTS.map(e=>{
+      calDiv.innerHTML = filtered.map(e=>{
         const when = e.allDay ? 'All day' : fmtTime(e.start);
         const tag = `<span class="quest-tag tag-calendar">${e.account}</span>`;
         return `<div class="quest-item" onclick="window.open('${e.url}','_blank')">
@@ -993,15 +1048,39 @@ function renderTodayQuests(){
   }
 }
 
-document.querySelectorAll('.tqf-btn').forEach(btn => {
+// Mode lens: global Work/Personal/Combined filter
+function applyMode(){
+  document.body.dataset.mode = mode;
+  // Show/hide tabs
+  document.querySelectorAll('.tab').forEach(tab => {
+    const modes = (tab.dataset.modes || '').split(',');
+    tab.style.display = modes.includes(mode) ? '' : 'none';
+  });
+  // If active tab isn't visible, fall back to command
+  const activeTab = document.querySelector('.tab.active');
+  if (activeTab && activeTab.style.display === 'none'){
+    activeTab.classList.remove('active');
+    document.querySelector('.tab-content.active')?.classList.remove('active');
+    document.querySelector('.tab[data-tab="command"]').classList.add('active');
+    document.querySelector('.tab-content[data-content="command"]').classList.add('active');
+    localStorage.setItem('lrl-active-tab', 'command');
+  }
+  // Update mode buttons
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  // Re-render cross-cutting views
+  renderTodayQuests();
+  renderComms();
+  // Notify autofocus
+  window.dispatchEvent(new CustomEvent('lrl-mode-changed', { detail: mode }));
+}
+
+document.querySelectorAll('.mode-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    todayFilter = btn.dataset.tqf;
-    localStorage.setItem('lrl-today-filter', todayFilter);
-    document.querySelectorAll('.tqf-btn').forEach(b => b.classList.toggle('active', b.dataset.tqf === todayFilter));
-    renderTodayQuests();
+    mode = btn.dataset.mode;
+    localStorage.setItem('lrl-mode', mode);
+    applyMode();
   });
 });
-document.querySelectorAll('.tqf-btn').forEach(b => b.classList.toggle('active', b.dataset.tqf === todayFilter));
 
 // Tab switching
 document.querySelectorAll('.tab').forEach(tab => {
@@ -1033,6 +1112,10 @@ function renderComms() {
   const list = document.getElementById('comms-list');
   if (!list) return;
   let items = COMMS_DATA.slice();
+  // Global mode filter
+  if (mode === 'work') items = items.filter(c => c.source === 'gmail-work');
+  else if (mode === 'personal') items = items.filter(c => c.source === 'gmail-personal');
+  // Local comms filter (still works within mode)
   if (commsFilter !== 'all') items = items.filter(c => c.source === commsFilter);
   items.sort((a, b) => new Date(b.time) - new Date(a.time));
   if (!items.length){
@@ -1102,6 +1185,8 @@ function updateHeaderTimestamp(){
       contentEl.classList.add('active');
     }
   }
+  // Apply mode (filters tab visibility + sets active button)
+  applyMode();
   await Promise.all([fetchComms(), fetchTodayQuests()]);
   renderComms();
   renderTodayQuests();
