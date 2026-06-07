@@ -227,6 +227,7 @@
   .triage-action { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; background: var(--white); border: 1px solid var(--navy-faint); border-left: 3px solid rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 8px; }
   .triage-action.task-work { border-left-color: #5d9cec; }
   .triage-action.task-personal { border-left-color: var(--lime); }
+  .triage-action.task-update { border-left-color: #d4a854; }
   .triage-action.event-work { border-left-color: rgba(122,157,216,0.8); }
   .triage-action.event-personal { border-left-color: var(--lime); }
   .triage-action.applied { opacity: 0.55; }
@@ -1671,8 +1672,10 @@ function buildEditForm(a, i){
 
 function renderPlanItemsHTML(plan, msgIdx, editable){
   const items = (plan.actions || []).map((a, i) => {
-    const kindLabel = a.type === 'create_task' ? `${a.source || '?'} task` : `${a.account || '?'} event`;
-    const cls = a.type === 'create_task' ? `task-${a.source}` : `event-${a.account}`;
+    let kindLabel, cls;
+    if (a.type === 'create_task') { kindLabel = `${a.source || '?'} task`; cls = `task-${a.source}`; }
+    else if (a.type === 'update_task') { kindLabel = 'update task'; cls = 'task-update'; }
+    else { kindLabel = `${a.account || '?'} event`; cls = `event-${a.account}`; }
     const checked = editable && triageSelected.has(i) ? 'checked' : '';
     const meta = [];
     if (a.dueStart) meta.push(`due ${a.dueStart}`);

@@ -805,8 +805,11 @@ CRITICAL: Your entire response must be ONE JSON object and NOTHING else — no m
 - If she's doing BOTH (e.g. "what's my next milestone on Rock 1 and add a task to do it"), do both — meaningful intro answer + relevant actions.
 
 Action types you can emit:
-- create_task: a Notion task. source = "work" or "personal". Required: name. Optional: dueStart (YYYY-MM-DD), myDay (boolean), priority ("URGENT" | "HIGH" | "NORMAL" | null), projectId (uuid from the project list).
+- create_task: a new Notion task. source = "work" or "personal". Required: name. Optional: dueStart (YYYY-MM-DD), myDay (boolean), priority ("URGENT" | "HIGH" | "NORMAL" | null), projectId (uuid from the project list).
+- update_task: change fields on an existing Notion task. Required: taskId (uuid from ALL OPEN TASKS context — use the EXACT id shown). Optional: dueStart (YYYY-MM-DD, or empty string "" to clear), dueEnd, myDay (boolean), priority ("URGENT" | "HIGH" | "NORMAL"), status ("Done" | "Doing" | "Planned" | "Agenda" | "Waiting"), name (string).
 - create_event: a calendar event. account = "work" or "personal". Required: title, start, end. If allDay=true, start/end are YYYY-MM-DD; otherwise ISO datetime with America/Chicago offset (-05:00 CDT or -06:00 CST). location optional.
+
+For update_task: she'll often say things like "move X to next Friday" or "push the dentist appointment to next week" or "reset the date on Y". Find the matching task in ALL OPEN TASKS by name match, use its exact taskId.
 
 Routing heuristics:
 - LRL/clients/business/marketing/work-finance → "work"
@@ -826,7 +829,8 @@ const TRIAGE_JSON_HINT = `Return ONLY valid JSON in this exact shape, no prose, 
 {
   "intro": "one sentence, warm casual tone",
   "actions": [
-    { "type": "create_task", "label": "short summary", "source": "work"|"personal", "name": "task name", "dueStart": "YYYY-MM-DD" (optional), "myDay": true|false (optional), "priority": "URGENT"|"HIGH"|"NORMAL" (optional), "projectId": "uuid from the project list below" (optional — only when the task clearly relates to a named project) },
+    { "type": "create_task", "label": "short summary", "source": "work"|"personal", "name": "task name", "dueStart": "YYYY-MM-DD" (optional), "myDay": true|false (optional), "priority": "URGENT"|"HIGH"|"NORMAL" (optional), "projectId": "uuid" (optional) },
+    { "type": "update_task", "label": "short summary of what's changing", "taskId": "exact uuid from ALL OPEN TASKS", "dueStart": "YYYY-MM-DD"|"" (optional), "myDay": true|false (optional), "priority": "URGENT"|"HIGH"|"NORMAL" (optional), "status": "Done"|"Doing"|"Planned"|"Agenda"|"Waiting" (optional), "name": "new name" (optional) },
     { "type": "create_event", "label": "short summary", "account": "work"|"personal", "title": "event title", "start": "ISO datetime with TZ offset, or YYYY-MM-DD if allDay", "end": "same format", "allDay": true|false (optional), "location": "optional string" }
   ]
 }`;
@@ -862,7 +866,7 @@ app.post('/api/ai/triage', async (req, res) => {
     });
     const myDayLines = [...ctx.workMyDay, ...ctx.lifeMyDay].map((t) => `  - [${t.source}] ${t.name}${t.dueStart ? ` (due ${t.dueStart})` : ''}`);
     const goalLines = ctx.goals.map((g) => `  - [${g.source}] ${g.name} — ${g.progress.done}/${g.progress.total} milestones`);
-    const allTaskLines = allOpenTasks.slice(0, 300).map((t) => `  - [${t.source}] ${t.name}${t.dueStart ? ` · due ${t.dueStart}` : ''}${t.status && t.status !== 'Planned' ? ` · ${t.status}` : ''}`);
+    const allTaskLines = allOpenTasks.slice(0, 300).map((t) => `  - id=${t.id} [${t.source}] ${t.name}${t.dueStart ? ` · due ${t.dueStart}` : ''}${t.status && t.status !== 'Planned' ? ` · ${t.status}` : ''}${t.myDay ? ' · MyDay' : ''}`);
 
     // STATIC context — cached. Stable across many turns; only changes when projects/tasks change in Notion.
     const staticContext = [
@@ -975,6 +979,21 @@ async function createNotionTask({ source, name, dueStart, myDay, priority, proje
   return { id: page.id, url: page.url };
 }
 
+async function updateNotionTask({ taskId, name, status, dueStart, dueEnd, myDay, priority }) {
+  if (!taskId) throw new Error('taskId is required');
+  const properties = {};
+  if (name !== undefined && name !== null) properties.Name = { title: [{ text: { content: name } }] };
+  if (status !== undefined && status !== null) properties.Status = { status: { name: status } };
+  if (dueStart !== undefined) {
+    properties.Due = dueStart ? { date: { start: dueStart, end: dueEnd || null } } : { date: null };
+  }
+  if (myDay !== undefined && myDay !== null) properties['My Day'] = { checkbox: !!myDay };
+  if (priority !== undefined && priority !== null) properties['Priority 2'] = priority ? { select: { name: priority } } : { select: null };
+  if (!Object.keys(properties).length) throw new Error('no fields to update');
+  await notion.pages.update({ page_id: taskId, properties });
+  return { id: taskId, url: `https://www.notion.so/leftrightlabs/${taskId.replace(/-/g, '')}` };
+}
+
 async function createCalendarEvent({ account, title, start, end, allDay, location }) {
   const auth = authedClient(account);
   if (!auth) throw new Error(`account not configured: ${account}`);
@@ -999,6 +1018,10 @@ app.post('/api/ai/triage/apply', async (req, res) => {
       if (a.type === 'create_task') {
         if (!a.source || !a.name) throw new Error('create_task requires source + name');
         const r = await createNotionTask(a);
+        results.push({ action: a, ok: true, result: r });
+      } else if (a.type === 'update_task') {
+        if (!a.taskId) throw new Error('update_task requires taskId');
+        const r = await updateNotionTask(a);
         results.push({ action: a, ok: true, result: r });
       } else if (a.type === 'create_event') {
         if (!a.account || !a.title || !a.start || !a.end) throw new Error('create_event requires account, title, start, end');
