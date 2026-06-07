@@ -168,7 +168,14 @@
   .sidequest-alert { background: var(--lime-faint); border-left: 3px solid var(--lime); padding: 14px 18px; border-radius: 4px; margin-bottom: 24px; font-size: 13px; display: flex; align-items: center; gap: 12px; }
 
   .daily-brief { background: var(--white); border: 1px solid rgba(167,193,64,0.18); border-left: 3px solid var(--lime); border-radius: 8px; padding: 18px 22px; margin-bottom: 24px; position: relative; }
-  .daily-brief-kicker { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--lime); font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+  .daily-brief.collapsed { padding: 12px 22px; }
+  .daily-brief.collapsed #brief-body { display: none; }
+  .daily-brief-kicker { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--lime); font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .daily-brief.collapsed .daily-brief-kicker { margin-bottom: 0; }
+  .daily-brief-toggle { background: transparent; border: none; color: var(--lime); font-family: var(--font-body); font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .daily-brief-toggle:hover { opacity: 0.85; }
+  .daily-brief.collapsed #brief-collapse-caret { transform: rotate(-90deg); display: inline-block; }
+  #brief-collapse-caret { display: inline-block; transition: transform 0.15s; }
   .daily-brief-text { font-family: var(--font-display); font-size: 17px; font-weight: 500; line-height: 1.5; color: var(--navy); font-style: italic; }
   .daily-brief-loading { color: rgba(245,245,247,0.45); font-style: italic; font-size: 14px; }
   .daily-brief-err { color: #ff7a6b; font-size: 13px; }
@@ -809,10 +816,12 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
 
     <div class="daily-brief" id="daily-brief">
       <div class="daily-brief-kicker">
-        <span>Daily Brief</span>
-        <button class="daily-brief-refresh" id="brief-refresh" title="Regenerate brief">↻ Regenerate</button>
+        <button class="daily-brief-toggle" id="brief-toggle" title="Collapse/expand"><span id="brief-collapse-caret">▾</span> Daily Focus <span id="brief-bucket" style="opacity:0.6;font-weight:500;text-transform:lowercase;letter-spacing:0.05em"></span></button>
+        <button class="daily-brief-refresh" id="brief-refresh" title="Regenerate based on current time">↻ Refresh</button>
       </div>
-      <div class="daily-brief-text daily-brief-loading" id="brief-text">Composing today's brief…</div>
+      <div id="brief-body">
+        <div class="daily-brief-text daily-brief-loading" id="brief-text">Composing your focus…</div>
+      </div>
     </div>
 
     <div class="chapter-panel">
@@ -1249,10 +1258,11 @@ if (mode === 'combined') { mode = 'all'; localStorage.setItem('lrl-mode', 'all')
 async function fetchDailyBrief(force){
   const el = document.getElementById('brief-text');
   const btn = document.getElementById('brief-refresh');
-  if (el) { el.textContent = 'Composing today’s brief…'; el.classList.add('daily-brief-loading'); el.classList.remove('daily-brief-err'); }
+  const bucketEl = document.getElementById('brief-bucket');
+  if (el) { el.textContent = 'Composing your focus…'; el.classList.add('daily-brief-loading'); el.classList.remove('daily-brief-err'); }
   if (btn) btn.classList.add('spinning');
   try {
-    const url = '/api/ai/daily-brief' + (force ? '?force=1' : '');
+    const url = '/api/ai/daily-focus' + (force ? '?force=1' : '');
     const r = await fetch(url);
     const d = await r.json();
     if (d.error) {
@@ -1261,12 +1271,20 @@ async function fetchDailyBrief(force){
     } else {
       DAILY_BRIEF = d.brief || '';
       if (el) { el.textContent = DAILY_BRIEF; el.classList.remove('daily-brief-loading'); }
+      if (bucketEl && d.bucket) bucketEl.textContent = '· ' + d.bucket;
     }
   } catch (e) {
     if (el) { el.textContent = e.message; el.classList.remove('daily-brief-loading'); el.classList.add('daily-brief-err'); }
   } finally {
     if (btn) btn.classList.remove('spinning');
   }
+}
+
+function setBriefCollapsed(collapsed){
+  const wrap = document.getElementById('daily-brief');
+  if (!wrap) return;
+  wrap.classList.toggle('collapsed', collapsed);
+  localStorage.setItem('lrl-brief-collapsed', collapsed ? '1' : '0');
 }
 
 async function fetchComms(){
@@ -1906,7 +1924,14 @@ document.addEventListener('keydown', (e) => {
   renderTodayQuests();
   updateHeaderTimestamp();
   const briefBtn = document.getElementById('brief-refresh');
-  if (briefBtn) briefBtn.addEventListener('click', () => fetchDailyBrief(true));
+  if (briefBtn) briefBtn.addEventListener('click', (e) => { e.stopPropagation(); fetchDailyBrief(true); });
+  const briefToggle = document.getElementById('brief-toggle');
+  if (briefToggle) briefToggle.addEventListener('click', () => {
+    const wrap = document.getElementById('daily-brief');
+    setBriefCollapsed(!wrap.classList.contains('collapsed'));
+  });
+  // Restore collapsed state
+  if (localStorage.getItem('lrl-brief-collapsed') === '1') setBriefCollapsed(true);
 })();
 </script>
 

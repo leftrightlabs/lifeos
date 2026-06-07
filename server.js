@@ -609,13 +609,21 @@ app.get('/api/calendar/today', async (_req, res) => {
 
 // ----- AI: Daily Brief -----
 
-const BRIEF_SYSTEM = `You write daily briefings for Gretchen Cawthon — integrator and systems architect at Left Right Labs.
+const BRIEF_SYSTEM = `You write a live Daily Focus briefing for Gretchen Cawthon — integrator and systems architect at Left Right Labs.
 
-Voice: direct, warm, casual. Like a friend who knows her day. Uses ellipses sometimes; never em-dashes. No corporate tone. No "let's" or "looks like you've got a busy day ahead!" Skip preambles.
+CRITICAL: This is a LIVE check based on the current time, NOT a recap of the whole day. Focus only on:
+- What's UPCOMING on her calendar (events starting after now)
+- Tasks still open on her My Day list
+- Anything time-sensitive that's slipping (overdue, deadline approaching)
+- One forward-looking observation: what to prioritize next, what to skip, what's worth pausing for
+
+DO NOT recap events or work she's already completed. DO NOT mention things in the past. Look forward.
+
+Voice: direct, warm, casual. Like a friend who knows her day. Uses ellipses sometimes; never em-dashes. No corporate tone. No "let's" or "looks like you've got a busy afternoon!" Skip preambles.
 
 Format: 3-4 sentences. Plain text — no markdown, no bullets, no headers.
 
-Reference real specifics from her data: names, times, project names. Surface tension if something matters (overdue rock, deadline approaching, streak about to break). End with one grounding observation about the day or week — not advice, just noticing.`;
+Reference real specifics: names, times, project names. Surface tension if something matters (overdue, soon-due). End with one grounding observation about what's ahead.`;
 
 function chicagoTodayDateLabel() {
   const now = new Date();
@@ -631,8 +639,25 @@ function chicagoTodayISODate() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
 }
 
+function chicagoNowParts() {
+  const now = new Date();
+  const hour = parseInt(
+    new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', hour12: false }).format(now),
+    10,
+  );
+  const timeLabel = new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', minute: '2-digit' }).format(now);
+  let bucket;
+  if (hour < 5) bucket = 'late-night';
+  else if (hour < 11) bucket = 'morning';
+  else if (hour < 14) bucket = 'midday';
+  else if (hour < 18) bucket = 'afternoon';
+  else if (hour < 22) bucket = 'evening';
+  else bucket = 'night';
+  return { hour, timeLabel, bucket };
+}
+
 const briefCache = new Map();
-const BRIEF_TTL_MS = 1000 * 60 * 60 * 4;
+const BRIEF_TTL_MS = 1000 * 60 * 60 * 2;
 
 async function fetchActiveProjects() {
   if (!notion) return [];
@@ -672,12 +697,27 @@ async function gatherTodayContext() {
 
 function buildBriefUserPrompt({ calEvents, workMyDay, lifeMyDay, goals }) {
   const dateLabel = chicagoTodayDateLabel();
-  const events = calEvents.map((e) => {
+  const { timeLabel } = chicagoNowParts();
+  const nowMs = Date.now();
+  const upcoming = [];
+  const past = [];
+  for (const e of calEvents) {
+    if (e.allDay) {
+      upcoming.push(e);
+      continue;
+    }
+    const endMs = new Date(e.end || e.start).getTime();
+    if (endMs > nowMs) upcoming.push(e);
+    else past.push(e);
+  }
+  const fmtEvent = (e) => {
     const start = e.allDay
       ? 'all-day'
       : new Date(e.start).toLocaleTimeString('en-US', { timeZone: TZ, hour: 'numeric', minute: '2-digit' });
     return `  - ${start} [${e.account}] ${e.title}${e.location ? ` (${e.location})` : ''}`;
-  });
+  };
+  const upcomingLines = upcoming.map(fmtEvent);
+  const pastSummary = past.length ? `(${past.length} earlier event${past.length === 1 ? '' : 's'} already done — do not mention)` : '';
   const taskLine = (t) => `  - [${t.source}] ${t.name}${t.dueStart ? ` (due ${t.dueStart})` : ''}${t.priority ? ` [${t.priority}]` : ''}`;
   const workTasksLines = workMyDay.map(taskLine);
   const lifeTasksLines = lifeMyDay.map(taskLine);
@@ -686,31 +726,36 @@ function buildBriefUserPrompt({ calEvents, workMyDay, lifeMyDay, goals }) {
     return `  - [${g.source}] ${g.name} — ${g.progress.done}/${g.progress.total} milestones (${pct}%)${g.targetDeadline ? `, target ${g.targetDeadline}` : ''}`;
   });
   return [
-    `Today is ${dateLabel}.`,
+    `It is ${dateLabel} — ${timeLabel} (America/Chicago).`,
     '',
-    `Calendar today (${events.length}):`,
-    events.length ? events.join('\n') : '  (nothing scheduled)',
+    `UPCOMING events (after now) (${upcoming.length}):`,
+    upcomingLines.length ? upcomingLines.join('\n') : '  (nothing left on the calendar today)',
+    pastSummary,
     '',
-    `Work My Day (${workMyDay.length}):`,
+    `Work My Day — still open (${workMyDay.length}):`,
     workTasksLines.length ? workTasksLines.join('\n') : '  (none)',
     '',
-    `Personal My Day (${lifeMyDay.length}):`,
+    `Personal My Day — still open (${lifeMyDay.length}):`,
     lifeTasksLines.length ? lifeTasksLines.join('\n') : '  (none)',
     '',
     `Active goals (${goals.length}):`,
     goalsLines.length ? goalsLines.join('\n') : '  (none flagged)',
     '',
-    'Write the brief.',
+    'Write the Daily Focus. Look forward, not back.',
   ].join('\n');
 }
 
-app.get('/api/ai/daily-brief', async (_req, res) => {
+async function dailyFocusHandler(req, res) {
   if (!anthropic) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
   const today = chicagoTodayISODate();
-  const cacheKey = `brief-${today}`;
-  const hit = briefCache.get(cacheKey);
-  if (hit && Date.now() - hit.t < BRIEF_TTL_MS) {
-    return res.json({ brief: hit.v, cached: true, ts: hit.t });
+  const { bucket } = chicagoNowParts();
+  const force = req.query.force === '1' || req.query.force === 'true';
+  const cacheKey = `focus-${today}-${bucket}`;
+  if (!force) {
+    const hit = briefCache.get(cacheKey);
+    if (hit && Date.now() - hit.t < BRIEF_TTL_MS) {
+      return res.json({ brief: hit.v, cached: true, ts: hit.t, bucket });
+    }
   }
   try {
     const ctx = await gatherTodayContext();
@@ -725,11 +770,13 @@ app.get('/api/ai/daily-brief', async (_req, res) => {
     });
     const text = msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
     briefCache.set(cacheKey, { v: text, t: Date.now() });
-    res.json({ brief: text, cached: false, ts: Date.now() });
+    res.json({ brief: text, cached: false, ts: Date.now(), bucket });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}
+app.get('/api/ai/daily-focus', dailyFocusHandler);
+app.get('/api/ai/daily-brief', dailyFocusHandler); // legacy alias
 
 // ----- AI: Triage (braindump → plan → apply) -----
 
