@@ -177,6 +177,24 @@
   .daily-brief-refresh.spinning svg { animation: spin 1s linear infinite; }
 
   .triage-pane { background: var(--white); border: 1px solid var(--navy-faint); border-radius: 10px; padding: 20px; }
+  .chat-messages { max-height: 50vh; overflow-y: auto; padding-right: 4px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 14px; }
+  .chat-messages:empty { display: none; }
+  .chat-msg { display: flex; max-width: 100%; }
+  .chat-msg.user { justify-content: flex-end; }
+  .chat-msg.assistant { justify-content: flex-start; }
+  .chat-bubble { max-width: 85%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; word-wrap: break-word; }
+  .chat-msg.user .chat-bubble { background: rgba(167,193,64,0.12); border: 1px solid rgba(167,193,64,0.3); color: var(--navy); border-bottom-right-radius: 4px; }
+  .chat-msg.assistant .chat-bubble { background: var(--white); border: 1px solid var(--navy-faint); color: var(--navy); border-bottom-left-radius: 4px; max-width: 100%; width: 100%; }
+  .chat-bubble .triage-intro { font-family: var(--font-body); font-style: normal; font-size: 14px; margin-bottom: 0; color: var(--navy); }
+  .chat-bubble .triage-intro a { color: var(--lime); }
+  .chat-bubble .triage-plan { display: block !important; margin-top: 12px; }
+  .chat-bubble .triage-action:last-child { margin-bottom: 0; }
+  .chat-system-event { font-size: 11px; color: rgba(245,245,247,0.45); text-align: center; padding: 4px 0; letter-spacing: 0.08em; text-transform: uppercase; }
+  .chat-input-row { display: flex; gap: 8px; align-items: flex-end; }
+  .chat-input-row .triage-input { min-height: 60px; flex: 1; }
+  .chat-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 11px; color: var(--navy-dim); }
+  .chat-newconv-btn { background: transparent; border: 1px solid rgba(255,255,255,0.12); color: var(--navy-dim); font-family: var(--font-body); font-size: 10px; padding: 4px 10px; border-radius: 999px; cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase; }
+  .chat-newconv-btn:hover { color: var(--navy); border-color: rgba(255,255,255,0.25); }
   .triage-input { width: 100%; min-height: 180px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--navy); font-family: var(--font-body); font-size: 14px; line-height: 1.5; padding: 14px; border-radius: 8px; resize: vertical; }
   .triage-input::placeholder { color: rgba(245,245,247,0.35); }
   .triage-input:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
@@ -1026,15 +1044,18 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
       <div class="triage-modal-title"><span>Quick Capture</span></div>
       <button class="triage-modal-close" id="triage-modal-close" title="Close">×</button>
     </div>
+    <div class="chat-toolbar">
+      <span id="chat-status"></span>
+      <button class="chat-newconv-btn" id="chat-newconv-btn">↻ New conversation</button>
+    </div>
+    <div class="chat-messages" id="chat-messages"></div>
     <div class="triage-pane">
-      <textarea id="triage-input" class="triage-input" placeholder="Capture a task, find a project, or ask anything... 'add a task to email Trina by Friday' · 'find my bluebonnets project' · 'what's on my plate today?'"></textarea>
-      <div class="triage-controls">
+      <div class="chat-input-row">
+        <textarea id="triage-input" class="triage-input" placeholder="Capture a task, find a project, or ask anything..." style="min-height:60px"></textarea>
         <button class="triage-btn primary" id="triage-plan-btn">Send</button>
-        <button class="triage-btn text" id="triage-clear-btn">Clear</button>
-        <span id="triage-status" style="font-size:12px;color:var(--navy-dim);margin-left:auto"></span>
       </div>
     </div>
-    <div id="triage-plan" class="triage-plan" style="display:none"></div>
+    <div id="triage-plan" style="display:none"></div>
   </div>
 </div>
 
@@ -1505,11 +1526,23 @@ function updateHeaderTimestamp(){
   }
 }
 
-// Triage tab
-let triagePlan = null;
+// Quick Capture chat
+const CHAT_KEY = 'lrl-chat-history-v1';
+let chatHistory = [];
 let triageProjects = null;
-let triageSelected = new Set();
-let triageEditing = null; // index of action being edited
+let triageSelected = new Set();   // selected indices on the latest editable plan
+let triageEditing = null;          // action index being edited in the latest editable plan
+
+function loadChatHistory(){ try { chatHistory = JSON.parse(localStorage.getItem(CHAT_KEY) || '[]'); } catch(e) { chatHistory = []; } }
+function saveChatHistory(){ try { localStorage.setItem(CHAT_KEY, JSON.stringify(chatHistory)); } catch(e) {} }
+
+function latestEditablePlanIndex(){
+  for (let i = chatHistory.length - 1; i >= 0; i--){
+    const m = chatHistory[i];
+    if (m.role === 'assistant' && m.plan && m.plan.actions && m.plan.actions.length && !m.applied) return i;
+  }
+  return -1;
+}
 
 function buildEditForm(a, i){
   const projectsForSource = (triageProjects || []).filter(p => true); // show all; switching project can flip source
@@ -1560,18 +1593,11 @@ function buildEditForm(a, i){
   }
 }
 
-function renderTriagePlan(){
-  const wrap = document.getElementById('triage-plan');
-  if (!triagePlan) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
-  wrap.style.display = 'block';
-  const hasActions = (triagePlan.actions || []).length > 0;
-  // When no actions, render intro as the full response
-  const introCls = hasActions ? 'triage-intro' : 'triage-intro triage-answer';
-  const intro = triagePlan.intro ? `<div class="${introCls}">${escapeHtml(triagePlan.intro).replace(/\n/g, '<br/>')}</div>` : '';
-  const items = (triagePlan.actions || []).map((a, i) => {
+function renderPlanItemsHTML(plan, msgIdx, editable){
+  const items = (plan.actions || []).map((a, i) => {
     const kindLabel = a.type === 'create_task' ? `${a.source || '?'} task` : `${a.account || '?'} event`;
     const cls = a.type === 'create_task' ? `task-${a.source}` : `event-${a.account}`;
-    const checked = triageSelected.has(i) ? 'checked' : '';
+    const checked = editable && triageSelected.has(i) ? 'checked' : '';
     const meta = [];
     if (a.dueStart) meta.push(`due ${a.dueStart}`);
     if (a.priority) meta.push(a.priority);
@@ -1585,11 +1611,12 @@ function renderTriagePlan(){
     const resultLine = a._result ? `<div class="triage-meta"><a href="${a._result.url}" target="_blank" rel="noopener">→ open in ${a.type === 'create_task' ? 'Notion' : 'Calendar'}</a></div>` : '';
     const errLine = a._error ? `<div class="triage-meta" style="color:#ff7a6b">Error: ${escapeHtml(a._error)}</div>` : '';
     const appliedCls = a._result ? ' applied' : (a._error ? ' failed' : '');
-    const editBtn = (!a._result) ? `<button class="triage-edit-btn" data-act="edit" data-idx="${i}">Edit</button>` : '';
-    const myDayBtn = (!a._result && a.type === 'create_task') ? `<button class="triage-myday-btn ${a.myDay ? 'on' : ''}" data-act="toggle-myday" data-idx="${i}" title="Toggle My Day">★ My Day</button>` : '';
-    const editForm = (triageEditing === i) ? buildEditForm(a, i) : '';
+    const editBtn = (editable && !a._result) ? `<button class="triage-edit-btn" data-act="edit" data-idx="${i}">Edit</button>` : '';
+    const myDayBtn = (editable && !a._result && a.type === 'create_task') ? `<button class="triage-myday-btn ${a.myDay ? 'on' : ''}" data-act="toggle-myday" data-idx="${i}" title="Toggle My Day">★ My Day</button>` : '';
+    const editForm = (editable && triageEditing === i) ? buildEditForm(a, i) : '';
+    const checkEl = editable ? `<div class="triage-check ${checked}" data-idx="${i}"></div>` : `<div class="triage-check" style="visibility:hidden"></div>`;
     return `<div class="triage-action ${cls}${appliedCls}">
-      <div class="triage-check ${checked}" data-idx="${i}"></div>
+      ${checkEl}
       <div class="triage-body">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div class="triage-kind">${escapeHtml(kindLabel)}</div><div class="triage-top-actions">${myDayBtn}${editBtn}</div></div>
         <div class="triage-label">${escapeHtml(a.label || '')}</div>
@@ -1600,36 +1627,64 @@ function renderTriagePlan(){
       </div>
     </div>`;
   }).join('');
-  const applyRow = hasActions ? `<div class="triage-apply-row">
-    <button class="triage-btn apply" id="triage-apply-btn">Apply selected (<span id="triage-count">${triageSelected.size}</span>)</button>
-    <button class="triage-btn text" id="triage-select-all">All</button>
-    <button class="triage-btn text" id="triage-select-none">None</button>
+  const applyRow = editable ? `<div class="triage-apply-row">
+    <button class="triage-btn apply" data-act="apply-plan">Apply selected (${triageSelected.size})</button>
+    <button class="triage-btn text" data-act="select-all">All</button>
+    <button class="triage-btn text" data-act="select-none">None</button>
   </div>` : '';
-  wrap.innerHTML = intro + items + applyRow;
-  document.querySelectorAll('.triage-check').forEach(el => {
+  return items + applyRow;
+}
+
+function renderChatMessages(){
+  const wrap = document.getElementById('chat-messages');
+  if (!wrap) return;
+  const editableIdx = latestEditablePlanIndex();
+  wrap.innerHTML = chatHistory.map((msg, i) => {
+    if (msg.role === 'user'){
+      return `<div class="chat-msg user"><div class="chat-bubble">${escapeHtml(msg.content).replace(/\n/g,'<br/>')}</div></div>`;
+    }
+    // assistant
+    const introBody = `<div class="triage-intro">${escapeHtml(msg.content || '').replace(/\n/g,'<br/>')}</div>`;
+    let planBody = '';
+    if (msg.plan && msg.plan.actions && msg.plan.actions.length){
+      const editable = (i === editableIdx);
+      planBody = `<div class="triage-plan" style="display:block;margin-top:12px">${renderPlanItemsHTML(msg.plan, i, editable)}</div>`;
+    }
+    return `<div class="chat-msg assistant"><div class="chat-bubble">${introBody}${planBody}</div></div>`;
+  }).join('');
+  wrap.scrollTop = wrap.scrollHeight;
+  attachPlanHandlers();
+}
+
+function attachPlanHandlers(){
+  const wrap = document.getElementById('chat-messages');
+  if (!wrap) return;
+  const editableIdx = latestEditablePlanIndex();
+  if (editableIdx < 0) return;
+  const editableMsg = chatHistory[editableIdx];
+  const plan = editableMsg.plan;
+  wrap.querySelectorAll('.triage-check').forEach(el => {
     el.addEventListener('click', () => {
       const i = parseInt(el.dataset.idx);
       if (triageSelected.has(i)) triageSelected.delete(i); else triageSelected.add(i);
-      renderTriagePlan();
+      renderChatMessages();
     });
   });
-  document.querySelectorAll('[data-act="edit"]').forEach(el => {
-    el.addEventListener('click', () => {
-      triageEditing = parseInt(el.dataset.idx);
-      renderTriagePlan();
-    });
+  wrap.querySelectorAll('[data-act="edit"]').forEach(el => {
+    el.addEventListener('click', () => { triageEditing = parseInt(el.dataset.idx); renderChatMessages(); });
   });
-  document.querySelectorAll('[data-act="toggle-myday"]').forEach(el => {
+  wrap.querySelectorAll('[data-act="toggle-myday"]').forEach(el => {
     el.addEventListener('click', () => {
       const i = parseInt(el.dataset.idx);
-      triagePlan.actions[i].myDay = !triagePlan.actions[i].myDay;
-      renderTriagePlan();
+      plan.actions[i].myDay = !plan.actions[i].myDay;
+      saveChatHistory();
+      renderChatMessages();
     });
   });
-  document.querySelectorAll('[data-act="cancel-edit"]').forEach(el => {
-    el.addEventListener('click', () => { triageEditing = null; renderTriagePlan(); });
+  wrap.querySelectorAll('[data-act="cancel-edit"]').forEach(el => {
+    el.addEventListener('click', () => { triageEditing = null; renderChatMessages(); });
   });
-  document.querySelectorAll('[data-act="save-edit"]').forEach(el => {
+  wrap.querySelectorAll('[data-act="save-edit"]').forEach(el => {
     el.addEventListener('click', () => {
       const i = parseInt(el.dataset.idx);
       const form = el.closest('.triage-edit-form');
@@ -1639,14 +1694,12 @@ function renderTriagePlan(){
         if (f.type === 'checkbox') updates[key] = f.checked;
         else updates[key] = f.value || null;
       });
-      // If project changed, flip source to match the project's source
       if (updates.projectId && triageProjects){
         const proj = triageProjects.find(p => p.id === updates.projectId);
-        if (proj && triagePlan.actions[i].type === 'create_task') updates.source = proj.source;
+        if (proj && plan.actions[i].type === 'create_task') updates.source = proj.source;
       }
-      triagePlan.actions[i] = { ...triagePlan.actions[i], ...updates };
-      // Refresh label
-      const a = triagePlan.actions[i];
+      plan.actions[i] = { ...plan.actions[i], ...updates };
+      const a = plan.actions[i];
       if (a.type === 'create_task'){
         const projName = a.projectId ? (triageProjects.find(p => p.id === a.projectId)?.name || '') : '';
         const bits = [`Task: ${a.name}`, '→', a.source];
@@ -1661,79 +1714,121 @@ function renderTriagePlan(){
         a.label = bits.join(' ');
       }
       triageEditing = null;
-      renderTriagePlan();
+      saveChatHistory();
+      renderChatMessages();
     });
   });
-  document.getElementById('triage-select-all')?.addEventListener('click', () => {
-    (triagePlan.actions || []).forEach((_, i) => triageSelected.add(i));
-    renderTriagePlan();
+  wrap.querySelectorAll('[data-act="select-all"]').forEach(el => {
+    el.addEventListener('click', () => {
+      (plan.actions || []).forEach((_, i) => triageSelected.add(i));
+      renderChatMessages();
+    });
   });
-  document.getElementById('triage-select-none')?.addEventListener('click', () => {
-    triageSelected.clear();
-    renderTriagePlan();
+  wrap.querySelectorAll('[data-act="select-none"]').forEach(el => {
+    el.addEventListener('click', () => { triageSelected.clear(); renderChatMessages(); });
   });
-  document.getElementById('triage-apply-btn')?.addEventListener('click', applyTriagePlan);
+  wrap.querySelectorAll('[data-act="apply-plan"]').forEach(el => {
+    el.addEventListener('click', () => applyChatPlan(editableIdx));
+  });
 }
 
-async function planTriage(){
-  const text = document.getElementById('triage-input').value.trim();
+async function sendChatMessage(){
+  const inputEl = document.getElementById('triage-input');
+  const text = inputEl.value.trim();
   if (!text) return;
+  inputEl.value = '';
   const btn = document.getElementById('triage-plan-btn');
-  const status = document.getElementById('triage-status');
+  const status = document.getElementById('chat-status');
   btn.disabled = true;
-  btn.textContent = 'Thinking…';
+  btn.textContent = '…';
   status.textContent = '';
+
+  chatHistory.push({ role: 'user', content: text });
+  saveChatHistory();
+  renderChatMessages();
+
+  // Prior messages for Claude (user/assistant text only)
+  const apiHistory = chatHistory.slice(0, -1)
+    .filter(m => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+    .map(m => ({ role: m.role, content: m.content }));
+
   try {
-    const r = await fetch('/api/ai/triage', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text}) });
+    const r = await fetch('/api/ai/triage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, history: apiHistory }),
+    });
     const d = await r.json();
-    if (d.error) { status.textContent = 'Error: ' + d.error; return; }
-    triagePlan = d.plan;
-    triageProjects = d.projects || null;
-    triageSelected = new Set((triagePlan.actions || []).map((_, i) => i));
-    renderTriagePlan();
+    if (d.error) {
+      chatHistory.push({ role: 'assistant', content: 'Error: ' + d.error });
+    } else {
+      if (d.projects) triageProjects = d.projects;
+      const plan = d.plan || {};
+      chatHistory.push({ role: 'assistant', content: plan.intro || '', plan });
+      // New plan? auto-select all actions and clear edit state
+      if (plan.actions && plan.actions.length){
+        triageSelected = new Set(plan.actions.map((_, i) => i));
+        triageEditing = null;
+      }
+    }
+    saveChatHistory();
+    renderChatMessages();
   } catch (e) {
-    status.textContent = 'Error: ' + e.message;
+    chatHistory.push({ role: 'assistant', content: 'Error: ' + e.message });
+    saveChatHistory();
+    renderChatMessages();
   } finally {
     btn.disabled = false;
     btn.textContent = 'Send';
   }
 }
 
-async function applyTriagePlan(){
-  if (!triagePlan) return;
-  const selected = (triagePlan.actions || []).filter((_, i) => triageSelected.has(i));
+async function applyChatPlan(msgIdx){
+  const msg = chatHistory[msgIdx];
+  if (!msg || !msg.plan) return;
+  const plan = msg.plan;
+  const selected = (plan.actions || []).filter((_, i) => triageSelected.has(i));
   if (!selected.length) return;
-  const btn = document.getElementById('triage-apply-btn');
-  btn.classList.add('spinning');
-  btn.textContent = 'Applying…';
   try {
-    const r = await fetch('/api/ai/triage/apply', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({actions: selected}) });
+    const r = await fetch('/api/ai/triage/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ actions: selected }),
+    });
     const d = await r.json();
     if (d.error) { alert('Error: ' + d.error); return; }
-    // Attach results back to plan items by matching reference
     let resIdx = 0;
-    triagePlan.actions = triagePlan.actions.map((a, i) => {
+    plan.actions = plan.actions.map((a, i) => {
       if (!triageSelected.has(i)) return a;
       const res = d.results[resIdx++];
       if (res.ok) return { ...a, _result: res.result };
       return { ...a, _error: res.error };
     });
+    msg.applied = true;
     triageSelected.clear();
-    renderTriagePlan();
+    saveChatHistory();
+    renderChatMessages();
   } catch (e) {
     alert('Error: ' + e.message);
-  } finally {
-    btn.classList.remove('spinning');
   }
 }
 
-document.getElementById('triage-plan-btn')?.addEventListener('click', planTriage);
-document.getElementById('triage-clear-btn')?.addEventListener('click', () => {
-  document.getElementById('triage-input').value = '';
-  triagePlan = null; triageSelected.clear();
-  renderTriagePlan();
-  document.getElementById('triage-status').textContent = '';
+document.getElementById('triage-plan-btn')?.addEventListener('click', sendChatMessage);
+document.getElementById('triage-input')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendChatMessage(); }
 });
+document.getElementById('chat-newconv-btn')?.addEventListener('click', () => {
+  if (!chatHistory.length || confirm('Start a fresh conversation? Current chat will be cleared.')) {
+    chatHistory = [];
+    triageSelected.clear();
+    triageEditing = null;
+    saveChatHistory();
+    renderChatMessages();
+  }
+});
+
+loadChatHistory();
+renderChatMessages();
 
 // Floating Quick Capture button
 function openTriageModal(){

@@ -782,7 +782,7 @@ const TRIAGE_JSON_HINT = `Return ONLY valid JSON in this exact shape, no prose, 
 
 app.post('/api/ai/triage', async (req, res) => {
   if (!anthropic) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
-  const { text } = req.body || {};
+  const { text, history } = req.body || {};
   if (!text || !text.trim()) return res.status(400).json({ error: 'text is required' });
   try {
     const todayLabel = chicagoTodayDateLabel();
@@ -833,13 +833,18 @@ app.post('/api/ai/triage', async (req, res) => {
       '',
       TRIAGE_JSON_HINT,
     ].join('\n');
+    // Build message history: prior turns (user/assistant pairs) + new user message
+    const priorMessages = Array.isArray(history) ? history.filter(
+      m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim()
+    ).map(m => ({ role: m.role, content: m.content })) : [];
+    const messages = [...priorMessages, { role: 'user', content: userPrompt }];
     const msg = await anthropic.messages.create({
       model: 'claude-opus-4-8',
       max_tokens: 4000,
       thinking: { type: 'adaptive' },
       output_config: { effort: 'medium' },
       system: TRIAGE_SYSTEM,
-      messages: [{ role: 'user', content: userPrompt }],
+      messages,
     });
     const textBlock = msg.content.find((b) => b.type === 'text');
     if (!textBlock) return res.status(500).json({ error: 'no text in response' });
