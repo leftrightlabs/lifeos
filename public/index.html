@@ -166,6 +166,15 @@
   .chapter-meta { display: flex; justify-content: space-between; font-size: 12px; color: rgba(255,255,255,0.7); }
 
   .sidequest-alert { background: var(--lime-faint); border-left: 3px solid var(--lime); padding: 14px 18px; border-radius: 4px; margin-bottom: 24px; font-size: 13px; display: flex; align-items: center; gap: 12px; }
+
+  .daily-brief { background: var(--white); border: 1px solid rgba(167,193,64,0.18); border-left: 3px solid var(--lime); border-radius: 8px; padding: 18px 22px; margin-bottom: 24px; position: relative; }
+  .daily-brief-kicker { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--lime); font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+  .daily-brief-text { font-family: var(--font-display); font-size: 17px; font-weight: 500; line-height: 1.5; color: var(--navy); font-style: italic; }
+  .daily-brief-loading { color: rgba(245,245,247,0.45); font-style: italic; font-size: 14px; }
+  .daily-brief-err { color: #ff7a6b; font-size: 13px; }
+  .daily-brief-refresh { background: transparent; border: 1px solid rgba(167,193,64,0.25); color: rgba(245,245,247,0.55); font-family: var(--font-body); font-size: 10px; padding: 2px 8px; border-radius: 999px; cursor: pointer; letter-spacing: 0.1em; text-transform: uppercase; }
+  .daily-brief-refresh:hover { color: var(--lime); border-color: var(--lime); }
+  .daily-brief-refresh.spinning svg { animation: spin 1s linear infinite; }
   .sidequest-icon { width: 28px; height: 28px; background: var(--navy); color: var(--lime); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; font-size: 14px; }
 
   .stage-row { display: grid; grid-template-columns: 140px 1fr 80px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--cream-2); }
@@ -601,6 +610,14 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
     <h1 class="page-title"><span>Command</span></h1>
     <div class="page-subtitle">Your quarterly game board. Where you are, what's next, and whether you're on the right path.</div>
 
+    <div class="daily-brief" id="daily-brief">
+      <div class="daily-brief-kicker">
+        <span>Daily Brief</span>
+        <button class="daily-brief-refresh" id="brief-refresh" title="Regenerate brief">↻ Regenerate</button>
+      </div>
+      <div class="daily-brief-text daily-brief-loading" id="brief-text">Composing today's brief…</div>
+    </div>
+
     <div class="chapter-panel">
       <div class="chapter-header">
         <div style="flex:1">
@@ -1002,9 +1019,33 @@ el('refreshbtn').addEventListener('click',async()=>{await fetchTasks();render();
 let COMMS_DATA = [];
 let TODAY_EVENTS = [];
 let TODAY_TASKS = [];
+let DAILY_BRIEF = '';
 let mode = localStorage.getItem('lrl-mode') || 'all';
 // migrate legacy 'combined' → 'all'
 if (mode === 'combined') { mode = 'all'; localStorage.setItem('lrl-mode', 'all'); }
+
+async function fetchDailyBrief(force){
+  const el = document.getElementById('brief-text');
+  const btn = document.getElementById('brief-refresh');
+  if (el) { el.textContent = 'Composing today’s brief…'; el.classList.add('daily-brief-loading'); el.classList.remove('daily-brief-err'); }
+  if (btn) btn.classList.add('spinning');
+  try {
+    const url = '/api/ai/daily-brief' + (force ? '?force=1' : '');
+    const r = await fetch(url);
+    const d = await r.json();
+    if (d.error) {
+      DAILY_BRIEF = '';
+      if (el) { el.textContent = d.error; el.classList.remove('daily-brief-loading'); el.classList.add('daily-brief-err'); }
+    } else {
+      DAILY_BRIEF = d.brief || '';
+      if (el) { el.textContent = DAILY_BRIEF; el.classList.remove('daily-brief-loading'); }
+    }
+  } catch (e) {
+    if (el) { el.textContent = e.message; el.classList.remove('daily-brief-loading'); el.classList.add('daily-brief-err'); }
+  } finally {
+    if (btn) btn.classList.remove('spinning');
+  }
+}
 
 async function fetchComms(){
   try {
@@ -1283,7 +1324,7 @@ function triggerRefresh() {
   const label = btn.querySelector('span');
   btn.classList.add('refreshing');
   label.textContent = 'Refreshing...';
-  Promise.all([fetchComms(), fetchTodayQuests()]).then(() => {
+  Promise.all([fetchComms(), fetchTodayQuests(), fetchDailyBrief()]).then(() => {
     renderComms();
     renderTodayQuests();
     btn.classList.remove('refreshing');
@@ -1317,10 +1358,12 @@ function updateHeaderTimestamp(){
   }
   // Apply mode (filters tab visibility + sets active button)
   applyMode();
-  await Promise.all([fetchComms(), fetchTodayQuests()]);
+  await Promise.all([fetchComms(), fetchTodayQuests(), fetchDailyBrief()]);
   renderComms();
   renderTodayQuests();
   updateHeaderTimestamp();
+  const briefBtn = document.getElementById('brief-refresh');
+  if (briefBtn) briefBtn.addEventListener('click', () => fetchDailyBrief(true));
 })();
 </script>
 

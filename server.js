@@ -2,6 +2,7 @@ import express from 'express';
 import cookieSession from 'cookie-session';
 import { Client } from '@notionhq/client';
 import { google } from 'googleapis';
+import Anthropic from '@anthropic-ai/sdk';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -54,6 +55,10 @@ app.use((req, _res, next) => {
 
 const notion = process.env.NOTION_TOKEN
   ? new Client({ auth: process.env.NOTION_TOKEN })
+  : null;
+
+const anthropic = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   : null;
 
 const cache = new Map();
@@ -597,6 +602,110 @@ app.get('/api/calendar/today', async (_req, res) => {
       });
     });
     res.json({ events });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ----- AI: Daily Brief -----
+
+const BRIEF_SYSTEM = `You write daily briefings for Gretchen Cawthon — integrator and systems architect at Left Right Labs.
+
+Voice: direct, warm, casual. Like a friend who knows her day. Uses ellipses sometimes; never em-dashes. No corporate tone. No "let's" or "looks like you've got a busy day ahead!" Skip preambles.
+
+Format: 3-4 sentences. Plain text — no markdown, no bullets, no headers.
+
+Reference real specifics from her data: names, times, project names. Surface tension if something matters (overdue rock, deadline approaching, streak about to break). End with one grounding observation about the day or week — not advice, just noticing.`;
+
+function chicagoTodayDateLabel() {
+  const now = new Date();
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: TZ,
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  }).format(now);
+}
+
+function chicagoTodayISODate() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
+}
+
+const briefCache = new Map();
+const BRIEF_TTL_MS = 1000 * 60 * 60 * 4;
+
+async function gatherTodayContext() {
+  const [calEvents, workMyDay, lifeMyDay, goals] = await Promise.all([
+    Promise.all(configuredAccounts().map((a) => fetchToday(a).catch(() => []))).then((r) => r.flat()),
+    workTasks({ myDayOnly: true }).catch(() => []),
+    lifeTasks({ myDayOnly: true }).catch(() => []),
+    cached('goals', async () => {
+      const [w, l] = await Promise.all([
+        fetchGoalsForSource(WORK_PROJECTS_DS, WORK_TASKS_DS, 'work', 'Project'),
+        fetchGoalsForSource(LIFE_PROJECTS_DS, LIFE_TASKS_DS, 'personal', 'Project'),
+      ]);
+      return [...w, ...l];
+    }).catch(() => []),
+  ]);
+  return { calEvents, workMyDay, lifeMyDay, goals };
+}
+
+function buildBriefUserPrompt({ calEvents, workMyDay, lifeMyDay, goals }) {
+  const dateLabel = chicagoTodayDateLabel();
+  const events = calEvents.map((e) => {
+    const start = e.allDay
+      ? 'all-day'
+      : new Date(e.start).toLocaleTimeString('en-US', { timeZone: TZ, hour: 'numeric', minute: '2-digit' });
+    return `  - ${start} [${e.account}] ${e.title}${e.location ? ` (${e.location})` : ''}`;
+  });
+  const taskLine = (t) => `  - [${t.source}] ${t.name}${t.dueStart ? ` (due ${t.dueStart})` : ''}${t.priority ? ` [${t.priority}]` : ''}`;
+  const workTasksLines = workMyDay.map(taskLine);
+  const lifeTasksLines = lifeMyDay.map(taskLine);
+  const goalsLines = goals.map((g) => {
+    const pct = g.progress.total ? Math.round((g.progress.done / g.progress.total) * 100) : 0;
+    return `  - [${g.source}] ${g.name} — ${g.progress.done}/${g.progress.total} milestones (${pct}%)${g.targetDeadline ? `, target ${g.targetDeadline}` : ''}`;
+  });
+  return [
+    `Today is ${dateLabel}.`,
+    '',
+    `Calendar today (${events.length}):`,
+    events.length ? events.join('\n') : '  (nothing scheduled)',
+    '',
+    `Work My Day (${workMyDay.length}):`,
+    workTasksLines.length ? workTasksLines.join('\n') : '  (none)',
+    '',
+    `Personal My Day (${lifeMyDay.length}):`,
+    lifeTasksLines.length ? lifeTasksLines.join('\n') : '  (none)',
+    '',
+    `Active goals (${goals.length}):`,
+    goalsLines.length ? goalsLines.join('\n') : '  (none flagged)',
+    '',
+    'Write the brief.',
+  ].join('\n');
+}
+
+app.get('/api/ai/daily-brief', async (_req, res) => {
+  if (!anthropic) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+  const today = chicagoTodayISODate();
+  const cacheKey = `brief-${today}`;
+  const hit = briefCache.get(cacheKey);
+  if (hit && Date.now() - hit.t < BRIEF_TTL_MS) {
+    return res.json({ brief: hit.v, cached: true, ts: hit.t });
+  }
+  try {
+    const ctx = await gatherTodayContext();
+    const userPrompt = buildBriefUserPrompt(ctx);
+    const msg = await anthropic.messages.create({
+      model: 'claude-opus-4-8',
+      max_tokens: 600,
+      thinking: { type: 'adaptive' },
+      output_config: { effort: 'low' },
+      system: BRIEF_SYSTEM,
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+    const text = msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+    briefCache.set(cacheKey, { v: text, t: Date.now() });
+    res.json({ brief: text, cached: false, ts: Date.now() });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
