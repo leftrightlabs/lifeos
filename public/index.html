@@ -227,6 +227,94 @@
   .triage-edit-actions button { font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 999px; cursor: pointer; border: none; }
   .triage-edit-actions .save { background: var(--lime); color: var(--navy-accent); }
   .triage-edit-actions .cancel { background: transparent; color: var(--navy-dim); border: 1px solid rgba(255,255,255,0.15); }
+
+  /* Floating Triage button + modal */
+  .triage-fab {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 90;
+    background: var(--lime);
+    color: var(--navy-accent);
+    border: none;
+    border-radius: 999px;
+    padding: 14px 22px;
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(167,193,64,0.3);
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .triage-fab:hover { background: var(--lime-light); transform: translateY(-1px); box-shadow: 0 12px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(167,193,64,0.5); }
+  .triage-fab:active { transform: translateY(0); }
+  @media (max-width: 480px) {
+    .triage-fab { bottom: 16px; right: 16px; padding: 12px 18px; font-size: 11px; }
+  }
+
+  .triage-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 15, 30, 0.78);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 60px 20px 20px;
+    z-index: 100;
+    overflow-y: auto;
+  }
+  .triage-modal.open { display: flex; }
+  .triage-modal-content {
+    background: var(--cream);
+    border: 1px solid rgba(167,193,64,0.25);
+    border-radius: 14px;
+    padding: 26px;
+    max-width: 760px;
+    width: 100%;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+    position: relative;
+  }
+  .triage-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 18px;
+  }
+  .triage-modal-title {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1;
+    transform: scaleY(1.2);
+    transform-origin: top left;
+    display: inline-block;
+  }
+  .triage-modal-close {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(245,245,247,0.5);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .triage-modal-close:hover { color: var(--navy); border-color: rgba(255,255,255,0.3); }
+  @media (max-width: 480px) {
+    .triage-modal { padding: 12px; align-items: stretch; }
+    .triage-modal-content { padding: 18px; border-radius: 10px; }
+  }
   .sidequest-icon { width: 28px; height: 28px; background: var(--navy); color: var(--lime); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; font-size: 14px; }
 
   .stage-row { display: grid; grid-template-columns: 140px 1fr 80px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--cream-2); }
@@ -773,16 +861,19 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
     <h1 class="page-title"><span>Triage</span></h1>
     <div class="page-subtitle">Dump everything in your head. Claude turns it into a reviewable plan — tasks, events, due dates. You approve before anything writes.</div>
 
-    <div class="triage-pane">
-      <textarea id="triage-input" class="triage-input" placeholder="Example: Need to email Trina about Rock 3 by Friday, schedule a dentist for next week, Lisa wants a call Tuesday 2pm, pick up gift for Genny before her birthday..."></textarea>
-      <div class="triage-controls">
-        <button class="triage-btn primary" id="triage-plan-btn">Plan it</button>
-        <button class="triage-btn text" id="triage-clear-btn">Clear</button>
-        <span id="triage-status" style="font-size:12px;color:var(--navy-dim);margin-left:auto"></span>
+    <div id="triage-form-tab-mount">
+      <div id="triage-form-host">
+        <div class="triage-pane">
+          <textarea id="triage-input" class="triage-input" placeholder="Example: Need to email Trina about Rock 3 by Friday, schedule a dentist for next week, Lisa wants a call Tuesday 2pm, pick up gift for Genny before her birthday..."></textarea>
+          <div class="triage-controls">
+            <button class="triage-btn primary" id="triage-plan-btn">Plan it</button>
+            <button class="triage-btn text" id="triage-clear-btn">Clear</button>
+            <span id="triage-status" style="font-size:12px;color:var(--navy-dim);margin-left:auto"></span>
+          </div>
+        </div>
+        <div id="triage-plan" class="triage-plan" style="display:none"></div>
       </div>
     </div>
-
-    <div id="triage-plan" class="triage-plan" style="display:none"></div>
   </div>
 
   <!-- PIPELINE TAB -->
@@ -945,6 +1036,18 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
     </div>
   </div>
 
+</div>
+
+<button class="triage-fab" id="triage-fab" title="Brain Dump">⚡ Brain Dump</button>
+
+<div class="triage-modal" id="triage-modal">
+  <div class="triage-modal-content">
+    <div class="triage-modal-header">
+      <div class="triage-modal-title"><span>Brain Dump</span></div>
+      <button class="triage-modal-close" id="triage-modal-close" title="Close">×</button>
+    </div>
+    <div id="triage-modal-mount"></div>
+  </div>
 </div>
 
 <span class="version-tag">v: day-6</span>
@@ -1639,6 +1742,30 @@ document.getElementById('triage-clear-btn')?.addEventListener('click', () => {
   triagePlan = null; triageSelected.clear();
   renderTriagePlan();
   document.getElementById('triage-status').textContent = '';
+});
+
+// Floating Triage button
+function openTriageModal(){
+  const host = document.getElementById('triage-form-host');
+  const mount = document.getElementById('triage-modal-mount');
+  mount.appendChild(host);
+  const modal = document.getElementById('triage-modal');
+  modal.classList.add('open');
+  setTimeout(() => document.getElementById('triage-input')?.focus(), 50);
+}
+function closeTriageModal(){
+  const host = document.getElementById('triage-form-host');
+  const tabMount = document.getElementById('triage-form-tab-mount');
+  if (host && tabMount && host.parentElement !== tabMount) tabMount.appendChild(host);
+  document.getElementById('triage-modal').classList.remove('open');
+}
+document.getElementById('triage-fab')?.addEventListener('click', openTriageModal);
+document.getElementById('triage-modal-close')?.addEventListener('click', closeTriageModal);
+document.getElementById('triage-modal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'triage-modal') closeTriageModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('triage-modal')?.classList.contains('open')) closeTriageModal();
 });
 
 (async () => {
