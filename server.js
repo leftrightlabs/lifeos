@@ -1074,6 +1074,59 @@ async function createCalendarEvent({ account, title, start, end, allDay, locatio
   return { id: data.id, url: data.htmlLink };
 }
 
+async function updateCalendarEvent({ account, id, title, start, end, allDay, location }) {
+  const auth = authedClient(account);
+  if (!auth) throw new Error(`account not configured: ${account}`);
+  const cal = google.calendar({ version: 'v3', auth });
+  const patch = {};
+  if (title !== undefined) patch.summary = title;
+  if (location !== undefined) patch.location = location || null;
+  if (start !== undefined || end !== undefined || allDay !== undefined) {
+    // For any time-related change, fetch the existing event so we keep whichever
+    // side wasn't explicitly passed (start or end or allDay).
+    const { data: existing } = await cal.events.get({ calendarId: 'primary', eventId: id });
+    const isAllDay = allDay !== undefined ? !!allDay : !!existing.start?.date;
+    const finalStart = start !== undefined ? start : (existing.start?.dateTime || existing.start?.date);
+    const finalEnd = end !== undefined ? end : (existing.end?.dateTime || existing.end?.date);
+    patch.start = isAllDay ? { date: finalStart } : { dateTime: finalStart, timeZone: TZ };
+    patch.end = isAllDay ? { date: finalEnd } : { dateTime: finalEnd, timeZone: TZ };
+  }
+  const { data } = await cal.events.patch({ calendarId: 'primary', eventId: id, requestBody: patch });
+  return { id: data.id, url: data.htmlLink };
+}
+
+async function deleteCalendarEvent({ account, id }) {
+  const auth = authedClient(account);
+  if (!auth) throw new Error(`account not configured: ${account}`);
+  const cal = google.calendar({ version: 'v3', auth });
+  await cal.events.delete({ calendarId: 'primary', eventId: id });
+  return { id, deleted: true };
+}
+
+app.patch('/api/calendar/events/:account/:id', async (req, res) => {
+  const { account, id } = req.params;
+  try {
+    const r = await updateCalendarEvent({ ...req.body, account, id });
+    cache.delete('calendar-today');
+    res.json(r);
+  } catch (err) {
+    console.error('Calendar update error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/calendar/events/:account/:id', async (req, res) => {
+  const { account, id } = req.params;
+  try {
+    const r = await deleteCalendarEvent({ account, id });
+    cache.delete('calendar-today');
+    res.json(r);
+  } catch (err) {
+    console.error('Calendar delete error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/ai/triage/apply', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { actions } = req.body || {};

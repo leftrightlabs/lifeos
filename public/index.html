@@ -196,6 +196,52 @@
   .cal-allday-pill .pill-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   .cal-allday-pill .pill-dot.work { background: #5d9cec; }
   .cal-allday-pill .pill-dot.personal { background: var(--lime); }
+
+  /* Event edit modal */
+  .event-modal { position: fixed; inset: 0; background: rgba(10,15,30,0.78); backdrop-filter: blur(4px); display: none; align-items: flex-start; justify-content: center; padding: 60px 20px 20px; z-index: 110; overflow-y: auto; }
+  .event-modal.open { display: flex; }
+  .event-modal-content { background: var(--cream); border: 1px solid rgba(167,193,64,0.25); border-radius: 14px; padding: 24px; max-width: 480px; width: 100%; box-shadow: 0 24px 60px rgba(0,0,0,0.6); position: relative; }
+  .event-modal.open .event-modal-content { animation: lrl-modal-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .event-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; gap: 12px; }
+  .event-modal-title { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--navy); line-height: 1; transform: scaleY(1.2); transform-origin: top left; display: inline-block; }
+  .event-modal-close { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: rgba(245,245,247,0.55); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .event-modal-close:hover { color: var(--navy); border-color: rgba(255,255,255,0.3); }
+  .event-acct-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; margin-bottom: 14px; }
+  .event-acct-pill.work { background: rgba(93,156,236,0.15); color: #9cc5f5; border: 1px solid rgba(93,156,236,0.3); }
+  .event-acct-pill.personal { background: rgba(167,193,64,0.15); color: var(--lime); border: 1px solid rgba(167,193,64,0.3); }
+  .event-acct-pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .event-acct-pill.work .dot { background: #5d9cec; }
+  .event-acct-pill.personal .dot { background: var(--lime); }
+  .event-field { display: block; margin-bottom: 14px; }
+  .event-field label { display: block; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,245,247,0.5); font-weight: 700; margin-bottom: 6px; }
+  .event-field input[type="text"],
+  .event-field input[type="date"],
+  .event-field input[type="time"] {
+    width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: var(--navy); padding: 9px 12px; border-radius: 8px; font-family: var(--font-body); font-size: 14px; color-scheme: dark;
+  }
+  .event-field input:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
+  .event-time-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px; }
+  .event-time-grid.allday { grid-template-columns: 1fr 1fr; }
+  .event-allday-row { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 13px; color: var(--navy); cursor: pointer; }
+  .event-allday-row input { accent-color: var(--lime); width: 16px; height: 16px; }
+  .event-modal-actions { display: flex; gap: 8px; align-items: center; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06); flex-wrap: wrap; }
+  .event-btn { font-family: var(--font-body); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 9px 16px; border-radius: 999px; cursor: pointer; border: none; }
+  .event-btn.primary { background: var(--lime); color: var(--navy-accent); }
+  .event-btn.primary:hover { background: var(--lime-light); }
+  .event-btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .event-btn.ghost { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: var(--navy-dim); }
+  .event-btn.ghost:hover { color: var(--navy); border-color: rgba(255,255,255,0.3); }
+  .event-btn.delete { background: transparent; border: 1px solid rgba(255,122,107,0.3); color: #ff7a6b; }
+  .event-btn.delete:hover { background: rgba(255,122,107,0.1); border-color: #ff7a6b; }
+  @media (max-width: 600px) {
+    .event-modal { padding: 40px 12px 20px; }
+    .event-modal-content { padding: 18px; }
+    .event-time-grid { grid-template-columns: 1fr 1fr; }
+    .event-time-grid > :first-child { grid-column: 1 / -1; }
+    .event-modal-actions { gap: 6px; }
+    .event-btn { padding: 9px 12px; font-size: 11px; flex: 1; min-width: 0; }
+    .event-btn.delete { order: 99; flex-basis: 100%; }
+  }
   .quest-tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
   .tag-work { background: var(--navy); color: var(--white); }
   .tag-personal { background: var(--lime); color: var(--navy); }
@@ -1555,6 +1601,41 @@ window.lrl = (function(){
   </div>
 </div>
 
+<div class="event-modal" id="event-modal">
+  <div class="event-modal-content">
+    <div class="event-modal-header">
+      <div class="event-modal-title"><span>Edit Event</span></div>
+      <button class="event-modal-close" id="event-modal-close" title="Close" aria-label="Close">×</button>
+    </div>
+    <div class="event-acct-pill" id="event-acct"><span class="dot"></span><span class="label">work</span></div>
+    <div class="event-field">
+      <label>Title</label>
+      <input type="text" id="event-title-input" placeholder="Event title" />
+    </div>
+    <label class="event-allday-row"><input type="checkbox" id="event-allday-input"/> All day</label>
+    <div class="event-time-grid" id="event-time-grid">
+      <div class="event-field" style="margin-bottom:0">
+        <label>Date</label>
+        <input type="date" id="event-date-input" />
+      </div>
+      <div class="event-field" id="event-start-wrap" style="margin-bottom:0">
+        <label>Start</label>
+        <input type="time" id="event-start-input" />
+      </div>
+      <div class="event-field" id="event-end-wrap" style="margin-bottom:0">
+        <label>End</label>
+        <input type="time" id="event-end-input" />
+      </div>
+    </div>
+    <div class="event-modal-actions">
+      <button class="event-btn delete" id="event-delete-btn">Delete</button>
+      <span style="flex:1"></span>
+      <button class="event-btn ghost" id="event-open-google-btn">Open in Google ↗</button>
+      <button class="event-btn primary" id="event-save-btn">Save</button>
+    </div>
+  </div>
+</div>
+
 <span class="version-tag">v: day-6</span>
 
 <!-- =========================== AUTOFOCUS IIFE =========================== -->
@@ -1851,7 +1932,7 @@ function renderTodayQuests(){
       if (allDay.length){
         html += `<div class="cal-allday"><span class="cal-allday-label">All day</span><div class="cal-allday-list">`
           + allDay.map(e =>
-              `<span class="cal-allday-pill" onclick="window.open('${e.url}','_blank')"><span class="pill-dot ${e.account}"></span>${escapeHtml(e.title)}</span>`
+              `<span class="cal-allday-pill" data-event-id="${e.id}" data-event-account="${e.account}"><span class="pill-dot ${e.account}"></span>${escapeHtml(e.title)}</span>`
             ).join('')
           + `</div></div>`;
       }
@@ -1882,7 +1963,7 @@ function renderTodayQuests(){
           ? `${startTxt}<span class="end"> – ${endTxt}</span>${durMin ? `<span class="dur">${durTxt}</span>` : ''}`
           : startTxt;
 
-        html += `<div class="cal-event${pastCls}${liveCls}" onclick="window.open('${e.url}','_blank')">
+        html += `<div class="cal-event${pastCls}${liveCls}" data-event-id="${e.id}" data-event-account="${e.account}">
           <div class="cal-event-bar ${e.account}"></div>
           <div class="cal-event-time">${timeLine}</div>
           <div class="cal-event-body">
@@ -2011,6 +2092,164 @@ document.getElementById('today-quests').addEventListener('click', async (e) => {
   }
 });
 
+// ====== Calendar event edit modal ======
+let editingEvent = null;
+
+document.getElementById('today-calendar')?.addEventListener('click', (e) => {
+  const item = e.target.closest('[data-event-id]');
+  if (!item) return;
+  const id = item.dataset.eventId;
+  const account = item.dataset.eventAccount;
+  const ev = TODAY_EVENTS.find(x => x.id === id && x.account === account);
+  if (ev) openEventEdit(ev);
+});
+
+// Open external URL safely (avoids PWA white-screen on iOS standalone)
+function openExternalSafe(url){
+  if (!url) return;
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (standalone) {
+    // In an installed PWA, window.open('_blank') often paints a blank page on iOS.
+    // Navigate the current window instead — user can swipe back / use back button.
+    window.location.href = url;
+  } else {
+    window.open(url, '_blank', 'noopener');
+  }
+}
+window.openExternalSafe = openExternalSafe;
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function chicagoYMD(iso){
+  // Returns YYYY-MM-DD for the date portion in America/Chicago
+  if (!iso) return '';
+  const d = new Date(iso);
+  const opts = { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' };
+  const parts = new Intl.DateTimeFormat('en-CA', opts).formatToParts(d);
+  const y = parts.find(p => p.type==='year').value;
+  const m = parts.find(p => p.type==='month').value;
+  const day = parts.find(p => p.type==='day').value;
+  return `${y}-${m}-${day}`;
+}
+function chicagoHM(iso){
+  // Returns HH:MM (24h) in America/Chicago
+  if (!iso) return '';
+  const d = new Date(iso);
+  const opts = { timeZone: 'America/Chicago', hour: '2-digit', minute: '2-digit', hour12: false };
+  const parts = new Intl.DateTimeFormat('en-GB', opts).formatToParts(d);
+  const h = parts.find(p => p.type==='hour').value;
+  const m = parts.find(p => p.type==='minute').value;
+  return `${h === '24' ? '00' : h}:${m}`;
+}
+
+function openEventEdit(ev){
+  editingEvent = ev;
+  const modal = document.getElementById('event-modal');
+  if (!modal) return;
+  // Populate fields
+  const acct = document.getElementById('event-acct');
+  acct.className = 'event-acct-pill ' + ev.account;
+  acct.querySelector('.label').textContent = ev.account;
+  document.getElementById('event-title-input').value = ev.title || '';
+  const allDay = !!ev.allDay;
+  document.getElementById('event-allday-input').checked = allDay;
+  document.getElementById('event-date-input').value = allDay
+    ? (ev.start || '').slice(0,10)
+    : chicagoYMD(ev.start);
+  document.getElementById('event-start-input').value = allDay ? '' : chicagoHM(ev.start);
+  document.getElementById('event-end-input').value   = allDay ? '' : chicagoHM(ev.end);
+  toggleAllDayFields(allDay);
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  window.lrl.haptic('tap');
+}
+
+function toggleAllDayFields(allDay){
+  const grid = document.getElementById('event-time-grid');
+  grid.classList.toggle('allday', allDay);
+  document.getElementById('event-start-wrap').style.display = allDay ? 'none' : '';
+  document.getElementById('event-end-wrap').style.display = allDay ? 'none' : '';
+}
+
+function closeEventEdit(){
+  document.getElementById('event-modal')?.classList.remove('open');
+  document.body.style.overflow = '';
+  editingEvent = null;
+}
+
+document.getElementById('event-modal-close')?.addEventListener('click', closeEventEdit);
+document.getElementById('event-modal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'event-modal') closeEventEdit();
+});
+document.getElementById('event-allday-input')?.addEventListener('change', (e) => {
+  toggleAllDayFields(e.target.checked);
+});
+document.getElementById('event-open-google-btn')?.addEventListener('click', () => {
+  if (editingEvent?.url) openExternalSafe(editingEvent.url);
+});
+
+document.getElementById('event-save-btn')?.addEventListener('click', async () => {
+  if (!editingEvent) return;
+  const btn = document.getElementById('event-save-btn');
+  const title = document.getElementById('event-title-input').value.trim();
+  if (!title) { window.lrl.toast('Title is required', 'error'); return; }
+  const allDay = document.getElementById('event-allday-input').checked;
+  const date = document.getElementById('event-date-input').value;
+  if (!date) { window.lrl.toast('Date is required', 'error'); return; }
+  let start, end;
+  if (allDay){
+    // Google all-day end is exclusive — add 1 day
+    start = date;
+    const d = new Date(date + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    end = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  } else {
+    const s = document.getElementById('event-start-input').value;
+    const ed = document.getElementById('event-end-input').value;
+    if (!s || !ed) { window.lrl.toast('Start and end times required', 'error'); return; }
+    // Send as naive local datetime; server attaches timeZone: America/Chicago
+    start = `${date}T${s}:00`;
+    end   = `${date}T${ed}:00`;
+  }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await fetch(`/api/calendar/events/${editingEvent.account}/${editingEvent.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, start, end, allDay }),
+    });
+    if (!r.ok) { const j = await r.json().catch(()=>({})); throw new Error(j.error || 'save failed'); }
+    window.lrl.haptic('success');
+    window.lrl.toast('Event updated', 'success');
+    closeEventEdit();
+    await fetchTodayQuests();
+    renderTodayQuests();
+  } catch (err) {
+    window.lrl.toast('Save failed: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+});
+
+document.getElementById('event-delete-btn')?.addEventListener('click', async () => {
+  if (!editingEvent) return;
+  if (!confirm(`Delete "${editingEvent.title}"? This removes it from Google Calendar.`)) return;
+  const btn = document.getElementById('event-delete-btn');
+  btn.disabled = true; btn.textContent = 'Deleting…';
+  try {
+    const r = await fetch(`/api/calendar/events/${editingEvent.account}/${editingEvent.id}`, { method: 'DELETE' });
+    if (!r.ok) { const j = await r.json().catch(()=>({})); throw new Error(j.error || 'delete failed'); }
+    window.lrl.haptic('success');
+    window.lrl.toast('Event deleted', 'success');
+    closeEventEdit();
+    await fetchTodayQuests();
+    renderTodayQuests();
+  } catch (err) {
+    window.lrl.toast('Delete failed: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Delete';
+  }
+});
+
 // Mode lens: global Work/Personal/Combined filter
 function applyMode(){
   document.body.dataset.mode = mode;
@@ -2089,7 +2328,7 @@ function renderComms() {
   items.forEach(c => {
     const sourceTag = { 'gmail-work': 'Work', 'gmail-personal': 'Personal', 'slack': 'Slack' }[c.source] || c.source;
     html += `
-      <div class="comms-row ${c.source}" onclick="window.open('${c.permalink||'#'}','_blank')">
+      <div class="comms-row ${c.source}" onclick="window.openExternalSafe('${c.permalink||'#'}')">
         <div class="comms-unread-dot ${c.unread ? '' : 'read'}"></div>
         <div class="comms-content">
           <div class="comms-row-top">
