@@ -451,7 +451,7 @@
   }
 
   /* Chapter & Milestone System */
-  .campaigns-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  .campaigns-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 16px; }
   .campaign-card { background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 18px 20px; position: relative; overflow: hidden; cursor: pointer; transition: all 0.2s; }
   .campaign-card:hover { background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); }
   .campaign-card.business { border-left: 3px solid var(--lime); }
@@ -534,7 +534,7 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
       </svg>
       <div class="brand-name">LifeOS</div>
       <div class="mode-lens" id="mode-lens">
-        <button class="mode-btn active" data-mode="combined">Combined</button>
+        <button class="mode-btn active" data-mode="all">All</button>
         <button class="mode-btn" data-mode="work">Work</button>
         <button class="mode-btn" data-mode="personal">Personal</button>
       </div>
@@ -554,9 +554,9 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
   </div>
 
   <div class="tabs" id="tabs">
-    <button class="tab active" data-tab="command" data-modes="combined,work,personal">Command</button>
-    <button class="tab" data-tab="autofocus" data-modes="combined,work,personal">Autofocus</button>
-    <button class="tab" data-tab="comms" data-modes="combined,work,personal">Comms</button>
+    <button class="tab active" data-tab="command" data-modes="all,work,personal">Command</button>
+    <button class="tab" data-tab="autofocus" data-modes="all,work,personal">Autofocus</button>
+    <button class="tab" data-tab="comms" data-modes="all,work,personal">Comms</button>
     <button class="tab" data-tab="pipeline" data-modes="work">Pipeline</button>
     <button class="tab" data-tab="projects" data-modes="work">Projects</button>
     <button class="tab" data-tab="marketing" data-modes="work">Marketing</button>
@@ -566,7 +566,7 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
     <button class="tab" data-tab="finance-personal" data-modes="personal">Finance</button>
     <button class="tab" data-tab="lego" data-modes="personal">LEGO</button>
     <button class="tab" data-tab="relationships" data-modes="personal">Relationships</button>
-    <button class="tab" data-tab="inventory" data-modes="combined">Inventory</button>
+    <button class="tab" data-tab="inventory" data-modes="all">Inventory</button>
   </div>
 
   <!-- COMMAND TAB -->
@@ -946,8 +946,8 @@ el('sortsel').addEventListener('change',e=>{ui.sort=e.target.value;render();});
 el('groupsel').addEventListener('change',e=>{ui.group=e.target.value;render();});
 // Autofocus listens for global mode changes
 function syncAutofocusToMode(){
-  const m = localStorage.getItem('lrl-mode') || 'combined';
-  ui.src = m === 'combined' ? 'all' : m;
+  const m = localStorage.getItem('lrl-mode') || 'all';
+  ui.src = (m === 'all' || m === 'combined') ? 'all' : m;
   render();
 }
 window.addEventListener('lrl-mode-changed', syncAutofocusToMode);
@@ -966,7 +966,9 @@ el('refreshbtn').addEventListener('click',async()=>{await fetchTasks();render();
 let COMMS_DATA = [];
 let TODAY_EVENTS = [];
 let TODAY_TASKS = [];
-let mode = localStorage.getItem('lrl-mode') || 'combined';
+let mode = localStorage.getItem('lrl-mode') || 'all';
+// migrate legacy 'combined' → 'all'
+if (mode === 'combined') { mode = 'all'; localStorage.setItem('lrl-mode', 'all'); }
 
 async function fetchComms(){
   try {
@@ -1006,7 +1008,7 @@ function fmtTime(iso){
 function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 function filterBySource(items, srcKey){
-  if (mode === 'combined') return items;
+  if (mode === 'all') return items;
   return items.filter(i => i[srcKey] === mode);
 }
 
@@ -1016,7 +1018,7 @@ function renderTodayQuests(){
   if (taskDiv){
     const filtered = filterBySource(TODAY_TASKS, 'source');
     if (!filtered.length){
-      const msg = mode === 'combined' ? 'Nothing on My Day' : `No ${mode} tasks today`;
+      const msg = mode === 'all' ? 'Nothing on My Day' : `No ${mode} tasks today`;
       taskDiv.innerHTML = `<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">${msg}</div>`;
     } else {
       taskDiv.innerHTML = filtered.map(t=>{
@@ -1032,7 +1034,7 @@ function renderTodayQuests(){
   if (calDiv){
     const filtered = filterBySource(TODAY_EVENTS, 'account');
     if (!filtered.length){
-      const msg = mode === 'combined' ? 'No events today' : `No ${mode} events today`;
+      const msg = mode === 'all' ? 'No events today' : `No ${mode} events today`;
       calDiv.innerHTML = `<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">${msg}</div>`;
     } else {
       calDiv.innerHTML = filtered.map(e=>{
@@ -1209,45 +1211,60 @@ function businessProgress() { const rocks = MILESTONES_DATA.business.rocks; let 
 function renderCampaigns() {
   const container = document.getElementById('campaigns-container');
   if (!container) return;
+  const currentMode = (typeof mode !== 'undefined' ? mode : (localStorage.getItem('lrl-mode') || 'all'));
+  const showBiz = currentMode === 'all' || currentMode === 'work';
+  const showLife = currentMode === 'all' || currentMode === 'personal';
+  // Auto-select the visible card if the previously selected one is hidden
+  if (selectedCampaign === 'business' && !showBiz) selectedCampaign = showLife ? 'life' : null;
+  if (selectedCampaign === 'life' && !showLife) selectedCampaign = showBiz ? 'business' : null;
+
   const biz = MILESTONES_DATA.business;
   const bizProg = businessProgress();
   const nextMs = biz.rocks.flatMap(r => r.milestones).find(m => !isMsUnlocked(m.id));
   const bizActive = selectedCampaign === 'business' ? ' active' : '';
   const lifeActive = selectedCampaign === 'life' ? ' active' : '';
   let html = '<div class="campaigns-grid">';
-  html += `<div class="campaign-card business${bizActive}" onclick="toggleCampaign('business')">
-    <div class="cc-days">${biz.days_remaining} days left</div>
-    <div class="cc-kicker">Business Campaign · Chapter ${biz.chapter_num}</div>
-    <div class="cc-chapter">${biz.chapter_name}</div>
-    <div class="cc-quarter">${biz.quarter_label}</div>
-    <div class="cc-progress-row"><b>${bizProg.done} of ${bizProg.total}</b> milestones unlocked</div>
-    <div class="cc-bar"><div class="cc-bar-fill" style="width:${bizProg.pct}%"></div></div>
-    ${nextMs ? `<div class="cc-next">Next: <b>${nextMs.name}</b></div>` : '<div class="cc-next">All milestones unlocked.</div>'}
-    <div class="cc-toggle-hint">${bizActive ? '▾ hide quests' : '▸ view quests'}</div>
-  </div>`;
-  const lifeChap = msState.life_chapter;
-  if (lifeChap) {
-    html += `<div class="campaign-card life cc-life${lifeActive}" onclick="toggleCampaign('life')">
+  if (showBiz) {
+    html += `<div class="campaign-card business${bizActive}" onclick="toggleCampaign('business')">
       <div class="cc-days">${biz.days_remaining} days left</div>
-      <div class="cc-kicker">Life Campaign · Chapter ${biz.chapter_num}</div>
-      <div class="cc-chapter">${lifeChap.name}</div>
+      <div class="cc-kicker">Business Campaign · Chapter ${biz.chapter_num}</div>
+      <div class="cc-chapter">${biz.chapter_name}</div>
       <div class="cc-quarter">${biz.quarter_label}</div>
-      <div class="cc-progress-row"><b>0 of 0</b> milestones · setup in progress</div>
-      <div class="cc-bar"><div class="cc-bar-fill" style="width:0%"></div></div>
-      <div class="cc-toggle-hint">${lifeActive ? '▾ hide quests' : '▸ view quests'}</div>
+      <div class="cc-progress-row"><b>${bizProg.done} of ${bizProg.total}</b> milestones unlocked</div>
+      <div class="cc-bar"><div class="cc-bar-fill" style="width:${bizProg.pct}%"></div></div>
+      ${nextMs ? `<div class="cc-next">Next: <b>${nextMs.name}</b></div>` : '<div class="cc-next">All milestones unlocked.</div>'}
+      <div class="cc-toggle-hint">${bizActive ? '▾ hide quests' : '▸ view quests'}</div>
     </div>`;
-  } else {
-    html += `<div class="campaign-card life cc-life stub${lifeActive}" onclick="toggleCampaign('life')">
-      <div class="cc-kicker">Life Campaign · Not Started</div>
-      <div class="cc-chapter" style="color:rgba(245,245,247,0.5)">Define your first Life Chapter</div>
-      <div class="cc-quarter">What are you building this quarter?</div>
-      <button class="cc-setup-btn" onclick="event.stopPropagation();setupLifeChapter()">+ Name this chapter</button>
-      <div class="cc-toggle-hint">${lifeActive ? '▾ hide preview' : '▸ preview structure'}</div>
-    </div>`;
+  }
+  if (showLife) {
+    const lifeChap = msState.life_chapter;
+    if (lifeChap) {
+      html += `<div class="campaign-card life cc-life${lifeActive}" onclick="toggleCampaign('life')">
+        <div class="cc-days">${biz.days_remaining} days left</div>
+        <div class="cc-kicker">Life Campaign · Chapter ${biz.chapter_num}</div>
+        <div class="cc-chapter">${lifeChap.name}</div>
+        <div class="cc-quarter">${biz.quarter_label}</div>
+        <div class="cc-progress-row"><b>0 of 0</b> milestones · setup in progress</div>
+        <div class="cc-bar"><div class="cc-bar-fill" style="width:0%"></div></div>
+        <div class="cc-toggle-hint">${lifeActive ? '▾ hide quests' : '▸ view quests'}</div>
+      </div>`;
+    } else {
+      html += `<div class="campaign-card life cc-life stub${lifeActive}" onclick="toggleCampaign('life')">
+        <div class="cc-kicker">Life Campaign · Not Started</div>
+        <div class="cc-chapter" style="color:rgba(245,245,247,0.5)">Define your first Life Chapter</div>
+        <div class="cc-quarter">What are you building this quarter?</div>
+        <button class="cc-setup-btn" onclick="event.stopPropagation();setupLifeChapter()">+ Name this chapter</button>
+        <div class="cc-toggle-hint">${lifeActive ? '▾ hide preview' : '▸ preview structure'}</div>
+      </div>`;
+    }
   }
   html += '</div>';
   container.innerHTML = html;
+  // Render milestones for whichever is selected
+  renderMilestones();
 }
+
+window.addEventListener('lrl-mode-changed', () => renderCampaigns());
 
 function toggleCampaign(which) {
   selectedCampaign = selectedCampaign === which ? null : which;
