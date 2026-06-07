@@ -151,6 +151,51 @@
   .quest-pri { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; font-weight: 700; flex-shrink: 0; }
   .quest-pri.urgent { background: rgba(255,122,107,0.18); color: #ff7a6b; border: 1px solid rgba(255,122,107,0.35); }
   .quest-pri.high { background: rgba(212,168,84,0.18); color: #d4a854; border: 1px solid rgba(212,168,84,0.35); }
+
+  /* Today's Calendar — Google Cal inspired */
+  .cal-event { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.04); cursor: pointer; align-items: flex-start; transition: opacity 0.2s, background 0.15s; border-radius: 4px; }
+  .cal-event:last-of-type { border-bottom: none; }
+  .cal-event:hover { background: rgba(255,255,255,0.025); }
+  .cal-event-bar { width: 3px; align-self: stretch; min-height: 30px; border-radius: 2px; flex-shrink: 0; }
+  .cal-event-bar.work { background: #5d9cec; }
+  .cal-event-bar.personal { background: var(--lime); }
+  .cal-event-time { font-family: var(--font-body); font-size: 11px; font-weight: 600; color: rgba(245,245,247,0.65); letter-spacing: 0.01em; min-width: 76px; flex-shrink: 0; line-height: 1.35; }
+  .cal-event-time .dur { display: block; font-size: 9.5px; font-weight: 500; color: rgba(245,245,247,0.38); margin-top: 2px; letter-spacing: 0.04em; }
+  .cal-event-time .end { color: rgba(245,245,247,0.42); }
+  .cal-event-body { flex: 1; min-width: 0; }
+  .cal-event-title { font-size: 13.5px; color: var(--navy); font-weight: 500; line-height: 1.35; word-break: break-word; }
+  .cal-event-meta { display: flex; gap: 6px; margin-top: 3px; flex-wrap: wrap; align-items: center; font-size: 10px; color: rgba(245,245,247,0.5); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .cal-event-acct { padding: 1px 6px; border-radius: 3px; font-size: 9.5px; font-weight: 700; }
+  .cal-event-acct.work { background: rgba(93,156,236,0.15); color: #9cc5f5; }
+  .cal-event-acct.personal { background: rgba(167,193,64,0.15); color: var(--lime); }
+
+  .cal-event.past { opacity: 0.42; }
+  .cal-event.past .cal-event-title { color: rgba(245,245,247,0.55); text-decoration: line-through; text-decoration-thickness: 1px; text-decoration-color: rgba(245,245,247,0.25); }
+  .cal-event.past .cal-event-bar { filter: saturate(0.35); }
+
+  .cal-event.live { background: rgba(167,193,64,0.06); padding-left: 8px; padding-right: 8px; margin: 0 -8px; }
+  .cal-event.live .cal-event-bar { box-shadow: 0 0 0 1px rgba(167,193,64,0.55), 0 0 14px rgba(167,193,64,0.35); }
+  .cal-event.live .cal-event-title { color: var(--navy); font-weight: 600; }
+  .cal-event-now-pill { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy-accent); font-weight: 700; padding: 1px 7px; background: var(--lime); border-radius: 999px; animation: lrl-pulse-now 2s ease-in-out infinite; }
+  @keyframes lrl-pulse-now {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(167,193,64,0.5); }
+    50%      { box-shadow: 0 0 0 6px rgba(167,193,64,0); }
+  }
+
+  /* "Now" divider showing current time position */
+  .cal-now-line { position: relative; height: 1px; background: var(--lime); margin: 10px 0; opacity: 0.65; }
+  .cal-now-line::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 8px; height: 8px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 12px rgba(167,193,64,0.7); }
+  .cal-now-line::after { content: 'NOW'; position: absolute; right: 0; top: 50%; transform: translateY(-50%); font-size: 9px; font-weight: 700; letter-spacing: 0.14em; color: var(--lime); background: var(--white); padding: 0 6px; }
+
+  /* All-day band at top */
+  .cal-allday { display: flex; gap: 10px; padding: 4px 0 10px; align-items: flex-start; border-bottom: 1px dashed rgba(255,255,255,0.07); margin-bottom: 8px; }
+  .cal-allday-label { font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(245,245,247,0.5); font-weight: 700; min-width: 76px; flex-shrink: 0; padding-top: 4px; }
+  .cal-allday-list { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+  .cal-allday-pill { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 4px 10px 4px 8px; border-radius: 999px; font-size: 12px; color: var(--navy); display: inline-flex; align-items: center; gap: 7px; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+  .cal-allday-pill:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.18); }
+  .cal-allday-pill .pill-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .cal-allday-pill .pill-dot.work { background: #5d9cec; }
+  .cal-allday-pill .pill-dot.personal { background: var(--lime); }
   .quest-tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
   .tag-work { background: var(--navy); color: var(--white); }
   .tag-personal { background: var(--lime); color: var(--navy); }
@@ -1798,15 +1843,67 @@ function renderTodayQuests(){
       const msg = mode === 'all' ? 'No events today' : `No ${mode} events today`;
       calDiv.innerHTML = `<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">${msg}</div>`;
     } else {
-      calDiv.innerHTML = filtered.map(e=>{
-        const when = e.allDay ? 'All day' : fmtTime(e.start);
-        const tag = `<span class="quest-tag tag-calendar">${e.account}</span>`;
-        return `<div class="quest-item" onclick="window.open('${e.url}','_blank')">
-          <div class="quest-check" style="border-radius:50%"></div>
-          <div class="quest-text"><b style="font-weight:600">${when}</b> · ${escapeHtml(e.title)}</div>
-          ${tag}
+      const now = new Date();
+      const allDay = filtered.filter(e => e.allDay);
+      const timed = filtered.filter(e => !e.allDay).sort((a,b) => new Date(a.start) - new Date(b.start));
+      let html = '';
+
+      if (allDay.length){
+        html += `<div class="cal-allday"><span class="cal-allday-label">All day</span><div class="cal-allday-list">`
+          + allDay.map(e =>
+              `<span class="cal-allday-pill" onclick="window.open('${e.url}','_blank')"><span class="pill-dot ${e.account}"></span>${escapeHtml(e.title)}</span>`
+            ).join('')
+          + `</div></div>`;
+      }
+
+      let nowInserted = false;
+      timed.forEach(e => {
+        const start = new Date(e.start);
+        const end = e.end ? new Date(e.end) : null;
+        const isPast = end ? end <= now : start < now;
+        const isLive = !isPast && start <= now && (!end || end > now);
+
+        // Insert NOW divider just before the first upcoming event
+        if (!nowInserted && !isPast && !isLive && start > now){
+          html += `<div class="cal-now-line"></div>`;
+          nowInserted = true;
+        }
+
+        const startTxt = fmtTime(e.start);
+        const endTxt = end ? fmtTime(e.end) : '';
+        const durMin = end ? Math.max(0, Math.round((end - start) / 60000)) : 0;
+        const durTxt = durMin >= 60
+          ? (durMin % 60 === 0 ? `${durMin/60}h` : `${(durMin/60).toFixed(1)}h`)
+          : `${durMin}m`;
+        const pastCls = isPast ? ' past' : '';
+        const liveCls = isLive ? ' live' : '';
+        const nowPill = isLive ? '<span class="cal-event-now-pill">Now</span>' : '';
+        const timeLine = endTxt
+          ? `${startTxt}<span class="end"> – ${endTxt}</span>${durMin ? `<span class="dur">${durTxt}</span>` : ''}`
+          : startTxt;
+
+        html += `<div class="cal-event${pastCls}${liveCls}" onclick="window.open('${e.url}','_blank')">
+          <div class="cal-event-bar ${e.account}"></div>
+          <div class="cal-event-time">${timeLine}</div>
+          <div class="cal-event-body">
+            <div class="cal-event-title">${escapeHtml(e.title)}</div>
+            <div class="cal-event-meta">
+              <span class="cal-event-acct ${e.account}">${e.account}</span>
+              ${nowPill}
+            </div>
+          </div>
         </div>`;
-      }).join('');
+      });
+
+      // If nothing upcoming, drop a NOW marker after the past events
+      if (!nowInserted && timed.length && timed.every(e => {
+        const end = e.end ? new Date(e.end) : null;
+        return end ? end <= now : new Date(e.start) < now;
+      })){
+        html += `<div class="cal-now-line"></div>`;
+      }
+
+      calDiv.innerHTML = html;
     }
   }
 }
@@ -2700,6 +2797,8 @@ document.addEventListener('keydown', (e) => {
   // Restore collapsed states
   if (localStorage.getItem('lrl-brief-collapsed') === '1') setBriefCollapsed(true);
   if (localStorage.getItem('lrl-chapter-collapsed') === '1') setChapterCollapsed(true);
+  // Re-render calendar every 60s so past/live event states stay accurate
+  setInterval(() => { if (TODAY_EVENTS.length) renderTodayQuests(); }, 60000);
 })();
 </script>
 
