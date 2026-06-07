@@ -134,6 +134,10 @@
   .quest-text { flex: 1; }
   .quest-text.done { text-decoration: line-through; color: var(--navy-dim); }
   .quest-due { font-size: 11px; color: var(--navy-dim); background: var(--cream-2); padding: 3px 8px; border-radius: 999px; }
+  .quest-due-inline { font-size: 11px; color: rgba(245,245,247,0.45); white-space: nowrap; letter-spacing: 0.02em; font-weight: 500; }
+  .quest-due-inline.overdue { color: #ff7a6b; font-weight: 600; }
+  .quest-due-inline.today { color: var(--lime); font-weight: 600; }
+  .quest-due-inline.tomorrow { color: #d4a854; font-weight: 600; }
   .quest-tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
   .tag-work { background: var(--navy); color: var(--white); }
   .tag-personal { background: var(--lime); color: var(--navy); }
@@ -1012,6 +1016,21 @@ function filterBySource(items, srcKey){
   return items.filter(i => i[srcKey] === mode);
 }
 
+function dueLabel(t){
+  const dateStr = t.dueEnd || t.dueStart;
+  if (!dateStr) return null;
+  const parts = dateStr.slice(0,10).split('-').map(Number);
+  const due = new Date(parts[0], parts[1]-1, parts[2]);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = Math.round((due - today) / 86400000);
+  const date = due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (days < 0) return { text: `${Math.abs(days)}d late`, cls: 'overdue' };
+  if (days === 0) return { text: 'Today', cls: 'today' };
+  if (days === 1) return { text: 'Tomorrow', cls: 'tomorrow' };
+  return { text: date, cls: '' };
+}
+
 function renderTodayQuests(){
   const taskDiv = document.getElementById('today-quests');
   const calDiv = document.getElementById('today-calendar');
@@ -1023,9 +1042,12 @@ function renderTodayQuests(){
     } else {
       taskDiv.innerHTML = filtered.map(t=>{
         const tag = t.source === 'work' ? '<span class="quest-tag tag-work">work</span>' : '<span class="quest-tag tag-personal">personal</span>';
+        const due = dueLabel(t);
+        const dueHtml = due ? `<span class="quest-due-inline ${due.cls}">${due.text}</span>` : '';
         return `<div class="quest-item" onclick="window.open('${t.url}','_blank')">
           <div class="quest-check"></div>
           <div class="quest-text">${escapeHtml(t.name)}</div>
+          ${dueHtml}
           ${tag}
         </div>`;
       }).join('');
