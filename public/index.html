@@ -142,6 +142,15 @@
   .quest-due-inline.tomorrow { color: #d4a854; font-weight: 600; }
   .quest-due-edit { font-size: 11px; background: rgba(255,255,255,0.06); color: var(--navy); border: 1px solid var(--lime); border-radius: 4px; padding: 2px 4px; font-family: var(--font-body); color-scheme: dark; }
   .quest-item.syncing { opacity: 0.6; }
+  .quest-star { appearance: none; -webkit-appearance: none; border: 0; background: none; cursor: pointer; padding: 3px; line-height: 0; flex-shrink: 0; border-radius: 6px; transition: background 0.15s; }
+  .quest-star:hover { background: rgba(255,255,255,0.06); }
+  .quest-star svg { width: 17px; height: 17px; }
+  .quest-star .fillp { fill: none; stroke: rgba(245,245,247,0.4); stroke-width: 1.6; transition: all 0.2s; }
+  .quest-star.on .fillp { fill: var(--lime); stroke: var(--lime); }
+  .quest-star.on { animation: lrl-check-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .quest-pri { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; font-weight: 700; flex-shrink: 0; }
+  .quest-pri.urgent { background: rgba(255,122,107,0.18); color: #ff7a6b; border: 1px solid rgba(255,122,107,0.35); }
+  .quest-pri.high { background: rgba(212,168,84,0.18); color: #d4a854; border: 1px solid rgba(212,168,84,0.35); }
   .quest-tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
   .tag-work { background: var(--navy); color: var(--white); }
   .tag-personal { background: var(--lime); color: var(--navy); }
@@ -1747,11 +1756,19 @@ function renderTodayQuests(){
         const dueHtml = due ? `<span class="quest-due-inline ${due.cls}" data-act="edit-due">${due.text}</span>` : '<span class="quest-due-inline" data-act="edit-due" style="opacity:0.35">+ date</span>';
         const checked = t.done ? 'checked' : '';
         const doneCls = t.done ? ' done' : '';
+        const isMyDay = t.myDay !== false; // these come from /myday endpoints — default true
+        const starCls = isMyDay ? 'on' : '';
+        const starTitle = isMyDay ? 'Remove from My Day' : 'Add to My Day';
+        const star = `<button class="quest-star ${starCls}" data-act="star" title="${starTitle}" aria-label="${starTitle}"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>`;
+        const priHtml = (t.priority === 'URGENT' || t.priority === 'HIGH')
+          ? `<span class="quest-pri ${t.priority.toLowerCase()}">${t.priority}</span>` : '';
         return `<div class="quest-item${doneCls}" data-task-id="${t.id}" data-task-url="${t.url}">
           <div class="quest-check ${checked}" data-act="check"></div>
           <div class="quest-text" data-act="open">${escapeHtml(t.name)}</div>
+          ${priHtml}
           ${dueHtml}
           ${tag}
+          ${star}
         </div>`;
       }).join('');
     }
@@ -1805,6 +1822,36 @@ document.getElementById('today-quests').addEventListener('click', async (e) => {
       t.done = prev;
       renderTodayQuests();
       window.lrl.toast('Sync failed: ' + err.message, 'error');
+    }
+    return;
+  }
+
+  if (act === 'star'){
+    e.stopPropagation();
+    const wasOn = t.myDay !== false;
+    const newOn = !wasOn;
+    window.lrl.haptic('tap');
+    if (!newOn){
+      // Removing from My Day → animate row out, then drop from list
+      window.lrl.clearRow(item, async () => {
+        TODAY_TASKS = TODAY_TASKS.filter(x => x.id !== id);
+        renderTodayQuests();
+        try {
+          await patchTask(id, { myDay: false });
+          window.lrl.toast('Removed from My Day', 'success');
+        } catch(err){
+          // Rollback: refetch and re-render
+          window.lrl.toast('Sync failed: ' + err.message, 'error');
+          await fetchTodayQuests();
+          renderTodayQuests();
+        }
+      });
+    } else {
+      // Re-adding (rare path — only if a non-myDay task somehow appeared)
+      t.myDay = true;
+      renderTodayQuests();
+      try { await patchTask(id, { myDay: true }); }
+      catch(err){ t.myDay = false; renderTodayQuests(); window.lrl.toast('Sync failed: ' + err.message, 'error'); }
     }
     return;
   }
