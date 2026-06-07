@@ -175,6 +175,41 @@
   .daily-brief-refresh { background: transparent; border: 1px solid rgba(167,193,64,0.25); color: rgba(245,245,247,0.55); font-family: var(--font-body); font-size: 10px; padding: 2px 8px; border-radius: 999px; cursor: pointer; letter-spacing: 0.1em; text-transform: uppercase; }
   .daily-brief-refresh:hover { color: var(--lime); border-color: var(--lime); }
   .daily-brief-refresh.spinning svg { animation: spin 1s linear infinite; }
+
+  .triage-pane { background: var(--white); border: 1px solid var(--navy-faint); border-radius: 10px; padding: 20px; }
+  .triage-input { width: 100%; min-height: 180px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: var(--navy); font-family: var(--font-body); font-size: 14px; line-height: 1.5; padding: 14px; border-radius: 8px; resize: vertical; }
+  .triage-input::placeholder { color: rgba(245,245,247,0.35); }
+  .triage-input:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
+  .triage-controls { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+  .triage-btn { font-family: var(--font-body); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 9px 18px; border-radius: 999px; cursor: pointer; border: none; }
+  .triage-btn.primary { background: var(--lime); color: var(--navy-accent); }
+  .triage-btn.primary:hover { background: var(--lime-light); }
+  .triage-btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .triage-btn.text { background: transparent; color: var(--navy-dim); padding: 6px 12px; }
+  .triage-btn.text:hover { color: var(--navy); }
+  .triage-btn.apply { background: var(--lime); color: var(--navy-accent); }
+  .triage-btn.spinning { opacity: 0.7; pointer-events: none; }
+
+  .triage-plan { margin-top: 24px; }
+  .triage-intro { font-family: var(--font-display); font-size: 16px; font-style: italic; color: var(--navy); margin-bottom: 14px; }
+  .triage-action { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; background: var(--white); border: 1px solid var(--navy-faint); border-left: 3px solid rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 8px; }
+  .triage-action.task-work { border-left-color: #5d9cec; }
+  .triage-action.task-personal { border-left-color: var(--lime); }
+  .triage-action.event-work { border-left-color: rgba(122,157,216,0.8); }
+  .triage-action.event-personal { border-left-color: var(--lime); }
+  .triage-action.applied { opacity: 0.55; }
+  .triage-action.failed { border-left-color: #ff6b6b; }
+  .triage-check { width: 18px; height: 18px; border: 1.5px solid rgba(255,255,255,0.25); border-radius: 4px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+  .triage-check.checked { background: var(--lime); border-color: var(--lime); color: var(--navy-accent); }
+  .triage-check.checked::after { content: "✓"; font-size: 12px; font-weight: 700; }
+  .triage-body { flex: 1; min-width: 0; }
+  .triage-kind { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(245,245,247,0.45); font-weight: 600; margin-bottom: 4px; }
+  .triage-label { font-size: 14px; color: var(--navy); font-weight: 500; line-height: 1.4; }
+  .triage-meta { font-size: 11px; color: rgba(245,245,247,0.5); margin-top: 4px; }
+  .triage-meta a { color: var(--lime); text-decoration: none; }
+  .triage-meta a:hover { text-decoration: underline; }
+  .triage-apply-row { display: flex; gap: 10px; align-items: center; margin-top: 16px; }
+  .triage-summary { font-size: 12px; color: var(--navy-dim); margin-top: 10px; }
   .sidequest-icon { width: 28px; height: 28px; background: var(--navy); color: var(--lime); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; font-size: 14px; }
 
   .stage-row { display: grid; grid-template-columns: 140px 1fr 80px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--cream-2); }
@@ -592,6 +627,7 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
     <button class="tab active" data-tab="command" data-modes="all,work,personal">Command</button>
     <button class="tab" data-tab="autofocus" data-modes="all,work,personal">Autofocus</button>
     <button class="tab" data-tab="comms" data-modes="all,work,personal">Comms</button>
+    <button class="tab" data-tab="triage" data-modes="all,work,personal">Triage</button>
     <button class="tab" data-tab="pipeline" data-modes="work">Pipeline</button>
     <button class="tab" data-tab="projects" data-modes="work">Projects</button>
     <button class="tab" data-tab="marketing" data-modes="work">Marketing</button>
@@ -712,6 +748,24 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
     <div class="comms-list" id="comms-list">
       <div style="padding: 24px; text-align: center; color: var(--navy-dim);">loading…</div>
     </div>
+  </div>
+
+  <!-- TRIAGE TAB -->
+  <div class="tab-content" data-content="triage">
+    <div class="section-label">Brain Dump</div>
+    <h1 class="page-title"><span>Triage</span></h1>
+    <div class="page-subtitle">Dump everything in your head. Claude turns it into a reviewable plan — tasks, events, due dates. You approve before anything writes.</div>
+
+    <div class="triage-pane">
+      <textarea id="triage-input" class="triage-input" placeholder="Example: Need to email Trina about Rock 3 by Friday, schedule a dentist for next week, Lisa wants a call Tuesday 2pm, pick up gift for Genny before her birthday..."></textarea>
+      <div class="triage-controls">
+        <button class="triage-btn primary" id="triage-plan-btn">Plan it</button>
+        <button class="triage-btn text" id="triage-clear-btn">Clear</button>
+        <span id="triage-status" style="font-size:12px;color:var(--navy-dim);margin-left:auto"></span>
+      </div>
+    </div>
+
+    <div id="triage-plan" class="triage-plan" style="display:none"></div>
   </div>
 
   <!-- PIPELINE TAB -->
@@ -1342,6 +1396,123 @@ function updateHeaderTimestamp(){
     el.textContent = 'Refreshed ' + now.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
   }
 }
+
+// Triage tab
+let triagePlan = null;
+let triageSelected = new Set();
+
+function renderTriagePlan(){
+  const wrap = document.getElementById('triage-plan');
+  if (!triagePlan) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  wrap.style.display = 'block';
+  const intro = triagePlan.intro ? `<div class="triage-intro">${escapeHtml(triagePlan.intro)}</div>` : '';
+  const items = (triagePlan.actions || []).map((a, i) => {
+    const kindLabel = a.type === 'create_task' ? `${a.source || '?'} task` : `${a.account || '?'} event`;
+    const cls = a.type === 'create_task' ? `task-${a.source}` : `event-${a.account}`;
+    const checked = triageSelected.has(i) ? 'checked' : '';
+    const meta = [];
+    if (a.dueStart) meta.push(`due ${a.dueStart}`);
+    if (a.myDay) meta.push('My Day');
+    if (a.priority) meta.push(a.priority);
+    if (a.start && a.type === 'create_event') meta.push(a.allDay ? `${a.start} all-day` : new Date(a.start).toLocaleString('en-US',{timeZone:'America/Chicago',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}));
+    if (a.location) meta.push(a.location);
+    const metaLine = meta.length ? `<div class="triage-meta">${escapeHtml(meta.join(' · '))}</div>` : '';
+    const resultLine = a._result ? `<div class="triage-meta"><a href="${a._result.url}" target="_blank" rel="noopener">→ open in ${a.type === 'create_task' ? 'Notion' : 'Calendar'}</a></div>` : '';
+    const errLine = a._error ? `<div class="triage-meta" style="color:#ff7a6b">Error: ${escapeHtml(a._error)}</div>` : '';
+    const appliedCls = a._result ? ' applied' : (a._error ? ' failed' : '');
+    return `<div class="triage-action ${cls}${appliedCls}">
+      <div class="triage-check ${checked}" data-idx="${i}"></div>
+      <div class="triage-body">
+        <div class="triage-kind">${escapeHtml(kindLabel)}</div>
+        <div class="triage-label">${escapeHtml(a.label || '')}</div>
+        ${metaLine}
+        ${resultLine}
+        ${errLine}
+      </div>
+    </div>`;
+  }).join('');
+  const applyRow = `<div class="triage-apply-row">
+    <button class="triage-btn apply" id="triage-apply-btn">Apply selected (<span id="triage-count">${triageSelected.size}</span>)</button>
+    <button class="triage-btn text" id="triage-select-all">All</button>
+    <button class="triage-btn text" id="triage-select-none">None</button>
+  </div>`;
+  wrap.innerHTML = intro + items + applyRow;
+  document.querySelectorAll('.triage-check').forEach(el => {
+    el.addEventListener('click', () => {
+      const i = parseInt(el.dataset.idx);
+      if (triageSelected.has(i)) triageSelected.delete(i); else triageSelected.add(i);
+      renderTriagePlan();
+    });
+  });
+  document.getElementById('triage-select-all')?.addEventListener('click', () => {
+    (triagePlan.actions || []).forEach((_, i) => triageSelected.add(i));
+    renderTriagePlan();
+  });
+  document.getElementById('triage-select-none')?.addEventListener('click', () => {
+    triageSelected.clear();
+    renderTriagePlan();
+  });
+  document.getElementById('triage-apply-btn')?.addEventListener('click', applyTriagePlan);
+}
+
+async function planTriage(){
+  const text = document.getElementById('triage-input').value.trim();
+  if (!text) return;
+  const btn = document.getElementById('triage-plan-btn');
+  const status = document.getElementById('triage-status');
+  btn.disabled = true;
+  btn.textContent = 'Thinking…';
+  status.textContent = '';
+  try {
+    const r = await fetch('/api/ai/triage', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text}) });
+    const d = await r.json();
+    if (d.error) { status.textContent = 'Error: ' + d.error; return; }
+    triagePlan = d.plan;
+    triageSelected = new Set((triagePlan.actions || []).map((_, i) => i));
+    renderTriagePlan();
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Plan it';
+  }
+}
+
+async function applyTriagePlan(){
+  if (!triagePlan) return;
+  const selected = (triagePlan.actions || []).filter((_, i) => triageSelected.has(i));
+  if (!selected.length) return;
+  const btn = document.getElementById('triage-apply-btn');
+  btn.classList.add('spinning');
+  btn.textContent = 'Applying…';
+  try {
+    const r = await fetch('/api/ai/triage/apply', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({actions: selected}) });
+    const d = await r.json();
+    if (d.error) { alert('Error: ' + d.error); return; }
+    // Attach results back to plan items by matching reference
+    let resIdx = 0;
+    triagePlan.actions = triagePlan.actions.map((a, i) => {
+      if (!triageSelected.has(i)) return a;
+      const res = d.results[resIdx++];
+      if (res.ok) return { ...a, _result: res.result };
+      return { ...a, _error: res.error };
+    });
+    triageSelected.clear();
+    renderTriagePlan();
+  } catch (e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.classList.remove('spinning');
+  }
+}
+
+document.getElementById('triage-plan-btn')?.addEventListener('click', planTriage);
+document.getElementById('triage-clear-btn')?.addEventListener('click', () => {
+  document.getElementById('triage-input').value = '';
+  triagePlan = null; triageSelected.clear();
+  renderTriagePlan();
+  document.getElementById('triage-status').textContent = '';
+});
 
 (async () => {
   // Restore active tab

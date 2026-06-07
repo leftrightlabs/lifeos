@@ -711,6 +711,139 @@ app.get('/api/ai/daily-brief', async (_req, res) => {
   }
 });
 
+// ----- AI: Triage (braindump → plan → apply) -----
+
+const TRIAGE_SYSTEM = `You convert Gretchen's braindumps into a structured plan of actions for her LifeOS dashboard.
+
+Context about Gretchen:
+- Integrator at Left Right Labs (LRL). Work tasks live in WORK TASKS [DB]. Personal/life tasks live in LifeOS TASKS.
+- Two calendars: work (leftrightlabs.com) and personal.
+- Today's date and weekday will be provided.
+
+Voice in "intro" field: direct, warm, casual. Ellipses fine, never em-dashes. No preamble, no "I'll help you with that". Lead with what you're putting on the list.
+
+Action types you can emit:
+- create_task: a Notion task. source = "work" or "personal". Required: name. Optional: dueStart (YYYY-MM-DD), myDay (boolean), priority ("URGENT" | "HIGH" | "NORMAL" | null).
+- create_event: a calendar event. account = "work" or "personal". Required: title, start, end. If allDay=true, start/end are YYYY-MM-DD; otherwise ISO datetime with America/Chicago offset (-05:00 CDT or -06:00 CST). location optional.
+
+Routing heuristics:
+- Anything LRL, clients (Trina, Natasha, Adriana, Lisa, etc.), business, marketing, finance-for-LRL → source/account = "work"
+- Anything health, LEGO, household, family, personal finance, errands → source/account = "personal"
+- If unclear, prefer "personal"
+
+My Day defaults to false. Set true only if she explicitly says today/tomorrow or makes it sound time-sensitive.
+
+Priority defaults to null. Only set HIGH/URGENT if she signals urgency ("urgent", "critical", "asap", "by end of day").
+
+Date parsing: "tomorrow" = next calendar day. "Friday" = next upcoming Friday. "next week" = next Monday. Use the provided today date as the anchor.
+
+Each action also gets a "label" — a short human-readable summary (e.g. "Task: Email Trina about Rock 3 → work, due Fri Jun 12, My Day").
+
+Be conservative. If she dumps 12 thoughts, emit 12 actions — don't bundle. If something is ambiguous (a vent that's not actionable), skip it.`;
+
+const TRIAGE_JSON_HINT = `Return ONLY valid JSON in this exact shape, no prose, no markdown, no code fences:
+{
+  "intro": "one sentence, warm casual tone",
+  "actions": [
+    { "type": "create_task", "label": "short summary", "source": "work"|"personal", "name": "task name", "dueStart": "YYYY-MM-DD" (optional), "myDay": true|false (optional), "priority": "URGENT"|"HIGH"|"NORMAL" (optional) },
+    { "type": "create_event", "label": "short summary", "account": "work"|"personal", "title": "event title", "start": "ISO datetime with TZ offset, or YYYY-MM-DD if allDay", "end": "same format", "allDay": true|false (optional), "location": "optional string" }
+  ]
+}`;
+
+app.post('/api/ai/triage', async (req, res) => {
+  if (!anthropic) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+  const { text } = req.body || {};
+  if (!text || !text.trim()) return res.status(400).json({ error: 'text is required' });
+  try {
+    const todayLabel = chicagoTodayDateLabel();
+    const todayISO = chicagoTodayISODate();
+    const userPrompt = `Today is ${todayLabel} (${todayISO}).\n\nBraindump:\n"""\n${text.trim()}\n"""\n\n${TRIAGE_JSON_HINT}`;
+    const msg = await anthropic.messages.create({
+      model: 'claude-opus-4-8',
+      max_tokens: 4000,
+      thinking: { type: 'adaptive' },
+      output_config: { effort: 'medium' },
+      system: TRIAGE_SYSTEM,
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+    const textBlock = msg.content.find((b) => b.type === 'text');
+    if (!textBlock) return res.status(500).json({ error: 'no text in response' });
+    let raw = textBlock.text.trim();
+    // Strip code fences if model added them
+    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+    let plan;
+    try { plan = JSON.parse(raw); }
+    catch (e) { return res.status(500).json({ error: 'invalid JSON from model: ' + e.message, raw }); }
+    res.json({ plan });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+const TASK_DS_BY_SOURCE = { work: WORK_TASKS_DS, personal: LIFE_TASKS_DS };
+const PROJECT_PROP_BY_SOURCE = { work: 'Project', personal: 'Project' };
+
+async function createNotionTask({ source, name, dueStart, myDay, priority }) {
+  const dsId = TASK_DS_BY_SOURCE[source];
+  if (!dsId) throw new Error(`unknown source: ${source}`);
+  const properties = {
+    Name: { title: [{ text: { content: name } }] },
+    Status: { status: { name: 'Planned' } },
+  };
+  if (myDay) properties['My Day'] = { checkbox: true };
+  if (dueStart) properties.Due = { date: { start: dueStart, end: null } };
+  if (priority) properties['Priority 2'] = { select: { name: priority } };
+  if (source === 'work') {
+    properties.Assigned = { people: [{ id: GRETCHEN_USER_ID }] };
+  }
+  const page = await notion.pages.create({
+    parent: { type: 'data_source_id', data_source_id: dsId },
+    properties,
+  });
+  return { id: page.id, url: page.url };
+}
+
+async function createCalendarEvent({ account, title, start, end, allDay, location }) {
+  const auth = authedClient(account);
+  if (!auth) throw new Error(`account not configured: ${account}`);
+  const cal = google.calendar({ version: 'v3', auth });
+  const body = {
+    summary: title,
+    location: location || undefined,
+    start: allDay ? { date: start } : { dateTime: start, timeZone: TZ },
+    end: allDay ? { date: end } : { dateTime: end, timeZone: TZ },
+  };
+  const { data } = await cal.events.insert({ calendarId: 'primary', requestBody: body });
+  return { id: data.id, url: data.htmlLink };
+}
+
+app.post('/api/ai/triage/apply', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  const { actions } = req.body || {};
+  if (!Array.isArray(actions)) return res.status(400).json({ error: 'actions array required' });
+  const results = [];
+  for (const a of actions) {
+    try {
+      if (a.type === 'create_task') {
+        if (!a.source || !a.name) throw new Error('create_task requires source + name');
+        const r = await createNotionTask(a);
+        results.push({ action: a, ok: true, result: r });
+      } else if (a.type === 'create_event') {
+        if (!a.account || !a.title || !a.start || !a.end) throw new Error('create_event requires account, title, start, end');
+        const r = await createCalendarEvent(a);
+        results.push({ action: a, ok: true, result: r });
+      } else {
+        throw new Error(`unsupported action type: ${a.type}`);
+      }
+    } catch (err) {
+      results.push({ action: a, ok: false, error: err.message });
+    }
+  }
+  invalidateTaskCaches();
+  cache.delete('calendar-today');
+  res.json({ results });
+});
+
 const server = app.listen(PORT, () => {
   console.log(`LifeOS listening on port ${PORT}`);
 });
