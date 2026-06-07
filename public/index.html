@@ -1243,7 +1243,7 @@ el('list').addEventListener('click',e=>{
     afPatch(id,{myDay:nv}).catch(err=>{state.edits[id].myDay=!nv;saveState();render();alert('Sync failed: '+err.message);});
   }
   else if(act==='touch'){state.touched[id]=new Date().toISOString();saveState();render();}
-  else if(act==='open'){const t=task(id);if(t.url)window.open(t.url,'_blank');}
+  else if(act==='open'){const t=task(id);if(t.url)openNotion(t.url);}
 });
 el('q').addEventListener('input',e=>{ui.q=e.target.value;render();});
 el('sortsel').addEventListener('change',e=>{ui.sort=e.target.value;render();});
@@ -1343,6 +1343,24 @@ function fmtTime(iso){
   return d.toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'});
 }
 function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+// Convert Notion web URLs to notion:// deep links so iOS hands off to the Notion app
+// (avoids white-screen issue when LifeOS is launched as a home-screen PWA).
+function toNotionLink(url){
+  if (!url) return url;
+  // Match the 32-char hex page ID anywhere in the URL
+  const m = url.match(/([a-f0-9]{32})/i);
+  if (m) return `notion://www.notion.so/${m[1]}`;
+  if (url.startsWith('https://www.notion.so/')) return url.replace('https://', 'notion://');
+  if (url.startsWith('https://app.notion.com/')) return url.replace('https://app.notion.com/', 'notion://www.notion.so/');
+  return url;
+}
+function openNotion(url){
+  const link = toNotionLink(url);
+  // Use location for notion:// (iOS handles app handoff better this way than window.open)
+  if (link && link.startsWith('notion://')) { window.location.href = link; return; }
+  window.open(url, '_blank', 'noopener');
+}
 
 function filterBySource(items, srcKey){
   if (mode === 'all') return items;
@@ -1474,7 +1492,7 @@ document.getElementById('today-quests').addEventListener('click', async (e) => {
   }
 
   if (act === 'open' || !act){
-    if (url) window.open(url, '_blank');
+    if (url) openNotion(url);
   }
 });
 
@@ -2143,7 +2161,7 @@ document.addEventListener('click', (e) => {
   }
   // Click anywhere else on the row → open in Notion (when not locked)
   const url = item.dataset.msUrl;
-  if (url && !action) window.open(url, '_blank');
+  if (url && !action) openNotion(url);
 });
 (async () => { await loadMsState(); await fetchGoals(); renderCampaigns(); })();
 // Refresh goals when refresh button clicked
