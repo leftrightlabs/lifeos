@@ -681,16 +681,16 @@
   .autofocus-app .sub {margin:13px 0 0;color:#c7cede;font-size:13px;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
   .autofocus-app .sub b {color:#fff;font-weight:600}
   .autofocus-app .statgrid {display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin:14px 0 16px}
-  .autofocus-app .stat {background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 14px;border-top:3px solid var(--line-2)}
-  .autofocus-app .stat .statn {font-family:var(--font-d);font-weight:700;font-size:30px;color:var(--navy)}
-  .autofocus-app .stat .statl {font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .autofocus-app .stat {background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;border-top:3px solid var(--line-2);display:flex;align-items:center;gap:10px;min-width:0}
+  .autofocus-app .stat .statn {font-family:var(--font-d);font-weight:700;font-size:26px;color:var(--navy);line-height:1;flex-shrink:0}
+  .autofocus-app .stat .statl {font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
   .autofocus-app .stat.s-open {border-top-color:var(--navy)}
   .autofocus-app .stat.s-work {border-top-color:var(--navy)}
   .autofocus-app .stat.s-personal {border-top-color:var(--lime-d)}
   .autofocus-app .stat.s-today {border-top-color:var(--today)}
   .autofocus-app .stat.s-over {border-top-color:var(--over)}
   .autofocus-app .stat.s-myday {border-top-color:var(--lime)}
-  @media(max-width:760px){.autofocus-app .statgrid {grid-template-columns:repeat(3,1fr);gap:6px}.autofocus-app .stat {padding:8px 10px}.autofocus-app .stat .statn {font-size:22px}.autofocus-app .stat .statl {font-size:10px;margin-top:3px;letter-spacing:.06em}}
+  @media(max-width:760px){.autofocus-app .statgrid {grid-template-columns:repeat(3,1fr);gap:6px}.autofocus-app .stat {padding:8px 10px;gap:8px}.autofocus-app .stat .statn {font-size:20px}.autofocus-app .stat .statl {font-size:10px;letter-spacing:.05em}}
   .autofocus-app .dot {width:5px;height:5px;border-radius:50%;background:var(--lime);display:inline-block;margin-right:7px}
   .autofocus-app .syncbar {background:#fff;border:1px solid var(--line);border-left:3px solid var(--lime);border-radius:10px;padding:11px 14px;margin-bottom:12px;font-size:13px}
   .autofocus-app .syncrow {display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -784,6 +784,9 @@
   .autofocus-app .check { background: rgba(255,255,255,0.05); }
   .autofocus-app header.top { background: transparent; padding: 0; margin-bottom: 18px; border-radius: 0; }
   .autofocus-app .nm { color: var(--ink); }
+  .autofocus-app .page-title { color: var(--ink); }
+  .autofocus-app .page-subtitle { color: rgba(245,245,247,0.55); }
+  .autofocus-app .stat .statn { color: var(--ink); }
   .autofocus-app .tag.src-work { background: rgba(74,107,189,0.18); color: #c9d4ee; }
   .autofocus-app .tag.src-personal { background: rgba(167,193,64,0.18); color: var(--lime); }
   .autofocus-app .tag.status { background: rgba(255,255,255,0.06); color: var(--muted); }
