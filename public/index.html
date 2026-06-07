@@ -234,27 +234,26 @@
     bottom: 24px;
     right: 24px;
     z-index: 90;
-    background: var(--lime);
-    color: var(--navy-accent);
-    border: none;
-    border-radius: 999px;
-    padding: 14px 22px;
-    font-family: var(--font-body);
-    font-weight: 700;
-    font-size: 12px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    background: var(--navy-accent);
+    color: var(--lime);
+    border: 1px solid rgba(167,193,64,0.35);
+    border-radius: 50%;
+    width: 56px;
+    height: 56px;
+    padding: 0;
     cursor: pointer;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(167,193,64,0.3);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     transition: all 0.15s;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
   }
-  .triage-fab:hover { background: var(--lime-light); transform: translateY(-1px); box-shadow: 0 12px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(167,193,64,0.5); }
+  .triage-fab svg { width: 24px; height: 24px; }
+  .triage-fab:hover { background: #1a3060; transform: translateY(-1px); box-shadow: 0 12px 32px rgba(0,0,0,0.6), 0 0 0 1px var(--lime); }
   .triage-fab:active { transform: translateY(0); }
   @media (max-width: 480px) {
-    .triage-fab { bottom: 16px; right: 16px; padding: 12px 18px; font-size: 11px; }
+    .triage-fab { bottom: 16px; right: 16px; width: 50px; height: 50px; }
+    .triage-fab svg { width: 22px; height: 22px; }
   }
 
   .triage-modal {
@@ -1038,7 +1037,9 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
 
 </div>
 
-<button class="triage-fab" id="triage-fab" title="Brain Dump">⚡ Brain Dump</button>
+<button class="triage-fab" id="triage-fab" title="Brain Dump" aria-label="Brain Dump">
+  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+</button>
 
 <div class="triage-modal" id="triage-modal">
   <div class="triage-modal-content">
