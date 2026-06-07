@@ -401,7 +401,10 @@ async function fetchGoalsForSource(projectsDs, tasksDs, source, projectPropName)
             { property: 'Milestone', checkbox: { equals: true } },
           ],
         },
-        sorts: [{ property: 'Due', direction: 'ascending' }],
+        sorts: [
+          { property: 'Due', direction: 'ascending' },
+          { timestamp: 'created_time', direction: 'ascending' },
+        ],
         page_size: 100,
       });
       milestones = tasksRes.results.map((t) => ({
