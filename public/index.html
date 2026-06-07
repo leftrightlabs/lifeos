@@ -176,7 +176,8 @@
   .daily-brief-toggle:hover { opacity: 0.85; }
   .daily-brief.collapsed #brief-collapse-caret { transform: rotate(-90deg); display: inline-block; }
   #brief-collapse-caret { display: inline-block; transition: transform 0.15s; }
-  .daily-brief-text { font-family: var(--font-display); font-size: 17px; font-weight: 500; line-height: 1.5; color: var(--navy); font-style: italic; }
+  .daily-brief-text { font-family: var(--font-body); font-size: 15px; font-weight: 400; line-height: 1.55; color: var(--navy); }
+  @media (max-width: 600px) { .daily-brief-text { font-size: 14px; line-height: 1.5; } }
   .daily-brief-loading { color: rgba(245,245,247,0.45); font-style: italic; font-size: 14px; }
   .daily-brief-err { color: #ff7a6b; font-size: 13px; }
   .daily-brief-refresh { background: transparent; border: 1px solid rgba(167,193,64,0.25); color: rgba(245,245,247,0.55); font-family: var(--font-body); font-size: 10px; padding: 2px 8px; border-radius: 999px; cursor: pointer; letter-spacing: 0.1em; text-transform: uppercase; }
