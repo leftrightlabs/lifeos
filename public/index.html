@@ -793,6 +793,224 @@
   @media (max-width: 720px) { .campaigns-grid { grid-template-columns: 1fr; } .cc-days { position: static; margin-top: 6px; } }
 
   .version-tag { position: fixed; bottom: 0.5rem; right: 0.75rem; font-size: 0.6rem; color: rgba(245, 245, 247, 0.22); letter-spacing: 0.1em; pointer-events: none; }
+
+  /* =====================================================================
+     PREMIUM POLISH — Tier 1: tap feedback, spring checks, toast, confetti
+     ===================================================================== */
+
+  /* Kill blue tap flash, add transition baseline */
+  button, a, .tab, .mode-btn, .tqf-btn, .review-btn, .triage-btn,
+  .refresh-btn, .filter-btn, .triage-edit-btn, .triage-myday-btn,
+  .chat-newconv-btn, .daily-brief-refresh, .daily-brief-toggle,
+  .cc-setup-btn, .triage-modal-close, .triage-fab, .time-chip,
+  .quest-check, .quest-item, .review-item, .ms-item, .review-section-head,
+  .campaign-card, .rock-card, .comms-row, .signout-link,
+  .autofocus-app .row, .autofocus-app .star, .autofocus-app .mini,
+  .autofocus-app .btn-ghost, .autofocus-app .chips button,
+  .autofocus-app .check, .autofocus-app .tg, .autofocus-app .ghead {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Global press scale — buttons + pills */
+  button:active:not(:disabled), .tab:active, .mode-btn:active,
+  .tqf-btn:active, .review-btn:active, .triage-btn:active,
+  .refresh-btn:active, .filter-btn:active, .triage-edit-btn:active,
+  .triage-myday-btn:active, .chat-newconv-btn:active,
+  .daily-brief-refresh:active, .daily-brief-toggle:active,
+  .cc-setup-btn:active, .triage-modal-close:active, .time-chip:active,
+  .ms-item:active, .review-section-head:active, .signout-link:active,
+  .autofocus-app .star:active, .autofocus-app .mini:active,
+  .autofocus-app .btn-ghost:active, .autofocus-app .chips button:active,
+  .autofocus-app .tg:active {
+    transform: scale(0.95);
+    transition: transform 0.08s ease-out;
+  }
+  .triage-fab:active { transform: scale(0.9) !important; transition: transform 0.08s ease-out; }
+  /* Larger surfaces get a subtler dip */
+  .quest-item:active, .review-item:active, .campaign-card:active,
+  .rock-card:active, .comms-row:active, .autofocus-app .row:active {
+    transform: scale(0.992);
+    transition: transform 0.08s ease-out;
+  }
+
+  /* Checkbox spring on check */
+  .quest-check, .triage-check {
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .quest-check.checked, .triage-check.checked {
+    animation: lrl-check-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .quest-check.checked::after, .triage-check.checked::after {
+    display: inline-block;
+    animation: lrl-check-draw 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes lrl-check-pop {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(1.28); }
+    70%  { transform: scale(0.94); }
+    100% { transform: scale(1); }
+  }
+  @keyframes lrl-check-draw {
+    0%   { opacity: 0; transform: scale(0.3) rotate(-25deg); }
+    60%  { opacity: 1; transform: scale(1.15) rotate(5deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0); }
+  }
+
+  /* Autofocus native checkbox bounce */
+  .autofocus-app .check { transition: background 0.2s ease, border-color 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .autofocus-app .check:checked { animation: lrl-check-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .autofocus-app .check:checked::after { animation: lrl-check-draw 0.32s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+  /* Strikethrough sweep over the task name when marked done */
+  .quest-item .quest-text { position: relative; display: inline-block; }
+  .quest-item.done .quest-text { text-decoration: none; }
+  .quest-item.done .quest-text::after {
+    content: '';
+    position: absolute;
+    left: 0; top: 52%;
+    width: 100%; height: 1.5px;
+    background: currentColor;
+    transform-origin: left center;
+    animation: lrl-strike 0.42s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+  }
+  @keyframes lrl-strike {
+    0% { transform: scaleX(0); }
+    100% { transform: scaleX(1); }
+  }
+
+  /* Row collapse-out when item is cleared (review / quest) */
+  .quest-item.lrl-clearing, .review-item.lrl-clearing, .autofocus-app .row.lrl-clearing {
+    animation: lrl-row-clear 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  @keyframes lrl-row-clear {
+    0%   { opacity: 1; max-height: 240px; transform: translateX(0) scale(1); }
+    40%  { opacity: 0; transform: translateX(40px) scale(0.96); }
+    100% { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; margin-top: 0; margin-bottom: 0; border-width: 0; transform: translateX(40px) scale(0.96); }
+  }
+
+  /* Streak / counter flip-up */
+  .lrl-num-flip {
+    display: inline-block;
+    animation: lrl-num-flip 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes lrl-num-flip {
+    0%   { transform: translateY(0) scale(1); }
+    35%  { transform: translateY(-10px) scale(1.18); color: var(--lime-light); text-shadow: 0 0 18px rgba(167,193,64,0.6); }
+    70%  { transform: translateY(3px) scale(0.94); }
+    100% { transform: translateY(0) scale(1); }
+  }
+
+  /* Toast */
+  #lrl-toast-root {
+    position: fixed;
+    bottom: 96px;
+    left: 0; right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+    z-index: 200;
+    padding: 0 16px;
+  }
+  .lrl-toast {
+    background: linear-gradient(180deg, #1a2240, #131a30);
+    color: var(--navy);
+    border: 1px solid rgba(167,193,64,0.28);
+    border-radius: 11px;
+    padding: 11px 18px 11px 16px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    box-shadow: 0 16px 36px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
+    transform: translateY(40px);
+    opacity: 0;
+    transition: transform 0.36s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.22s ease;
+    pointer-events: auto;
+    max-width: 440px;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .lrl-toast.show { transform: translateY(0); opacity: 1; }
+  .lrl-toast.hide { transform: translateY(20px); opacity: 0; }
+  .lrl-toast.success { border-color: rgba(167,193,64,0.55); }
+  .lrl-toast.success::before { content: '✓'; color: var(--lime); font-weight: 700; font-size: 14px; }
+  .lrl-toast.error { border-color: rgba(255,122,107,0.55); color: #ffd5cf; }
+  .lrl-toast.error::before { content: '✕'; color: #ff7a6b; font-weight: 700; font-size: 14px; }
+  @media (max-width: 600px) {
+    #lrl-toast-root { bottom: 82px; }
+    .lrl-toast { font-size: 12.5px; padding: 10px 14px 10px 12px; }
+  }
+
+  /* Confetti burst (inbox zero) */
+  .lrl-confetti {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 150;
+    overflow: hidden;
+  }
+  .lrl-confetti-piece {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 8px;
+    height: 14px;
+    border-radius: 2px;
+    opacity: 0;
+    animation: lrl-confetti-fly 1.5s cubic-bezier(0.18, 0.6, 0.25, 1) forwards;
+    --dx: 0px;
+    --dy: 0px;
+    --rot: 0deg;
+  }
+  @keyframes lrl-confetti-fly {
+    0%   { transform: translate(-50%, -50%) rotate(0deg) scale(0.4); opacity: 0; }
+    8%   { opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 240px)) rotate(var(--rot)) scale(0.6); opacity: 0; }
+  }
+
+  /* Inbox-zero celebrate card spring entry */
+  .review-celebrate { animation: lrl-celebrate-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes lrl-celebrate-in {
+    0%   { transform: scale(0.6); opacity: 0; }
+    60%  { transform: scale(1.08); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Tab content fade on switch */
+  .tab-content.active { animation: lrl-fade-in 0.26s ease-out; }
+  @keyframes lrl-fade-in {
+    0%   { opacity: 0; transform: translateY(4px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Modal spring open */
+  .triage-modal.open .triage-modal-content { animation: lrl-modal-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes lrl-modal-pop {
+    0%   { transform: scale(0.9) translateY(20px); opacity: 0; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  @media (max-width: 600px) {
+    .triage-modal.open .triage-modal-content { animation: lrl-modal-slide 0.32s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    @keyframes lrl-modal-slide {
+      0%   { transform: translateY(100%); }
+      100% { transform: translateY(0); }
+    }
+  }
+
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 </style>
 </head>
 <body>
@@ -820,6 +1038,89 @@ window.openNotion = function(url){
   if (link && link.startsWith('notion://')) { window.location.href = link; return; }
   window.open(url, '_blank', 'noopener');
 };
+
+// =========== PREMIUM POLISH: haptics, toast, confetti, number flip ===========
+window.lrl = (function(){
+  let _root = null;
+  function root(){
+    if (_root && document.body.contains(_root)) return _root;
+    _root = document.createElement('div');
+    _root.id = 'lrl-toast-root';
+    document.body.appendChild(_root);
+    return _root;
+  }
+  function haptic(kind){
+    try {
+      if (!navigator.vibrate) return;
+      if (kind === 'success')      navigator.vibrate([14, 30, 18]);
+      else if (kind === 'error')   navigator.vibrate([24, 40, 24, 40, 24]);
+      else if (kind === 'celebrate') navigator.vibrate([15, 50, 25, 50, 35, 50, 45]);
+      else                         navigator.vibrate(8);
+    } catch(e){}
+  }
+  function toast(msg, variant){
+    const el = document.createElement('div');
+    el.className = 'lrl-toast' + (variant ? ' ' + variant : '');
+    el.textContent = msg;
+    root().appendChild(el);
+    requestAnimationFrame(() => el.classList.add('show'));
+    const ttl = variant === 'error' ? 4400 : 2400;
+    setTimeout(() => {
+      el.classList.remove('show');
+      el.classList.add('hide');
+      setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 380);
+    }, ttl);
+    if (variant === 'error') haptic('error');
+    else if (variant === 'success') haptic('success');
+    return el;
+  }
+  function confetti(opts){
+    opts = opts || {};
+    const colors = opts.colors || ['#a7c140', '#c5dc78', '#f5f5f7', '#5d9cec', '#a7c0e8', '#d4a854'];
+    const count = opts.count || 70;
+    const burst = document.createElement('div');
+    burst.className = 'lrl-confetti';
+    for (let i = 0; i < count; i++){
+      const p = document.createElement('div');
+      p.className = 'lrl-confetti-piece';
+      const ang = Math.random() * Math.PI * 2;
+      const dist = 110 + Math.random() * 280;
+      const dx = Math.cos(ang) * dist;
+      const dy = Math.sin(ang) * dist - 130;
+      const rot = (Math.random() - 0.5) * 720;
+      const dur = 1050 + Math.random() * 700;
+      const delay = Math.random() * 140;
+      p.style.background = colors[Math.floor(Math.random() * colors.length)];
+      p.style.setProperty('--dx', dx + 'px');
+      p.style.setProperty('--dy', dy + 'px');
+      p.style.setProperty('--rot', rot + 'deg');
+      p.style.animationDuration = dur + 'ms';
+      p.style.animationDelay = delay + 'ms';
+      p.style.width = (5 + Math.random() * 5) + 'px';
+      p.style.height = (10 + Math.random() * 8) + 'px';
+      burst.appendChild(p);
+    }
+    document.body.appendChild(burst);
+    setTimeout(() => { if (burst.parentNode) burst.parentNode.removeChild(burst); }, 2400);
+    haptic('celebrate');
+  }
+  function flipNumber(el, newVal){
+    if (!el) return;
+    const val = String(newVal);
+    if (el.textContent === val) { return; }
+    el.classList.remove('lrl-num-flip');
+    void el.offsetWidth; // restart animation
+    el.textContent = val;
+    el.classList.add('lrl-num-flip');
+    setTimeout(() => el.classList.remove('lrl-num-flip'), 640);
+  }
+  function clearRow(el, cb){
+    if (!el) { if (cb) cb(); return; }
+    el.classList.add('lrl-clearing');
+    setTimeout(() => { if (cb) cb(); }, 480);
+  }
+  return { haptic, toast, confetti, flipNumber, clearRow };
+})();
 </script>
 
 <div class="app">
@@ -1297,11 +1598,13 @@ el('list').addEventListener('click',e=>{
   const act=btn.dataset.act;
   if(act==='done'){
     const nd=!state.done[id];state.done[id]=nd;state.touched[id]=new Date().toISOString();saveState();render();
-    afPatch(id,{status:nd?'Done':'Doing'}).catch(err=>{state.done[id]=!nd;saveState();render();alert('Sync failed: '+err.message);});
+    if (nd) window.lrl.haptic('success'); else window.lrl.haptic('tap');
+    afPatch(id,{status:nd?'Done':'Doing'}).catch(err=>{state.done[id]=!nd;saveState();render();window.lrl.toast('Sync failed: '+err.message,'error');});
   }
   else if(act==='star'){
     const t=task(id);const nv=!t.myDay;state.edits[id]=Object.assign({},state.edits[id],{myDay:nv});state.touched[id]=new Date().toISOString();saveState();render();
-    afPatch(id,{myDay:nv}).catch(err=>{state.edits[id].myDay=!nv;saveState();render();alert('Sync failed: '+err.message);});
+    window.lrl.haptic('tap');
+    afPatch(id,{myDay:nv}).catch(err=>{state.edits[id].myDay=!nv;saveState();render();window.lrl.toast('Sync failed: '+err.message,'error');});
   }
   else if(act==='touch'){state.touched[id]=new Date().toISOString();saveState();render();}
   else if(act==='open'){const t=task(id);if(t.url)openNotion(t.url);}
@@ -1492,6 +1795,7 @@ document.getElementById('today-quests').addEventListener('click', async (e) => {
   if (act === 'check'){
     const prev = !!t.done;
     t.done = !prev;
+    if (t.done) window.lrl.haptic('success'); else window.lrl.haptic('tap');
     renderTodayQuests();
     item.classList.add('syncing');
     try {
@@ -1500,7 +1804,7 @@ document.getElementById('today-quests').addEventListener('click', async (e) => {
     } catch(err){
       t.done = prev;
       renderTodayQuests();
-      alert('Sync failed: ' + err.message);
+      window.lrl.toast('Sync failed: ' + err.message, 'error');
     }
     return;
   }
@@ -1525,11 +1829,12 @@ document.getElementById('today-quests').addEventListener('click', async (e) => {
       renderTodayQuests();
       try {
         await patchTask(id, { dueStart: newDate, dueEnd: null });
+        window.lrl.haptic('success');
       } catch(err){
         t.dueStart = prevStart;
         t.dueEnd = prevEnd;
         renderTodayQuests();
-        alert('Sync failed: ' + err.message);
+        window.lrl.toast('Sync failed: ' + err.message, 'error');
       }
     });
     dueEl.replaceWith(input);
@@ -1729,6 +2034,7 @@ function updateReviewStreak(){
   return { days: streakState.days || 0, atZero, lastZero: streakState.lastZeroDate };
 }
 
+let _lastStreakDisplay = null; // tracks the last rendered number for flip animation
 function renderReviewStreak(){
   const el = document.getElementById('review-streak');
   if (!el) return;
@@ -1738,15 +2044,31 @@ function renderReviewStreak(){
   if (totals.total === 0){
     el.className = 'review-streak';
     el.innerHTML = `<span style="opacity:0.6">Nothing to review yet — loading or already clean.</span>`;
+    _lastStreakDisplay = null;
     return;
   }
+  let newDisplay, html;
   if (remaining === 0){
     el.className = 'review-streak zero';
-    el.innerHTML = `<span class="review-streak-num">${streak.days || 1}</span><span>days at Inbox Zero. Clean slate.</span>`;
+    newDisplay = streak.days || 1;
+    html = `<span class="review-streak-num" id="rs-num">${newDisplay}</span><span>days at Inbox Zero. Clean slate.</span>`;
   } else {
     el.className = 'review-streak';
-    el.innerHTML = `<span class="review-streak-num">${remaining}</span><span>flagged item${remaining===1?'':'s'} to clear${streak.days > 0 ? ` · last streak: ${streak.days}d` : ''}</span>`;
+    newDisplay = remaining;
+    html = `<span class="review-streak-num" id="rs-num">${newDisplay}</span><span>flagged item${remaining===1?'':'s'} to clear${streak.days > 0 ? ` · last streak: ${streak.days}d` : ''}</span>`;
   }
+  el.innerHTML = html;
+  // If number changed from last render, trigger flip on the just-rendered span
+  if (_lastStreakDisplay !== null && _lastStreakDisplay !== newDisplay){
+    const numEl = document.getElementById('rs-num');
+    if (numEl){
+      numEl.classList.remove('lrl-num-flip');
+      void numEl.offsetWidth;
+      numEl.classList.add('lrl-num-flip');
+      setTimeout(() => numEl.classList.remove('lrl-num-flip'), 640);
+    }
+  }
+  _lastStreakDisplay = newDisplay;
 }
 
 function projectOptionsHtml(currentId){
@@ -1857,12 +2179,17 @@ function attachReviewHandlers(){
       el.disabled = true; el.textContent = '…';
       try {
         await fetch(`/api/tasks/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status: 'Done' }) });
-        markCleared(id); renderReview();
-      } catch(err){ alert('Failed: '+err.message); el.disabled = false; el.textContent = '✓ Done'; }
+        window.lrl.haptic('success');
+        clearReviewRow(el, id);
+      } catch(err){ window.lrl.toast('Failed: '+err.message,'error'); el.disabled = false; el.textContent = '✓ Done'; }
     });
   });
   body.querySelectorAll('[data-act="snooze"]').forEach(el => {
-    el.addEventListener('click', (e) => { e.stopPropagation(); markCleared(el.dataset.id); renderReview(); });
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.lrl.haptic('tap');
+      clearReviewRow(el, el.dataset.id);
+    });
   });
   body.querySelectorAll('[data-act="set-date"]').forEach(el => {
     el.addEventListener('change', async (e) => {
@@ -1871,8 +2198,9 @@ function attachReviewHandlers(){
       const v = el.value;
       try {
         await fetch(`/api/tasks/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dueStart: v || null }) });
-        markCleared(id); renderReview();
-      } catch(err){ alert('Failed: '+err.message); }
+        window.lrl.haptic('success');
+        clearReviewRow(el, id);
+      } catch(err){ window.lrl.toast('Failed: '+err.message,'error'); }
     });
   });
   body.querySelectorAll('[data-act="set-project"]').forEach(el => {
@@ -1882,12 +2210,11 @@ function attachReviewHandlers(){
       const projectId = el.value;
       if (!projectId) return;
       try {
-        // PATCH endpoint doesn't support project. Use a triage apply with update_task as a workaround.
-        const r = await fetch('/api/ai/triage/apply', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actions: [{ type: 'update_task', taskId: id, label: 'set project' }] }) });
-        // The triage update_task endpoint doesn't support project yet; fall back to opening Notion
-        // For now, mark cleared and tell the user to assign in Notion
-        markCleared(id); renderReview();
-      } catch(err){ alert('Failed: '+err.message); }
+        // PATCH endpoint doesn't support project yet — mark cleared locally for v1.
+        await fetch('/api/ai/triage/apply', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actions: [{ type: 'update_task', taskId: id, label: 'set project' }] }) });
+        window.lrl.haptic('success');
+        clearReviewRow(el, id);
+      } catch(err){ window.lrl.toast('Failed: '+err.message,'error'); }
     });
   });
   body.querySelectorAll('[data-act="set-status"]').forEach(el => {
@@ -1898,9 +2225,34 @@ function attachReviewHandlers(){
       if (!v) return;
       try {
         await fetch(`/api/tasks/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status: v }) });
-        markCleared(id); renderReview();
-      } catch(err){ alert('Failed: '+err.message); }
+        window.lrl.haptic('success');
+        clearReviewRow(el, id);
+      } catch(err){ window.lrl.toast('Failed: '+err.message,'error'); }
     });
+  });
+}
+
+// Animate the row out, then mark cleared + re-render. If this clears the last
+// flagged item across all sections, fire confetti.
+function clearReviewRow(controlEl, id){
+  const row = controlEl.closest('.review-item');
+  const willHitZero = (() => {
+    if (!REVIEW_DATA) return false;
+    const cleared = getClearedSet();
+    let remaining = 0;
+    for (const s of REVIEW_SECTIONS){
+      const items = reviewModeFilter(REVIEW_DATA[s.key] || []);
+      remaining += items.filter(i => i.id !== id && !cleared.has(i.id)).length;
+    }
+    return remaining === 0;
+  })();
+  window.lrl.clearRow(row, () => {
+    markCleared(id);
+    renderReview();
+    if (willHitZero){
+      window.lrl.confetti({ count: 90 });
+      window.lrl.toast('Inbox zero. Clean slate.', 'success');
+    }
   });
 }
 
@@ -2197,7 +2549,7 @@ async function applyChatPlan(msgIdx){
       body: JSON.stringify({ actions: selected }),
     });
     const d = await r.json();
-    if (d.error) { alert('Error: ' + d.error); return; }
+    if (d.error) { window.lrl.toast('Error: ' + d.error, 'error'); return; }
     let resIdx = 0;
     plan.actions = plan.actions.map((a, i) => {
       if (!triageSelected.has(i)) return a;
@@ -2210,7 +2562,7 @@ async function applyChatPlan(msgIdx){
     saveChatHistory();
     renderChatMessages();
   } catch (e) {
-    alert('Error: ' + e.message);
+    window.lrl.toast('Error: ' + e.message, 'error');
   }
 }
 
@@ -2442,11 +2794,13 @@ async function unlockMilestone(msId){
   try {
     const r = await fetch(`/api/tasks/${msId}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status: 'Done' }) });
     if (!r.ok) throw new Error('sync failed');
+    window.lrl.haptic('success');
+    window.lrl.confetti({ count: 50 });
   } catch (err){
     ms.done = false;
     goal.progress.done -= 1;
     renderCampaigns();
-    alert('Could not unlock: ' + err.message);
+    window.lrl.toast('Could not unlock: ' + err.message, 'error');
   }
 }
 window.unlockMilestone = unlockMilestone;
