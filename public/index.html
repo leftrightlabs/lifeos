@@ -80,11 +80,15 @@
   .tab-content { display: none; }
   .tab-content.active { display: block; }
 
-  .section-label { font-size: 11px; letter-spacing: 0.18em; color: var(--navy-dim); text-transform: uppercase; font-weight: 600; margin-bottom: 12px; }
+  .section-label { display: none; }
 
-  .page-title { font-family: var(--font-display); font-weight: 700; font-size: 48px; color: var(--navy); text-transform: capitalize; margin-bottom: 4px; line-height: 1; }
-  .page-title span { display: inline-block; transform: scaleY(1.2); transform-origin: top left; }
-  .page-subtitle { color: var(--navy-dim); font-size: 14px; margin-bottom: 28px; }
+  .page-title { font-family: var(--font-body); font-weight: 700; font-size: 17px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--navy); margin-bottom: 10px; line-height: 1.2; }
+  .page-title span { display: inline; transform: none; }
+  .page-subtitle { color: var(--navy-dim); font-size: 13px; margin-bottom: 22px; line-height: 1.5; }
+  @media (max-width: 600px) {
+    .page-title { font-size: 15px; letter-spacing: 0.18em; }
+    .page-subtitle { font-size: 12.5px; margin-bottom: 18px; }
+  }
 
   /* ROCKS BAR */
   .rocks-bar { background: var(--white); border-left: 4px solid var(--lime); border-radius: 4px; padding: 20px 24px; margin-bottom: 28px; box-shadow: 0 1px 3px rgba(17,34,72,0.04); }
@@ -550,7 +554,6 @@
 
   @media (max-width: 768px) {
     .app { padding: 16px; }
-    .page-title { font-size: 32px; }
     .quest-row { grid-template-columns: 1fr; }
     .chapter-header { flex-direction: column; gap: 12px; }
     .xp-display { text-align: left; }
