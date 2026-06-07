@@ -634,6 +634,26 @@ function chicagoTodayISODate() {
 const briefCache = new Map();
 const BRIEF_TTL_MS = 1000 * 60 * 60 * 4;
 
+async function fetchActiveProjects() {
+  if (!notion) return [];
+  const [work, life] = await Promise.all([
+    notion.dataSources.query({
+      data_source_id: WORK_PROJECTS_DS,
+      filter: { property: 'Archived', checkbox: { equals: false } },
+      page_size: 100,
+    }).catch(() => ({ results: [] })),
+    notion.dataSources.query({
+      data_source_id: LIFE_PROJECTS_DS,
+      filter: { property: 'Archived', checkbox: { equals: false } },
+      page_size: 100,
+    }).catch(() => ({ results: [] })),
+  ]);
+  return [
+    ...work.results.map((p) => ({ id: p.id, source: 'work', name: p.properties.Name?.title?.[0]?.plain_text || '(untitled)' })),
+    ...life.results.map((p) => ({ id: p.id, source: 'personal', name: p.properties.Name?.title?.[0]?.plain_text || '(untitled)' })),
+  ];
+}
+
 async function gatherTodayContext() {
   const [calEvents, workMyDay, lifeMyDay, goals] = await Promise.all([
     Promise.all(configuredAccounts().map((a) => fetchToday(a).catch(() => []))).then((r) => r.flat()),
@@ -745,7 +765,7 @@ const TRIAGE_JSON_HINT = `Return ONLY valid JSON in this exact shape, no prose, 
 {
   "intro": "one sentence, warm casual tone",
   "actions": [
-    { "type": "create_task", "label": "short summary", "source": "work"|"personal", "name": "task name", "dueStart": "YYYY-MM-DD" (optional), "myDay": true|false (optional), "priority": "URGENT"|"HIGH"|"NORMAL" (optional) },
+    { "type": "create_task", "label": "short summary", "source": "work"|"personal", "name": "task name", "dueStart": "YYYY-MM-DD" (optional), "myDay": true|false (optional), "priority": "URGENT"|"HIGH"|"NORMAL" (optional), "projectId": "uuid from the project list below" (optional — only when the task clearly relates to a named project) },
     { "type": "create_event", "label": "short summary", "account": "work"|"personal", "title": "event title", "start": "ISO datetime with TZ offset, or YYYY-MM-DD if allDay", "end": "same format", "allDay": true|false (optional), "location": "optional string" }
   ]
 }`;
@@ -757,7 +777,17 @@ app.post('/api/ai/triage', async (req, res) => {
   try {
     const todayLabel = chicagoTodayDateLabel();
     const todayISO = chicagoTodayISODate();
-    const userPrompt = `Today is ${todayLabel} (${todayISO}).\n\nBraindump:\n"""\n${text.trim()}\n"""\n\n${TRIAGE_JSON_HINT}`;
+    const projects = await cached('triage-projects', fetchActiveProjects);
+    const workProjects = projects.filter((p) => p.source === 'work');
+    const lifeProjects = projects.filter((p) => p.source === 'personal');
+    const projectList = [
+      'Work projects (source: "work"):',
+      ...workProjects.map((p) => `  - ${p.id}: ${p.name}`),
+      '',
+      'Personal projects (source: "personal"):',
+      ...lifeProjects.map((p) => `  - ${p.id}: ${p.name}`),
+    ].join('\n');
+    const userPrompt = `Today is ${todayLabel} (${todayISO}).\n\n${projectList}\n\nBraindump:\n"""\n${text.trim()}\n"""\n\nOnly set projectId when the task clearly relates to a named project above. Match the source field to that project's source.\n\n${TRIAGE_JSON_HINT}`;
     const msg = await anthropic.messages.create({
       model: 'claude-opus-4-8',
       max_tokens: 4000,
@@ -774,7 +804,7 @@ app.post('/api/ai/triage', async (req, res) => {
     let plan;
     try { plan = JSON.parse(raw); }
     catch (e) { return res.status(500).json({ error: 'invalid JSON from model: ' + e.message, raw }); }
-    res.json({ plan });
+    res.json({ plan, projects });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -783,7 +813,7 @@ app.post('/api/ai/triage', async (req, res) => {
 const TASK_DS_BY_SOURCE = { work: WORK_TASKS_DS, personal: LIFE_TASKS_DS };
 const PROJECT_PROP_BY_SOURCE = { work: 'Project', personal: 'Project' };
 
-async function createNotionTask({ source, name, dueStart, myDay, priority }) {
+async function createNotionTask({ source, name, dueStart, myDay, priority, projectId }) {
   const dsId = TASK_DS_BY_SOURCE[source];
   if (!dsId) throw new Error(`unknown source: ${source}`);
   const properties = {
@@ -793,6 +823,7 @@ async function createNotionTask({ source, name, dueStart, myDay, priority }) {
   if (myDay) properties['My Day'] = { checkbox: true };
   if (dueStart) properties.Due = { date: { start: dueStart, end: null } };
   if (priority) properties['Priority 2'] = { select: { name: priority } };
+  if (projectId) properties.Project = { relation: [{ id: projectId }] };
   if (source === 'work') {
     properties.Assigned = { people: [{ id: GRETCHEN_USER_ID }] };
   }

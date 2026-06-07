@@ -1399,6 +1399,7 @@ function updateHeaderTimestamp(){
 
 // Triage tab
 let triagePlan = null;
+let triageProjects = null;
 let triageSelected = new Set();
 
 function renderTriagePlan(){
@@ -1414,6 +1415,10 @@ function renderTriagePlan(){
     if (a.dueStart) meta.push(`due ${a.dueStart}`);
     if (a.myDay) meta.push('My Day');
     if (a.priority) meta.push(a.priority);
+    if (a.projectId && triageProjects) {
+      const proj = triageProjects.find(p => p.id === a.projectId);
+      if (proj) meta.push('→ ' + proj.name);
+    }
     if (a.start && a.type === 'create_event') meta.push(a.allDay ? `${a.start} all-day` : new Date(a.start).toLocaleString('en-US',{timeZone:'America/Chicago',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}));
     if (a.location) meta.push(a.location);
     const metaLine = meta.length ? `<div class="triage-meta">${escapeHtml(meta.join(' · '))}</div>` : '';
@@ -1468,6 +1473,7 @@ async function planTriage(){
     const d = await r.json();
     if (d.error) { status.textContent = 'Error: ' + d.error; return; }
     triagePlan = d.plan;
+    triageProjects = d.projects || null;
     triageSelected = new Set((triagePlan.actions || []).map((_, i) => i));
     renderTriagePlan();
   } catch (e) {
