@@ -210,6 +210,19 @@
   .triage-meta a:hover { text-decoration: underline; }
   .triage-apply-row { display: flex; gap: 10px; align-items: center; margin-top: 16px; }
   .triage-summary { font-size: 12px; color: var(--navy-dim); margin-top: 10px; }
+  .triage-edit-btn { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: rgba(245,245,247,0.55); font-size: 10px; padding: 3px 9px; border-radius: 999px; cursor: pointer; font-family: var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; }
+  .triage-edit-btn:hover { color: var(--lime); border-color: var(--lime); }
+  .triage-edit-form { margin-top: 10px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 6px; display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+  .triage-edit-form .field-full { grid-column: 1 / -1; }
+  .triage-edit-form label { display: block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(245,245,247,0.5); margin-bottom: 3px; font-weight: 600; }
+  .triage-edit-form input, .triage-edit-form select { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: var(--navy); padding: 6px 8px; border-radius: 4px; font-family: var(--font-body); font-size: 12px; color-scheme: dark; }
+  .triage-edit-form input:focus, .triage-edit-form select:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
+  .triage-edit-form .checkbox-row { display: flex; gap: 14px; align-items: center; }
+  .triage-edit-form .checkbox-row label { display: inline-flex; align-items: center; gap: 6px; margin: 0; text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--navy); }
+  .triage-edit-actions { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+  .triage-edit-actions button { font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 999px; cursor: pointer; border: none; }
+  .triage-edit-actions .save { background: var(--lime); color: var(--navy-accent); }
+  .triage-edit-actions .cancel { background: transparent; color: var(--navy-dim); border: 1px solid rgba(255,255,255,0.15); }
   .sidequest-icon { width: 28px; height: 28px; background: var(--navy); color: var(--lime); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; font-size: 14px; }
 
   .stage-row { display: grid; grid-template-columns: 140px 1fr 80px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--cream-2); }
@@ -1401,6 +1414,56 @@ function updateHeaderTimestamp(){
 let triagePlan = null;
 let triageProjects = null;
 let triageSelected = new Set();
+let triageEditing = null; // index of action being edited
+
+function buildEditForm(a, i){
+  const projectsForSource = (triageProjects || []).filter(p => true); // show all; switching project can flip source
+  const projOptions = ['<option value="">— no project —</option>']
+    .concat(projectsForSource.map(p => `<option value="${p.id}" data-source="${p.source}" ${a.projectId === p.id ? 'selected' : ''}>[${p.source}] ${escapeHtml(p.name)}</option>`))
+    .join('');
+  if (a.type === 'create_task'){
+    return `<div class="triage-edit-form">
+      <div class="field-full"><label>Name</label><input type="text" data-f="name" value="${escapeHtml(a.name || '')}"/></div>
+      <div><label>Source</label><select data-f="source">
+        <option value="work" ${a.source === 'work' ? 'selected' : ''}>work</option>
+        <option value="personal" ${a.source === 'personal' ? 'selected' : ''}>personal</option>
+      </select></div>
+      <div><label>Due date</label><input type="date" data-f="dueStart" value="${a.dueStart || ''}"/></div>
+      <div class="field-full"><label>Project</label><select data-f="projectId">${projOptions}</select></div>
+      <div><label>Priority</label><select data-f="priority">
+        <option value="" ${!a.priority ? 'selected' : ''}>(none)</option>
+        <option value="URGENT" ${a.priority === 'URGENT' ? 'selected' : ''}>URGENT</option>
+        <option value="HIGH" ${a.priority === 'HIGH' ? 'selected' : ''}>HIGH</option>
+        <option value="NORMAL" ${a.priority === 'NORMAL' ? 'selected' : ''}>NORMAL</option>
+      </select></div>
+      <div class="checkbox-row"><label><input type="checkbox" data-f="myDay" ${a.myDay ? 'checked' : ''}/> My Day</label></div>
+      <div class="triage-edit-actions">
+        <button class="cancel" data-act="cancel-edit">Cancel</button>
+        <button class="save" data-act="save-edit" data-idx="${i}">Save</button>
+      </div>
+    </div>`;
+  } else {
+    // create_event
+    const startVal = a.allDay ? (a.start || '') : (a.start ? a.start.slice(0, 16) : '');
+    const endVal = a.allDay ? (a.end || '') : (a.end ? a.end.slice(0, 16) : '');
+    const startType = a.allDay ? 'date' : 'datetime-local';
+    return `<div class="triage-edit-form">
+      <div class="field-full"><label>Title</label><input type="text" data-f="title" value="${escapeHtml(a.title || '')}"/></div>
+      <div><label>Account</label><select data-f="account">
+        <option value="work" ${a.account === 'work' ? 'selected' : ''}>work</option>
+        <option value="personal" ${a.account === 'personal' ? 'selected' : ''}>personal</option>
+      </select></div>
+      <div class="checkbox-row"><label><input type="checkbox" data-f="allDay" ${a.allDay ? 'checked' : ''}/> All day</label></div>
+      <div><label>Start</label><input type="${startType}" data-f="start" value="${startVal}"/></div>
+      <div><label>End</label><input type="${startType}" data-f="end" value="${endVal}"/></div>
+      <div class="field-full"><label>Location</label><input type="text" data-f="location" value="${escapeHtml(a.location || '')}"/></div>
+      <div class="triage-edit-actions">
+        <button class="cancel" data-act="cancel-edit">Cancel</button>
+        <button class="save" data-act="save-edit" data-idx="${i}">Save</button>
+      </div>
+    </div>`;
+  }
+}
 
 function renderTriagePlan(){
   const wrap = document.getElementById('triage-plan');
@@ -1425,14 +1488,17 @@ function renderTriagePlan(){
     const resultLine = a._result ? `<div class="triage-meta"><a href="${a._result.url}" target="_blank" rel="noopener">→ open in ${a.type === 'create_task' ? 'Notion' : 'Calendar'}</a></div>` : '';
     const errLine = a._error ? `<div class="triage-meta" style="color:#ff7a6b">Error: ${escapeHtml(a._error)}</div>` : '';
     const appliedCls = a._result ? ' applied' : (a._error ? ' failed' : '');
+    const editBtn = (!a._result) ? `<button class="triage-edit-btn" data-act="edit" data-idx="${i}">Edit</button>` : '';
+    const editForm = (triageEditing === i) ? buildEditForm(a, i) : '';
     return `<div class="triage-action ${cls}${appliedCls}">
       <div class="triage-check ${checked}" data-idx="${i}"></div>
       <div class="triage-body">
-        <div class="triage-kind">${escapeHtml(kindLabel)}</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div class="triage-kind">${escapeHtml(kindLabel)}</div>${editBtn}</div>
         <div class="triage-label">${escapeHtml(a.label || '')}</div>
         ${metaLine}
         ${resultLine}
         ${errLine}
+        ${editForm}
       </div>
     </div>`;
   }).join('');
@@ -1446,6 +1512,50 @@ function renderTriagePlan(){
     el.addEventListener('click', () => {
       const i = parseInt(el.dataset.idx);
       if (triageSelected.has(i)) triageSelected.delete(i); else triageSelected.add(i);
+      renderTriagePlan();
+    });
+  });
+  document.querySelectorAll('[data-act="edit"]').forEach(el => {
+    el.addEventListener('click', () => {
+      triageEditing = parseInt(el.dataset.idx);
+      renderTriagePlan();
+    });
+  });
+  document.querySelectorAll('[data-act="cancel-edit"]').forEach(el => {
+    el.addEventListener('click', () => { triageEditing = null; renderTriagePlan(); });
+  });
+  document.querySelectorAll('[data-act="save-edit"]').forEach(el => {
+    el.addEventListener('click', () => {
+      const i = parseInt(el.dataset.idx);
+      const form = el.closest('.triage-edit-form');
+      const updates = {};
+      form.querySelectorAll('[data-f]').forEach(f => {
+        const key = f.dataset.f;
+        if (f.type === 'checkbox') updates[key] = f.checked;
+        else updates[key] = f.value || null;
+      });
+      // If project changed, flip source to match the project's source
+      if (updates.projectId && triageProjects){
+        const proj = triageProjects.find(p => p.id === updates.projectId);
+        if (proj && triagePlan.actions[i].type === 'create_task') updates.source = proj.source;
+      }
+      triagePlan.actions[i] = { ...triagePlan.actions[i], ...updates };
+      // Refresh label
+      const a = triagePlan.actions[i];
+      if (a.type === 'create_task'){
+        const projName = a.projectId ? (triageProjects.find(p => p.id === a.projectId)?.name || '') : '';
+        const bits = [`Task: ${a.name}`, '→', a.source];
+        if (a.dueStart) bits.push(`due ${a.dueStart}`);
+        if (a.myDay) bits.push('My Day');
+        if (a.priority) bits.push(a.priority);
+        if (projName) bits.push(`(${projName})`);
+        a.label = bits.join(' ');
+      } else {
+        const bits = [`Event: ${a.title}`, '→', a.account];
+        if (a.start) bits.push(a.allDay ? a.start : new Date(a.start).toLocaleString('en-US',{timeZone:'America/Chicago',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}));
+        a.label = bits.join(' ');
+      }
+      triageEditing = null;
       renderTriagePlan();
     });
   });
