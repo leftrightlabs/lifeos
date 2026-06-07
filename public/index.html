@@ -446,6 +446,11 @@
   .refresh-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--cream-2); color: var(--lime); border: 1px solid rgba(167,193,64,0.3); border-radius: 999px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
   .refresh-btn:hover { background: var(--lime-faint); color: var(--lime); border-color: var(--lime); }
   .refresh-btn.refreshing svg { animation: spin 1s linear infinite; }
+  @media (max-width: 600px) {
+    .refresh-btn span { display: none; }
+    .refresh-btn { padding: 6px 8px; }
+    #week-of { display: none; }
+  }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
   /* Comms tab */
