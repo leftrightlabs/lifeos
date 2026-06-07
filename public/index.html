@@ -770,6 +770,20 @@ window.storage = window.storage || {
 window.sendPrompt = window.sendPrompt || function(prompt) {
   console.log('[sendPrompt stub]', prompt);
 };
+// Notion URL → notion:// deep link so iOS PWA hands off to the Notion app
+window.toNotionLink = function(url){
+  if (!url) return url;
+  const m = url.match(/([a-f0-9]{32})/i);
+  if (m) return `notion://www.notion.so/${m[1]}`;
+  if (url.startsWith('https://www.notion.so/')) return url.replace('https://', 'notion://');
+  if (url.startsWith('https://app.notion.com/')) return url.replace('https://app.notion.com/', 'notion://www.notion.so/');
+  return url;
+};
+window.openNotion = function(url){
+  const link = window.toNotionLink(url);
+  if (link && link.startsWith('notion://')) { window.location.href = link; return; }
+  window.open(url, '_blank', 'noopener');
+};
 </script>
 
 <div class="app">
@@ -1194,7 +1208,7 @@ function row(t){
       +'<div class="acts">'
         +'<button class="star'+(star?' on':'')+'" data-act="star"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>'
         +'<button class="mini" data-act="touch">Touch</button>'
-        +'<a class="mini" href="'+t.url+'" target="_blank" rel="noopener">Open ↗</a></div></div></div>';
+        +'<a class="mini" href="'+window.toNotionLink(t.url)+'" rel="noopener">Open ↗</a></div></div></div>';
 }
 function isCollapsed(k){const m=ui.group;return !!(state.collapsed[m]&&state.collapsed[m][k]);}
 function setCollapsed(k,v){const m=ui.group;state.collapsed[m]=state.collapsed[m]||{};state.collapsed[m][k]=v;saveState();}
@@ -1344,23 +1358,9 @@ function fmtTime(iso){
 }
 function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
-// Convert Notion web URLs to notion:// deep links so iOS hands off to the Notion app
-// (avoids white-screen issue when LifeOS is launched as a home-screen PWA).
-function toNotionLink(url){
-  if (!url) return url;
-  // Match the 32-char hex page ID anywhere in the URL
-  const m = url.match(/([a-f0-9]{32})/i);
-  if (m) return `notion://www.notion.so/${m[1]}`;
-  if (url.startsWith('https://www.notion.so/')) return url.replace('https://', 'notion://');
-  if (url.startsWith('https://app.notion.com/')) return url.replace('https://app.notion.com/', 'notion://www.notion.so/');
-  return url;
-}
-function openNotion(url){
-  const link = toNotionLink(url);
-  // Use location for notion:// (iOS handles app handoff better this way than window.open)
-  if (link && link.startsWith('notion://')) { window.location.href = link; return; }
-  window.open(url, '_blank', 'noopener');
-}
+// toNotionLink + openNotion are defined globally in the top-of-body shim script
+const toNotionLink = window.toNotionLink;
+const openNotion = window.openNotion;
 
 function filterBySource(items, srcKey){
   if (mode === 'all') return items;
@@ -1705,7 +1705,8 @@ function renderPlanItemsHTML(plan, msgIdx, editable){
     if (a.start && a.type === 'create_event') meta.push(a.allDay ? `${a.start} all-day` : new Date(a.start).toLocaleString('en-US',{timeZone:'America/Chicago',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}));
     if (a.location) meta.push(a.location);
     const metaLine = meta.length ? `<div class="triage-meta">${escapeHtml(meta.join(' · '))}</div>` : '';
-    const resultLine = a._result ? `<div class="triage-meta"><a href="${a._result.url}" target="_blank" rel="noopener">→ open in ${a.type === 'create_task' ? 'Notion' : 'Calendar'}</a></div>` : '';
+    const resultUrl = a._result ? (a.type === 'create_event' ? a._result.url : window.toNotionLink(a._result.url)) : '';
+    const resultLine = a._result ? `<div class="triage-meta"><a href="${resultUrl}" rel="noopener">→ open in ${a.type === 'create_task' || a.type === 'update_task' ? 'Notion' : 'Calendar'}</a></div>` : '';
     const errLine = a._error ? `<div class="triage-meta" style="color:#ff7a6b">Error: ${escapeHtml(a._error)}</div>` : '';
     const appliedCls = a._result ? ' applied' : (a._error ? ' failed' : '');
     const editBtn = (editable && !a._result) ? `<button class="triage-edit-btn" data-act="edit" data-idx="${i}">Edit</button>` : '';
@@ -2094,7 +2095,7 @@ function renderMilestones() {
         <div style="display:flex;align-items:baseline;flex:1;min-width:0">
           <span class="rock-ms-num${isLife ? ' life' : ''}">${idx + 1}</span>
           <div style="min-width:0;flex:1">
-            <div class="rock-ms-title"><a href="${goal.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none">${escapeMs(goal.name)}</a></div>
+            <div class="rock-ms-title"><a href="${window.toNotionLink(goal.url)}" rel="noopener" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none">${escapeMs(goal.name)}</a></div>
             <div style="font-size:11px;color:rgba(245,245,247,0.45);margin-top:2px">${goal.status || 'Active'}${goal.targetDeadline ? ' · due '+goal.targetDeadline : ''}</div>
           </div>
         </div>
