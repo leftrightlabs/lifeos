@@ -160,10 +160,20 @@
   .tag-r3 { background: rgba(212,144,49,0.2); color: var(--warn); }
   .tag-r4 { background: rgba(17,34,72,0.1); color: var(--navy); }
 
-  .chapter-panel { background: var(--navy); color: var(--white); border-radius: 6px; padding: 24px; margin-bottom: 28px; position: relative; overflow: hidden; }
+  .chapter-panel { background: var(--navy); color: var(--white); border-radius: 6px; padding: 24px; margin-bottom: 28px; position: relative; overflow: hidden; transition: padding 0.2s ease, margin 0.2s ease; }
   .chapter-panel::before { content: ""; position: absolute; top: 0; right: 0; width: 200px; height: 200px; background: radial-gradient(circle, rgba(167,193,64,0.15) 0%, transparent 70%); pointer-events: none; }
   .chapter-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
   .chapter-label { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--lime); font-weight: 600; margin-bottom: 4px; }
+  .chapter-toggle { background: transparent; border: none; color: var(--lime); font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .chapter-toggle:hover { opacity: 0.85; }
+  #chapter-collapse-caret { display: inline-block; transition: transform 0.18s; }
+  .chapter-panel.collapsed { padding: 14px 24px; margin-bottom: 16px; }
+  .chapter-panel.collapsed #chapter-collapse-caret { transform: rotate(-90deg); }
+  .chapter-panel.collapsed #campaigns-container,
+  .chapter-panel.collapsed #milestones-container,
+  .chapter-panel.collapsed .chapter-progress { display: none; }
+  .chapter-panel.collapsed .chapter-header { margin-bottom: 0; }
+  .chapter-panel.collapsed .chapter-meta { margin-top: 8px; font-size: 11px; opacity: 0.9; }
   .chapter-name { font-family: var(--font-display); font-size: 32px; font-weight: 700; color: var(--white); line-height: 1; }
   .chapter-name span { display: inline-block; transform: scaleY(1.2); transform-origin: top left; }
   .xp-display { text-align: right; }
@@ -1205,10 +1215,12 @@ window.lrl = (function(){
       </div>
     </div>
 
-    <div class="chapter-panel">
+    <div class="chapter-panel" id="chapter-panel">
       <div class="chapter-header">
         <div style="flex:1">
-          <div class="chapter-label">Chapter 2 of 4 — Q2 2026</div>
+          <button class="chapter-toggle" id="chapter-toggle" title="Collapse/expand">
+            <span id="chapter-collapse-caret">▾</span> Chapter 2 of 4 — Q2 2026
+          </button>
           <div id="campaigns-container"></div>
           <div id="milestones-container" class="milestones-panel"></div>
         </div>
@@ -1678,6 +1690,13 @@ function setBriefCollapsed(collapsed){
   if (!wrap) return;
   wrap.classList.toggle('collapsed', collapsed);
   localStorage.setItem('lrl-brief-collapsed', collapsed ? '1' : '0');
+}
+
+function setChapterCollapsed(collapsed){
+  const wrap = document.getElementById('chapter-panel');
+  if (!wrap) return;
+  wrap.classList.toggle('collapsed', collapsed);
+  localStorage.setItem('lrl-chapter-collapsed', collapsed ? '1' : '0');
 }
 
 async function fetchComms(){
@@ -2673,8 +2692,14 @@ document.addEventListener('keydown', (e) => {
     const wrap = document.getElementById('daily-brief');
     setBriefCollapsed(!wrap.classList.contains('collapsed'));
   });
-  // Restore collapsed state
+  const chapterToggle = document.getElementById('chapter-toggle');
+  if (chapterToggle) chapterToggle.addEventListener('click', () => {
+    const wrap = document.getElementById('chapter-panel');
+    setChapterCollapsed(!wrap.classList.contains('collapsed'));
+  });
+  // Restore collapsed states
   if (localStorage.getItem('lrl-brief-collapsed') === '1') setBriefCollapsed(true);
+  if (localStorage.getItem('lrl-chapter-collapsed') === '1') setChapterCollapsed(true);
 })();
 </script>
 
