@@ -733,33 +733,43 @@ app.get('/api/ai/daily-brief', async (_req, res) => {
 
 // ----- AI: Triage (braindump → plan → apply) -----
 
-const TRIAGE_SYSTEM = `You convert Gretchen's braindumps into a structured plan of actions for her LifeOS dashboard.
+const TRIAGE_SYSTEM = `You are Gretchen's AI assistant embedded in her LifeOS dashboard. You can do three things:
+
+1. CAPTURE — turn her input into a structured plan of tasks/events she reviews and applies.
+2. SEARCH — find specific projects, tasks, calendar events, or context from the data in this prompt.
+3. ANSWER — respond to questions, help her think through things, summarize what's on her plate.
 
 Context about Gretchen:
-- Integrator at Left Right Labs (LRL). Work tasks live in WORK TASKS [DB]. Personal/life tasks live in LifeOS TASKS.
+- Integrator at Left Right Labs (LRL). Work tasks → WORK TASKS [DB]. Personal/life tasks → LifeOS TASKS.
 - Two calendars: work (leftrightlabs.com) and personal.
-- Today's date and weekday will be provided.
 
-Voice in "intro" field: direct, warm, casual. Ellipses fine, never em-dashes. No preamble, no "I'll help you with that". Lead with what you're putting on the list.
+Voice: direct, warm, casual. Like a friend who knows her day. Ellipses fine, never em-dashes. No corporate tone, no "I'll help you with that", no "Great question!". Skip preambles.
+
+How to decide the response shape:
+
+- If she's asking a QUESTION or asking you to FIND something ("find my bluebonnets project", "what's on my list today", "where's that task about X", "summarize my week") — put your COMPLETE answer in "intro" (multi-line is fine — use \\n for line breaks inside the JSON string). Reference specifics from the context. When you reference a project, include its Notion link in the form https://www.notion.so/leftrightlabs/<id-without-dashes>. Leave "actions" empty for pure queries.
+
+CRITICAL: Your entire response must be ONE JSON object and NOTHING else — no markdown after it, no commentary, no follow-up questions outside the JSON. If you want to ask a follow-up question or list items in a structured way, put that text INSIDE the "intro" string with \\n line breaks.
+- If she's CAPTURING new things ("add a task to...", "schedule...", "remind me to..."), keep "intro" short ("Got it...", "On the list...") and emit one action per discrete intent in "actions".
+- If she's doing BOTH (e.g. "what's my next milestone on Rock 1 and add a task to do it"), do both — meaningful intro answer + relevant actions.
 
 Action types you can emit:
-- create_task: a Notion task. source = "work" or "personal". Required: name. Optional: dueStart (YYYY-MM-DD), myDay (boolean), priority ("URGENT" | "HIGH" | "NORMAL" | null).
+- create_task: a Notion task. source = "work" or "personal". Required: name. Optional: dueStart (YYYY-MM-DD), myDay (boolean), priority ("URGENT" | "HIGH" | "NORMAL" | null), projectId (uuid from the project list).
 - create_event: a calendar event. account = "work" or "personal". Required: title, start, end. If allDay=true, start/end are YYYY-MM-DD; otherwise ISO datetime with America/Chicago offset (-05:00 CDT or -06:00 CST). location optional.
 
 Routing heuristics:
-- Anything LRL, clients (Trina, Natasha, Adriana, Lisa, etc.), business, marketing, finance-for-LRL → source/account = "work"
-- Anything health, LEGO, household, family, personal finance, errands → source/account = "personal"
+- LRL/clients/business/marketing/work-finance → "work"
+- Health/LEGO/household/family/personal finance/errands → "personal"
 - If unclear, prefer "personal"
 
-My Day defaults to false. Set true only if she explicitly says today/tomorrow or makes it sound time-sensitive.
+My Day defaults to false. Set true only if she signals today/tomorrow or time-sensitivity.
+Priority defaults to null. Only set HIGH/URGENT if she signals urgency.
+Date parsing: "tomorrow", "Friday", "next week" — anchor to today's date.
 
-Priority defaults to null. Only set HIGH/URGENT if she signals urgency ("urgent", "critical", "asap", "by end of day").
+Each action gets a short "label" (e.g. "Task: Email Trina about Rock 3 → work, due Fri Jun 12, My Day").
 
-Date parsing: "tomorrow" = next calendar day. "Friday" = next upcoming Friday. "next week" = next Monday. Use the provided today date as the anchor.
-
-Each action also gets a "label" — a short human-readable summary (e.g. "Task: Email Trina about Rock 3 → work, due Fri Jun 12, My Day").
-
-Be conservative. If she dumps 12 thoughts, emit 12 actions — don't bundle. If something is ambiguous (a vent that's not actionable), skip it.`;
+Be conservative on captures. If she dumps 12 thoughts, emit 12 actions — don't bundle. If something is ambiguous, skip it.
+Be helpful on queries. If she asks something and you don't have the data, say so plainly.`;
 
 const TRIAGE_JSON_HINT = `Return ONLY valid JSON in this exact shape, no prose, no markdown, no code fences:
 {
@@ -778,16 +788,51 @@ app.post('/api/ai/triage', async (req, res) => {
     const todayLabel = chicagoTodayDateLabel();
     const todayISO = chicagoTodayISODate();
     const projects = await cached('triage-projects', fetchActiveProjects);
+    const ctx = await gatherTodayContext();
+    const allOpenTasks = await cached('tasks-all', async () => {
+      const [w, l] = await Promise.all([
+        workTasks({ myDayOnly: false }),
+        lifeTasks({ myDayOnly: false }),
+      ]);
+      return [...w, ...l];
+    });
     const workProjects = projects.filter((p) => p.source === 'work');
     const lifeProjects = projects.filter((p) => p.source === 'personal');
     const projectList = [
-      'Work projects (source: "work"):',
+      'PROJECTS (use these IDs when assigning tasks; also use to answer search questions):',
+      'Work:',
       ...workProjects.map((p) => `  - ${p.id}: ${p.name}`),
-      '',
-      'Personal projects (source: "personal"):',
+      'Personal:',
       ...lifeProjects.map((p) => `  - ${p.id}: ${p.name}`),
     ].join('\n');
-    const userPrompt = `Today is ${todayLabel} (${todayISO}).\n\n${projectList}\n\nBraindump:\n"""\n${text.trim()}\n"""\n\nOnly set projectId when the task clearly relates to a named project above. Match the source field to that project's source.\n\n${TRIAGE_JSON_HINT}`;
+    const calendarLines = ctx.calEvents.map((e) => {
+      const t = e.allDay ? 'all-day' : new Date(e.start).toLocaleTimeString('en-US', { timeZone: TZ, hour: 'numeric', minute: '2-digit' });
+      return `  - ${t} [${e.account}] ${e.title}`;
+    });
+    const myDayLines = [...ctx.workMyDay, ...ctx.lifeMyDay].map((t) => `  - [${t.source}] ${t.name}${t.dueStart ? ` (due ${t.dueStart})` : ''}`);
+    const goalLines = ctx.goals.map((g) => `  - [${g.source}] ${g.name} — ${g.progress.done}/${g.progress.total} milestones`);
+    const allTaskLines = allOpenTasks.slice(0, 300).map((t) => `  - [${t.source}] ${t.name}${t.dueStart ? ` · due ${t.dueStart}` : ''}${t.status && t.status !== 'Planned' ? ` · ${t.status}` : ''}`);
+    const userPrompt = [
+      `Today is ${todayLabel} (${todayISO}).`,
+      '',
+      projectList,
+      '',
+      `TODAY'S CALENDAR (${ctx.calEvents.length}):`,
+      calendarLines.length ? calendarLines.join('\n') : '  (nothing scheduled)',
+      '',
+      `TODAY'S MY DAY (${ctx.workMyDay.length + ctx.lifeMyDay.length}):`,
+      myDayLines.length ? myDayLines.join('\n') : '  (none)',
+      '',
+      `ACTIVE GOALS (${ctx.goals.length}):`,
+      goalLines.length ? goalLines.join('\n') : '  (none)',
+      '',
+      `ALL OPEN TASKS (${allOpenTasks.length}):`,
+      allTaskLines.join('\n'),
+      '',
+      `Gretchen's input:\n"""\n${text.trim()}\n"""`,
+      '',
+      TRIAGE_JSON_HINT,
+    ].join('\n');
     const msg = await anthropic.messages.create({
       model: 'claude-opus-4-8',
       max_tokens: 4000,
@@ -801,8 +846,28 @@ app.post('/api/ai/triage', async (req, res) => {
     let raw = textBlock.text.trim();
     // Strip code fences if model added them
     raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+    // Defensive: extract just the first top-level JSON object (in case model added extra prose)
+    function extractFirstJson(s) {
+      const start = s.indexOf('{');
+      if (start < 0) return null;
+      let depth = 0, inStr = false, esc = false;
+      for (let i = start; i < s.length; i++) {
+        const c = s[i];
+        if (inStr) {
+          if (esc) { esc = false; continue; }
+          if (c === '\\') { esc = true; continue; }
+          if (c === '"') inStr = false;
+          continue;
+        }
+        if (c === '"') { inStr = true; continue; }
+        if (c === '{') depth++;
+        else if (c === '}') { depth--; if (depth === 0) return s.slice(start, i + 1); }
+      }
+      return null;
+    }
+    const jsonStr = extractFirstJson(raw) || raw;
     let plan;
-    try { plan = JSON.parse(raw); }
+    try { plan = JSON.parse(jsonStr); }
     catch (e) { return res.status(500).json({ error: 'invalid JSON from model: ' + e.message, raw }); }
     res.json({ plan, projects });
   } catch (err) {

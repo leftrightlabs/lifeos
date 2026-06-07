@@ -192,6 +192,7 @@
 
   .triage-plan { margin-top: 24px; }
   .triage-intro { font-family: var(--font-display); font-size: 16px; font-style: italic; color: var(--navy); margin-bottom: 14px; }
+  .triage-intro.triage-answer { font-family: var(--font-body); font-style: normal; font-size: 15px; line-height: 1.55; color: var(--navy); background: rgba(167,193,64,0.05); border-left: 3px solid var(--lime); padding: 14px 18px; border-radius: 8px; margin-bottom: 0; }
   .triage-action { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; background: var(--white); border: 1px solid var(--navy-faint); border-left: 3px solid rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 8px; }
   .triage-action.task-work { border-left-color: #5d9cec; }
   .triage-action.task-personal { border-left-color: var(--lime); }
@@ -1026,9 +1027,9 @@ window.sendPrompt = window.sendPrompt || function(prompt) {
       <button class="triage-modal-close" id="triage-modal-close" title="Close">×</button>
     </div>
     <div class="triage-pane">
-      <textarea id="triage-input" class="triage-input" placeholder="Example: Need to email Trina about Rock 3 by Friday, schedule a dentist for next week, Lisa wants a call Tuesday 2pm, pick up gift for Genny before her birthday..."></textarea>
+      <textarea id="triage-input" class="triage-input" placeholder="Capture a task, find a project, or ask anything... 'add a task to email Trina by Friday' · 'find my bluebonnets project' · 'what's on my plate today?'"></textarea>
       <div class="triage-controls">
-        <button class="triage-btn primary" id="triage-plan-btn">Plan it</button>
+        <button class="triage-btn primary" id="triage-plan-btn">Send</button>
         <button class="triage-btn text" id="triage-clear-btn">Clear</button>
         <span id="triage-status" style="font-size:12px;color:var(--navy-dim);margin-left:auto"></span>
       </div>
@@ -1563,7 +1564,10 @@ function renderTriagePlan(){
   const wrap = document.getElementById('triage-plan');
   if (!triagePlan) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
   wrap.style.display = 'block';
-  const intro = triagePlan.intro ? `<div class="triage-intro">${escapeHtml(triagePlan.intro)}</div>` : '';
+  const hasActions = (triagePlan.actions || []).length > 0;
+  // When no actions, render intro as the full response
+  const introCls = hasActions ? 'triage-intro' : 'triage-intro triage-answer';
+  const intro = triagePlan.intro ? `<div class="${introCls}">${escapeHtml(triagePlan.intro).replace(/\n/g, '<br/>')}</div>` : '';
   const items = (triagePlan.actions || []).map((a, i) => {
     const kindLabel = a.type === 'create_task' ? `${a.source || '?'} task` : `${a.account || '?'} event`;
     const cls = a.type === 'create_task' ? `task-${a.source}` : `event-${a.account}`;
@@ -1596,11 +1600,11 @@ function renderTriagePlan(){
       </div>
     </div>`;
   }).join('');
-  const applyRow = `<div class="triage-apply-row">
+  const applyRow = hasActions ? `<div class="triage-apply-row">
     <button class="triage-btn apply" id="triage-apply-btn">Apply selected (<span id="triage-count">${triageSelected.size}</span>)</button>
     <button class="triage-btn text" id="triage-select-all">All</button>
     <button class="triage-btn text" id="triage-select-none">None</button>
-  </div>`;
+  </div>` : '';
   wrap.innerHTML = intro + items + applyRow;
   document.querySelectorAll('.triage-check').forEach(el => {
     el.addEventListener('click', () => {
@@ -1691,7 +1695,7 @@ async function planTriage(){
     status.textContent = 'Error: ' + e.message;
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Plan it';
+    btn.textContent = 'Send';
   }
 }
 
