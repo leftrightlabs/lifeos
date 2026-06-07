@@ -25,7 +25,7 @@ const LIFE_PROJECTS_DS = '265458f08cd9814eaf0e000bceaa7f80';
 const CACHE_TTL_MS = 60_000;
 const TZ = 'America/Chicago';
 const DATA_SCOPES = [
-  'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/gmail.readonly',
 ];
 const LOGIN_SCOPES = ['openid', 'email', 'profile'];
