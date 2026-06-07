@@ -816,10 +816,22 @@ app.post('/api/ai/triage', async (req, res) => {
     const myDayLines = [...ctx.workMyDay, ...ctx.lifeMyDay].map((t) => `  - [${t.source}] ${t.name}${t.dueStart ? ` (due ${t.dueStart})` : ''}`);
     const goalLines = ctx.goals.map((g) => `  - [${g.source}] ${g.name} — ${g.progress.done}/${g.progress.total} milestones`);
     const allTaskLines = allOpenTasks.slice(0, 300).map((t) => `  - [${t.source}] ${t.name}${t.dueStart ? ` · due ${t.dueStart}` : ''}${t.status && t.status !== 'Planned' ? ` · ${t.status}` : ''}`);
-    const userPrompt = [
-      `Today is ${todayLabel} (${todayISO}).`,
+
+    // STATIC context — cached. Stable across many turns; only changes when projects/tasks change in Notion.
+    const staticContext = [
+      TRIAGE_SYSTEM,
       '',
       projectList,
+      '',
+      `ALL OPEN TASKS (${allOpenTasks.length}):`,
+      allTaskLines.join('\n'),
+      '',
+      TRIAGE_JSON_HINT,
+    ].join('\n');
+
+    // DYNAMIC context — varies each request. Today's date, calendar, my-day, goals + user input.
+    const dynamicContext = [
+      `Today is ${todayLabel} (${todayISO}).`,
       '',
       `TODAY'S CALENDAR (${ctx.calEvents.length}):`,
       calendarLines.length ? calendarLines.join('\n') : '  (nothing scheduled)',
@@ -830,26 +842,28 @@ app.post('/api/ai/triage', async (req, res) => {
       `ACTIVE GOALS (${ctx.goals.length}):`,
       goalLines.length ? goalLines.join('\n') : '  (none)',
       '',
-      `ALL OPEN TASKS (${allOpenTasks.length}):`,
-      allTaskLines.join('\n'),
-      '',
       `Gretchen's input:\n"""\n${text.trim()}\n"""`,
-      '',
-      TRIAGE_JSON_HINT,
     ].join('\n');
     // Build message history: prior turns (user/assistant pairs) + new user message
     const priorMessages = Array.isArray(history) ? history.filter(
       m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim()
     ).map(m => ({ role: m.role, content: m.content })) : [];
-    const messages = [...priorMessages, { role: 'user', content: userPrompt }];
+    const messages = [...priorMessages, { role: 'user', content: dynamicContext }];
+    console.log('[ai/triage debug] system len:', staticContext.length, 'messages len:', messages.length, 'last msg type:', typeof messages[messages.length-1].content);
     const msg = await anthropic.messages.create({
       model: 'claude-opus-4-8',
       max_tokens: 4000,
       thinking: { type: 'adaptive' },
       output_config: { effort: 'medium' },
-      system: TRIAGE_SYSTEM,
+      system: [{ type: 'text', text: staticContext, cache_control: { type: 'ephemeral' } }],
       messages,
+    }).catch(err => {
+      console.error('[ai/triage] anthropic error:', err.message, err.status);
+      throw err;
     });
+    if (msg.usage) {
+      console.log(`[ai/triage] usage: input=${msg.usage.input_tokens} cache_read=${msg.usage.cache_read_input_tokens || 0} cache_write=${msg.usage.cache_creation_input_tokens || 0} output=${msg.usage.output_tokens}`);
+    }
     const textBlock = msg.content.find((b) => b.type === 'text');
     if (!textBlock) return res.status(500).json({ error: 'no text in response' });
     let raw = textBlock.text.trim();
@@ -878,7 +892,13 @@ app.post('/api/ai/triage', async (req, res) => {
     let plan;
     try { plan = JSON.parse(jsonStr); }
     catch (e) { return res.status(500).json({ error: 'invalid JSON from model: ' + e.message, raw }); }
-    res.json({ plan, projects });
+    const u = msg.usage || {};
+    res.json({ plan, projects, _usage: {
+      input_tokens: u.input_tokens,
+      cache_read_input_tokens: u.cache_read_input_tokens,
+      cache_creation_input_tokens: u.cache_creation_input_tokens,
+      output_tokens: u.output_tokens,
+    }});
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
