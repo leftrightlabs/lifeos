@@ -132,12 +132,16 @@
   .quest-check.checked { background: var(--navy); border-color: var(--navy); color: var(--lime); }
   .quest-check.checked::after { content: "✓"; font-size: 12px; font-weight: 700; }
   .quest-text { flex: 1; }
-  .quest-text.done { text-decoration: line-through; color: var(--navy-dim); }
+  .quest-text.done, .quest-item.done .quest-text { text-decoration: line-through; color: var(--navy-dim); }
+  .quest-item.done { opacity: 0.6; }
   .quest-due { font-size: 11px; color: var(--navy-dim); background: var(--cream-2); padding: 3px 8px; border-radius: 999px; }
-  .quest-due-inline { font-size: 11px; color: rgba(245,245,247,0.45); white-space: nowrap; letter-spacing: 0.02em; font-weight: 500; }
+  .quest-due-inline { font-size: 11px; color: rgba(245,245,247,0.45); white-space: nowrap; letter-spacing: 0.02em; font-weight: 500; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+  .quest-due-inline:hover { background: rgba(255,255,255,0.06); color: var(--navy); }
   .quest-due-inline.overdue { color: #ff7a6b; font-weight: 600; }
   .quest-due-inline.today { color: var(--lime); font-weight: 600; }
   .quest-due-inline.tomorrow { color: #d4a854; font-weight: 600; }
+  .quest-due-edit { font-size: 11px; background: rgba(255,255,255,0.06); color: var(--navy); border: 1px solid var(--lime); border-radius: 4px; padding: 2px 4px; font-family: var(--font-body); color-scheme: dark; }
+  .quest-item.syncing { opacity: 0.6; }
   .quest-tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
   .tag-work { background: var(--navy); color: var(--white); }
   .tag-personal { background: var(--lime); color: var(--navy); }
@@ -933,6 +937,10 @@ function updateHeader(){
   const d=el('hdrdate'); if(d) d.innerHTML='<span class="dot"></span>'+TODAY.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 }
 
+function afPatch(id, body){
+  return fetch(`/api/tasks/${id}`, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(r=>{if(!r.ok)throw new Error('sync failed');return r.json();});
+}
 el('list').addEventListener('click',e=>{
   const head=e.target.closest('.ghead');
   if(head){const k=head.dataset.gkey;const now=!isCollapsed(k);setCollapsed(k,now);head.classList.toggle('collapsed',now);head.parentElement.querySelector('.gbody').classList.toggle('collapsed',now);return;}
@@ -940,8 +948,14 @@ el('list').addEventListener('click',e=>{
   if(btn.tagName==='A')return;
   const rowEl=e.target.closest('.row');const id=rowEl&&rowEl.dataset.id;if(!id)return;
   const act=btn.dataset.act;
-  if(act==='done'){const nd=!state.done[id];state.done[id]=nd;state.touched[id]=new Date().toISOString();saveState();render();}
-  else if(act==='star'){const t=task(id);const nv=!t.myDay;state.edits[id]=Object.assign({},state.edits[id],{myDay:nv});state.touched[id]=new Date().toISOString();saveState();render();}
+  if(act==='done'){
+    const nd=!state.done[id];state.done[id]=nd;state.touched[id]=new Date().toISOString();saveState();render();
+    afPatch(id,{status:nd?'Done':'Doing'}).catch(err=>{state.done[id]=!nd;saveState();render();alert('Sync failed: '+err.message);});
+  }
+  else if(act==='star'){
+    const t=task(id);const nv=!t.myDay;state.edits[id]=Object.assign({},state.edits[id],{myDay:nv});state.touched[id]=new Date().toISOString();saveState();render();
+    afPatch(id,{myDay:nv}).catch(err=>{state.edits[id].myDay=!nv;saveState();render();alert('Sync failed: '+err.message);});
+  }
   else if(act==='touch'){state.touched[id]=new Date().toISOString();saveState();render();}
   else if(act==='open'){const t=task(id);if(t.url)window.open(t.url,'_blank');}
 });
@@ -1043,10 +1057,12 @@ function renderTodayQuests(){
       taskDiv.innerHTML = filtered.map(t=>{
         const tag = t.source === 'work' ? '<span class="quest-tag tag-work">work</span>' : '<span class="quest-tag tag-personal">personal</span>';
         const due = dueLabel(t);
-        const dueHtml = due ? `<span class="quest-due-inline ${due.cls}">${due.text}</span>` : '';
-        return `<div class="quest-item" onclick="window.open('${t.url}','_blank')">
-          <div class="quest-check"></div>
-          <div class="quest-text">${escapeHtml(t.name)}</div>
+        const dueHtml = due ? `<span class="quest-due-inline ${due.cls}" data-act="edit-due">${due.text}</span>` : '<span class="quest-due-inline" data-act="edit-due" style="opacity:0.35">+ date</span>';
+        const checked = t.done ? 'checked' : '';
+        const doneCls = t.done ? ' done' : '';
+        return `<div class="quest-item${doneCls}" data-task-id="${t.id}" data-task-url="${t.url}">
+          <div class="quest-check ${checked}" data-act="check"></div>
+          <div class="quest-text" data-act="open">${escapeHtml(t.name)}</div>
           ${dueHtml}
           ${tag}
         </div>`;
@@ -1071,6 +1087,77 @@ function renderTodayQuests(){
     }
   }
 }
+
+function patchTask(id, body){
+  return fetch(`/api/tasks/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(r => { if (!r.ok) throw new Error('sync failed'); return r.json(); });
+}
+
+document.getElementById('today-quests').addEventListener('click', async (e) => {
+  const item = e.target.closest('.quest-item');
+  if (!item) return;
+  const id = item.dataset.taskId;
+  const url = item.dataset.taskUrl;
+  const act = e.target.closest('[data-act]')?.dataset.act;
+  const t = TODAY_TASKS.find(x => x.id === id);
+  if (!t) return;
+
+  if (act === 'check'){
+    const prev = !!t.done;
+    t.done = !prev;
+    renderTodayQuests();
+    item.classList.add('syncing');
+    try {
+      await patchTask(id, { status: t.done ? 'Done' : 'Doing' });
+      item.classList.remove('syncing');
+    } catch(err){
+      t.done = prev;
+      renderTodayQuests();
+      alert('Sync failed: ' + err.message);
+    }
+    return;
+  }
+
+  if (act === 'edit-due'){
+    e.stopPropagation();
+    const dueEl = e.target.closest('.quest-due-inline');
+    const current = (t.dueStart || '').slice(0,10);
+    const input = document.createElement('input');
+    input.type = 'date';
+    input.value = current;
+    input.className = 'quest-due-edit';
+    let committed = false;
+    const cancel = () => { if (!committed) renderTodayQuests(); };
+    input.addEventListener('blur', cancel);
+    input.addEventListener('change', async () => {
+      committed = true;
+      const newDate = input.value || null;
+      const prevStart = t.dueStart, prevEnd = t.dueEnd;
+      t.dueStart = newDate;
+      t.dueEnd = null;
+      renderTodayQuests();
+      try {
+        await patchTask(id, { dueStart: newDate, dueEnd: null });
+      } catch(err){
+        t.dueStart = prevStart;
+        t.dueEnd = prevEnd;
+        renderTodayQuests();
+        alert('Sync failed: ' + err.message);
+      }
+    });
+    dueEl.replaceWith(input);
+    input.focus();
+    if (input.showPicker) input.showPicker();
+    return;
+  }
+
+  if (act === 'open' || !act){
+    if (url) window.open(url, '_blank');
+  }
+});
 
 // Mode lens: global Work/Personal/Combined filter
 function applyMode(){

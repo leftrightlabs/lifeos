@@ -34,6 +34,7 @@ const ACCOUNT_ENVS = {
 const ACCOUNTS = ['work', 'personal'];
 
 app.set('trust proxy', 1);
+app.use(express.json());
 
 app.use(cookieSession({
   name: 'lifeos.sid',
@@ -371,6 +372,34 @@ app.get('/api/tasks/life-all', async (_req, res) => {
   try {
     const tasks = await cached('life-all', () => lifeTasks({ myDayOnly: false }));
     res.json({ tasks });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+function invalidateTaskCaches() {
+  ['work-myday', 'life-myday', 'work-all', 'life-all', 'tasks-all'].forEach(k => cache.delete(k));
+}
+
+app.patch('/api/tasks/:id', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  const { id } = req.params;
+  const { status, dueStart, dueEnd, myDay } = req.body || {};
+  try {
+    const properties = {};
+    if (status !== undefined) properties.Status = { status: { name: status } };
+    if (dueStart !== undefined || dueEnd !== undefined) {
+      properties.Due = dueStart
+        ? { date: { start: dueStart, end: dueEnd || null } }
+        : { date: null };
+    }
+    if (myDay !== undefined) properties['My Day'] = { checkbox: !!myDay };
+    if (!Object.keys(properties).length) {
+      return res.status(400).json({ error: 'No supported fields to update' });
+    }
+    await notion.pages.update({ page_id: id, properties });
+    invalidateTaskCaches();
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
