@@ -175,6 +175,12 @@
   .quest-pri { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; font-weight: 700; flex-shrink: 0; }
   .quest-pri.urgent { background: rgba(255,122,107,0.18); color: #ff7a6b; border: 1px solid rgba(255,122,107,0.35); }
   .quest-pri.high { background: rgba(212,168,84,0.18); color: #d4a854; border: 1px solid rgba(212,168,84,0.35); }
+  .quest-pri.normal { background: rgba(255,255,255,0.04); color: rgba(245,245,247,0.45); border: 1px solid rgba(255,255,255,0.08); }
+
+  /* Waiting-on divider in Today's Quest */
+  .quest-waiting-divider { display: flex; align-items: center; gap: 10px; padding: 14px 0 8px; margin-top: 10px; border-top: 1px dashed rgba(255,255,255,0.06); }
+  .quest-waiting-divider span { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: #d4a854; font-weight: 800; }
+  .quest-waiting-divider::before, .quest-waiting-divider::after { content: ''; flex: 1; height: 1px; background: rgba(212,168,84,0.15); }
 
   /* Today's Calendar — Google Cal inspired */
   .cal-event { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.04); cursor: pointer; align-items: flex-start; transition: opacity 0.2s, background 0.15s; border-radius: 4px; }
@@ -2148,7 +2154,7 @@ function row(t){
   const sub = subParts.length
     ? '<div class="quest-sub">'+subParts.join('<span class="sep">·</span>')+'</div>'
     : '';
-  const priHtml = (t.priority==='URGENT'||t.priority==='HIGH')
+  const priHtml = t.priority
     ? '<span class="quest-pri '+t.priority.toLowerCase()+'">'+t.priority+'</span>' : '';
   const sourceTag = t.source==='work'
     ? '<span class="quest-tag tag-work">work</span>'
@@ -2561,6 +2567,31 @@ function dueLabel(t){
   return { text: date, cls: '' };
 }
 
+function renderQuestRow(t){
+  const tag = t.source === 'work' ? '<span class="quest-tag tag-work">work</span>' : '<span class="quest-tag tag-personal">personal</span>';
+  const due = dueLabel(t);
+  const dueHtml = due ? `<span class="quest-due-inline ${due.cls}" data-act="edit-due">${due.text}</span>` : '<span class="quest-due-inline" data-act="edit-due" style="opacity:0.35">+ date</span>';
+  const checked = t.done ? 'checked' : '';
+  const doneCls = t.done ? ' done' : '';
+  const isMyDay = t.myDay !== false;
+  const starCls = isMyDay ? 'on' : '';
+  const starTitle = isMyDay ? 'Remove from My Day' : 'Add to My Day';
+  const star = `<button class="quest-star ${starCls}" data-act="star" title="${starTitle}" aria-label="${starTitle}"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>`;
+  const priHtml = t.priority
+    ? `<span class="quest-pri ${t.priority.toLowerCase()}">${t.priority}</span>` : '';
+  const statusKey = (t.status || 'Planned').toLowerCase().replace(/\s+/g,'-');
+  const statusDot = `<span class="quest-status-dot status-${statusKey}" title="${t.status || 'Planned'}"></span>`;
+  return `<div class="quest-item${doneCls}" data-task-id="${t.id}" data-task-url="${t.url}">
+    <div class="quest-check ${checked}" data-act="check"></div>
+    ${statusDot}
+    <div class="quest-text" data-act="open">${escapeHtml(t.name)}</div>
+    ${priHtml}
+    ${dueHtml}
+    ${tag}
+    ${star}
+  </div>`;
+}
+
 function renderTodayQuests(){
   const taskDiv = document.getElementById('today-quests');
   const calDiv = document.getElementById('today-calendar');
@@ -2570,30 +2601,19 @@ function renderTodayQuests(){
       const msg = mode === 'all' ? 'Nothing on My Day' : `No ${mode} tasks today`;
       taskDiv.innerHTML = `<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">${msg}</div>`;
     } else {
-      taskDiv.innerHTML = filtered.map(t=>{
-        const tag = t.source === 'work' ? '<span class="quest-tag tag-work">work</span>' : '<span class="quest-tag tag-personal">personal</span>';
-        const due = dueLabel(t);
-        const dueHtml = due ? `<span class="quest-due-inline ${due.cls}" data-act="edit-due">${due.text}</span>` : '<span class="quest-due-inline" data-act="edit-due" style="opacity:0.35">+ date</span>';
-        const checked = t.done ? 'checked' : '';
-        const doneCls = t.done ? ' done' : '';
-        const isMyDay = t.myDay !== false; // these come from /myday endpoints — default true
-        const starCls = isMyDay ? 'on' : '';
-        const starTitle = isMyDay ? 'Remove from My Day' : 'Add to My Day';
-        const star = `<button class="quest-star ${starCls}" data-act="star" title="${starTitle}" aria-label="${starTitle}"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>`;
-        const priHtml = (t.priority === 'URGENT' || t.priority === 'HIGH')
-          ? `<span class="quest-pri ${t.priority.toLowerCase()}">${t.priority}</span>` : '';
-        const statusKey = (t.status || 'Planned').toLowerCase().replace(/\s+/g,'-');
-        const statusDot = `<span class="quest-status-dot status-${statusKey}" title="${t.status || 'Planned'}"></span>`;
-        return `<div class="quest-item${doneCls}" data-task-id="${t.id}" data-task-url="${t.url}">
-          <div class="quest-check ${checked}" data-act="check"></div>
-          ${statusDot}
-          <div class="quest-text" data-act="open">${escapeHtml(t.name)}</div>
-          ${priHtml}
-          ${dueHtml}
-          ${tag}
-          ${star}
-        </div>`;
-      }).join('');
+      const actionable = filtered.filter(t => t.status !== 'Waiting');
+      const waiting = filtered.filter(t => t.status === 'Waiting');
+      let html = '';
+      if (actionable.length){
+        html += actionable.map(renderQuestRow).join('');
+      } else {
+        html += `<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">All actionable items are clear ✓</div>`;
+      }
+      if (waiting.length){
+        html += `<div class="quest-waiting-divider"><span>WAITING ON · ${waiting.length}</span></div>`;
+        html += waiting.map(renderQuestRow).join('');
+      }
+      taskDiv.innerHTML = html;
     }
   }
   if (calDiv){

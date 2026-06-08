@@ -1063,12 +1063,16 @@ function buildBriefUserPrompt({ calEvents, workMyDay, lifeMyDay, goals }) {
   const upcomingLines = upcoming.map(fmtEvent);
   const pastSummary = past.length ? `(${past.length} earlier event${past.length === 1 ? '' : 's'} already done — do not mention)` : '';
   const taskLine = (t) => `  - [${t.source}] ${t.name}${t.dueStart ? ` (due ${t.dueStart})` : ''}${t.priority ? ` [${t.priority}]` : ''}`;
-  const workTasksLines = workMyDay.map(taskLine);
-  const lifeTasksLines = lifeMyDay.map(taskLine);
+  const isWaiting = (t) => t.status === 'Waiting';
+  const workActionable = workMyDay.filter((t) => !isWaiting(t));
+  const workWaiting = workMyDay.filter(isWaiting);
+  const lifeActionable = lifeMyDay.filter((t) => !isWaiting(t));
+  const lifeWaiting = lifeMyDay.filter(isWaiting);
   const goalsLines = goals.map((g) => {
     const pct = g.progress.total ? Math.round((g.progress.done / g.progress.total) * 100) : 0;
     return `  - [${g.source}] ${g.name} — ${g.progress.done}/${g.progress.total} milestones (${pct}%)${g.targetDeadline ? `, target ${g.targetDeadline}` : ''}`;
   });
+  const waitingTotal = workWaiting.length + lifeWaiting.length;
   return [
     `It is ${dateLabel} — ${timeLabel} (America/Chicago).`,
     '',
@@ -1076,16 +1080,19 @@ function buildBriefUserPrompt({ calEvents, workMyDay, lifeMyDay, goals }) {
     upcomingLines.length ? upcomingLines.join('\n') : '  (nothing left on the calendar today)',
     pastSummary,
     '',
-    `Work My Day — still open (${workMyDay.length}):`,
-    workTasksLines.length ? workTasksLines.join('\n') : '  (none)',
+    `Work ACTIONABLE tasks — Doing/Planned/Agenda (${workActionable.length}):`,
+    workActionable.length ? workActionable.map(taskLine).join('\n') : '  (none)',
     '',
-    `Personal My Day — still open (${lifeMyDay.length}):`,
-    lifeTasksLines.length ? lifeTasksLines.join('\n') : '  (none)',
+    `Personal ACTIONABLE tasks (${lifeActionable.length}):`,
+    lifeActionable.length ? lifeActionable.map(taskLine).join('\n') : '  (none)',
+    '',
+    `WAITING-ON tasks (${waitingTotal}) — blocked on someone else, DO NOT nudge her to action these. At most: suggest a follow-up nudge if it's been a while.`,
+    waitingTotal ? [...workWaiting, ...lifeWaiting].map(taskLine).join('\n') : '  (none)',
     '',
     `Active goals (${goals.length}):`,
     goalsLines.length ? goalsLines.join('\n') : '  (none flagged)',
     '',
-    'Write the Daily Focus. Look forward, not back.',
+    'Write the Daily Focus. Look forward, not back. Only mention tasks from the ACTIONABLE buckets as things to do today. The WAITING-ON tasks are blocked — never tell her to do them; you may suggest a brief follow-up nudge if relevant.',
   ].join('\n');
 }
 
