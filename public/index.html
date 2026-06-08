@@ -402,6 +402,40 @@
   .daily-brief-refresh:hover { color: var(--lime); border-color: var(--lime); }
   .daily-brief-refresh.spinning svg { animation: spin 1s linear infinite; }
 
+  /* ===== Daily Slack Check-in card ===== */
+  .checkin-card { background: var(--white); border: 1px solid rgba(255,255,255,0.06); border-left: 3px solid #4a154b; border-radius: 8px; padding: 16px 22px; margin-bottom: 22px; }
+  .checkin-card.collapsed { padding: 12px 22px; }
+  .checkin-card.collapsed .checkin-body { display: none; }
+  .checkin-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .checkin-card.collapsed .checkin-head { margin-bottom: 0; }
+  .checkin-toggle { background: transparent; border: none; color: #c896d8; font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .checkin-toggle:hover { opacity: 0.85; }
+  #checkin-caret { display: inline-block; transition: transform 0.18s; }
+  .checkin-card.collapsed #checkin-caret { transform: rotate(-90deg); }
+  .checkin-status { font-size: 11.5px; color: rgba(245,245,247,0.55); font-weight: 500; }
+  .checkin-status.sent { color: var(--lime); font-weight: 600; }
+  .checkin-status a { color: inherit; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.25); margin-left: 6px; }
+  .checkin-loading { color: rgba(245,245,247,0.45); font-style: italic; padding: 6px 0 4px; font-size: 13px; }
+  .checkin-text { width: 100%; min-height: 220px; background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.08); color: var(--navy); font-family: ui-monospace, SFMono-Regular, Menlo, 'SF Mono', Consolas, monospace; font-size: 13px; line-height: 1.55; padding: 12px 14px; border-radius: 8px; resize: vertical; }
+  .checkin-text:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
+  .checkin-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .checkin-btn { font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 14px; border-radius: 999px; cursor: pointer; border: none; }
+  .checkin-btn.send { background: var(--lime); color: var(--navy-accent); }
+  .checkin-btn.send:hover { background: var(--lime-light); }
+  .checkin-btn.send:disabled { opacity: 0.5; cursor: not-allowed; }
+  .checkin-btn.copy { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: var(--navy); }
+  .checkin-btn.copy:hover { border-color: rgba(255,255,255,0.3); }
+  .checkin-btn.refresh { background: transparent; border: 1px solid rgba(255,255,255,0.12); color: rgba(245,245,247,0.55); font-size: 10px; padding: 5px 10px; }
+  .checkin-btn.refresh:hover { color: var(--navy); border-color: rgba(255,255,255,0.25); }
+  .checkin-meta { font-size: 11px; color: rgba(245,245,247,0.45); margin-right: auto; }
+  /* Hide check-in card when in personal mode (work-only feature) */
+  body[data-mode="personal"] .checkin-card { display: none; }
+  @media (max-width: 600px) {
+    .checkin-card { padding: 14px 16px; }
+    .checkin-text { min-height: 180px; font-size: 12.5px; }
+    .checkin-btn { padding: 8px 12px; font-size: 10.5px; }
+  }
+
   .triage-pane { background: var(--white); border: 1px solid var(--navy-faint); border-radius: 10px; padding: 20px; }
   .chat-messages { max-height: 50vh; overflow-y: auto; padding-right: 4px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 14px; }
   .chat-messages:empty { display: none; }
@@ -1466,6 +1500,23 @@ window.lrl = (function(){
       </div>
     </div>
 
+    <div class="checkin-card" id="checkin-card">
+      <div class="checkin-head">
+        <button class="checkin-toggle" id="checkin-toggle" title="Collapse/expand"><span id="checkin-caret">▾</span> Daily Check-in</button>
+        <div class="checkin-status" id="checkin-status">Not sent today</div>
+      </div>
+      <div class="checkin-body" id="checkin-body">
+        <div class="checkin-loading" id="checkin-loading">Composing today's check-in…</div>
+        <textarea class="checkin-text" id="checkin-text" style="display:none" placeholder="Composing…"></textarea>
+        <div class="checkin-actions" id="checkin-actions" style="display:none">
+          <span class="checkin-meta" id="checkin-meta"></span>
+          <button class="checkin-btn refresh" id="checkin-refresh" title="Re-pull from calendar + tasks">↻ Recompose</button>
+          <button class="checkin-btn copy" id="checkin-copy" title="Copy to clipboard">Copy</button>
+          <button class="checkin-btn send" id="checkin-send">Send to #lrl_team</button>
+        </div>
+      </div>
+    </div>
+
     <div class="chapter-panel" id="chapter-panel">
       <div class="chapter-header">
         <div style="flex:1">
@@ -2520,6 +2571,149 @@ function triggerRefresh() {
 }
 window.triggerRefresh = triggerRefresh;
 
+// ====== Daily Slack Check-in ======
+const CHECKIN_SENT_KEY = 'lrl-checkin-last-sent';
+const CHECKIN_COLLAPSED_KEY = 'lrl-checkin-collapsed';
+let CHECKIN_DATA = null;
+let CHECKIN_LOADED = false;
+
+function chicagoTodayString(){
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+}
+
+function setCheckinCollapsed(collapsed){
+  const wrap = document.getElementById('checkin-card');
+  if (!wrap) return;
+  wrap.classList.toggle('collapsed', collapsed);
+  try { localStorage.setItem(CHECKIN_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch(e){}
+}
+
+function updateCheckinStatus(){
+  const el = document.getElementById('checkin-status');
+  if (!el) return;
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem(CHECKIN_SENT_KEY) || 'null'); } catch(e){}
+  if (data && data.date === chicagoTodayString()){
+    const t = new Date(data.ts).toLocaleTimeString('en-US', { timeZone:'America/Chicago', hour:'numeric', minute:'2-digit' });
+    const link = data.permalink ? `<a href="${data.permalink}" target="_blank" rel="noopener">view ↗</a>` : '';
+    el.className = 'checkin-status sent';
+    el.innerHTML = `Sent ✓ ${t} ${link}`;
+  } else {
+    el.className = 'checkin-status';
+    el.innerHTML = 'Not sent today';
+  }
+}
+
+async function fetchCheckin(){
+  const loading = document.getElementById('checkin-loading');
+  const text = document.getElementById('checkin-text');
+  const actions = document.getElementById('checkin-actions');
+  const meta = document.getElementById('checkin-meta');
+  if (loading) { loading.style.display = ''; loading.style.color = ''; loading.textContent = "Composing today's check-in…"; }
+  if (text) text.style.display = 'none';
+  if (actions) actions.style.display = 'none';
+  try {
+    const r = await fetch('/api/checkin/compose');
+    const d = await r.json();
+    if (d.error){
+      if (loading) { loading.textContent = 'Error: ' + d.error; loading.style.color = '#ff7a6b'; }
+      return;
+    }
+    CHECKIN_DATA = d;
+    CHECKIN_LOADED = true;
+    if (text) { text.value = d.message || '(nothing to send today)'; text.style.display = ''; }
+    if (loading) loading.style.display = 'none';
+    if (actions) actions.style.display = 'flex';
+    if (meta) {
+      const c = d.counts || {};
+      meta.textContent = `${c.events||0} meetings · ${c.doing||0} working · ${c.waiting||0} waiting`;
+    }
+    const sendBtn = document.getElementById('checkin-send');
+    if (sendBtn) {
+      sendBtn.disabled = !d.slackEnabled;
+      sendBtn.title = d.slackEnabled ? 'Send to #lrl_team' : 'Add SLACK_BOT_TOKEN to Railway env to enable';
+    }
+  } catch (err){
+    if (loading) { loading.textContent = 'Error: ' + err.message; loading.style.color = '#ff7a6b'; }
+  }
+}
+
+async function copyCheckin(){
+  const text = document.getElementById('checkin-text');
+  if (!text || !text.value) return;
+  try {
+    await navigator.clipboard.writeText(text.value);
+    window.lrl?.haptic('success');
+    window.lrl?.toast('Copied to clipboard', 'success');
+  } catch (e){
+    // Fallback for older browsers / non-secure contexts
+    text.select();
+    try {
+      document.execCommand('copy');
+      window.lrl?.toast('Copied', 'success');
+    } catch (_){
+      window.lrl?.toast('Copy failed: ' + e.message, 'error');
+    }
+  }
+}
+
+async function sendCheckin(){
+  const text = document.getElementById('checkin-text');
+  const btn = document.getElementById('checkin-send');
+  if (!text || !text.value.trim()) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  try {
+    const r = await fetch('/api/checkin/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text.value }),
+    });
+    const d = await r.json();
+    if (!r.ok || d.error) throw new Error(d.error || 'send failed');
+    const data = { date: chicagoTodayString(), ts: Date.now(), permalink: d.permalink || null };
+    try { localStorage.setItem(CHECKIN_SENT_KEY, JSON.stringify(data)); } catch(e){}
+    updateCheckinStatus();
+    window.lrl?.haptic('celebrate');
+    window.lrl?.confetti({ count: 50 });
+    window.lrl?.toast('Posted to #lrl_team', 'success');
+  } catch (err){
+    window.lrl?.toast('Send failed: ' + err.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send to #lrl_team'; }
+  }
+}
+
+function initCheckin(){
+  const card = document.getElementById('checkin-card');
+  if (!card) return;
+  updateCheckinStatus();
+  // Restore collapsed state (default: expanded)
+  if (localStorage.getItem(CHECKIN_COLLAPSED_KEY) === '1') setCheckinCollapsed(true);
+  // Handlers
+  document.getElementById('checkin-toggle')?.addEventListener('click', () => {
+    const wasCollapsed = card.classList.contains('collapsed');
+    setCheckinCollapsed(!wasCollapsed);
+    if (wasCollapsed && !CHECKIN_LOADED) fetchCheckin();
+  });
+  document.getElementById('checkin-refresh')?.addEventListener('click', () => { CHECKIN_LOADED = false; fetchCheckin(); });
+  document.getElementById('checkin-copy')?.addEventListener('click', copyCheckin);
+  document.getElementById('checkin-send')?.addEventListener('click', sendCheckin);
+  // Fetch immediately if expanded (and only in work/all mode, not personal)
+  const m = document.body.dataset.mode || 'all';
+  if (!card.classList.contains('collapsed') && m !== 'personal') {
+    fetchCheckin();
+  }
+}
+
+// Lazy-fetch when user flips to a mode that shows the card
+window.addEventListener('lrl-mode-changed', () => {
+  const m = document.body.dataset.mode || 'all';
+  if (m !== 'personal' && !CHECKIN_LOADED) {
+    const card = document.getElementById('checkin-card');
+    if (card && !card.classList.contains('collapsed')) fetchCheckin();
+  }
+});
+
 // ====== Theme switcher (Indigo / Minimal A/B) ======
 function applyTheme(theme){
   if (theme !== 'indigo' && theme !== 'minimal') theme = 'indigo';
@@ -3518,6 +3712,7 @@ document.addEventListener('keydown', (e) => {
   // Restore collapsed states
   if (localStorage.getItem('lrl-brief-collapsed') === '1') setBriefCollapsed(true);
   if (localStorage.getItem('lrl-chapter-collapsed') === '1') setChapterCollapsed(true);
+  initCheckin();
   // Re-render calendar every 60s so past/live event states stay accurate
   setInterval(() => { if (TODAY_EVENTS.length) renderTodayQuests(); }, 60000);
 })();

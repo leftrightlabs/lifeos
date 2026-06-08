@@ -1399,6 +1399,197 @@ app.delete('/api/calendar/events/:account/:id', async (req, res) => {
   }
 });
 
+// ====== DAILY SLACK CHECK-IN ======
+// Mirrors the "Daily Check-In" skill: aggregates today's calendar + MY DAY tasks
+// into a formatted message, then posts to #lrl_team via Slack bot token.
+
+const CHECKIN_EXCLUDE_TITLES = [
+  'admin', 'finances', 'stand up rock review', 'lrl l10', 'focus sprint',
+];
+const LRL_DOMAIN = '@leftrightlabs.com';
+const CHECKIN_SLACK_CHANNEL = process.env.SLACK_CHECKIN_CHANNEL || 'CT32H7ATS'; // #lrl_team
+
+function fmtCheckinTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  // "1:00 PM" — no leading zero, no timezone suffix
+  return d.toLocaleTimeString('en-US', {
+    timeZone: TZ,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+async function checkinFetchCalendar() {
+  const auth = authedClient('work');
+  if (!auth) throw new Error('Work Google account not configured');
+  const cal = google.calendar({ version: 'v3', auth });
+  const range = chicagoTodayRange();
+  const { data } = await cal.events.list({
+    calendarId: 'primary',
+    timeMin: range.start,
+    timeMax: range.end,
+    singleEvents: true,
+    orderBy: 'startTime',
+    timeZone: TZ,
+  });
+  const items = (data.items || [])
+    .filter((e) => {
+      const title = (e.summary || '').toLowerCase();
+      return !CHECKIN_EXCLUDE_TITLES.some((ex) => title.includes(ex));
+    })
+    .map((e) => {
+      const attendees = e.attendees || [];
+      const hasAttendees = attendees.length > 0;
+      const allInternal =
+        hasAttendees &&
+        attendees.every((a) => a.email && a.email.toLowerCase().endsWith(LRL_DOMAIN));
+      return {
+        title: e.summary || '(no title)',
+        start: e.start?.dateTime || e.start?.date,
+        allDay: !!e.start?.date,
+        isInternal: allInternal,
+      };
+    });
+  return items;
+}
+
+async function checkinFetchTasks() {
+  const data = await queryTasks(WORK_TASKS_DS, { peopleProp: 'Assigned', myDayOnly: true });
+  const pages = data.results.filter((p) => {
+    const name = p.properties?.Name?.title?.[0]?.plain_text || '';
+    // Exclude "Daily Planning" per the skill spec
+    return !/^daily planning$/i.test(name.trim());
+  });
+  // Resolve unique project IDs to names (cached per-request)
+  const projectIds = new Set();
+  for (const p of pages) {
+    const rel = p.properties?.Project?.relation || [];
+    for (const r of rel) projectIds.add(r.id);
+  }
+  const projectNames = new Map();
+  await Promise.all(
+    [...projectIds].map(async (id) => {
+      try {
+        const proj = await notion.pages.retrieve({ page_id: id });
+        const title =
+          proj.properties?.Name?.title?.[0]?.plain_text ||
+          proj.properties?.Title?.title?.[0]?.plain_text ||
+          '(unnamed)';
+        projectNames.set(id, title);
+      } catch (e) {
+        projectNames.set(id, '(unnamed)');
+      }
+    }),
+  );
+  const decorate = (p) => {
+    const name = p.properties?.Name?.title?.[0]?.plain_text || '(untitled)';
+    const status = p.properties?.Status?.status?.name || '';
+    const rel = p.properties?.Project?.relation || [];
+    const projId = rel[0]?.id;
+    const projName = projId ? projectNames.get(projId) || '(no project)' : '(no project)';
+    return { name, status, project: projName };
+  };
+  const all = pages.map(decorate);
+  return {
+    doing: all.filter((t) => t.status === 'Doing' || t.status === 'Planned'),
+    waiting: all.filter((t) => t.status === 'Waiting'),
+  };
+}
+
+function formatCheckinMessage({ events, doing, waiting }) {
+  const lines = [];
+  if (events.length) {
+    lines.push('*Here are the meetings I have today:*', '');
+    events.forEach((e, i) => {
+      const time = e.allDay ? 'All day' : fmtCheckinTime(e.start);
+      const label = e.isInternal ? `${e.title} [LRL Team]` : e.title;
+      lines.push(`${i + 1}. ${label} (${time})`);
+    });
+    lines.push('');
+  }
+  if (doing.length) {
+    lines.push(`*Here's what I'm working on:*`, '');
+    doing.forEach((t, i) => {
+      lines.push(`${i + 1}. ${t.name} | ${t.project}`);
+    });
+    lines.push('');
+  }
+  if (waiting.length) {
+    lines.push(`*Here's what I'm waiting on:*`, '');
+    waiting.forEach((t, i) => {
+      lines.push(`${i + 1}. ${t.name} | ${t.project}`);
+    });
+    lines.push('');
+  }
+  return lines.join('\n').trim();
+}
+
+app.get('/api/checkin/compose', async (_req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    const [events, tasks] = await Promise.all([
+      checkinFetchCalendar().catch((err) => {
+        console.error('Checkin calendar error:', err.message);
+        return [];
+      }),
+      checkinFetchTasks(),
+    ]);
+    const message = formatCheckinMessage({
+      events,
+      doing: tasks.doing,
+      waiting: tasks.waiting,
+    });
+    res.json({
+      message,
+      counts: { events: events.length, doing: tasks.doing.length, waiting: tasks.waiting.length },
+      channel: CHECKIN_SLACK_CHANNEL,
+      slackEnabled: !!process.env.SLACK_BOT_TOKEN,
+    });
+  } catch (err) {
+    console.error('Checkin compose error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/checkin/send', async (req, res) => {
+  const token = process.env.SLACK_BOT_TOKEN;
+  if (!token) return res.status(500).json({ error: 'SLACK_BOT_TOKEN not configured' });
+  const { text } = req.body || {};
+  if (!text || !text.trim()) return res.status(400).json({ error: 'text required' });
+  try {
+    const postRes = await fetch('https://slack.com/api/chat.postMessage', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify({
+        channel: CHECKIN_SLACK_CHANNEL,
+        text,
+        mrkdwn: true,
+      }),
+    });
+    const postData = await postRes.json();
+    if (!postData.ok) throw new Error(`Slack: ${postData.error || 'post failed'}`);
+    // Fetch permalink (best-effort)
+    let permalink = null;
+    try {
+      const linkRes = await fetch(
+        `https://slack.com/api/chat.getPermalink?channel=${encodeURIComponent(CHECKIN_SLACK_CHANNEL)}&message_ts=${encodeURIComponent(postData.ts)}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const linkData = await linkRes.json();
+      if (linkData.ok) permalink = linkData.permalink;
+    } catch (_) {}
+    res.json({ ok: true, ts: postData.ts, permalink, channel: postData.channel });
+  } catch (err) {
+    console.error('Checkin send error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/ai/triage/apply', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { actions } = req.body || {};
