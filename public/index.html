@@ -178,6 +178,29 @@
   .quest-pri.high { background: rgba(212,168,84,0.18); color: #d4a854; border: 1px solid rgba(212,168,84,0.35); }
   .quest-pri.normal { background: rgba(255,255,255,0.04); color: rgba(245,245,247,0.45); border: 1px solid rgba(255,255,255,0.08); }
 
+  /* === Day Path indicator (top of Command tab) === */
+  .day-path { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: stretch; gap: 8px; margin-bottom: 22px; padding: 10px 12px; background: var(--white); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; }
+  .day-path-stage { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); transition: all 0.3s ease; min-width: 0; cursor: pointer; }
+  .day-path-stage:hover { background: rgba(255,255,255,0.04); }
+  .day-path-stage.active { border-color: rgba(167,193,64,0.45); background: rgba(167,193,64,0.04); }
+  .day-path-stage.complete { border-color: rgba(167,193,64,0.55); background: rgba(167,193,64,0.07); }
+  .day-path-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,0.12); flex-shrink: 0; transition: all 0.3s; }
+  .day-path-stage.active .day-path-dot { background: var(--lime); box-shadow: 0 0 8px rgba(167,193,64,0.55); animation: lrl-path-pulse 2s ease-in-out infinite; }
+  .day-path-stage.complete .day-path-dot { background: var(--lime); box-shadow: 0 0 10px rgba(167,193,64,0.5); }
+  @keyframes lrl-path-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(167,193,64,0.5);} 50% { box-shadow: 0 0 0 5px rgba(167,193,64,0);} }
+  .day-path-body { min-width: 0; flex: 1; }
+  .day-path-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(245,245,247,0.55); font-weight: 800; line-height: 1.1; }
+  .day-path-stage.active .day-path-label, .day-path-stage.complete .day-path-label { color: var(--lime); }
+  .day-path-meta { font-size: 11px; color: rgba(245,245,247,0.55); font-weight: 500; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .day-path-stage.complete .day-path-meta { color: var(--lime); font-weight: 600; }
+  .day-path-arrow { color: rgba(245,245,247,0.25); font-size: 16px; font-weight: 700; align-self: center; user-select: none; }
+  body[data-mode="personal"] .day-path, .day-path.weekend { display: none; }
+  @media (max-width: 700px) {
+    .day-path { grid-template-columns: 1fr; gap: 6px; padding: 10px; }
+    .day-path-arrow { display: none; }
+    .day-path-stage { padding: 8px 10px; }
+  }
+
   /* === Daily gamification: lock/unlock/cleared states === */
   .quest-panel-locked { position: relative; opacity: 0.55; transition: opacity 0.5s ease; }
   .quest-panel-locked::after {
@@ -1684,6 +1707,32 @@ window.lrl = (function(){
     <h1 class="page-title"><span>Command</span></h1>
     <div class="page-subtitle">Your quarterly game board. Where you are, what's next, and whether you're on the right path.</div>
 
+    <div class="day-path" id="day-path">
+      <div class="day-path-stage" data-stage="ritual" data-action="jump-ritual">
+        <span class="day-path-dot"></span>
+        <div class="day-path-body">
+          <div class="day-path-label">Ritual</div>
+          <div class="day-path-meta" id="day-path-ritual-meta">0 of 5 done</div>
+        </div>
+      </div>
+      <div class="day-path-arrow">›</div>
+      <div class="day-path-stage" data-stage="quest" data-action="jump-quest">
+        <span class="day-path-dot"></span>
+        <div class="day-path-body">
+          <div class="day-path-label">Today's Quest</div>
+          <div class="day-path-meta" id="day-path-quest-meta">0 of 0 done</div>
+        </div>
+      </div>
+      <div class="day-path-arrow">›</div>
+      <div class="day-path-stage" data-stage="free">
+        <span class="day-path-dot"></span>
+        <div class="day-path-body">
+          <div class="day-path-label">Free</div>
+          <div class="day-path-meta" id="day-path-free-meta">pending</div>
+        </div>
+      </div>
+    </div>
+
     <div class="daily-brief" id="daily-brief">
       <div class="daily-brief-kicker">
         <button class="daily-brief-toggle" id="brief-toggle" title="Collapse/expand"><span id="brief-collapse-caret">▾</span> Daily Focus <span id="brief-bucket" style="opacity:0.6;font-weight:500;text-transform:lowercase;letter-spacing:0.05em"></span></button>
@@ -2579,33 +2628,91 @@ function toggleRitualStep(step){
   applyDailyGamification();
 }
 
-// Daily gamification: celebrate the day-cleared state. (No hard lock on
-// Today's Quest — sequencing tasks IS part of the ritual, so locking would
-// fight the workflow.)
+// Daily gamification: path indicator + day-cleared banner. No locking.
 function applyDailyGamification(){
   const panel = document.getElementById('quest-panel');
-  if (panel) panel.classList.remove('quest-panel-locked'); // ensure removed if any stale state
+  if (panel) panel.classList.remove('quest-panel-locked');
   const state = loadRitual();
-  const ritualDone = RITUAL_STEPS.every(k => state[k]);
+  const ritualDoneCount = RITUAL_STEPS.filter(k => state[k]).length;
+  const ritualDone = ritualDoneCount === RITUAL_STEPS.length;
 
   // Day-cleared banner
   const taskDiv = document.getElementById('today-quests');
-  if (!taskDiv) return;
   const filtered = (window.TODAY_TASKS || []).filter(t => {
     if (mode === 'all') return true;
     return t.source === mode;
   });
+  const totalQuest = filtered.length;
+  const questDoneCount = filtered.filter(t => t.done).length;
   const actionableLeft = filtered.filter(t => t.status !== 'Waiting' && !t.done).length;
-  const dayCleared = ritualDone && actionableLeft === 0;
-  taskDiv.querySelectorAll('.day-cleared-banner').forEach(el => el.remove());
-  if (dayCleared && filtered.length > 0) {
-    const banner = document.createElement('div');
-    banner.className = 'day-cleared-banner';
-    banner.innerHTML = `✨ Day cleared.<span class="sub">The rest is yours.</span>`;
-    taskDiv.prepend(banner);
+  const questDone = totalQuest > 0 && actionableLeft === 0;
+  const dayCleared = ritualDone && questDone;
+  if (taskDiv){
+    taskDiv.querySelectorAll('.day-cleared-banner').forEach(el => el.remove());
+    if (dayCleared) {
+      const banner = document.createElement('div');
+      banner.className = 'day-cleared-banner';
+      banner.innerHTML = `✨ Day cleared.<span class="sub">The rest is yours.</span>`;
+      taskDiv.prepend(banner);
+    }
+  }
+
+  // Day Path indicator
+  const dp = document.getElementById('day-path');
+  if (dp){
+    dp.classList.toggle('weekend', isChicagoWeekend());
+    const stages = {
+      ritual: dp.querySelector('[data-stage="ritual"]'),
+      quest: dp.querySelector('[data-stage="quest"]'),
+      free: dp.querySelector('[data-stage="free"]'),
+    };
+    Object.values(stages).forEach(el => el?.classList.remove('active','complete'));
+
+    // Ritual stage
+    const ritualMeta = document.getElementById('day-path-ritual-meta');
+    if (ritualMeta) ritualMeta.textContent = ritualDone ? 'Complete ✓' : `${ritualDoneCount} of ${RITUAL_STEPS.length} done`;
+    if (ritualDone) stages.ritual?.classList.add('complete');
+    else stages.ritual?.classList.add('active');
+
+    // Quest stage
+    const questMeta = document.getElementById('day-path-quest-meta');
+    if (questMeta){
+      if (totalQuest === 0) questMeta.textContent = 'no tasks queued';
+      else if (questDone) questMeta.textContent = 'all clear ✓';
+      else questMeta.textContent = `${questDoneCount} of ${totalQuest} done`;
+    }
+    if (questDone) stages.quest?.classList.add('complete');
+    else if (ritualDone || totalQuest > 0) stages.quest?.classList.add('active');
+
+    // Free stage
+    const freeMeta = document.getElementById('day-path-free-meta');
+    if (freeMeta){
+      if (dayCleared) freeMeta.textContent = 'earned ✓';
+      else if (ritualDone && questDone) freeMeta.textContent = 'earned ✓';
+      else freeMeta.textContent = 'pending';
+    }
+    if (dayCleared) stages.free?.classList.add('complete');
   }
 }
 window.applyDailyGamification = applyDailyGamification;
+
+// Make path segments jumpable
+document.addEventListener('click', (e) => {
+  const stage = e.target.closest('.day-path-stage[data-action]');
+  if (!stage) return;
+  const action = stage.dataset.action;
+  if (action === 'jump-ritual'){
+    document.getElementById('ritual-card')?.scrollIntoView({ behavior:'smooth', block:'center' });
+    // If collapsed, expand it
+    const card = document.getElementById('ritual-card');
+    if (card && card.classList.contains('collapsed')){
+      card.classList.remove('collapsed');
+      try { localStorage.setItem('lrl-ritual-collapsed','0'); } catch(_){}
+    }
+  } else if (action === 'jump-quest'){
+    document.getElementById('today-quests')?.scrollIntoView({ behavior:'smooth', block:'center' });
+  }
+});
 
 function initRitual(){
   const card = document.getElementById('ritual-card');
