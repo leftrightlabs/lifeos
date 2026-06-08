@@ -1562,11 +1562,24 @@ app.get('/api/checkin/compose', async (_req, res) => {
   }
 });
 
+app.get('/api/checkin/diag', (_req, res) => {
+  const u = process.env.SLACK_USER_TOKEN || '';
+  const b = process.env.SLACK_BOT_TOKEN || '';
+  res.json({
+    userTokenPresent: !!u,
+    userTokenPrefix: u ? u.slice(0, 5) : null,
+    botTokenPresent: !!b,
+    botTokenPrefix: b ? b.slice(0, 5) : null,
+    willPostAs: u ? 'user' : (b ? 'bot' : 'none'),
+  });
+});
+
 app.post('/api/checkin/send', async (req, res) => {
   // Prefer the user token (post as the actual user) when configured,
   // otherwise fall back to the bot token (posts as the LifeOS app).
   const userToken = process.env.SLACK_USER_TOKEN;
   const botToken = process.env.SLACK_BOT_TOKEN;
+  console.log('[checkin] tokens — user:', userToken ? userToken.slice(0,5) : 'MISSING', 'bot:', botToken ? botToken.slice(0,5) : 'MISSING');
   const token = userToken || botToken;
   if (!token) return res.status(500).json({ error: 'Slack token not configured (set SLACK_USER_TOKEN or SLACK_BOT_TOKEN)' });
   const { text } = req.body || {};
