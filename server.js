@@ -1464,9 +1464,9 @@ async function checkinFetchCalendar() {
 async function checkinFetchTasks() {
   const data = await queryTasks(WORK_TASKS_DS, { peopleProp: 'Assigned', myDayOnly: true });
   const pages = data.results.filter((p) => {
-    const name = p.properties?.Name?.title?.[0]?.plain_text || '';
-    // Exclude "Daily Planning" per the skill spec
-    return !/^daily planning$/i.test(name.trim());
+    const name = (p.properties?.Name?.title?.[0]?.plain_text || '').toLowerCase();
+    // Exclude any "Daily Planning" task (e.g. "Daily Planning", "G's Daily Planning", etc.)
+    return !name.includes('daily planning');
   });
   // Resolve unique project IDs to names (cached per-request)
   const projectIds = new Set();
