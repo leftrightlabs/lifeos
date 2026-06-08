@@ -17,6 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js" defer></script>
 <script>
   // Apply saved theme BEFORE first paint (avoids flash). Default = indigo.
   (function(){
@@ -176,6 +177,12 @@
   .quest-pri.urgent { background: rgba(255,122,107,0.18); color: #ff7a6b; border: 1px solid rgba(255,122,107,0.35); }
   .quest-pri.high { background: rgba(212,168,84,0.18); color: #d4a854; border: 1px solid rgba(212,168,84,0.35); }
   .quest-pri.normal { background: rgba(255,255,255,0.04); color: rgba(245,245,247,0.45); border: 1px solid rgba(255,255,255,0.08); }
+
+  /* Drag-to-reorder visuals */
+  .quest-drag-chosen { background: rgba(167,193,64,0.08); border-radius: 8px; box-shadow: 0 12px 30px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(167,193,64,0.4); transform: scale(1.02); cursor: grabbing; transition: transform 0.18s ease, box-shadow 0.18s ease; }
+  .quest-drag-ghost { opacity: 0.25; }
+  .quest-drag-hint { font-size: 10.5px; color: rgba(245,245,247,0.4); margin-top: 8px; padding-left: 4px; letter-spacing: 0.04em; }
+  @media (hover: hover) { .quest-drag-hint { display: none; } }
 
   /* Waiting-on divider in Today's Quest */
   .quest-waiting-divider { display: flex; align-items: center; gap: 10px; padding: 14px 0 8px; margin-top: 10px; border-top: 1px dashed rgba(255,255,255,0.06); }
@@ -2567,6 +2574,52 @@ function dueLabel(t){
   return { text: date, cls: '' };
 }
 
+// Manual ordering for Today's Quest (drag-to-reorder)
+const QUEST_ORDER_KEY = 'lrl-quest-order-v1';
+function loadQuestOrder(){
+  try { return JSON.parse(localStorage.getItem(QUEST_ORDER_KEY) || '[]'); }
+  catch(e){ return []; }
+}
+function saveQuestOrder(ids){
+  try { localStorage.setItem(QUEST_ORDER_KEY, JSON.stringify(ids)); } catch(e){}
+}
+function sortByManualOrder(items){
+  const orderIds = loadQuestOrder();
+  if (!orderIds.length) return items;
+  const indexMap = new Map(orderIds.map((id, i) => [id, i]));
+  return items.slice().sort((a, b) => {
+    const ai = indexMap.has(a.id) ? indexMap.get(a.id) : Infinity;
+    const bi = indexMap.has(b.id) ? indexMap.get(b.id) : Infinity;
+    return ai - bi;
+  });
+}
+
+function attachQuestSortable(container){
+  if (!container || typeof Sortable === 'undefined') return;
+  // Destroy any prior instance to avoid duplicates across re-renders
+  if (container._sortable) { try { container._sortable.destroy(); } catch(_){} container._sortable = null; }
+  container._sortable = Sortable.create(container, {
+    delay: 350,             // long-press time on touch
+    delayOnTouchOnly: true, // mouse drags immediately
+    touchStartThreshold: 8,
+    animation: 220,
+    draggable: '.quest-item',
+    filter: '[data-no-drag], button, a, input, select, textarea, .quest-check, .quest-star, .quest-due-inline, .quest-due-edit',
+    preventOnFilter: false,
+    ghostClass: 'quest-drag-ghost',
+    chosenClass: 'quest-drag-chosen',
+    onStart: () => { window.lrl?.haptic('success'); },
+    onEnd: () => {
+      const ids = [...container.querySelectorAll('.quest-item')].map(r => r.dataset.taskId).filter(Boolean);
+      saveQuestOrder(ids);
+      window.lrl?.haptic('tap');
+      window.lrl?.toast('Order saved', 'success');
+      // Re-render so the waiting/actionable split re-applies if user dragged across the divider
+      renderTodayQuests();
+    },
+  });
+}
+
 function renderQuestRow(t){
   const tag = t.source === 'work' ? '<span class="quest-tag tag-work">work</span>' : '<span class="quest-tag tag-personal">personal</span>';
   const due = dueLabel(t);
@@ -2601,8 +2654,8 @@ function renderTodayQuests(){
       const msg = mode === 'all' ? 'Nothing on My Day' : `No ${mode} tasks today`;
       taskDiv.innerHTML = `<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">${msg}</div>`;
     } else {
-      const actionable = filtered.filter(t => t.status !== 'Waiting');
-      const waiting = filtered.filter(t => t.status === 'Waiting');
+      const actionable = sortByManualOrder(filtered.filter(t => t.status !== 'Waiting'));
+      const waiting = sortByManualOrder(filtered.filter(t => t.status === 'Waiting'));
       let html = '';
       if (actionable.length){
         html += actionable.map(renderQuestRow).join('');
@@ -2610,10 +2663,12 @@ function renderTodayQuests(){
         html += `<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">All actionable items are clear ✓</div>`;
       }
       if (waiting.length){
-        html += `<div class="quest-waiting-divider"><span>WAITING ON · ${waiting.length}</span></div>`;
+        html += `<div class="quest-waiting-divider" data-no-drag><span>WAITING ON · ${waiting.length}</span></div>`;
         html += waiting.map(renderQuestRow).join('');
       }
+      html += `<div class="quest-drag-hint" data-no-drag>Tip · long-press a task to drag and reorder</div>`;
       taskDiv.innerHTML = html;
+      attachQuestSortable(taskDiv);
     }
   }
   if (calDiv){
