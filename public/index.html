@@ -2083,6 +2083,13 @@ el('list').addEventListener('click',e=>{
       try{
         await afPatch(id,{dueStart:newDate,dueEnd:null});
         window.lrl.haptic('success');
+        const fmtDate=(d)=>d?new Date(d.slice(0,10)+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'no date';
+        window.lrl.toast(`Date: ${fmtDate(prev.dueStart)} → ${fmtDate(newDate)}`,'',{undo:async()=>{
+          state.edits[id]=Object.assign({},state.edits[id],prev);
+          saveState();render();
+          try{await afPatch(id,{dueStart:prev.dueStart,dueEnd:prev.dueEnd});}
+          catch(err){window.lrl.toast('Undo failed: '+err.message,'error');}
+        }});
       }catch(err){
         state.edits[id]=Object.assign({},state.edits[id],prev);
         saveState();render();
@@ -2432,6 +2439,14 @@ document.getElementById('today-quests').addEventListener('click', async (e) => {
       try {
         await patchTask(id, { dueStart: newDate, dueEnd: null });
         window.lrl.haptic('success');
+        const fmtDate = (d) => d ? new Date(d.slice(0,10)+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : 'no date';
+        window.lrl.toast(`Date: ${fmtDate(prevStart)} → ${fmtDate(newDate)}`, '', { undo: async () => {
+          t.dueStart = prevStart;
+          t.dueEnd = prevEnd;
+          renderTodayQuests();
+          try { await patchTask(id, { dueStart: prevStart, dueEnd: prevEnd }); }
+          catch(err){ window.lrl.toast('Undo failed: ' + err.message, 'error'); }
+        }});
       } catch(err){
         t.dueStart = prevStart;
         t.dueEnd = prevEnd;
