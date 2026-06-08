@@ -1149,9 +1149,12 @@ CRITICAL: Your entire response must be ONE JSON object and NOTHING else — no m
 - If she's doing BOTH (e.g. "what's my next milestone on Rock 1 and add a task to do it"), do both — meaningful intro answer + relevant actions.
 
 Action types you can emit:
-- create_task: a new Notion task. source = "work" or "personal". Required: name. Optional: dueStart (YYYY-MM-DD), myDay (boolean), priority ("URGENT" | "HIGH" | "NORMAL" | null), projectId (uuid from the project list).
+- create_project: a new Notion project (in the work SYSTEMS or personal FOCUS database). source = "work" or "personal". Required: name. Use this when she says things like "set up a project for X" or "create a course / launch / build / area called Y". A project is a container for related tasks (vs. a single task).
+- create_task: a new Notion task. source = "work" or "personal". Required: name. Optional: dueStart (YYYY-MM-DD), myDay (boolean), priority ("URGENT" | "HIGH" | "NORMAL" | null), projectId (uuid from the project list), projectRef (string — the exact "name" of a create_project action earlier in this same plan; the server resolves it to the new project's id after creation).
 - update_task: change fields on an existing Notion task. Required: taskId (uuid from ALL OPEN TASKS context — use the EXACT id shown). Optional: dueStart (YYYY-MM-DD, or empty string "" to clear), dueEnd, myDay (boolean), priority ("URGENT" | "HIGH" | "NORMAL"), status ("Done" | "Doing" | "Planned" | "Agenda" | "Waiting"), name (string).
 - create_event: a calendar event. account = "work" or "personal". Required: title, start, end. If allDay=true, start/end are YYYY-MM-DD; otherwise ISO datetime with America/Chicago offset (-05:00 CDT or -06:00 CST). location optional.
+
+For "create a project + add these tasks to it" patterns, emit create_project FIRST, then create_task actions with projectRef set to the project's name (exact string match, case-insensitive). The apply step links them automatically.
 
 For update_task: she'll often say things like "move X to next Friday" or "push the dentist appointment to next week" or "reset the date on Y". Find the matching task in ALL OPEN TASKS by name match, use its exact taskId.
 
@@ -1173,7 +1176,8 @@ const TRIAGE_JSON_HINT = `Return ONLY valid JSON in this exact shape, no prose, 
 {
   "intro": "one sentence, warm casual tone",
   "actions": [
-    { "type": "create_task", "label": "short summary", "source": "work"|"personal", "name": "task name", "dueStart": "YYYY-MM-DD" (optional), "myDay": true|false (optional), "priority": "URGENT"|"HIGH"|"NORMAL" (optional), "projectId": "uuid" (optional) },
+    { "type": "create_project", "label": "short summary", "source": "work"|"personal", "name": "project name" },
+    { "type": "create_task", "label": "short summary", "source": "work"|"personal", "name": "task name", "dueStart": "YYYY-MM-DD" (optional), "myDay": true|false (optional), "priority": "URGENT"|"HIGH"|"NORMAL" (optional), "projectId": "uuid" (optional), "projectRef": "exact name of a create_project in this same plan" (optional) },
     { "type": "update_task", "label": "short summary of what's changing", "taskId": "exact uuid from ALL OPEN TASKS", "dueStart": "YYYY-MM-DD"|"" (optional), "myDay": true|false (optional), "priority": "URGENT"|"HIGH"|"NORMAL" (optional), "status": "Done"|"Doing"|"Planned"|"Agenda"|"Waiting" (optional), "name": "new name" (optional) },
     { "type": "create_event", "label": "short summary", "account": "work"|"personal", "title": "event title", "start": "ISO datetime with TZ offset, or YYYY-MM-DD if allDay", "end": "same format", "allDay": true|false (optional), "location": "optional string" }
   ]
@@ -1300,7 +1304,21 @@ app.post('/api/ai/triage', async (req, res) => {
 });
 
 const TASK_DS_BY_SOURCE = { work: WORK_TASKS_DS, personal: LIFE_TASKS_DS };
+const PROJECT_DS_BY_SOURCE = { work: WORK_PROJECTS_DS, personal: LIFE_PROJECTS_DS };
 const PROJECT_PROP_BY_SOURCE = { work: 'Project', personal: 'Project' };
+
+async function createNotionProject({ source, name }) {
+  const dsId = PROJECT_DS_BY_SOURCE[source];
+  if (!dsId) throw new Error(`unknown source: ${source}`);
+  if (!name) throw new Error('name is required');
+  const page = await notion.pages.create({
+    parent: { type: 'data_source_id', data_source_id: dsId },
+    properties: {
+      Name: { title: [{ text: { content: name } }] },
+    },
+  });
+  return { id: page.id, name, url: page.url };
+}
 
 async function createNotionTask({ source, name, dueStart, myDay, priority, projectId }) {
   const dsId = TASK_DS_BY_SOURCE[source];
@@ -1622,11 +1640,26 @@ app.post('/api/ai/triage/apply', async (req, res) => {
   const { actions } = req.body || {};
   if (!Array.isArray(actions)) return res.status(400).json({ error: 'actions array required' });
   const results = [];
+  // Process in order so a create_project's new id is available to a
+  // subsequent create_task that references the project by name.
+  const newProjectsByName = new Map(); // lowercased project name -> { id, source }
   for (const a of actions) {
     try {
-      if (a.type === 'create_task') {
+      if (a.type === 'create_project') {
+        if (!a.source || !a.name) throw new Error('create_project requires source + name');
+        const r = await createNotionProject(a);
+        newProjectsByName.set(a.name.toLowerCase().trim(), { id: r.id, source: a.source });
+        results.push({ action: a, ok: true, result: r });
+      } else if (a.type === 'create_task') {
         if (!a.source || !a.name) throw new Error('create_task requires source + name');
-        const r = await createNotionTask(a);
+        // If create_task references a project by name (e.g. projectRef), resolve
+        // it to the id of a just-created project of the same source.
+        const taskArgs = { ...a };
+        if (!taskArgs.projectId && a.projectRef) {
+          const matched = newProjectsByName.get(String(a.projectRef).toLowerCase().trim());
+          if (matched && matched.source === a.source) taskArgs.projectId = matched.id;
+        }
+        const r = await createNotionTask(taskArgs);
         results.push({ action: a, ok: true, result: r });
       } else if (a.type === 'update_task') {
         if (!a.taskId) throw new Error('update_task requires taskId');

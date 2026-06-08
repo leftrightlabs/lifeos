@@ -607,6 +607,8 @@
   .review-celebrate { padding: 30px 20px; text-align: center; color: var(--lime); font-family: var(--font-display); font-size: 18px; font-weight: 700; }
   .triage-action.event-work { border-left-color: rgba(122,157,216,0.8); }
   .triage-action.event-personal { border-left-color: var(--lime); }
+  .triage-action.project-work { border-left-color: #818cf8; }
+  .triage-action.project-personal { border-left-color: #c084fc; }
   .triage-action.applied { opacity: 0.55; }
   .triage-action.failed { border-left-color: #ff6b6b; }
   .triage-check { width: 18px; height: 18px; border: 1.5px solid rgba(255,255,255,0.25); border-radius: 4px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
@@ -4015,6 +4017,7 @@ function renderPlanItemsHTML(plan, msgIdx, editable){
     let kindLabel, cls;
     if (a.type === 'create_task') { kindLabel = `${a.source || '?'} task`; cls = `task-${a.source}`; }
     else if (a.type === 'update_task') { kindLabel = 'update task'; cls = 'task-update'; }
+    else if (a.type === 'create_project') { kindLabel = `${a.source || '?'} project`; cls = `project-${a.source}`; }
     else { kindLabel = `${a.account || '?'} event`; cls = `event-${a.account}`; }
     const checked = editable && triageSelected.has(i) ? 'checked' : '';
     const meta = [];
@@ -4023,6 +4026,9 @@ function renderPlanItemsHTML(plan, msgIdx, editable){
     if (a.projectId && triageProjects) {
       const proj = triageProjects.find(p => p.id === a.projectId);
       if (proj) meta.push('→ ' + proj.name);
+    }
+    if (!a.projectId && a.projectRef) {
+      meta.push('→ new project: ' + a.projectRef);
     }
     if (a.start && a.type === 'create_event') meta.push(a.allDay ? `${a.start} all-day` : new Date(a.start).toLocaleString('en-US',{timeZone:'America/Chicago',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}));
     if (a.location) meta.push(a.location);
