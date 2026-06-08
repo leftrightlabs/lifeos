@@ -5,6 +5,7 @@ import { google } from 'googleapis';
 import Anthropic from '@anthropic-ai/sdk';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 
 if (process.env.NODE_ENV !== 'production') {
   const { default: dotenv } = await import('dotenv');
@@ -1755,7 +1756,30 @@ const XERO_SCOPES = [
 ];
 
 let _xeroAccess = { token: null, exp: 0 };
-let _xeroRefresh = process.env.XERO_REFRESH_TOKEN || null;
+
+// Xero rotates the refresh token on every refresh. Persist the latest one
+// to disk so it survives in-memory restarts within a single Railway deploy.
+// (Across full code deploys the filesystem may reset; the env-var fallback
+// handles cold starts in that case.)
+const XERO_STATE_FILE = process.env.XERO_STATE_FILE || join(process.cwd(), 'data', 'xero-state.json');
+function loadXeroPersistedToken() {
+  try {
+    if (existsSync(XERO_STATE_FILE)) {
+      const s = JSON.parse(readFileSync(XERO_STATE_FILE, 'utf8'));
+      if (s && s.refresh_token) return s.refresh_token;
+    }
+  } catch (e) { console.warn('[xero] load state failed:', e.message); }
+  return null;
+}
+function saveXeroPersistedToken(token) {
+  try {
+    const dir = dirname(XERO_STATE_FILE);
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    writeFileSync(XERO_STATE_FILE, JSON.stringify({ refresh_token: token, savedAt: new Date().toISOString() }, null, 2));
+  } catch (e) { console.warn('[xero] save state failed:', e.message); }
+}
+let _xeroRefresh = loadXeroPersistedToken() || process.env.XERO_REFRESH_TOKEN || null;
+if (_xeroRefresh) console.log('[xero] init token source:', loadXeroPersistedToken() ? 'disk' : 'env');
 
 function xeroAuthHeader() {
   const id = process.env.XERO_CLIENT_ID || '';
@@ -1780,7 +1804,10 @@ async function getXeroAccessToken() {
   const d = await r.json();
   if (!r.ok || d.error) throw new Error(`Xero refresh failed: ${d.error_description || d.error || r.status}`);
   _xeroAccess = { token: d.access_token, exp: Date.now() + (d.expires_in || 1800) * 1000 };
-  _xeroRefresh = d.refresh_token || _xeroRefresh; // rotates
+  if (d.refresh_token && d.refresh_token !== _xeroRefresh) {
+    _xeroRefresh = d.refresh_token;
+    saveXeroPersistedToken(_xeroRefresh);
+  }
   return _xeroAccess.token;
 }
 
@@ -1838,9 +1865,10 @@ app.get('/auth/xero/callback', async (req, res) => {
     const connections = await connRes.json();
     const conn = connections?.[0];
     if (!conn) return res.status(500).send('No Xero connections found');
-    // Cache in-memory so live API works immediately without redeploy
+    // Cache in-memory + persist to disk so live API works without redeploy
     _xeroAccess = { token: tokens.access_token, exp: Date.now() + (tokens.expires_in || 1800) * 1000 };
     _xeroRefresh = tokens.refresh_token;
+    saveXeroPersistedToken(_xeroRefresh);
     res.type('html').send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Xero connected</title>
 <style>body{font-family:-apple-system,system-ui,sans-serif;background:#0a0f1e;color:#f5f5f7;padding:32px;line-height:1.6;max-width:700px;margin:0 auto}
 h1{color:#10b981;font-size:22px;margin:0 0 8px}h2{font-size:14px;color:#a5b4fc;letter-spacing:.1em;text-transform:uppercase;margin:24px 0 8px}
@@ -1993,7 +2021,9 @@ app.get('/api/finance/xero', async (_req, res) => {
     res.json(data);
   } catch (err) {
     console.error('Xero finance error:', err.message);
-    res.status(500).json({ error: err.message, needsAuth: /XERO_(REFRESH_TOKEN|TENANT_ID)/.test(err.message) });
+    const needsAuth = /XERO_(REFRESH_TOKEN|TENANT_ID)/.test(err.message)
+      || /invalid_grant|invalid_token|unauthorized/i.test(err.message);
+    res.status(500).json({ error: err.message, needsAuth });
   }
 });
 
