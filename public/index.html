@@ -306,6 +306,38 @@
   .cal-allday-pill .pill-dot.work { background: #5d9cec; }
   .cal-allday-pill .pill-dot.personal { background: var(--lime); }
 
+  /* ===== Finance dashboard (Xero) ===== */
+  .fin-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .fin-kpi { background: var(--white); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 14px 16px; border-top: 3px solid var(--lime); }
+  .fin-kpi.cash { border-top-color: var(--lime); }
+  .fin-kpi.runway { border-top-color: #5d9cec; }
+  .fin-kpi.runway.short { border-top-color: #ff7a6b; }
+  .fin-kpi.runway.short .fin-kpi-value { color: #ff7a6b; }
+  .fin-kpi.revenue { border-top-color: #818cf8; }
+  .fin-kpi.net { border-top-color: #c084fc; }
+  .fin-kpi.net.negative { border-top-color: #ff7a6b; }
+  .fin-kpi.net.negative .fin-kpi-value { color: #ff7a6b; }
+  .fin-kpi-label { font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(245,245,247,0.55); font-weight: 700; margin-bottom: 8px; }
+  .fin-kpi-value { font-family: var(--font-display); font-size: 26px; color: var(--navy); font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+  .fin-kpi-value .unit { font-size: 13px; color: rgba(245,245,247,0.5); font-weight: 500; margin-left: 4px; font-family: var(--font-body); letter-spacing: 0; }
+  .fin-kpi-meta { font-size: 11.5px; color: rgba(245,245,247,0.55); margin-top: 6px; }
+  .fin-card { background: var(--white); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
+  .fin-card-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+  .fin-card-title { font-family: var(--font-body); font-size: 11px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(245,245,247,0.65); }
+  .fin-card-meta { font-size: 11px; color: rgba(245,245,247,0.45); }
+  .fin-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-top: 1px solid rgba(255,255,255,0.04); font-size: 13.5px; color: var(--navy); }
+  .fin-row:first-child { border-top: none; }
+  .fin-row .label { font-weight: 500; }
+  .fin-row .value { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .fin-row.total { font-weight: 700; border-top: 1px solid rgba(255,255,255,0.12); margin-top: 4px; padding-top: 12px; }
+  .fin-row.total .value { color: var(--lime); }
+  .fin-twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 700px) { .fin-twocol { grid-template-columns: 1fr; } }
+  .fin-auth-prompt { background: rgba(255,183,77,0.08); border: 1px solid rgba(255,183,77,0.25); border-radius: 10px; padding: 16px 18px; color: var(--navy); font-size: 14px; line-height: 1.5; }
+  .fin-auth-prompt a { color: #ffb74d; font-weight: 700; text-decoration: none; }
+  .fin-auth-prompt a:hover { text-decoration: underline; }
+  .fin-as-of { font-size: 11px; color: rgba(245,245,247,0.4); text-align: right; margin-top: 12px; }
+
   /* ===== Health rings + streaks ===== */
   .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 18px; }
   .health-card { background: var(--white); border: 1px solid var(--navy-faint); border-radius: 12px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
@@ -2039,24 +2071,9 @@ window.lrl = (function(){
 
   <!-- FINANCE TAB -->
   <div class="tab-content" data-content="finance">
-    <div class="section-label">Financial Health</div>
     <h1 class="page-title"><span>Finance</span></h1>
-    <div class="page-subtitle">Revenue against target, recurring stability, and debt paydown progress. (Static placeholder.)</div>
-    <div class="progress-large">
-      <div class="progress-header">
-        <div><div class="section-label" style="margin-bottom:4px;">Q2 Revenue Target</div><div style="font-family:var(--font-display);font-size:26px;font-weight:800;letter-spacing:-0.02em;">$72.4K / $105K</div></div>
-        <div style="font-size:14px;color:var(--navy-dim);">69% achieved</div>
-      </div>
-      <div class="progress-bar-large"><div class="progress-fill-large" style="width:69%"></div></div>
-      <div style="font-size:12px;color:var(--navy-dim);">Need $32.6K in next 25 days to hit target — avg $6.5K/week</div>
-    </div>
-    <div class="progress-large">
-      <div class="progress-header">
-        <div><div class="section-label" style="margin-bottom:4px;">2026 Debt Paydown</div><div style="font-family:var(--font-display);font-size:26px;font-weight:800;letter-spacing:-0.02em;">$11K / $25K</div></div>
-        <div style="font-size:14px;color:var(--navy-dim);">44% paid</div>
-      </div>
-      <div class="progress-bar-large"><div class="progress-fill-large navy" style="width:44%"></div></div>
-    </div>
+    <div class="page-subtitle">Live from Xero · cash on hand, runway, P&L, what's owed.</div>
+    <div id="finance-body"><div style="color:var(--navy-dim);font-size:13px;padding:20px 0">loading…</div></div>
   </div>
 
   <!-- TEAM TAB -->
@@ -3643,6 +3660,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.querySelector(`[data-content="${tab.dataset.tab}"]`).classList.add('active');
     localStorage.setItem('lrl-active-tab', tab.dataset.tab);
     if (tab.dataset.tab === 'health') maybeLoadHealth();
+    if (tab.dataset.tab === 'finance') maybeLoadFinance();
   });
 });
 
@@ -4512,6 +4530,119 @@ function maybeLoadHealth(){
   fetchHealth().then(renderHealth);
 }
 
+// ====== Finance tab (Xero) ======
+let _financeLoaded = false;
+function fmtMoney(n, cur){
+  if (n == null || isNaN(n)) return '—';
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (abs >= 1_000_000) return `${sign}$${(abs/1_000_000).toFixed(abs >= 10_000_000 ? 1 : 2)}M`;
+  if (abs >= 10_000) return `${sign}$${Math.round(abs/1000)}K`;
+  if (abs >= 1_000) return `${sign}$${(abs/1000).toFixed(1)}K`;
+  return `${sign}$${abs.toFixed(0)}`;
+}
+function fmtMoneyFull(n){
+  if (n == null || isNaN(n)) return '—';
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+}
+
+async function fetchFinance(){
+  const body = document.getElementById('finance-body');
+  if (!body) return;
+  body.innerHTML = '<div style="color:var(--navy-dim);font-size:13px;padding:20px 0">loading Xero…</div>';
+  try {
+    const r = await fetch('/api/finance/xero');
+    const d = await r.json();
+    if (d.error){
+      if (d.needsAuth){
+        body.innerHTML = `<div class="fin-auth-prompt">
+          <b>Xero not yet authorized.</b><br>
+          Click here to connect: <a href="/auth/xero">Authorize LifeOS with Xero ↗</a><br>
+          After approving, you'll get instructions to add the refresh token + tenant ID to Railway.
+        </div>`;
+      } else {
+        body.innerHTML = `<div class="fin-auth-prompt" style="border-color:rgba(255,122,107,0.35);background:rgba(255,122,107,0.08)">Error: ${d.error}</div>`;
+      }
+      return;
+    }
+    renderFinance(d);
+  } catch (e){
+    body.innerHTML = `<div style="color:#ff7a6b;padding:20px">${e.message}</div>`;
+  }
+}
+
+function renderFinance(d){
+  const body = document.getElementById('finance-body');
+  if (!body) return;
+  const runwayShort = d.runwayMonths != null && d.runwayMonths < 3;
+  const runwayDisplay = d.runwayMonths == null ? '∞' : `${d.runwayMonths}<span class="unit">mo</span>`;
+  const burnLine = d.monthlyBurn > 0 ? `Burn ~${fmtMoneyFull(d.monthlyBurn)}/mo (last 3mo avg)` : 'Not enough history yet';
+  const netNeg = d.mtdNet < 0;
+
+  const accountsRows = (d.accounts || []).length
+    ? d.accounts.map(a => `<div class="fin-row"><span class="label">${escapeHtml(a.name)}</span><span class="value">${fmtMoneyFull(a.balance)}</span></div>`).join('')
+      + `<div class="fin-row total"><span class="label">Total cash</span><span class="value">${fmtMoneyFull(d.cashOnHand)}</span></div>`
+    : '<div class="fin-row"><span class="label" style="color:rgba(245,245,247,0.45)">No bank accounts found</span></div>';
+
+  const html = `
+    <div class="fin-kpi-grid">
+      <div class="fin-kpi cash">
+        <div class="fin-kpi-label">Cash on hand</div>
+        <div class="fin-kpi-value">${fmtMoneyFull(d.cashOnHand)}</div>
+        <div class="fin-kpi-meta">${(d.accounts||[]).length} account${(d.accounts||[]).length===1?'':'s'}</div>
+      </div>
+      <div class="fin-kpi runway ${runwayShort ? 'short' : ''}">
+        <div class="fin-kpi-label">Runway</div>
+        <div class="fin-kpi-value">${runwayDisplay}</div>
+        <div class="fin-kpi-meta">${burnLine}</div>
+      </div>
+      <div class="fin-kpi revenue">
+        <div class="fin-kpi-label">MTD revenue</div>
+        <div class="fin-kpi-value">${fmtMoneyFull(d.mtdRevenue)}</div>
+        <div class="fin-kpi-meta">Expenses ${fmtMoneyFull(d.mtdExpenses)}</div>
+      </div>
+      <div class="fin-kpi net ${netNeg ? 'negative' : ''}">
+        <div class="fin-kpi-label">MTD net</div>
+        <div class="fin-kpi-value">${fmtMoneyFull(d.mtdNet)}</div>
+        <div class="fin-kpi-meta">${netNeg ? 'In the red this month' : 'In the black'}</div>
+      </div>
+    </div>
+
+    <div class="fin-card">
+      <div class="fin-card-head">
+        <div class="fin-card-title">Bank accounts</div>
+      </div>
+      ${accountsRows}
+    </div>
+
+    <div class="fin-twocol">
+      <div class="fin-card">
+        <div class="fin-card-head">
+          <div class="fin-card-title">Accounts receivable</div>
+        </div>
+        <div class="fin-kpi-value" style="font-size:22px">${fmtMoneyFull(d.accountsReceivable)}</div>
+        <div class="fin-kpi-meta" style="margin-top:6px">Owed to you</div>
+      </div>
+      <div class="fin-card">
+        <div class="fin-card-head">
+          <div class="fin-card-title">Accounts payable</div>
+        </div>
+        <div class="fin-kpi-value" style="font-size:22px">${fmtMoneyFull(d.accountsPayable)}</div>
+        <div class="fin-kpi-meta" style="margin-top:6px">You owe</div>
+      </div>
+    </div>
+
+    <div class="fin-as-of">As of ${new Date(d.asOf).toLocaleString('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</div>
+  `;
+  body.innerHTML = html;
+}
+
+function maybeLoadFinance(){
+  if (_financeLoaded) return;
+  _financeLoaded = true;
+  fetchFinance();
+}
+
 // Quick Capture chat
 const CHAT_KEY = 'lrl-chat-history-v1';
 let chatHistory = [];
@@ -4853,6 +4984,7 @@ document.addEventListener('keydown', (e) => {
       tabEl.classList.add('active');
       contentEl.classList.add('active');
       if (saved === 'health') maybeLoadHealth();
+      if (saved === 'finance') maybeLoadFinance();
     }
   }
   // Apply mode (filters tab visibility + sets active button)

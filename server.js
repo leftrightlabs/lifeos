@@ -1742,6 +1742,237 @@ app.post('/api/checkin/send', async (req, res) => {
   }
 });
 
+// =================== XERO (Finance tab) ===================
+
+const XERO_SCOPES = [
+  'offline_access',
+  'accounting.reports.aged.read',
+  'accounting.reports.banksummary.read',
+  'accounting.reports.profitandloss.read',
+  'accounting.reports.balancesheet.read',
+  'accounting.contacts.read',
+  'accounting.banktransactions.read',
+];
+
+let _xeroAccess = { token: null, exp: 0 };
+let _xeroRefresh = process.env.XERO_REFRESH_TOKEN || null;
+
+function xeroAuthHeader() {
+  const id = process.env.XERO_CLIENT_ID || '';
+  const secret = process.env.XERO_CLIENT_SECRET || '';
+  return 'Basic ' + Buffer.from(`${id}:${secret}`).toString('base64');
+}
+
+async function getXeroAccessToken() {
+  if (_xeroAccess.token && Date.now() < _xeroAccess.exp - 60_000) return _xeroAccess.token;
+  if (!_xeroRefresh) throw new Error('XERO_REFRESH_TOKEN missing — visit /auth/xero to authorize');
+  if (!process.env.XERO_CLIENT_ID || !process.env.XERO_CLIENT_SECRET) {
+    throw new Error('XERO_CLIENT_ID or XERO_CLIENT_SECRET missing');
+  }
+  const r = await fetch('https://identity.xero.com/connect/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: xeroAuthHeader(),
+    },
+    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: _xeroRefresh }),
+  });
+  const d = await r.json();
+  if (!r.ok || d.error) throw new Error(`Xero refresh failed: ${d.error_description || d.error || r.status}`);
+  _xeroAccess = { token: d.access_token, exp: Date.now() + (d.expires_in || 1800) * 1000 };
+  _xeroRefresh = d.refresh_token || _xeroRefresh; // rotates
+  return _xeroAccess.token;
+}
+
+async function xeroGet(path, params) {
+  const token = await getXeroAccessToken();
+  const tenantId = process.env.XERO_TENANT_ID || '';
+  if (!tenantId) throw new Error('XERO_TENANT_ID missing — visit /auth/xero to authorize');
+  const url = `https://api.xero.com${path}` + (params ? `?${new URLSearchParams(params)}` : '');
+  const r = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Xero-tenant-id': tenantId,
+      Accept: 'application/json',
+    },
+  });
+  if (!r.ok) throw new Error(`Xero API ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  return r.json();
+}
+
+app.get('/auth/xero', (req, res) => {
+  if (!process.env.XERO_CLIENT_ID) return res.status(500).send('Set XERO_CLIENT_ID in Railway first.');
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: process.env.XERO_CLIENT_ID,
+    redirect_uri: `${originFromReq(req)}/auth/xero/callback`,
+    scope: XERO_SCOPES.join(' '),
+    state: 'lifeos',
+  });
+  res.redirect(`https://login.xero.com/identity/connect/authorize?${params}`);
+});
+
+app.get('/auth/xero/callback', async (req, res) => {
+  const code = req.query.code;
+  if (!code) return res.status(400).send('No code received');
+  try {
+    const tokenRes = await fetch('https://identity.xero.com/connect/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: xeroAuthHeader(),
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: `${originFromReq(req)}/auth/xero/callback`,
+      }),
+    });
+    const tokens = await tokenRes.json();
+    if (!tokenRes.ok || tokens.error) {
+      return res.status(500).type('html').send(`<pre>Token exchange failed: ${tokens.error_description || tokens.error || tokenRes.status}</pre>`);
+    }
+    const connRes = await fetch('https://api.xero.com/connections', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    });
+    const connections = await connRes.json();
+    const conn = connections?.[0];
+    if (!conn) return res.status(500).send('No Xero connections found');
+    // Cache in-memory so live API works immediately without redeploy
+    _xeroAccess = { token: tokens.access_token, exp: Date.now() + (tokens.expires_in || 1800) * 1000 };
+    _xeroRefresh = tokens.refresh_token;
+    res.type('html').send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Xero connected</title>
+<style>body{font-family:-apple-system,system-ui,sans-serif;background:#0a0f1e;color:#f5f5f7;padding:32px;line-height:1.6;max-width:700px;margin:0 auto}
+h1{color:#10b981;font-size:22px;margin:0 0 8px}h2{font-size:14px;color:#a5b4fc;letter-spacing:.1em;text-transform:uppercase;margin:24px 0 8px}
+pre{background:#131a30;padding:14px 16px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.5;border:1px solid rgba(255,255,255,0.06)}
+a{color:#5d9cec}</style></head><body>
+<h1>✓ Xero connected to ${conn.tenantName}</h1>
+<p>The connection is live in this session. To make it survive server restarts, add these to Railway env vars:</p>
+<h2>Add to Railway</h2>
+<pre>XERO_REFRESH_TOKEN=${tokens.refresh_token}
+XERO_TENANT_ID=${conn.tenantId}</pre>
+<p>Then redeploy. <a href="/">Back to LifeOS →</a></p>
+</body></html>`);
+  } catch (err) {
+    res.status(500).type('html').send(`<pre>OAuth error: ${err.message}</pre>`);
+  }
+});
+
+// --- Xero report parsers ---
+function flattenReportRows(rows) {
+  const out = [];
+  const walk = (arr) => {
+    for (const r of arr || []) {
+      if (r.Rows) walk(r.Rows);
+      else out.push(r);
+    }
+  };
+  walk(rows);
+  return out;
+}
+function cellVal(row, idx) { return row?.Cells?.[idx]?.Value ?? ''; }
+function parseNum(s) { const n = parseFloat(String(s).replace(/,/g, '')); return Number.isFinite(n) ? n : 0; }
+
+function parseBankSummary(report) {
+  // BankSummary rows: header row, then per-account rows with [Account, Opening, Cash In, Cash Out, FX, Closing]
+  const accounts = [];
+  let totalCash = 0;
+  for (const section of report?.Rows || []) {
+    if (section.RowType !== 'Section') continue;
+    for (const row of section.Rows || []) {
+      if (row.RowType !== 'Row' && row.RowType !== 'SummaryRow') continue;
+      const name = cellVal(row, 0);
+      const closing = parseNum(cellVal(row, row.Cells.length - 1));
+      if (row.RowType === 'SummaryRow' || /^total/i.test(name)) {
+        totalCash = closing;
+      } else if (name) {
+        accounts.push({ name, balance: closing });
+      }
+    }
+  }
+  return { accounts, totalCash };
+}
+
+function parseProfitAndLoss(report) {
+  // Two-column reports: [Label, Amount]. Sometimes more columns for periods.
+  let income = 0, expenses = 0, net = 0;
+  const rows = flattenReportRows(report?.Rows);
+  for (const r of rows) {
+    const label = String(cellVal(r, 0)).toLowerCase();
+    const val = parseNum(cellVal(r, 1));
+    if (/^total income/.test(label) || /^total revenue/.test(label) || /^total trading income/.test(label)) income = val;
+    else if (/^total operating expenses/.test(label) || /^total expenses/.test(label)) expenses = val;
+    else if (/^net profit/.test(label) || /^net loss/.test(label) || /^profit\/\(loss\)/.test(label) || /^net \(loss\)/.test(label)) net = val;
+  }
+  // If net wasn't found, derive it
+  if (net === 0 && (income || expenses)) net = income - expenses;
+  return { income, expenses, net };
+}
+
+function parseBalanceSheet(report) {
+  let ar = 0, ap = 0;
+  const rows = flattenReportRows(report?.Rows);
+  for (const r of rows) {
+    const label = String(cellVal(r, 0)).toLowerCase();
+    const val = parseNum(cellVal(r, 1));
+    if (/accounts receivable/.test(label) || /trade debtors/.test(label) || /total receivable/.test(label)) {
+      if (val) ar = Math.max(ar, val);
+    }
+    if (/accounts payable/.test(label) || /trade creditors/.test(label) || /total payable/.test(label)) {
+      if (val) ap = Math.max(ap, Math.abs(val));
+    }
+  }
+  return { accountsReceivable: ar, accountsPayable: ap };
+}
+
+function ymd(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+app.get('/api/finance/xero', async (_req, res) => {
+  try {
+    const data = await cached('xero-finance', async () => {
+      const today = new Date();
+      const monthStart = ymd(new Date(today.getFullYear(), today.getMonth(), 1));
+      const todayStr = ymd(today);
+      // 3 months ago for burn rate baseline
+      const burnStart = ymd(new Date(today.getFullYear(), today.getMonth() - 3, 1));
+      const burnEnd = ymd(new Date(today.getFullYear(), today.getMonth(), 0)); // end of last month
+
+      const [bankRaw, mtdRaw, burnRaw, bsRaw] = await Promise.all([
+        xeroGet('/api.xro/2.0/Reports/BankSummary').catch(() => null),
+        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: monthStart, toDate: todayStr }).catch(() => null),
+        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: burnStart, toDate: burnEnd }).catch(() => null),
+        xeroGet('/api.xro/2.0/Reports/BalanceSheet', { date: todayStr }).catch(() => null),
+      ]);
+      const bank = bankRaw ? parseBankSummary(bankRaw.Reports?.[0]) : { accounts: [], totalCash: 0 };
+      const mtd = mtdRaw ? parseProfitAndLoss(mtdRaw.Reports?.[0]) : { income: 0, expenses: 0, net: 0 };
+      const burn = burnRaw ? parseProfitAndLoss(burnRaw.Reports?.[0]) : { income: 0, expenses: 0, net: 0 };
+      const bs = bsRaw ? parseBalanceSheet(bsRaw.Reports?.[0]) : { accountsReceivable: 0, accountsPayable: 0 };
+      // Monthly burn = avg of last 3 full months expenses
+      const monthlyBurn = burn.expenses / 3;
+      const runwayMonths = monthlyBurn > 0 ? bank.totalCash / monthlyBurn : null;
+      return {
+        currency: 'USD',
+        cashOnHand: bank.totalCash,
+        accounts: bank.accounts,
+        mtdRevenue: mtd.income,
+        mtdExpenses: mtd.expenses,
+        mtdNet: mtd.net,
+        monthlyBurn,
+        runwayMonths: runwayMonths != null ? Math.round(runwayMonths * 10) / 10 : null,
+        accountsReceivable: bs.accountsReceivable,
+        accountsPayable: bs.accountsPayable,
+        asOf: new Date().toISOString(),
+      };
+    });
+    res.json(data);
+  } catch (err) {
+    console.error('Xero finance error:', err.message);
+    res.status(500).json({ error: err.message, needsAuth: /XERO_(REFRESH_TOKEN|TENANT_ID)/.test(err.message) });
+  }
+});
+
 app.post('/api/ai/triage/apply', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { actions } = req.body || {};
