@@ -151,9 +151,13 @@
   .quest-check:hover { border-color: var(--navy); }
   .quest-check.checked { background: var(--navy); border-color: var(--navy); color: var(--lime); }
   .quest-check.checked::after { content: "✓"; font-size: 12px; font-weight: 700; }
-  .quest-text { flex: 1; }
+  .quest-text { flex: 1; min-width: 0; line-height: 1.35; }
   .quest-text.done, .quest-item.done .quest-text { text-decoration: line-through; color: var(--navy-dim); }
   .quest-item.done { opacity: 0.6; }
+  .quest-sub { font-size: 11.5px; color: rgba(245,245,247,0.5); margin-top: 3px; line-height: 1.35; font-weight: 500; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .quest-sub .sep { color: rgba(245,245,247,0.25); }
+  .quest-sub .quest-sub-status { color: rgba(255,183,77,0.85); font-weight: 600; }
+  .quest-sub .quest-sub-touched { color: rgba(245,245,247,0.35); }
   .quest-due { font-size: 11px; color: var(--navy-dim); background: var(--cream-2); padding: 3px 8px; border-radius: 999px; }
   .quest-due-inline { font-size: 12px; color: rgba(245,245,247,0.55); white-space: nowrap; letter-spacing: 0.01em; font-weight: 500; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
   .quest-due-inline:hover { background: rgba(255,255,255,0.06); color: var(--navy); }
@@ -1891,22 +1895,54 @@ function cmpDue(a,b){const ea=effDate(a),eb=effDate(b);if(!ea&&!eb)return 0;if(!
 function sortTasks(arr){const s=ui.sort;return arr.sort((a,b)=>{if(s==='name')return a.name.localeCompare(b.name);if(s==='source')return a.source.localeCompare(b.source)||cmpDue(a,b);if(s==='touched'){const la=lastTouched(a),lb=lastTouched(b);return (la?la:0)-(lb?lb:0);}return cmpDue(a,b);});}
 function escapeHtml(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
+// Compact due label matching Today's Quest style
+function dueQuest(t){
+  const e=effDate(t);
+  if(!e) return {txt:'',cls:''};
+  const n=daysFrom(e);
+  const fmt=e.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  if(n<0) return {txt:Math.abs(n)+'d late', cls:'overdue'};
+  if(n===0) return {txt:'Today', cls:'today'};
+  if(n===1) return {txt:'Tomorrow', cls:'tomorrow'};
+  return {txt:fmt, cls:''};
+}
 function row(t){
-  const star=t.myDay,dl=dueLabel(t),lt=lastTouched(t),tags=[];
-  tags.push('<span class="tag src-'+t.source+'">'+t.source+'</span>');
-  if(t.recurring)tags.push('<span class="tag rec">↻ Recurring</span>');
-  if(t.priority==='URGENT'||t.priority==='HIGH')tags.push('<span class="tag pri-'+t.priority+'">'+t.priority+'</span>');
-  if(t.status&&t.status!=='Planned')tags.push('<span class="tag status">'+t.status+'</span>');
-  const proj=t.project?'<div class="proj">'+escapeHtml(t.project)+'</div>':'';
-  return '<div class="row '+t.source+(t.done?' done':'')+'" data-id="'+t.id+'">'
-    +'<input class="check" type="checkbox" data-act="done" '+(t.done?'checked':'')+'/>'
-    +'<div class="mid" data-act="open"><div class="nm">'+escapeHtml(t.name)+'</div>'+proj
-      +'<div class="meta">'+tags.join('')+'<span class="touched">touched <b>'+relTime(lt)+'</b></span></div></div>'
-    +'<div class="right"><div class="due '+dl.cls+'">'+dl.txt+'</div>'
-      +'<div class="acts">'
-        +'<button class="star'+(star?' on':'')+'" data-act="star"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>'
-        +'<button class="mini" data-act="touch">Touch</button>'
-        +'<a class="mini" href="'+window.toNotionLink(t.url)+'" rel="noopener">Open ↗</a></div></div></div>';
+  const isMyDay=t.myDay;
+  const dl=dueQuest(t);
+  const lt=lastTouched(t);
+  // Secondary line: project · status (if non-default) · touched (if sorted by it)
+  const subParts=[];
+  if(t.project) subParts.push(escapeHtml(t.project));
+  if(t.status && t.status!=='Planned' && t.status!=='Doing'){
+    subParts.push('<span class="quest-sub-status">'+t.status+'</span>');
+  }
+  if(t.recurring) subParts.push('<span class="quest-sub-touched">↻ recurring</span>');
+  if(ui.sort==='touched' && lt){
+    subParts.push('<span class="quest-sub-touched">touched '+relTime(lt)+'</span>');
+  }
+  const sub = subParts.length
+    ? '<div class="quest-sub">'+subParts.join('<span class="sep">·</span>')+'</div>'
+    : '';
+  const priHtml = (t.priority==='URGENT'||t.priority==='HIGH')
+    ? '<span class="quest-pri '+t.priority.toLowerCase()+'">'+t.priority+'</span>' : '';
+  const sourceTag = t.source==='work'
+    ? '<span class="quest-tag tag-work">work</span>'
+    : '<span class="quest-tag tag-personal">personal</span>';
+  const dueHtml = dl.txt
+    ? '<span class="quest-due-inline '+dl.cls+'" data-act="edit-due">'+dl.txt+'</span>'
+    : '<span class="quest-due-inline" data-act="edit-due" style="opacity:0.35">+ date</span>';
+  const starTitle = isMyDay ? 'Remove from My Day' : 'Add to My Day';
+  const star = '<button class="quest-star '+(isMyDay?'on':'')+'" data-act="star" title="'+starTitle+'" aria-label="'+starTitle+'"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>';
+  const doneCls = t.done ? ' done' : '';
+  const checkedCls = t.done ? 'checked' : '';
+  return '<div class="quest-item'+doneCls+'" data-task-id="'+t.id+'" data-task-url="'+escapeHtml(t.url||'')+'">'
+    +'<div class="quest-check '+checkedCls+'" data-act="check"></div>'
+    +'<div class="quest-text" data-act="open">'+escapeHtml(t.name)+sub+'</div>'
+    +priHtml
+    +dueHtml
+    +sourceTag
+    +star
+    +'</div>';
 }
 function isCollapsed(k){const m=ui.group;return !!(state.collapsed[m]&&state.collapsed[m][k]);}
 function setCollapsed(k,v){const m=ui.group;state.collapsed[m]=state.collapsed[m]||{};state.collapsed[m][k]=v;saveState();}
@@ -1942,22 +1978,60 @@ function afPatch(id, body){
 el('list').addEventListener('click',e=>{
   const head=e.target.closest('.ghead');
   if(head){const k=head.dataset.gkey;const now=!isCollapsed(k);setCollapsed(k,now);head.classList.toggle('collapsed',now);head.parentElement.querySelector('.gbody').classList.toggle('collapsed',now);return;}
-  const btn=e.target.closest('[data-act]');if(!btn)return;
-  if(btn.tagName==='A')return;
-  const rowEl=e.target.closest('.row');const id=rowEl&&rowEl.dataset.id;if(!id)return;
-  const act=btn.dataset.act;
-  if(act==='done'){
+  const rowEl=e.target.closest('.quest-item');
+  const id=rowEl&&(rowEl.dataset.taskId||rowEl.dataset.id);
+  if(!id)return;
+  const btn=e.target.closest('[data-act]');
+  const act=btn?btn.dataset.act:null;
+  if(act==='check'){
     const nd=!state.done[id];state.done[id]=nd;state.touched[id]=new Date().toISOString();saveState();render();
     if (nd) window.lrl.haptic('success'); else window.lrl.haptic('tap');
     afPatch(id,{status:nd?'Done':'Doing'}).catch(err=>{state.done[id]=!nd;saveState();render();window.lrl.toast('Sync failed: '+err.message,'error');});
+    return;
   }
-  else if(act==='star'){
+  if(act==='star'){
     const t=task(id);const nv=!t.myDay;state.edits[id]=Object.assign({},state.edits[id],{myDay:nv});state.touched[id]=new Date().toISOString();saveState();render();
     window.lrl.haptic('tap');
     afPatch(id,{myDay:nv}).catch(err=>{state.edits[id].myDay=!nv;saveState();render();window.lrl.toast('Sync failed: '+err.message,'error');});
+    return;
   }
-  else if(act==='touch'){state.touched[id]=new Date().toISOString();saveState();render();}
-  else if(act==='open'){const t=task(id);if(t.url)openNotion(t.url);}
+  if(act==='edit-due'){
+    e.stopPropagation();
+    const t=task(id);
+    const dueEl=e.target.closest('.quest-due-inline');
+    if(!dueEl)return;
+    const current=(t.dueStart||'').slice(0,10);
+    const input=document.createElement('input');
+    input.type='date';input.value=current;input.className='quest-due-edit';
+    let committed=false;
+    const cancel=()=>{if(!committed)render();};
+    input.addEventListener('blur',cancel);
+    input.addEventListener('change',async()=>{
+      committed=true;
+      const newDate=input.value||null;
+      const prev={dueStart:t.dueStart,dueEnd:t.dueEnd};
+      state.edits[id]=Object.assign({},state.edits[id],{dueStart:newDate,dueEnd:null});
+      state.touched[id]=new Date().toISOString();
+      saveState();render();
+      try{
+        await afPatch(id,{dueStart:newDate,dueEnd:null});
+        window.lrl.haptic('success');
+      }catch(err){
+        state.edits[id]=Object.assign({},state.edits[id],prev);
+        saveState();render();
+        window.lrl.toast('Sync failed: '+err.message,'error');
+      }
+    });
+    dueEl.replaceWith(input);
+    input.focus();
+    if(input.showPicker)input.showPicker();
+    return;
+  }
+  // Default (open) — bare row click or data-act="open"
+  if(act==='open' || !act){
+    const url=rowEl.dataset.taskUrl||task(id).url;
+    if(url)openNotion(url);
+  }
 });
 el('q').addEventListener('input',e=>{ui.q=e.target.value;render();});
 el('sortsel').addEventListener('change',e=>{ui.sort=e.target.value;render();});
