@@ -1003,6 +1003,59 @@ app.patch('/api/journal/today', async (req, res) => {
   }
 });
 
+// ====== RITUAL state (cross-device sync via JOURNAL row) ======
+// Stores today's ritual checklist as a JSON blob in the "Ritual Done"
+// rich-text property on today's JOURNAL row. One-time setup: user must
+// add a property to JOURNAL DB named "Ritual Done", type Text/rich_text.
+
+function readRitualFromPage(page) {
+  const prop = page?.properties?.['Ritual Done'];
+  if (!prop || prop.type !== 'rich_text') return {};
+  const txt = (prop.rich_text || []).map(r => r.plain_text || '').join('');
+  if (!txt.trim()) return {};
+  try { return JSON.parse(txt); } catch (e) { return {}; }
+}
+
+function ritualStateProperty(state) {
+  const json = JSON.stringify(state || {});
+  return { 'Ritual Done': { rich_text: [{ text: { content: json } }] } };
+}
+
+app.get('/api/ritual/today', async (_req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    const today = chicagoToday();
+    const existing = await notion.dataSources.query({
+      data_source_id: JOURNAL_DS,
+      filter: { property: 'Date', date: { equals: today } },
+      page_size: 1,
+    });
+    if (!existing.results.length) return res.json({ state: {}, dayHasRow: false });
+    const row = existing.results[0];
+    // Check if the property even exists on the schema
+    const hasProp = !!row.properties?.['Ritual Done'];
+    res.json({ state: readRitualFromPage(row), dayHasRow: true, hasProperty: hasProp });
+  } catch (err) {
+    console.error('Ritual GET error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/ritual/today', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  const { state } = req.body || {};
+  if (!state || typeof state !== 'object') return res.status(400).json({ error: 'state object required' });
+  try {
+    const row = await findOrCreateTodayRow();
+    await notion.pages.update({ page_id: row.id, properties: ritualStateProperty(state) });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Ritual PATCH error:', err.message);
+    // Most common: the "Ritual Done" property doesn't exist yet on the DB
+    res.status(500).json({ error: err.message, hint: err.message.includes('Ritual Done') ? 'Add a "Ritual Done" rich-text property to your JOURNAL DB.' : undefined });
+  }
+});
+
 async function fetchActiveProjects() {
   if (!notion) return [];
   const [work, life] = await Promise.all([

@@ -2537,6 +2537,36 @@ function loadRitual(){
 function saveRitual(s){
   try { localStorage.setItem(ritualKey(), JSON.stringify(s)); } catch(e){}
 }
+// Push the ritual state to the server (cross-device sync). Fire-and-forget;
+// localStorage is the immediate cache so the UI stays snappy.
+let _ritualSyncTimer = null;
+function syncRitualToServer(state){
+  if (_ritualSyncTimer) clearTimeout(_ritualSyncTimer);
+  _ritualSyncTimer = setTimeout(() => {
+    fetch('/api/ritual/today', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state }),
+    }).then(r => r.json()).then(d => {
+      if (d.error) console.warn('Ritual sync warning:', d.error, d.hint || '');
+    }).catch(() => {});
+  }, 300); // small debounce so rapid checks batch into one PATCH
+}
+async function pullRitualFromServer(){
+  try {
+    const r = await fetch('/api/ritual/today');
+    const d = await r.json();
+    if (d.error) return null;
+    if (d.state && Object.keys(d.state).length){
+      saveRitual(d.state); // cache locally
+      return d.state;
+    }
+    if (d.dayHasRow && d.hasProperty === false){
+      console.warn('Add a "Ritual Done" rich-text property to JOURNAL DB to enable cross-device ritual sync.');
+    }
+  } catch(e){}
+  return null;
+}
 
 function renderRitual(){
   const card = document.getElementById('ritual-card');
@@ -2612,6 +2642,7 @@ function toggleRitualStep(step){
   const state = loadRitual();
   state[step] = !state[step];
   saveRitual(state);
+  syncRitualToServer(state);
   window.lrl?.haptic(state[step] ? 'success' : 'tap');
   const nowAllDone = RITUAL_STEPS.every(k => state[k]);
   if (nowAllDone && !wasAllDone) {
@@ -2719,6 +2750,8 @@ function initRitual(){
   if (!card) return;
   // Restore manually-collapsed state
   if (localStorage.getItem('lrl-ritual-collapsed') === '1') card.classList.add('collapsed');
+  // Pull server state asynchronously and re-render once it lands
+  pullRitualFromServer().then(serverState => { if (serverState) renderRitual(); });
   // Toggle button collapses/expands explicitly
   document.getElementById('ritual-toggle')?.addEventListener('click', (e) => {
     e.stopPropagation();
