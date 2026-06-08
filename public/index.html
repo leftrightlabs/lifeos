@@ -1802,6 +1802,53 @@ window.lrl = (function(){
       </div>
     </div>
 
+    <div class="chapter-panel" id="chapter-panel">
+      <div class="chapter-header">
+        <div style="flex:1">
+          <button class="chapter-toggle" id="chapter-toggle" title="Collapse/expand">
+            <span id="chapter-collapse-caret">▾</span> Chapter 2 of 4 — Q2 2026
+          </button>
+          <div id="campaigns-container"></div>
+          <div id="milestones-container" class="milestones-panel"></div>
+        </div>
+      </div>
+      <div class="chapter-progress">
+        <div class="chapter-progress-bar" id="quarter-progress" style="width: 67%"></div>
+      </div>
+      <div class="chapter-meta">
+        <span>67% through Q2 — 25 days remaining</span>
+        <span id="rocks-summary">2 of 4 rocks complete</span>
+      </div>
+    </div>
+
+    <div class="quest-row">
+      <div class="panel" id="quest-panel">
+        <div class="panel-title"><span>Today's Quest</span></div>
+        <div id="today-quests"><div style="color:var(--navy-dim);font-size:13px;padding:8px 0">loading…</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><span>Today's Calendar</span></div>
+        <div id="today-calendar"><div style="color:var(--navy-dim);font-size:13px;padding:8px 0">loading…</div></div>
+      </div>
+    </div>
+
+    <div class="checkin-card" id="checkin-card">
+      <div class="checkin-head">
+        <button class="checkin-toggle" id="checkin-toggle" title="Collapse/expand"><span id="checkin-caret">▾</span> Daily Check-in</button>
+        <div class="checkin-status" id="checkin-status">Not sent today</div>
+      </div>
+      <div class="checkin-body" id="checkin-body">
+        <div class="checkin-loading" id="checkin-loading">Composing today's check-in…</div>
+        <textarea class="checkin-text" id="checkin-text" style="display:none" placeholder="Composing…"></textarea>
+        <div class="checkin-actions" id="checkin-actions" style="display:none">
+          <span class="checkin-meta" id="checkin-meta"></span>
+          <button class="checkin-btn refresh" id="checkin-refresh" title="Re-pull from calendar + tasks">↻ Recompose</button>
+          <button class="checkin-btn copy" id="checkin-copy" title="Copy to clipboard">Copy</button>
+          <button class="checkin-btn send" id="checkin-send">Send to #lrl_team</button>
+        </div>
+      </div>
+    </div>
+
     <div class="ritual-card evening" id="evening-card">
       <div class="ritual-head">
         <button class="ritual-toggle" id="evening-toggle" title="Collapse/expand">
@@ -1851,53 +1898,6 @@ window.lrl = (function(){
               <div class="ritual-step-label">Log exercise</div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="chapter-panel" id="chapter-panel">
-      <div class="chapter-header">
-        <div style="flex:1">
-          <button class="chapter-toggle" id="chapter-toggle" title="Collapse/expand">
-            <span id="chapter-collapse-caret">▾</span> Chapter 2 of 4 — Q2 2026
-          </button>
-          <div id="campaigns-container"></div>
-          <div id="milestones-container" class="milestones-panel"></div>
-        </div>
-      </div>
-      <div class="chapter-progress">
-        <div class="chapter-progress-bar" id="quarter-progress" style="width: 67%"></div>
-      </div>
-      <div class="chapter-meta">
-        <span>67% through Q2 — 25 days remaining</span>
-        <span id="rocks-summary">2 of 4 rocks complete</span>
-      </div>
-    </div>
-
-    <div class="quest-row">
-      <div class="panel" id="quest-panel">
-        <div class="panel-title"><span>Today's Quest</span></div>
-        <div id="today-quests"><div style="color:var(--navy-dim);font-size:13px;padding:8px 0">loading…</div></div>
-      </div>
-      <div class="panel">
-        <div class="panel-title"><span>Today's Calendar</span></div>
-        <div id="today-calendar"><div style="color:var(--navy-dim);font-size:13px;padding:8px 0">loading…</div></div>
-      </div>
-    </div>
-
-    <div class="checkin-card" id="checkin-card">
-      <div class="checkin-head">
-        <button class="checkin-toggle" id="checkin-toggle" title="Collapse/expand"><span id="checkin-caret">▾</span> Daily Check-in</button>
-        <div class="checkin-status" id="checkin-status">Not sent today</div>
-      </div>
-      <div class="checkin-body" id="checkin-body">
-        <div class="checkin-loading" id="checkin-loading">Composing today's check-in…</div>
-        <textarea class="checkin-text" id="checkin-text" style="display:none" placeholder="Composing…"></textarea>
-        <div class="checkin-actions" id="checkin-actions" style="display:none">
-          <span class="checkin-meta" id="checkin-meta"></span>
-          <button class="checkin-btn refresh" id="checkin-refresh" title="Re-pull from calendar + tasks">↻ Recompose</button>
-          <button class="checkin-btn copy" id="checkin-copy" title="Copy to clipboard">Copy</button>
-          <button class="checkin-btn send" id="checkin-send">Send to #lrl_team</button>
         </div>
       </div>
     </div>
@@ -2725,8 +2725,19 @@ function applyDailyGamification(){
   const panel = document.getElementById('quest-panel');
   if (panel) panel.classList.remove('quest-panel-locked');
   const state = loadRitual();
+  // Auto-detect check-in from the sent timestamp so the hide also triggers
+  // when she sends the check-in via the card itself
+  try {
+    const sent = JSON.parse(localStorage.getItem('lrl-checkin-last-sent') || 'null');
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+    if (sent && sent.date === todayStr) state.checkin = true;
+  } catch(e){}
   const ritualDoneCount = RITUAL_STEPS.filter(k => state[k]).length;
   const ritualDone = ritualDoneCount === RITUAL_STEPS.length;
+
+  // Hide the Daily Check-in card once the ritual step is checked
+  const checkinCard = document.getElementById('checkin-card');
+  if (checkinCard) checkinCard.style.display = state.checkin ? 'none' : '';
 
   // Day-cleared banner
   const taskDiv = document.getElementById('today-quests');
@@ -3810,6 +3821,9 @@ async function sendCheckin(){
     window.lrl?.confetti({ count: 50 });
     const asWho = d.postedAs === 'user' ? 'as you' : 'as LifeOS bot';
     window.lrl?.toast(`Posted to #lrl_team (${asWho})`, 'success');
+    // Refresh ritual + gamification so the check-in step auto-checks and the card hides
+    if (typeof renderRitual === 'function') renderRitual();
+    if (typeof applyDailyGamification === 'function') applyDailyGamification();
   } catch (err){
     window.lrl?.toast('Send failed: ' + err.message, 'error');
   } finally {
