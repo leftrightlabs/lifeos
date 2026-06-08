@@ -2579,18 +2579,14 @@ function toggleRitualStep(step){
   applyDailyGamification();
 }
 
-// Lock Today's Quest while ritual is incomplete; show "day cleared" celebration
-// when both ritual is done and there are no actionable items left.
+// Daily gamification: celebrate the day-cleared state. (No hard lock on
+// Today's Quest — sequencing tasks IS part of the ritual, so locking would
+// fight the workflow.)
 function applyDailyGamification(){
   const panel = document.getElementById('quest-panel');
-  if (!panel) return;
-  // On weekends or in personal mode, ritual hides and we don't gate the Quest
-  const ritualCard = document.getElementById('ritual-card');
-  const ritualHidden = !ritualCard || ritualCard.classList.contains('weekend')
-    || getComputedStyle(ritualCard).display === 'none';
+  if (panel) panel.classList.remove('quest-panel-locked'); // ensure removed if any stale state
   const state = loadRitual();
   const ritualDone = RITUAL_STEPS.every(k => state[k]);
-  panel.classList.toggle('quest-panel-locked', !ritualHidden && !ritualDone);
 
   // Day-cleared banner
   const taskDiv = document.getElementById('today-quests');
@@ -2601,7 +2597,6 @@ function applyDailyGamification(){
   });
   const actionableLeft = filtered.filter(t => t.status !== 'Waiting' && !t.done).length;
   const dayCleared = ritualDone && actionableLeft === 0;
-  // Remove any existing banner first
   taskDiv.querySelectorAll('.day-cleared-banner').forEach(el => el.remove());
   if (dayCleared && filtered.length > 0) {
     const banner = document.createElement('div');
