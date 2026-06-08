@@ -555,7 +555,15 @@
   .ritual-step-meta.win { color: var(--lime); }
   .ritual-step-action { background: transparent; border: 1px solid rgba(255,255,255,0.12); color: rgba(245,245,247,0.6); font-family: var(--font-body); font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 10px; border-radius: 999px; cursor: pointer; flex-shrink: 0; }
   .ritual-step-action:hover { color: var(--lime); border-color: var(--lime); }
-  .ritual-card.weekend, body[data-mode="personal"] .ritual-card { display: none; }
+  .ritual-card.weekend, body[data-mode="personal"] .ritual-card.morning-only { display: none; }
+  .ritual-subhead { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(245,245,247,0.4); font-weight: 700; margin: 12px 4px 6px; }
+  .ritual-section:first-of-type .ritual-subhead { margin-top: 4px; }
+  .ritual-card.evening { border-left-color: #818cf8; }
+  .ritual-card.evening .ritual-toggle { color: #a5b4fc; }
+  .ritual-card.evening.done .ritual-toggle { color: rgba(165,180,252,0.55); }
+  .ritual-card.evening .ritual-status.done { color: #a5b4fc; }
+  .ritual-card.evening .ritual-step.checked { background: rgba(129,140,248,0.06); border-color: rgba(129,140,248,0.18); }
+  .ritual-card.evening .ritual-step.checked .ritual-check { background: #a5b4fc; border-color: #a5b4fc; }
   @media (max-width: 600px) {
     .ritual-card { padding: 14px 16px; }
     .ritual-card.done { padding: 12px 16px; }
@@ -1743,7 +1751,7 @@ window.lrl = (function(){
       </div>
     </div>
 
-    <div class="ritual-card" id="ritual-card">
+    <div class="ritual-card morning-only" id="ritual-card">
       <div class="ritual-head">
         <button class="ritual-toggle" id="ritual-toggle" title="Collapse/expand">
           <span id="ritual-caret">▾</span> Morning Ritual
@@ -1790,6 +1798,59 @@ window.lrl = (function(){
             <div class="ritual-step-meta">Today's social + content drops</div>
           </div>
           <button class="ritual-step-action" data-action="jump-marketing">Jump ›</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ritual-card evening" id="evening-card">
+      <div class="ritual-head">
+        <button class="ritual-toggle" id="evening-toggle" title="Collapse/expand">
+          <span id="evening-caret">▾</span> Evening Ritual
+        </button>
+        <div class="ritual-status" id="evening-status">0 of 6 done</div>
+      </div>
+      <div class="ritual-list" id="evening-list">
+        <div class="ritual-section" data-section="work">
+          <div class="ritual-subhead">Work</div>
+          <div class="ritual-step" data-step="sales">
+            <button class="ritual-check" aria-label="Toggle done"></button>
+            <div class="ritual-step-body">
+              <div class="ritual-step-label">Log sales activity</div>
+            </div>
+          </div>
+          <div class="ritual-step" data-step="projectTime">
+            <button class="ritual-check" aria-label="Toggle done"></button>
+            <div class="ritual-step-body">
+              <div class="ritual-step-label">Log project time</div>
+            </div>
+          </div>
+          <div class="ritual-step" data-step="captures">
+            <button class="ritual-check" aria-label="Toggle done"></button>
+            <div class="ritual-step-body">
+              <div class="ritual-step-label">Capture new tasks from meetings</div>
+            </div>
+          </div>
+        </div>
+        <div class="ritual-section" data-section="personal">
+          <div class="ritual-subhead">Personal</div>
+          <div class="ritual-step" data-step="meals">
+            <button class="ritual-check" aria-label="Toggle done"></button>
+            <div class="ritual-step-body">
+              <div class="ritual-step-label">Log meals</div>
+            </div>
+          </div>
+          <div class="ritual-step" data-step="journal">
+            <button class="ritual-check" aria-label="Toggle done"></button>
+            <div class="ritual-step-body">
+              <div class="ritual-step-label">Log journal entry</div>
+            </div>
+          </div>
+          <div class="ritual-step" data-step="exercise">
+            <button class="ritual-check" aria-label="Toggle done"></button>
+            <div class="ritual-step-body">
+              <div class="ritual-step-label">Log exercise</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2797,6 +2858,129 @@ function initRitual(){
 // Refresh ritual when underlying data changes
 window.addEventListener('lrl-comms-updated', renderRitual);
 window.addEventListener('lrl-tasks-updated', renderRitual);
+
+// ====== Evening Ritual ======
+const EVENING_WORK_STEPS = ['sales', 'projectTime', 'captures'];
+const EVENING_PERSONAL_STEPS = ['meals', 'journal', 'exercise'];
+const EVENING_ALL_STEPS = [...EVENING_WORK_STEPS, ...EVENING_PERSONAL_STEPS];
+
+function eveningKey(){
+  return 'lrl-evening-' + new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+}
+function loadEvening(){
+  try { return JSON.parse(localStorage.getItem(eveningKey()) || '{}'); } catch(e){ return {}; }
+}
+function saveEvening(s){
+  try { localStorage.setItem(eveningKey(), JSON.stringify(s)); } catch(e){}
+}
+let _eveningSyncTimer = null;
+function syncEveningToServer(state){
+  if (_eveningSyncTimer) clearTimeout(_eveningSyncTimer);
+  _eveningSyncTimer = setTimeout(() => {
+    fetch('/api/ritual/today?ritual=evening', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state }),
+    }).then(r => r.json()).then(d => {
+      if (d.error) console.warn('Evening sync warning:', d.error, d.hint || '');
+    }).catch(() => {});
+  }, 300);
+}
+async function pullEveningFromServer(){
+  try {
+    const r = await fetch('/api/ritual/today');
+    const d = await r.json();
+    if (d.error) return null;
+    if (d.evening && Object.keys(d.evening).length){
+      saveEvening(d.evening);
+      return d.evening;
+    }
+  } catch(e){}
+  return null;
+}
+
+function visibleEveningSteps(){
+  const m = document.body.dataset.mode || 'all';
+  if (m === 'work') return EVENING_WORK_STEPS;
+  if (m === 'personal') return EVENING_PERSONAL_STEPS;
+  return EVENING_ALL_STEPS;
+}
+
+function renderEvening(){
+  const card = document.getElementById('evening-card');
+  if (!card) return;
+  const state = loadEvening();
+  // Mode-aware section visibility
+  const m = document.body.dataset.mode || 'all';
+  const workSec = card.querySelector('[data-section="work"]');
+  const personalSec = card.querySelector('[data-section="personal"]');
+  if (workSec) workSec.style.display = (m === 'work' || m === 'all') ? '' : 'none';
+  if (personalSec) personalSec.style.display = (m === 'personal' || m === 'all') ? '' : 'none';
+  // In single-mode view we don't need the "Work"/"Personal" sub-headers
+  card.querySelectorAll('.ritual-subhead').forEach(el => {
+    el.style.display = (m === 'all') ? '' : 'none';
+  });
+  // Reflect checked states
+  EVENING_ALL_STEPS.forEach(k => {
+    const stepEl = card.querySelector(`[data-step="${k}"]`);
+    if (stepEl) stepEl.classList.toggle('checked', !!state[k]);
+  });
+  // Status meta
+  const visible = visibleEveningSteps();
+  const doneCount = visible.filter(k => state[k]).length;
+  const allDone = visible.length > 0 && doneCount === visible.length;
+  card.classList.toggle('done', allDone);
+  const statusEl = document.getElementById('evening-status');
+  if (statusEl){
+    statusEl.textContent = allDone ? '✓ All done for the night' : `${doneCount} of ${visible.length} done`;
+    statusEl.className = 'ritual-status' + (allDone ? ' done' : '');
+  }
+}
+
+function toggleEveningStep(step){
+  const wasAllDone = visibleEveningSteps().every(k => loadEvening()[k]);
+  const state = loadEvening();
+  state[step] = !state[step];
+  saveEvening(state);
+  syncEveningToServer(state);
+  window.lrl?.haptic(state[step] ? 'success' : 'tap');
+  const nowAllDone = visibleEveningSteps().every(k => state[k]);
+  if (nowAllDone && !wasAllDone){
+    window.lrl?.confetti({ count: 40 });
+    window.lrl?.toast('Evening ritual complete · Sleep well', 'success');
+  }
+  renderEvening();
+}
+
+function initEvening(){
+  const card = document.getElementById('evening-card');
+  if (!card) return;
+  if (localStorage.getItem('lrl-evening-collapsed') === '1') card.classList.add('collapsed');
+  document.getElementById('evening-toggle')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (card.classList.contains('done')){
+      card.classList.remove('done');
+      localStorage.setItem('lrl-evening-collapsed', '0');
+    } else {
+      card.classList.toggle('collapsed');
+      localStorage.setItem('lrl-evening-collapsed', card.classList.contains('collapsed') ? '1' : '0');
+    }
+    window.lrl?.haptic('tap');
+  });
+  card.addEventListener('click', (e) => {
+    if (e.target.closest('.ritual-toggle')) return;
+    const checkBtn = e.target.closest('.ritual-check');
+    if (checkBtn){
+      const step = e.target.closest('.ritual-step')?.dataset.step;
+      if (step) toggleEveningStep(step);
+    }
+  });
+  pullEveningFromServer().then(s => { if (s) renderEvening(); });
+  renderEvening();
+}
+
+// Re-render when mode changes (toggles work/personal sub-sections)
+window.addEventListener('lrl-mode-changed', renderEvening);
 
 async function fetchComms(){
   try {
@@ -4676,6 +4860,7 @@ document.addEventListener('keydown', (e) => {
   if (localStorage.getItem('lrl-brief-collapsed') === '1') setBriefCollapsed(true);
   if (localStorage.getItem('lrl-chapter-collapsed') === '1') setChapterCollapsed(true);
   initRitual();
+  initEvening();
   initCheckin();
   // Re-render calendar every 60s so past/live event states stay accurate
   setInterval(() => { if (TODAY_EVENTS.length) renderTodayQuests(); }, 60000);

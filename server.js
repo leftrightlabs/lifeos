@@ -1004,27 +1004,45 @@ app.patch('/api/journal/today', async (req, res) => {
 });
 
 // ====== RITUAL state (cross-device sync via JOURNAL row) ======
-// Stores today's ritual checklist as a JSON blob in the "Ritual Done"
-// rich-text property on today's JOURNAL row. One-time setup: user must
-// add a property to JOURNAL DB named "Ritual Done", type Text/rich_text.
+// Today's morning/evening ritual checklists stored as JSON blobs in
+// rich-text properties on today's JOURNAL row, plus a sibling Checkbox
+// property that auto-flips when ALL configured steps are checked.
+//
+// Required JOURNAL properties:
+//   - "Morning Ritual" (Text)        "Morning Done" (Checkbox)
+//   - "Evening Ritual" (Text)        "Evening Done" (Checkbox)
 
-function readRitualFromPage(page) {
-  const prop = page?.properties?.['Morning Ritual'];
-  if (!prop) return {};
-  // Support both rich_text (preferred) and title types
-  if (prop.type !== 'rich_text') return {};
+const RITUAL_CONFIGS = {
+  morning: {
+    textProp: 'Morning Ritual',
+    doneProp: 'Morning Done',
+    steps: ['inboxes', 'birthdays', 'checkin', 'sequence', 'marketing'],
+  },
+  evening: {
+    textProp: 'Evening Ritual',
+    doneProp: 'Evening Done',
+    steps: ['sales', 'projectTime', 'captures', 'meals', 'journal', 'exercise'],
+  },
+};
+
+function readRitualFromPage(page, ritualName) {
+  const cfg = RITUAL_CONFIGS[ritualName];
+  if (!cfg) return {};
+  const prop = page?.properties?.[cfg.textProp];
+  if (!prop || prop.type !== 'rich_text') return {};
   const txt = (prop.rich_text || []).map(r => r.plain_text || '').join('');
   if (!txt.trim()) return {};
   try { return JSON.parse(txt); } catch (e) { return {}; }
 }
 
-const MORNING_RITUAL_STEPS = ['inboxes', 'birthdays', 'checkin', 'sequence', 'marketing'];
-function ritualStateProperty(state) {
+function ritualStateProperty(state, ritualName) {
+  const cfg = RITUAL_CONFIGS[ritualName];
+  if (!cfg) return {};
   const json = JSON.stringify(state || {});
-  const allDone = MORNING_RITUAL_STEPS.every((k) => !!state?.[k]);
+  const allDone = cfg.steps.every((k) => !!state?.[k]);
   return {
-    'Morning Ritual': { rich_text: [{ text: { content: json } }] },
-    'Morning Done': { checkbox: allDone },
+    [cfg.textProp]: { rich_text: [{ text: { content: json } }] },
+    [cfg.doneProp]: { checkbox: allDone },
   };
 }
 
@@ -1037,11 +1055,17 @@ app.get('/api/ritual/today', async (_req, res) => {
       filter: { property: 'Date', date: { equals: today } },
       page_size: 1,
     });
-    if (!existing.results.length) return res.json({ state: {}, dayHasRow: false });
+    if (!existing.results.length) {
+      return res.json({ morning: {}, evening: {}, dayHasRow: false });
+    }
     const row = existing.results[0];
-    // Check if the property even exists on the schema
-    const hasProp = !!row.properties?.['Morning Ritual'];
-    res.json({ state: readRitualFromPage(row), dayHasRow: true, hasProperty: hasProp });
+    res.json({
+      morning: readRitualFromPage(row, 'morning'),
+      evening: readRitualFromPage(row, 'evening'),
+      dayHasRow: true,
+      hasMorningProperty: !!row.properties?.['Morning Ritual'],
+      hasEveningProperty: !!row.properties?.['Evening Ritual'],
+    });
   } catch (err) {
     console.error('Ritual GET error:', err.message);
     res.status(500).json({ error: err.message });
@@ -1050,16 +1074,24 @@ app.get('/api/ritual/today', async (_req, res) => {
 
 app.patch('/api/ritual/today', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  const ritualName = (req.query.ritual || 'morning').toLowerCase();
+  if (!RITUAL_CONFIGS[ritualName]) {
+    return res.status(400).json({ error: `unknown ritual: ${ritualName}` });
+  }
   const { state } = req.body || {};
   if (!state || typeof state !== 'object') return res.status(400).json({ error: 'state object required' });
   try {
     const row = await findOrCreateTodayRow();
-    await notion.pages.update({ page_id: row.id, properties: ritualStateProperty(state) });
+    await notion.pages.update({ page_id: row.id, properties: ritualStateProperty(state, ritualName) });
     res.json({ ok: true });
   } catch (err) {
     console.error('Ritual PATCH error:', err.message);
-    // Most common: the "Ritual Done" property doesn't exist yet on the DB
-    res.status(500).json({ error: err.message, hint: err.message.includes('Morning Ritual') ? 'Add a "Morning Ritual" rich-text property to your JOURNAL DB.' : undefined });
+    const propName = RITUAL_CONFIGS[ritualName].textProp;
+    const doneName = RITUAL_CONFIGS[ritualName].doneProp;
+    const hint = (err.message.includes(propName) || err.message.includes(doneName))
+      ? `Add "${propName}" (Text) and "${doneName}" (Checkbox) properties to your JOURNAL DB.`
+      : undefined;
+    res.status(500).json({ error: err.message, hint });
   }
 });
 
