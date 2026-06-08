@@ -201,6 +201,64 @@
   .cal-allday-pill .pill-dot.work { background: #5d9cec; }
   .cal-allday-pill .pill-dot.personal { background: var(--lime); }
 
+  /* ===== Health rings + streaks ===== */
+  .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .health-card { background: var(--white); border: 1px solid var(--navy-faint); border-radius: 12px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+  .health-card:hover { border-color: rgba(167,193,64,0.3); background: rgba(167,193,64,0.02); }
+  .health-card.full { grid-column: 1 / -1; }
+  .ring-wrap { position: relative; width: 72px; height: 72px; flex-shrink: 0; }
+  .ring-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring-track { fill: none; stroke: rgba(255,255,255,0.07); stroke-width: 8; }
+  .ring-fill { fill: none; stroke: var(--lime); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
+  .ring-fill.protein { stroke: #d97a5e; }
+  .ring-fill.sleep   { stroke: #7aa9d8; }
+  .ring-fill.complete { filter: drop-shadow(0 0 6px currentColor); }
+  .ring-pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 17px; font-weight: 700; color: var(--navy); }
+  .health-body { flex: 1; min-width: 0; }
+  .health-label { font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(245,245,247,0.55); font-weight: 700; margin-bottom: 4px; }
+  .health-value { font-family: var(--font-display); font-size: 22px; color: var(--navy); font-weight: 700; line-height: 1; }
+  .health-value .target { font-size: 13px; color: rgba(245,245,247,0.45); font-weight: 500; margin-left: 4px; font-family: var(--font-body); }
+  .health-sub { font-size: 11.5px; color: rgba(245,245,247,0.55); margin-top: 5px; line-height: 1.35; }
+  .health-sub.win { color: var(--lime); }
+
+  /* Streak card variant */
+  .streak-card { background: var(--white); border: 1px solid var(--navy-faint); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; transition: border-color 0.15s, background 0.15s; min-height: 96px; justify-content: center; }
+  .streak-card:hover { border-color: rgba(167,193,64,0.3); background: rgba(167,193,64,0.02); }
+  .streak-card.hit { border-color: rgba(167,193,64,0.45); background: linear-gradient(135deg, rgba(167,193,64,0.08), rgba(167,193,64,0.02)); }
+  .streak-top { display: flex; align-items: baseline; gap: 8px; }
+  .streak-num { font-family: var(--font-display); font-size: 32px; font-weight: 700; color: var(--lime); line-height: 1; }
+  .streak-unit { font-size: 11px; color: rgba(245,245,247,0.55); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+  .streak-label { font-size: 12px; color: var(--navy); font-weight: 600; letter-spacing: 0.04em; }
+  .streak-status { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; padding: 2px 7px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; margin-top: 2px; }
+  .streak-status.hit { background: rgba(167,193,64,0.18); color: var(--lime); }
+  .streak-status.miss { background: rgba(255,255,255,0.05); color: rgba(245,245,247,0.5); }
+  .streak-flame { display: inline-block; }
+
+  /* HRV trend mini-chart */
+  .hrv-card { padding: 14px 18px; }
+  .hrv-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .hrv-now { font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--navy); line-height: 1; }
+  .hrv-now .unit { font-size: 13px; color: rgba(245,245,247,0.5); font-weight: 500; margin-left: 4px; font-family: var(--font-body); }
+  .hrv-avg { font-size: 11px; color: rgba(245,245,247,0.55); }
+  .hrv-spark { display: flex; align-items: flex-end; gap: 4px; height: 32px; }
+  .hrv-bar { flex: 1; background: rgba(167,193,64,0.4); border-radius: 2px; min-height: 2px; transition: height 0.4s; }
+  .hrv-bar.today { background: var(--lime); box-shadow: 0 0 8px rgba(167,193,64,0.4); }
+  .hrv-bar.empty { background: rgba(255,255,255,0.04); }
+
+  /* Quick log section */
+  .health-log { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 16px 18px; margin-top: 18px; }
+  .health-log-title { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(245,245,247,0.55); font-weight: 700; margin-bottom: 12px; }
+  .health-log-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .health-log-field { display: flex; flex-direction: column; gap: 4px; }
+  .health-log-field label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,245,247,0.5); font-weight: 600; }
+  .health-log-field input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: var(--navy); padding: 9px 12px; border-radius: 8px; font-family: var(--font-body); font-size: 14px; color-scheme: dark; width: 100%; }
+  .health-log-field input:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
+  .health-log-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; }
+  .health-log-save { background: var(--lime); color: var(--navy-accent); border: none; font-family: var(--font-body); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 9px 18px; border-radius: 999px; cursor: pointer; }
+  .health-log-save:hover { background: var(--lime-light); }
+  .health-log-save:disabled { opacity: 0.5; cursor: not-allowed; }
+  .health-log-hint { font-size: 11px; color: rgba(245,245,247,0.45); margin-right: auto; }
+
   /* Event edit modal */
   .event-modal { position: fixed; inset: 0; background: rgba(10,15,30,0.78); backdrop-filter: blur(4px); display: none; align-items: flex-start; justify-content: center; padding: 60px 20px 20px; z-index: 110; overflow-y: auto; }
   .event-modal.open { display: flex; }
@@ -1506,15 +1564,9 @@ window.lrl = (function(){
 
   <!-- HEALTH TAB (Personal mode) -->
   <div class="tab-content" data-content="health">
-    <div class="section-label">Personal Realm</div>
     <h1 class="page-title"><span>Health</span></h1>
-    <div class="page-subtitle">HRV, sleep, movement, nutrition. (Placeholder — wires to JOURNAL [DB] in a later day.)</div>
-    <div class="kpi-grid">
-      <div class="kpi-card"><div class="kpi-label">7-Day Avg HRV</div><div class="kpi-value"><span>62ms</span></div><div class="kpi-change positive">↑ 4ms</div></div>
-      <div class="kpi-card"><div class="kpi-label">Restorative Time</div><div class="kpi-value"><span>3.5h</span></div><div class="kpi-change">LEGO + reading</div></div>
-      <div class="kpi-card"><div class="kpi-label">Journal Streak</div><div class="kpi-value"><span>14d</span></div><div class="kpi-change positive">Daily entries</div></div>
-      <div class="kpi-card"><div class="kpi-label">Sleep Avg</div><div class="kpi-value"><span>6.8h</span></div><div class="kpi-change negative">Target: 7.5h</div></div>
-    </div>
+    <div class="page-subtitle">Close the rings. Keep the streaks alive.</div>
+    <div id="health-body"><div style="color:var(--navy-dim);font-size:13px;padding:20px 0">loading…</div></div>
   </div>
 
   <!-- PERSONAL FINANCE TAB -->
@@ -2296,6 +2348,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     tab.classList.add('active');
     document.querySelector(`[data-content="${tab.dataset.tab}"]`).classList.add('active');
     localStorage.setItem('lrl-active-tab', tab.dataset.tab);
+    if (tab.dataset.tab === 'health') maybeLoadHealth();
   });
 });
 
@@ -2682,6 +2735,201 @@ async function fetchReview(){
 // Re-render when mode changes
 window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderReview(); });
 
+// ====== Health rings + streaks ======
+let HEALTH_DATA = null;
+
+function ringSvg(pct, variant){
+  const radius = 32;
+  const circ = 2 * Math.PI * radius;
+  const clamped = Math.max(0, Math.min(100, pct));
+  const dashoffset = circ - (circ * clamped / 100);
+  const complete = clamped >= 100 ? ' complete' : '';
+  return `<div class="ring-wrap">
+    <svg class="ring-svg" viewBox="0 0 80 80">
+      <circle class="ring-track" cx="40" cy="40" r="${radius}"></circle>
+      <circle class="ring-fill ${variant || ''}${complete}" cx="40" cy="40" r="${radius}"
+        stroke-dasharray="${circ}" stroke-dashoffset="${dashoffset}"></circle>
+    </svg>
+    <div class="ring-pct">${Math.round(clamped)}%</div>
+  </div>`;
+}
+
+function streakCardHtml(opts){
+  // opts: { label, days, didToday, unit }
+  const cls = opts.didToday ? ' hit' : '';
+  const status = opts.didToday
+    ? '<span class="streak-status hit"><span class="streak-flame">✓</span> Logged today</span>'
+    : '<span class="streak-status miss">Not yet today</span>';
+  return `<div class="streak-card${cls}" data-streak="${opts.key}">
+    <div class="streak-top">
+      <span class="streak-num">${opts.days}</span>
+      <span class="streak-unit">${opts.unit || 'day streak'}</span>
+    </div>
+    <div class="streak-label">${opts.label}</div>
+    ${status}
+  </div>`;
+}
+
+function hrvCardHtml(hrv){
+  const today = hrv?.today;
+  const avg = hrv?.avg7;
+  const trend = hrv?.trend || [];
+  const trendData = trend.slice().reverse(); // oldest first for bars
+  const max = Math.max(...trendData.map(d => d.hrv || 0), avg || 0, today || 0) || 100;
+  const bars = trendData.map(d => {
+    if (d.hrv == null) return `<div class="hrv-bar empty" style="height:6%"></div>`;
+    const h = Math.max(8, Math.round((d.hrv / max) * 100));
+    const isToday = d.date === new Date().toLocaleDateString('en-CA', { timeZone:'America/Chicago' });
+    return `<div class="hrv-bar ${isToday ? 'today' : ''}" style="height:${h}%" title="${d.date}: ${d.hrv}ms"></div>`;
+  }).join('');
+  const nowText = today != null ? `${today}<span class="unit">ms</span>` : `—<span class="unit">no reading today</span>`;
+  const avgText = avg != null ? `7-day avg ${avg}ms` : 'No data yet';
+  return `<div class="health-card hrv-card full">
+    <div style="flex:1;min-width:0">
+      <div class="health-label">HRV</div>
+      <div class="hrv-row">
+        <div class="hrv-now">${nowText}</div>
+        <div class="hrv-avg">${avgText}</div>
+      </div>
+      <div class="hrv-spark">${bars}</div>
+    </div>
+  </div>`;
+}
+
+function renderHealth(){
+  const body = document.getElementById('health-body');
+  if (!body) return;
+  if (!HEALTH_DATA){
+    body.innerHTML = `<div style="color:var(--navy-dim);font-size:13px;padding:20px 0">loading…</div>`;
+    return;
+  }
+  const d = HEALTH_DATA;
+  const today = d.today || {};
+  const t = d.targets || { protein: 120, sleepHours: 8 };
+  const proteinPct = today.protein ? (today.protein / t.protein) * 100 : 0;
+  const sleepPct = today.sleepHours ? (today.sleepHours / t.sleepHours) * 100 : 0;
+  const proteinSub = today.protein != null
+    ? (proteinPct >= 100 ? `<span class="win">Hit ✓</span>` : `${Math.max(0, t.protein - (today.protein||0))}g to target`)
+    : 'Not logged today';
+  const sleepSub = today.sleepHours != null
+    ? (sleepPct >= 100 ? `<span class="win">Hit ✓</span>` : `${(t.sleepHours - (today.sleepHours||0)).toFixed(1)}h to target`)
+    : 'Not logged today';
+
+  const html = `
+    <div class="health-grid">
+      <div class="health-card" data-act="focus-log" data-field="protein">
+        ${ringSvg(proteinPct, 'protein')}
+        <div class="health-body">
+          <div class="health-label">Protein</div>
+          <div class="health-value">${today.protein || 0}<span class="target">/ ${t.protein}g</span></div>
+          <div class="health-sub ${proteinPct >= 100 ? 'win' : ''}">${proteinSub}</div>
+        </div>
+      </div>
+      <div class="health-card" data-act="focus-log" data-field="sleepHours">
+        ${ringSvg(sleepPct, 'sleep')}
+        <div class="health-body">
+          <div class="health-label">Sleep</div>
+          <div class="health-value">${today.sleepHours != null ? today.sleepHours : 0}<span class="target">/ ${t.sleepHours}h</span></div>
+          <div class="health-sub ${sleepPct >= 100 ? 'win' : ''}">${sleepSub}</div>
+        </div>
+      </div>
+    </div>
+    <div class="health-grid">
+      ${streakCardHtml({ key:'walking',  label:'Walking',         days:d.streaks.walking,  didToday:(today.walkMinutes||0)>0 })}
+      ${streakCardHtml({ key:'swimming', label:'Swimming',        days:d.streaks.swimming, didToday:(today.swimMinutes||0)>0 })}
+      ${streakCardHtml({ key:'journal',  label:'Journal Entry',   days:d.streaks.journal,  didToday:!!d.today })}
+    </div>
+    ${hrvCardHtml(d.hrv)}
+    <div class="health-log">
+      <div class="health-log-title">Quick Log — Today</div>
+      <div class="health-log-grid">
+        <div class="health-log-field"><label>Protein (g)</label><input type="number" id="log-protein" inputmode="decimal" placeholder="0" value="${today.protein ?? ''}"/></div>
+        <div class="health-log-field"><label>Sleep (h)</label><input type="number" id="log-sleepHours" inputmode="decimal" step="0.1" placeholder="0" value="${today.sleepHours ?? ''}"/></div>
+        <div class="health-log-field"><label>Walk (min)</label><input type="number" id="log-walkMinutes" inputmode="numeric" placeholder="0" value="${today.walkMinutes ?? ''}"/></div>
+        <div class="health-log-field"><label>Swim (min)</label><input type="number" id="log-swimMinutes" inputmode="numeric" placeholder="0" value="${today.swimMinutes ?? ''}"/></div>
+        <div class="health-log-field"><label>HRV (ms)</label><input type="number" id="log-hrv" inputmode="numeric" placeholder="0" value="${today.hrv ?? ''}"/></div>
+      </div>
+      <div class="health-log-actions">
+        <span class="health-log-hint">Saves to today's JOURNAL row, creates it if needed.</span>
+        <button class="health-log-save" id="health-save-btn">Save</button>
+      </div>
+    </div>
+  `;
+  body.innerHTML = html;
+  attachHealthHandlers();
+}
+
+function attachHealthHandlers(){
+  const saveBtn = document.getElementById('health-save-btn');
+  if (saveBtn) saveBtn.addEventListener('click', saveHealthLog);
+  // Tapping a ring/streak card focuses its log field
+  document.querySelectorAll('#health-body [data-act="focus-log"]').forEach(el => {
+    el.addEventListener('click', () => {
+      const field = el.dataset.field;
+      const input = document.getElementById('log-' + field);
+      if (input){ input.focus(); input.select?.(); window.lrl.haptic('tap'); }
+    });
+  });
+  // Enter to save
+  document.querySelectorAll('#health-body input').forEach(input => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); saveHealthLog(); }
+    });
+  });
+}
+
+async function saveHealthLog(){
+  const btn = document.getElementById('health-save-btn');
+  if (!btn) return;
+  const body = {};
+  ['protein','sleepHours','walkMinutes','swimMinutes','hrv'].forEach(f => {
+    const v = document.getElementById('log-' + f)?.value;
+    if (v !== '' && v != null) body[f] = Number(v);
+    else body[f] = null; // clear if empty
+  });
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await fetch('/api/journal/today', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok){ const j = await r.json().catch(()=>({})); throw new Error(j.error || 'save failed'); }
+    window.lrl.haptic('success');
+    window.lrl.toast('Logged to JOURNAL', 'success');
+    await fetchHealth();
+    renderHealth();
+  } catch (err) {
+    window.lrl.toast('Save failed: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+}
+
+async function fetchHealth(){
+  try {
+    const r = await fetch('/api/journal/rings');
+    const d = await r.json();
+    if (d.error){
+      const body = document.getElementById('health-body');
+      if (body) body.innerHTML = `<div style="color:#ff7a6b;padding:20px">${d.error}</div>`;
+      return;
+    }
+    HEALTH_DATA = d;
+  } catch(e){
+    const body = document.getElementById('health-body');
+    if (body) body.innerHTML = `<div style="color:#ff7a6b;padding:20px">${e.message}</div>`;
+  }
+}
+
+// Lazy-load when the Health tab is opened (don't fetch on every page load)
+let _healthLoaded = false;
+function maybeLoadHealth(){
+  if (_healthLoaded) return;
+  _healthLoaded = true;
+  fetchHealth().then(renderHealth);
+}
+
 // Quick Capture chat
 const CHAT_KEY = 'lrl-chat-history-v1';
 let chatHistory = [];
@@ -3017,6 +3265,7 @@ document.addEventListener('keydown', (e) => {
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       tabEl.classList.add('active');
       contentEl.classList.add('active');
+      if (saved === 'health') maybeLoadHealth();
     }
   }
   // Apply mode (filters tab visibility + sets active button)

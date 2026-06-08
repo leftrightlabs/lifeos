@@ -22,6 +22,8 @@ const WORK_TASKS_DS = '28c458f08cd9818599e7000bc2115872';
 const LIFE_TASKS_DS = '265458f08cd981699efe000b4de14ca4';
 const WORK_PROJECTS_DS = '28c458f08cd98131a475000b81db3c1b';
 const LIFE_PROJECTS_DS = '265458f08cd9814eaf0e000bceaa7f80';
+const JOURNAL_DS = '25a458f08cd9804bb6d1000b78cb4186';
+const JOURNAL_DB_ID = '25a458f08cd980f9991af90b30ec68d8';
 const CACHE_TTL_MS = 60_000;
 const TZ = 'America/Chicago';
 const DATA_SCOPES = [
@@ -721,6 +723,183 @@ app.get('/api/review', async (_req, res) => {
     });
     res.json(data);
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ====== JOURNAL (health rings + streaks) ======
+const JOURNAL_TARGETS = {
+  protein: 120,   // grams
+  sleepHours: 8,  // hours
+};
+
+function chicagoToday() {
+  // Returns YYYY-MM-DD for today in America/Chicago
+  return new Date().toLocaleDateString('en-CA', { timeZone: TZ });
+}
+function chicagoDateNDaysAgo(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toLocaleDateString('en-CA', { timeZone: TZ });
+}
+
+function readJournalRow(page) {
+  const p = page.properties || {};
+  const num = (key) => (p[key]?.number ?? null);
+  const dateVal = p.Date?.date?.start || null;
+  return {
+    id: page.id,
+    date: dateVal,
+    protein: num('Protein'),
+    sleepHours: num('Sleep Hours'),
+    walkMinutes: num('Walk Minutes'),
+    swimMinutes: num('Swim Minutes'),
+    hrv: num('HRV'),
+    steps: num('Steps'),
+    weight: num('Weight'),
+  };
+}
+
+async function queryJournalRange(startDate, endDate) {
+  if (!notion) return [];
+  const filter = {
+    and: [
+      { property: 'Date', date: { on_or_after: startDate } },
+      { property: 'Date', date: { on_or_before: endDate } },
+    ],
+  };
+  const out = [];
+  let cursor;
+  do {
+    const r = await notion.dataSources.query({
+      data_source_id: JOURNAL_DS,
+      filter,
+      sorts: [{ property: 'Date', direction: 'descending' }],
+      page_size: 100,
+      start_cursor: cursor,
+    });
+    out.push(...r.results.map(readJournalRow));
+    cursor = r.has_more ? r.next_cursor : null;
+  } while (cursor);
+  return out;
+}
+
+function calculateStreak(rows, predicate) {
+  // rows are sorted descending by date. Walk from today backwards.
+  const byDate = new Map(rows.filter(r => r.date).map(r => [r.date, r]));
+  let streak = 0;
+  for (let i = 0; ; i++) {
+    const d = chicagoDateNDaysAgo(i);
+    const row = byDate.get(d);
+    const hit = predicate(row);
+    if (hit) streak++;
+    else if (i === 0 && !row) {
+      // today hasn't been logged yet — don't break the streak; just skip
+      continue;
+    } else break;
+    if (i > 365) break; // safety cap
+  }
+  return streak;
+}
+
+app.get('/api/journal/rings', async (_req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    const data = await cached('journal-rings', async () => {
+      const startDate = chicagoDateNDaysAgo(90);
+      const endDate = chicagoToday();
+      const rows = await queryJournalRange(startDate, endDate);
+      const today = rows.find(r => r.date === endDate) || null;
+      const yesterday = rows.find(r => r.date === chicagoDateNDaysAgo(1)) || null;
+
+      const streaks = {
+        walking:  calculateStreak(rows, r => r && (r.walkMinutes || 0) > 0),
+        swimming: calculateStreak(rows, r => r && (r.swimMinutes || 0) > 0),
+        journal:  calculateStreak(rows, r => !!r), // existence of row = entry done
+        protein:  calculateStreak(rows, r => r && (r.protein || 0) >= JOURNAL_TARGETS.protein),
+        sleep:    calculateStreak(rows, r => r && (r.sleepHours || 0) >= JOURNAL_TARGETS.sleepHours),
+      };
+
+      // Last 7 days for HRV trend
+      const last7 = [];
+      for (let i = 0; i < 7; i++) {
+        const d = chicagoDateNDaysAgo(i);
+        const row = rows.find(r => r.date === d);
+        last7.push({ date: d, hrv: row?.hrv ?? null });
+      }
+      const hrvValues = last7.filter(d => d.hrv != null).map(d => d.hrv);
+      const hrvAvg = hrvValues.length ? hrvValues.reduce((a,b) => a+b, 0) / hrvValues.length : null;
+
+      return {
+        today,
+        yesterday,
+        streaks,
+        targets: JOURNAL_TARGETS,
+        hrv: {
+          today: today?.hrv ?? null,
+          avg7: hrvAvg != null ? Math.round(hrvAvg) : null,
+          trend: last7,
+        },
+      };
+    });
+    res.json(data);
+  } catch (err) {
+    console.error('Journal rings error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+async function findOrCreateTodayRow() {
+  const today = chicagoToday();
+  const existing = await notion.dataSources.query({
+    data_source_id: JOURNAL_DS,
+    filter: { property: 'Date', date: { equals: today } },
+    page_size: 1,
+  });
+  if (existing.results.length) return existing.results[0];
+  // Build "YYYY-MM-DD Dayname" title
+  const d = new Date(today + 'T12:00:00');
+  const dayName = d.toLocaleDateString('en-US', { timeZone: TZ, weekday: 'long' });
+  const title = `${today} ${dayName}`;
+  const created = await notion.pages.create({
+    parent: { type: 'data_source_id', data_source_id: JOURNAL_DS },
+    properties: {
+      Name: { title: [{ text: { content: title } }] },
+      Date: { date: { start: today } },
+    },
+  });
+  return created;
+}
+
+app.patch('/api/journal/today', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  const body = req.body || {};
+  const FIELD_MAP = {
+    protein: 'Protein',
+    sleepHours: 'Sleep Hours',
+    walkMinutes: 'Walk Minutes',
+    swimMinutes: 'Swim Minutes',
+    hrv: 'HRV',
+    steps: 'Steps',
+    weight: 'Weight',
+  };
+  const properties = {};
+  for (const [key, propName] of Object.entries(FIELD_MAP)) {
+    if (body[key] !== undefined) {
+      const v = body[key];
+      properties[propName] = { number: (v === '' || v === null) ? null : Number(v) };
+    }
+  }
+  if (Object.keys(properties).length === 0) {
+    return res.status(400).json({ error: 'no recognized fields in body' });
+  }
+  try {
+    const row = await findOrCreateTodayRow();
+    await notion.pages.update({ page_id: row.id, properties });
+    cache.delete('journal-rings');
+    res.json({ ok: true, id: row.id });
+  } catch (err) {
+    console.error('Journal update error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
