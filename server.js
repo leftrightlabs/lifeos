@@ -463,9 +463,12 @@ app.get('/api/goals', async (_req, res) => {
 app.patch('/api/tasks/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { id } = req.params;
-  const { status, dueStart, dueEnd, myDay } = req.body || {};
+  const { name, status, dueStart, dueEnd, myDay, priority } = req.body || {};
   try {
     const properties = {};
+    if (name !== undefined && name !== null) {
+      properties.Name = { title: [{ text: { content: String(name) } }] };
+    }
     if (status !== undefined) properties.Status = { status: { name: status } };
     if (dueStart !== undefined || dueEnd !== undefined) {
       properties.Due = dueStart
@@ -473,6 +476,9 @@ app.patch('/api/tasks/:id', async (req, res) => {
         : { date: null };
     }
     if (myDay !== undefined) properties['My Day'] = { checkbox: !!myDay };
+    if (priority !== undefined) {
+      properties['Priority 2'] = priority ? { select: { name: priority } } : { select: null };
+    }
     if (!Object.keys(properties).length) {
       return res.status(400).json({ error: 'No supported fields to update' });
     }

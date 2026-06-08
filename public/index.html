@@ -309,6 +309,49 @@
   .health-log-save:disabled { opacity: 0.5; cursor: not-allowed; }
   .health-log-hint { font-size: 11px; color: rgba(245,245,247,0.45); margin-right: auto; }
 
+  /* Task edit modal */
+  .task-modal { position: fixed; inset: 0; background: rgba(10,15,30,0.78); backdrop-filter: blur(4px); display: none; align-items: flex-start; justify-content: center; padding: 60px 20px 20px; z-index: 110; overflow-y: auto; }
+  .task-modal.open { display: flex; }
+  .task-modal-content { background: var(--cream); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 24px; max-width: 520px; width: 100%; box-shadow: 0 24px 60px rgba(0,0,0,0.6); position: relative; }
+  .task-modal.open .task-modal-content { animation: lrl-modal-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .task-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 12px; }
+  .task-modal-title { font-family: var(--font-display); font-size: 20px; font-weight: 800; color: var(--navy); line-height: 1.2; letter-spacing: -0.01em; }
+  .task-modal-close { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: rgba(245,245,247,0.55); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .task-modal-close:hover { color: var(--navy); border-color: rgba(255,255,255,0.3); }
+  .task-source-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; margin-bottom: 14px; }
+  .task-source-pill.work { background: rgba(93,156,236,0.15); color: #9cc5f5; border: 1px solid rgba(93,156,236,0.3); }
+  .task-source-pill.personal { background: rgba(167,193,64,0.15); color: var(--lime); border: 1px solid rgba(167,193,64,0.3); }
+  html.theme-indigo .task-source-pill.personal { background: rgba(192,132,252,0.18); color: #d4b8ff; border-color: rgba(192,132,252,0.35); }
+  html.theme-minimal .task-source-pill.personal { background: rgba(167,192,232,0.18); color: #a7c0e8; border-color: rgba(167,192,232,0.3); }
+  .task-source-pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .task-source-pill.work .dot { background: #5d9cec; }
+  .task-source-pill.personal .dot { background: var(--lime); }
+  .task-field { display: block; margin-bottom: 12px; }
+  .task-field label { display: block; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,245,247,0.5); font-weight: 700; margin-bottom: 6px; }
+  .task-field input[type="text"], .task-field input[type="date"], .task-field select, .task-field textarea {
+    width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: var(--navy); padding: 9px 12px; border-radius: 8px; font-family: var(--font-body); font-size: 14px; color-scheme: dark;
+  }
+  .task-field input:focus, .task-field select:focus, .task-field textarea:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
+  .task-field textarea { resize: vertical; min-height: 60px; font-size: 16px; font-weight: 600; line-height: 1.3; }
+  .task-row-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .task-checkbox-row { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 14px; color: var(--navy); cursor: pointer; }
+  .task-checkbox-row input { accent-color: var(--lime); width: 16px; height: 16px; }
+  .task-project-line { font-size: 12px; color: rgba(245,245,247,0.55); margin-bottom: 14px; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 6px; }
+  .task-project-line .lab { color: rgba(245,245,247,0.4); letter-spacing: 0.08em; text-transform: uppercase; font-size: 10px; font-weight: 700; margin-right: 8px; }
+  .task-modal-actions { display: flex; gap: 8px; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); flex-wrap: wrap; }
+  .task-btn { font-family: var(--font-body); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 9px 16px; border-radius: 999px; cursor: pointer; border: none; }
+  .task-btn.primary { background: var(--lime); color: var(--navy-accent); }
+  .task-btn.primary:hover { background: var(--lime-light); }
+  .task-btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .task-btn.ghost { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: var(--navy-dim); }
+  .task-btn.ghost:hover { color: var(--navy); border-color: rgba(255,255,255,0.3); }
+  @media (max-width: 600px) {
+    .task-modal { padding: 40px 12px 20px; }
+    .task-modal-content { padding: 18px; }
+    .task-row-2col { grid-template-columns: 1fr 1fr; }
+    .task-btn { padding: 9px 12px; font-size: 11px; flex: 1; min-width: 0; }
+  }
+
   /* Event edit modal */
   .event-modal { position: fixed; inset: 0; background: rgba(10,15,30,0.78); backdrop-filter: blur(4px); display: none; align-items: flex-start; justify-content: center; padding: 60px 20px 20px; z-index: 110; overflow-y: auto; }
   .event-modal.open { display: flex; }
@@ -1852,6 +1895,58 @@ window.lrl = (function(){
   </div>
 </div>
 
+<div class="task-modal" id="task-modal">
+  <div class="task-modal-content">
+    <div class="task-modal-header">
+      <div class="task-modal-title">Edit Task</div>
+      <button class="task-modal-close" id="task-modal-close" title="Close" aria-label="Close">×</button>
+    </div>
+    <div class="task-source-pill" id="task-source"><span class="dot"></span><span class="label">work</span></div>
+    <div class="task-field">
+      <label>Task</label>
+      <textarea id="task-name-input" placeholder="Task name" rows="2"></textarea>
+    </div>
+    <div class="task-project-line" id="task-project-line" style="display:none"><span class="lab">Project</span><span id="task-project-name"></span></div>
+    <label class="task-checkbox-row"><input type="checkbox" id="task-myday-input"/> Pin to My Day</label>
+    <div class="task-row-2col">
+      <div class="task-field">
+        <label>Status</label>
+        <select id="task-status-input">
+          <option value="Planned">Planned</option>
+          <option value="Doing">Doing</option>
+          <option value="Waiting">Waiting</option>
+          <option value="Agenda">Agenda</option>
+          <option value="Done">Done</option>
+        </select>
+      </div>
+      <div class="task-field">
+        <label>Priority</label>
+        <select id="task-priority-input">
+          <option value="">— none —</option>
+          <option value="NORMAL">Normal</option>
+          <option value="HIGH">High</option>
+          <option value="URGENT">Urgent</option>
+        </select>
+      </div>
+    </div>
+    <div class="task-row-2col">
+      <div class="task-field">
+        <label>Due date</label>
+        <input type="date" id="task-due-input"/>
+      </div>
+      <div class="task-field">
+        <label>End date (optional)</label>
+        <input type="date" id="task-dueend-input"/>
+      </div>
+    </div>
+    <div class="task-modal-actions">
+      <button class="task-btn ghost" id="task-open-notion-btn">Open in Notion ↗</button>
+      <span style="flex:1"></span>
+      <button class="task-btn primary" id="task-save-btn">Save</button>
+    </div>
+  </div>
+</div>
+
 <div class="event-modal" id="event-modal">
   <div class="event-modal-content">
     <div class="event-modal-header">
@@ -2103,9 +2198,14 @@ el('list').addEventListener('click',e=>{
   }
   // Default (open) — bare row click or data-act="open"
   if(act==='open' || !act){
-    const url=rowEl.dataset.taskUrl||task(id).url;
-    if(url)openNotion(url);
+    const t=task(id);
+    window.openTaskEdit && window.openTaskEdit(t,'focus');
   }
+});
+
+// Refresh autofocus list when task modal saves
+window.addEventListener('lrl-refresh-focus', async () => {
+  try { await fetchTasks(); render(); } catch(e){}
 });
 el('q').addEventListener('input',e=>{ui.q=e.target.value;render();});
 el('sortsel').addEventListener('change',e=>{ui.sort=e.target.value;render();});
@@ -2461,7 +2561,90 @@ document.getElementById('today-quests').addEventListener('click', async (e) => {
   }
 
   if (act === 'open' || !act){
-    if (url) openNotion(url);
+    openTaskEdit(t, 'quest');
+  }
+});
+
+// ====== Task edit modal (shared across Today's Quest + Focus) ======
+let editingTask = null; // { id, source, url, name, status, priority, dueStart, dueEnd, myDay, project, scope }
+
+function openTaskEdit(t, scope){
+  if (!t || !t.id) return;
+  editingTask = { ...t, scope: scope || 'quest' }; // scope = 'quest' or 'focus'
+  const modal = document.getElementById('task-modal');
+  if (!modal) return;
+  const src = (t.source === 'work') ? 'work' : 'personal';
+  const sourceEl = document.getElementById('task-source');
+  sourceEl.className = 'task-source-pill ' + src;
+  sourceEl.querySelector('.label').textContent = src;
+  document.getElementById('task-name-input').value = t.name || '';
+  document.getElementById('task-myday-input').checked = !!t.myDay;
+  document.getElementById('task-status-input').value = t.status || 'Planned';
+  document.getElementById('task-priority-input').value = t.priority || '';
+  document.getElementById('task-due-input').value = (t.dueStart || '').slice(0,10);
+  document.getElementById('task-dueend-input').value = (t.dueEnd || '').slice(0,10);
+  const projLine = document.getElementById('task-project-line');
+  if (t.project){
+    document.getElementById('task-project-name').textContent = t.project;
+    projLine.style.display = '';
+  } else {
+    projLine.style.display = 'none';
+  }
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  window.lrl?.haptic('tap');
+}
+window.openTaskEdit = openTaskEdit;
+
+function closeTaskEdit(){
+  document.getElementById('task-modal')?.classList.remove('open');
+  document.body.style.overflow = '';
+  editingTask = null;
+}
+
+document.getElementById('task-modal-close')?.addEventListener('click', closeTaskEdit);
+document.getElementById('task-modal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'task-modal') closeTaskEdit();
+});
+document.getElementById('task-open-notion-btn')?.addEventListener('click', () => {
+  if (editingTask?.url) { closeTaskEdit(); openNotion(editingTask.url); }
+});
+document.getElementById('task-save-btn')?.addEventListener('click', async () => {
+  if (!editingTask) return;
+  const btn = document.getElementById('task-save-btn');
+  const body = {
+    name: document.getElementById('task-name-input').value.trim(),
+    status: document.getElementById('task-status-input').value,
+    priority: document.getElementById('task-priority-input').value || null,
+    myDay: document.getElementById('task-myday-input').checked,
+    dueStart: document.getElementById('task-due-input').value || null,
+    dueEnd: document.getElementById('task-dueend-input').value || null,
+  };
+  if (!body.name) { window.lrl.toast('Task name is required', 'error'); return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const id = editingTask.id;
+  const scope = editingTask.scope;
+  try {
+    const r = await fetch(`/api/tasks/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) { const j = await r.json().catch(()=>({})); throw new Error(j.error || 'save failed'); }
+    window.lrl.haptic('success');
+    window.lrl.toast('Task updated', 'success');
+    closeTaskEdit();
+    // Refresh whichever surface this was opened from
+    if (scope === 'quest'){
+      await fetchTodayQuests();
+      renderTodayQuests();
+    } else if (scope === 'focus'){
+      window.dispatchEvent(new CustomEvent('lrl-refresh-focus'));
+    }
+  } catch (err) {
+    window.lrl.toast('Save failed: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
   }
 });
 
