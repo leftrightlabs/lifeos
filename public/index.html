@@ -17,6 +17,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+<script>
+  // Apply saved theme BEFORE first paint (avoids flash). Default = indigo.
+  (function(){
+    var t;
+    try { t = localStorage.getItem('lrl-theme'); } catch(e){}
+    if (t !== 'indigo' && t !== 'minimal') t = 'indigo';
+    document.documentElement.classList.add('theme-' + t);
+  })();
+</script>
 <style>
   :root {
     color-scheme: dark only;
@@ -1221,6 +1230,49 @@
       transition-duration: 0.01ms !important;
     }
   }
+
+  /* ======================================================
+     COLOR THEMES — Indigo + Minimal A/B
+     Remaps --lime (the all-purpose accent variable) per theme,
+     plus targeted overrides for hardcoded personal-mode color.
+     ====================================================== */
+
+  /* INDIGO: violet-blue accent, mint success, purple personal */
+  html.theme-indigo {
+    --lime: #818cf8;
+    --lime-light: #a5b4fc;
+    --lime-faint: rgba(129,140,248,0.18);
+  }
+  html.theme-indigo .mode-btn[data-mode="all"].active   { background: #818cf8; }
+  html.theme-indigo .mode-btn[data-mode="personal"].active { background: #c084fc; }
+  html.theme-indigo .tqf-btn[data-tqf="personal"].active   { background: #c084fc; }
+  html.theme-indigo .tag-personal { background: rgba(192,132,252,0.18); color: #d4b8ff; border: 1px solid rgba(192,132,252,0.3); }
+  html.theme-indigo .cal-event-bar.personal { background: #c084fc; }
+  html.theme-indigo .cal-event-acct.personal { background: rgba(192,132,252,0.18); color: #d4b8ff; }
+  html.theme-indigo .review-source-pill.personal { background: rgba(192,132,252,0.18); color: #d4b8ff; }
+  /* Success states (toast, "Done" badges) stay mint instead of becoming indigo */
+  html.theme-indigo .lrl-toast.success { border-color: rgba(52,211,153,0.55); }
+  html.theme-indigo .lrl-toast.success::before { color: #34d399; }
+  html.theme-indigo .review-streak-num { color: #818cf8; }
+  html.theme-indigo .streak-num { color: #818cf8; }
+  html.theme-indigo .health-sub.win, html.theme-indigo .ring-foot { color: #34d399; }
+  html.theme-indigo .streak-status.hit { background: rgba(52,211,153,0.18); color: #34d399; }
+
+  /* MINIMAL: monochromatic blue (kills green entirely) */
+  html.theme-minimal {
+    --lime: #5d9cec;
+    --lime-light: #93c5fd;
+    --lime-faint: rgba(93,156,236,0.18);
+  }
+  html.theme-minimal .mode-btn[data-mode="all"].active { background: #5d9cec; }
+  /* personal pill is already #a7c0e8 which fits minimal perfectly — no override needed */
+
+  /* === Theme switcher control === */
+  .theme-switch { display: inline-flex; gap: 0; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; padding: 3px; }
+  .theme-btn { background: transparent; border: none; padding: 6px 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: rgba(245,245,247,0.55); cursor: pointer; border-radius: 999px; font-family: var(--font-body); transition: all 0.15s; text-transform: uppercase; }
+  .theme-btn:hover { color: var(--navy); }
+  .theme-btn.active { background: var(--lime); color: var(--navy-accent); font-weight: 700; }
+  @media (max-width: 720px) { .theme-btn { padding: 5px 8px; font-size: 10px; } }
 </style>
 </head>
 <body>
@@ -1357,6 +1409,10 @@ window.lrl = (function(){
       </div>
     </div>
     <div class="header-meta">
+      <div class="theme-switch" id="theme-switch" title="Color theme">
+        <button class="theme-btn" data-theme="indigo">Indigo</button>
+        <button class="theme-btn" data-theme="minimal">Minimal</button>
+      </div>
       <button class="refresh-btn" onclick="triggerRefresh()" title="Refresh dashboard from live APIs">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="23 4 23 10 17 10"></polyline>
@@ -2459,6 +2515,25 @@ function triggerRefresh() {
   });
 }
 window.triggerRefresh = triggerRefresh;
+
+// ====== Theme switcher (Indigo / Minimal A/B) ======
+function applyTheme(theme){
+  if (theme !== 'indigo' && theme !== 'minimal') theme = 'indigo';
+  document.documentElement.classList.remove('theme-indigo', 'theme-minimal');
+  document.documentElement.classList.add('theme-' + theme);
+  try { localStorage.setItem('lrl-theme', theme); } catch(e){}
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === theme));
+}
+(function initThemeSwitcher(){
+  const saved = (function(){ try { return localStorage.getItem('lrl-theme'); } catch(e){ return null; }})() || 'indigo';
+  applyTheme(saved);
+  document.querySelectorAll('.theme-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      applyTheme(b.dataset.theme);
+      window.lrl?.haptic('tap');
+    });
+  });
+})();
 
 function updateHeaderTimestamp(){
   const el = document.getElementById('week-of');
