@@ -449,6 +449,48 @@
   .daily-brief-refresh:hover { color: var(--lime); border-color: var(--lime); }
   .daily-brief-refresh.spinning svg { animation: spin 1s linear infinite; }
 
+  /* ===== Morning Ritual card ===== */
+  .ritual-card { background: var(--white); border: 1px solid rgba(255,255,255,0.06); border-left: 3px solid var(--lime); border-radius: 8px; padding: 16px 22px; margin-bottom: 22px; }
+  .ritual-card.done { padding: 12px 22px; border-left-color: transparent; cursor: pointer; }
+  .ritual-card.done .ritual-list { display: none; }
+  .ritual-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .ritual-card.done .ritual-head { margin-bottom: 0; }
+  .ritual-title { font-family: var(--font-body); font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--lime); }
+  .ritual-card.done .ritual-title { color: rgba(167,193,64,0.55); }
+  .ritual-status { font-size: 11.5px; color: rgba(245,245,247,0.55); font-weight: 500; }
+  .ritual-status.done { color: var(--lime); font-weight: 700; }
+  .ritual-list { display: flex; flex-direction: column; gap: 8px; }
+  .ritual-step { display: flex; align-items: center; gap: 12px; padding: 11px 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; transition: all 0.2s; }
+  .ritual-step.checked { background: rgba(167,193,64,0.05); border-color: rgba(167,193,64,0.18); }
+  .ritual-step.checked .ritual-step-label { color: rgba(245,245,247,0.45); }
+  .ritual-step.checked .ritual-step-label::after { content: ''; }
+  .ritual-check { width: 22px; height: 22px; border: 1.6px solid rgba(245,245,247,0.3); border-radius: 6px; background: transparent; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; padding: 0; font-size: 13px; font-weight: 800; color: var(--navy-accent); transition: all 0.2s; }
+  .ritual-check:hover { border-color: var(--navy); }
+  .ritual-step.checked .ritual-check { background: var(--lime); border-color: var(--lime); }
+  .ritual-step.checked .ritual-check::after { content: '✓'; animation: lrl-check-draw 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .ritual-step-body { flex: 1; min-width: 0; }
+  .ritual-step-label { font-size: 14px; color: var(--navy); font-weight: 600; line-height: 1.3; }
+  .ritual-step-meta { font-size: 11.5px; color: rgba(245,245,247,0.5); margin-top: 2px; font-weight: 500; }
+  .ritual-step-meta.win { color: var(--lime); }
+  .ritual-step-action { background: transparent; border: 1px solid rgba(255,255,255,0.12); color: rgba(245,245,247,0.6); font-family: var(--font-body); font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 10px; border-radius: 999px; cursor: pointer; flex-shrink: 0; }
+  .ritual-step-action:hover { color: var(--lime); border-color: var(--lime); }
+  .ritual-card.weekend, body[data-mode="personal"] .ritual-card { display: none; }
+  @media (max-width: 600px) {
+    .ritual-card { padding: 14px 16px; }
+    .ritual-card.done { padding: 12px 16px; }
+    .ritual-step { padding: 10px 12px; gap: 10px; }
+    .ritual-step-label { font-size: 13.5px; }
+    .ritual-step-action { padding: 5px 9px; font-size: 10px; }
+  }
+
+  /* Status dots on task rows */
+  .quest-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-right: -2px; }
+  .quest-status-dot.status-planned { background: rgba(245,245,247,0.22); }
+  .quest-status-dot.status-doing { background: var(--lime); box-shadow: 0 0 6px rgba(167,193,64,0.45); }
+  .quest-status-dot.status-waiting { background: #ffb74d; box-shadow: 0 0 6px rgba(255,183,77,0.4); }
+  .quest-status-dot.status-agenda { background: #5d9cec; box-shadow: 0 0 6px rgba(93,156,236,0.35); }
+  .quest-status-dot.status-done { background: rgba(245,245,247,0.15); }
+
   /* ===== Daily Slack Check-in card ===== */
   .checkin-card { background: var(--white); border: 1px solid rgba(255,255,255,0.06); border-left: 3px solid #4a154b; border-radius: 8px; padding: 16px 22px; margin-bottom: 22px; }
   .checkin-card.collapsed { padding: 12px 22px; }
@@ -1582,6 +1624,47 @@ window.lrl = (function(){
     <h1 class="page-title"><span>Command</span></h1>
     <div class="page-subtitle">Your quarterly game board. Where you are, what's next, and whether you're on the right path.</div>
 
+    <div class="ritual-card" id="ritual-card">
+      <div class="ritual-head">
+        <div class="ritual-title">Morning Ritual</div>
+        <div class="ritual-status" id="ritual-status">0 of 4 done</div>
+      </div>
+      <div class="ritual-list" id="ritual-list">
+        <div class="ritual-step" data-step="inboxes">
+          <button class="ritual-check" aria-label="Toggle done"></button>
+          <div class="ritual-step-body">
+            <div class="ritual-step-label">Clear inboxes</div>
+            <div class="ritual-step-meta" id="ritual-inbox-meta">checking…</div>
+          </div>
+          <button class="ritual-step-action" data-action="open-comms">Open ›</button>
+        </div>
+        <div class="ritual-step" data-step="birthdays">
+          <button class="ritual-check" aria-label="Toggle done"></button>
+          <div class="ritual-step-body">
+            <div class="ritual-step-label">Wish birthdays</div>
+            <div class="ritual-step-meta">Facebook events page</div>
+          </div>
+          <button class="ritual-step-action" data-action="open-fb">Open ↗</button>
+        </div>
+        <div class="ritual-step" data-step="checkin">
+          <button class="ritual-check" aria-label="Toggle done"></button>
+          <div class="ritual-step-body">
+            <div class="ritual-step-label">Send daily check-in</div>
+            <div class="ritual-step-meta" id="ritual-checkin-meta">Not yet sent</div>
+          </div>
+          <button class="ritual-step-action" data-action="jump-checkin">Jump ›</button>
+        </div>
+        <div class="ritual-step" data-step="sequence">
+          <button class="ritual-check" aria-label="Toggle done"></button>
+          <div class="ritual-step-body">
+            <div class="ritual-step-label">Sequence today's tasks</div>
+            <div class="ritual-step-meta" id="ritual-tasks-meta">0 work tasks</div>
+          </div>
+          <button class="ritual-step-action" data-action="jump-tasks">Jump ›</button>
+        </div>
+      </div>
+    </div>
+
     <div class="daily-brief" id="daily-brief">
       <div class="daily-brief-kicker">
         <button class="daily-brief-toggle" id="brief-toggle" title="Collapse/expand"><span id="brief-collapse-caret">▾</span> Daily Focus <span id="brief-bucket" style="opacity:0.6;font-weight:500;text-transform:lowercase;letter-spacing:0.05em"></span></button>
@@ -2075,8 +2158,11 @@ function row(t){
   const star = '<button class="quest-star '+(isMyDay?'on':'')+'" data-act="star" title="'+starTitle+'" aria-label="'+starTitle+'"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>';
   const doneCls = t.done ? ' done' : '';
   const checkedCls = t.done ? 'checked' : '';
+  const statusKey = (t.status || 'Planned').toLowerCase().replace(/\s+/g,'-');
+  const statusDot = '<span class="quest-status-dot status-'+statusKey+'" title="'+(t.status||'Planned')+'"></span>';
   return '<div class="quest-item'+doneCls+'" data-task-id="'+t.id+'" data-task-url="'+escapeHtml(t.url||'')+'">'
     +'<div class="quest-check '+checkedCls+'" data-act="check"></div>'
+    +statusDot
     +'<div class="quest-text" data-act="open">'+escapeHtml(t.name)+sub+'</div>'
     +priHtml
     +dueHtml
@@ -2277,6 +2363,137 @@ function setChapterCollapsed(collapsed){
   localStorage.setItem('lrl-chapter-collapsed', collapsed ? '1' : '0');
 }
 
+// ====== Morning Ritual ======
+const RITUAL_STEPS = ['inboxes', 'birthdays', 'checkin', 'sequence'];
+function ritualKey(){
+  return 'lrl-ritual-' + new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+}
+function isChicagoWeekend(){
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short' }).formatToParts(new Date());
+  const wk = parts.find(p => p.type === 'weekday')?.value;
+  return wk === 'Sat' || wk === 'Sun';
+}
+function loadRitual(){
+  try { return JSON.parse(localStorage.getItem(ritualKey()) || '{}'); } catch(e){ return {}; }
+}
+function saveRitual(s){
+  try { localStorage.setItem(ritualKey(), JSON.stringify(s)); } catch(e){}
+}
+
+function renderRitual(){
+  const card = document.getElementById('ritual-card');
+  if (!card) return;
+  if (isChicagoWeekend()){
+    card.classList.add('weekend');
+    return;
+  }
+  card.classList.remove('weekend');
+
+  // Auto-detect: if check-in was sent today, mark that step done
+  const state = loadRitual();
+  try {
+    const sent = JSON.parse(localStorage.getItem('lrl-checkin-last-sent') || 'null');
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+    if (sent && sent.date === todayStr) state.checkin = true;
+  } catch(e){}
+
+  const doneCount = RITUAL_STEPS.filter(k => state[k]).length;
+  const allDone = doneCount === RITUAL_STEPS.length;
+
+  card.classList.toggle('done', allDone);
+  const statusEl = document.getElementById('ritual-status');
+  if (statusEl){
+    statusEl.textContent = allDone ? '✓ All done for today' : `${doneCount} of ${RITUAL_STEPS.length} done`;
+    statusEl.className = 'ritual-status' + (allDone ? ' done' : '');
+  }
+
+  RITUAL_STEPS.forEach(k => {
+    const stepEl = card.querySelector(`[data-step="${k}"]`);
+    if (stepEl) stepEl.classList.toggle('checked', !!state[k]);
+  });
+
+  // Live counts
+  const comms = window.COMMS_DATA || [];
+  const work = comms.filter(c => c.source === 'gmail-work' && c.unread).length;
+  const personal = comms.filter(c => c.source === 'gmail-personal' && c.unread).length;
+  const inboxEl = document.getElementById('ritual-inbox-meta');
+  if (inboxEl){
+    const total = work + personal;
+    if (total === 0){
+      inboxEl.textContent = 'All clear ✓';
+      inboxEl.className = 'ritual-step-meta win';
+    } else {
+      inboxEl.textContent = `${work} work · ${personal} personal unread`;
+      inboxEl.className = 'ritual-step-meta';
+    }
+  }
+
+  const checkinMeta = document.getElementById('ritual-checkin-meta');
+  if (checkinMeta){
+    if (state.checkin){
+      checkinMeta.textContent = 'Sent ✓';
+      checkinMeta.className = 'ritual-step-meta win';
+    } else {
+      checkinMeta.textContent = 'Not yet sent';
+      checkinMeta.className = 'ritual-step-meta';
+    }
+  }
+
+  const tasks = window.TODAY_TASKS || [];
+  const workTasks = tasks.filter(t => t.source === 'work' && !t.done).length;
+  const tasksEl = document.getElementById('ritual-tasks-meta');
+  if (tasksEl){
+    tasksEl.textContent = workTasks === 0 ? 'No work tasks yet' : `${workTasks} work task${workTasks===1?'':'s'} on deck`;
+  }
+}
+
+function toggleRitualStep(step){
+  const state = loadRitual();
+  state[step] = !state[step];
+  saveRitual(state);
+  window.lrl?.haptic(state[step] ? 'success' : 'tap');
+  // Confetti when completing the last step
+  const allDone = RITUAL_STEPS.every(k => state[k]);
+  if (allDone) window.lrl?.confetti({ count: 50 });
+  renderRitual();
+}
+
+function initRitual(){
+  const card = document.getElementById('ritual-card');
+  if (!card) return;
+  card.addEventListener('click', (e) => {
+    const checkBtn = e.target.closest('.ritual-check');
+    if (checkBtn){
+      const step = e.target.closest('.ritual-step')?.dataset.step;
+      if (step) toggleRitualStep(step);
+      return;
+    }
+    const actionBtn = e.target.closest('.ritual-step-action');
+    if (actionBtn){
+      const action = actionBtn.dataset.action;
+      if (action === 'open-comms'){
+        document.querySelector('.tab[data-tab="comms"]')?.click();
+      } else if (action === 'open-fb'){
+        window.openExternalSafe?.('https://www.facebook.com/events/birthdays/');
+      } else if (action === 'jump-checkin'){
+        document.getElementById('checkin-card')?.scrollIntoView({ behavior:'smooth', block:'center' });
+      } else if (action === 'jump-tasks'){
+        document.getElementById('today-quests')?.scrollIntoView({ behavior:'smooth', block:'center' });
+      }
+      return;
+    }
+    // Tap on done card → expand it (so she can uncheck if needed)
+    if (card.classList.contains('done')){
+      card.classList.remove('done');
+    }
+  });
+  renderRitual();
+}
+
+// Refresh ritual when underlying data changes
+window.addEventListener('lrl-comms-updated', renderRitual);
+window.addEventListener('lrl-tasks-updated', renderRitual);
+
 async function fetchComms(){
   try {
     const r = await fetch('/api/comms/gmail');
@@ -2291,6 +2508,8 @@ async function fetchComms(){
       unread: true,
       permalink: t.url,
     }));
+    window.COMMS_DATA = COMMS_DATA;
+    window.dispatchEvent(new CustomEvent('lrl-comms-updated'));
   } catch (e) { console.error('fetchComms', e); }
 }
 
@@ -2303,6 +2522,8 @@ async function fetchTodayQuests(){
     ]);
     TODAY_EVENTS = calRes.events || [];
     TODAY_TASKS = [...(workRes.tasks||[]), ...(lifeRes.tasks||[])];
+    window.TODAY_TASKS = TODAY_TASKS;
+    window.dispatchEvent(new CustomEvent('lrl-tasks-updated'));
   } catch (e) { console.error('fetchTodayQuests', e); }
 }
 
@@ -2359,8 +2580,11 @@ function renderTodayQuests(){
         const star = `<button class="quest-star ${starCls}" data-act="star" title="${starTitle}" aria-label="${starTitle}"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>`;
         const priHtml = (t.priority === 'URGENT' || t.priority === 'HIGH')
           ? `<span class="quest-pri ${t.priority.toLowerCase()}">${t.priority}</span>` : '';
+        const statusKey = (t.status || 'Planned').toLowerCase().replace(/\s+/g,'-');
+        const statusDot = `<span class="quest-status-dot status-${statusKey}" title="${t.status || 'Planned'}"></span>`;
         return `<div class="quest-item${doneCls}" data-task-id="${t.id}" data-task-url="${t.url}">
           <div class="quest-check ${checked}" data-act="check"></div>
+          ${statusDot}
           <div class="quest-text" data-act="open">${escapeHtml(t.name)}</div>
           ${priHtml}
           ${dueHtml}
@@ -4074,6 +4298,7 @@ document.addEventListener('keydown', (e) => {
   // Restore collapsed states
   if (localStorage.getItem('lrl-brief-collapsed') === '1') setBriefCollapsed(true);
   if (localStorage.getItem('lrl-chapter-collapsed') === '1') setChapterCollapsed(true);
+  initRitual();
   initCheckin();
   // Re-render calendar every 60s so past/live event states stay accurate
   setInterval(() => { if (TODAY_EVENTS.length) renderTodayQuests(); }, 60000);
