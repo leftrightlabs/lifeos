@@ -976,13 +976,13 @@
 
   /* Chapter & Milestone System */
   .campaigns-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 16px; }
-  .campaign-card { background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 18px 20px; position: relative; overflow: hidden; cursor: pointer; transition: all 0.2s; }
-  .campaign-card:hover { background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); }
-  .campaign-card.business { border-left: 3px solid var(--lime); }
-  .campaign-card.life { border-left: 3px solid #7a9dd8; }
-  .campaign-card.active { border-color: var(--lime); box-shadow: 0 0 0 1px var(--lime), 0 0 24px rgba(167,193,64,0.15); background: linear-gradient(135deg, rgba(167,193,64,0.08), rgba(167,193,64,0.02)); }
-  .campaign-card.life.active { border-color: #a7c0e8; box-shadow: 0 0 0 1px #7a9dd8, 0 0 24px rgba(122,157,216,0.15); background: linear-gradient(135deg, rgba(122,157,216,0.08), rgba(122,157,216,0.02)); }
-  .cc-toggle-hint { position: absolute; bottom: 14px; right: 18px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,245,247,0.45); font-weight: 600; }
+  .campaign-card { background: var(--white); border: 1px solid rgba(255,255,255,0.06); border-left: 3px solid var(--lime); border-radius: 8px; padding: 16px 20px 36px; position: relative; cursor: pointer; transition: border-color 0.18s, background 0.18s; }
+  .campaign-card:hover { background: rgba(255,255,255,0.03); }
+  .campaign-card.business { border-left-color: var(--lime); }
+  .campaign-card.life { border-left-color: #7a9dd8; }
+  .campaign-card.active { border-color: rgba(167,193,64,0.55); background: rgba(167,193,64,0.04); }
+  .campaign-card.life.active { border-color: rgba(122,157,216,0.55); background: rgba(122,157,216,0.04); }
+  .cc-toggle-hint { position: absolute; bottom: 12px; right: 18px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,245,247,0.45); font-weight: 700; }
   .campaign-card.active .cc-toggle-hint { color: var(--lime); }
   .campaign-card.life.active .cc-toggle-hint { color: #a7c0e8; }
   .campaign-card.stub { display: none; }
