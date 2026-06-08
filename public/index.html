@@ -4033,8 +4033,9 @@ function renderPlanItemsHTML(plan, msgIdx, editable){
     if (a.start && a.type === 'create_event') meta.push(a.allDay ? `${a.start} all-day` : new Date(a.start).toLocaleString('en-US',{timeZone:'America/Chicago',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}));
     if (a.location) meta.push(a.location);
     const metaLine = meta.length ? `<div class="triage-meta">${escapeHtml(meta.join(' · '))}</div>` : '';
-    const resultUrl = a._result ? (a.type === 'create_event' ? a._result.url : window.toNotionLink(a._result.url)) : '';
-    const resultLine = a._result ? `<div class="triage-meta"><a href="${resultUrl}" rel="noopener">→ open in ${a.type === 'create_task' || a.type === 'update_task' ? 'Notion' : 'Calendar'}</a></div>` : '';
+    const isNotionAction = a.type === 'create_task' || a.type === 'update_task' || a.type === 'create_project';
+    const resultUrl = a._result ? (isNotionAction ? window.toNotionLink(a._result.url) : a._result.url) : '';
+    const resultLine = a._result ? `<div class="triage-meta"><a href="${resultUrl}" rel="noopener">→ open in ${isNotionAction ? 'Notion' : 'Calendar'}</a></div>` : '';
     const errLine = a._error ? `<div class="triage-meta" style="color:#ff7a6b">Error: ${escapeHtml(a._error)}</div>` : '';
     const appliedCls = a._result ? ' applied' : (a._error ? ' failed' : '');
     const editBtn = (editable && !a._result) ? `<button class="triage-edit-btn" data-act="edit" data-idx="${i}">Edit</button>` : '';
