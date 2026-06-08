@@ -1624,6 +1624,16 @@ window.lrl = (function(){
     <h1 class="page-title"><span>Command</span></h1>
     <div class="page-subtitle">Your quarterly game board. Where you are, what's next, and whether you're on the right path.</div>
 
+    <div class="daily-brief" id="daily-brief">
+      <div class="daily-brief-kicker">
+        <button class="daily-brief-toggle" id="brief-toggle" title="Collapse/expand"><span id="brief-collapse-caret">▾</span> Daily Focus <span id="brief-bucket" style="opacity:0.6;font-weight:500;text-transform:lowercase;letter-spacing:0.05em"></span></button>
+        <button class="daily-brief-refresh" id="brief-refresh" title="Regenerate based on current time">↻ Refresh</button>
+      </div>
+      <div id="brief-body">
+        <div class="daily-brief-text daily-brief-loading" id="brief-text">Composing your focus…</div>
+      </div>
+    </div>
+
     <div class="ritual-card" id="ritual-card">
       <div class="ritual-head">
         <div class="ritual-title">Morning Ritual</div>
@@ -1662,16 +1672,6 @@ window.lrl = (function(){
           </div>
           <button class="ritual-step-action" data-action="jump-tasks">Jump ›</button>
         </div>
-      </div>
-    </div>
-
-    <div class="daily-brief" id="daily-brief">
-      <div class="daily-brief-kicker">
-        <button class="daily-brief-toggle" id="brief-toggle" title="Collapse/expand"><span id="brief-collapse-caret">▾</span> Daily Focus <span id="brief-bucket" style="opacity:0.6;font-weight:500;text-transform:lowercase;letter-spacing:0.05em"></span></button>
-        <button class="daily-brief-refresh" id="brief-refresh" title="Regenerate based on current time">↻ Refresh</button>
-      </div>
-      <div id="brief-body">
-        <div class="daily-brief-text daily-brief-loading" id="brief-text">Composing your focus…</div>
       </div>
     </div>
 
@@ -2832,7 +2832,10 @@ document.getElementById('task-modal')?.addEventListener('click', (e) => {
   if (e.target.id === 'task-modal') closeTaskEdit();
 });
 document.getElementById('task-open-notion-btn')?.addEventListener('click', () => {
-  if (editingTask?.url) { closeTaskEdit(); openNotion(editingTask.url); }
+  const url = editingTask?.url;
+  if (!url) { window.lrl?.toast('No Notion link for this task', 'error'); return; }
+  closeTaskEdit();
+  openNotion(url);
 });
 document.getElementById('task-save-btn')?.addEventListener('click', async () => {
   if (!editingTask) return;
