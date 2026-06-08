@@ -178,6 +178,48 @@
   .quest-pri.high { background: rgba(212,168,84,0.18); color: #d4a854; border: 1px solid rgba(212,168,84,0.35); }
   .quest-pri.normal { background: rgba(255,255,255,0.04); color: rgba(245,245,247,0.45); border: 1px solid rgba(255,255,255,0.08); }
 
+  /* === Daily gamification: lock/unlock/cleared states === */
+  .quest-panel-locked { position: relative; opacity: 0.55; transition: opacity 0.5s ease; }
+  .quest-panel-locked::after {
+    content: '🔒  Finish morning ritual to unlock';
+    position: absolute;
+    top: 16px; right: 18px;
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: rgba(245,245,247,0.5); font-weight: 700;
+    pointer-events: none;
+    background: rgba(0,0,0,0.25);
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .quest-panel-unlocking { animation: lrl-unlock-pulse 1.4s ease-out; }
+  @keyframes lrl-unlock-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(167,193,64,0); }
+    35%  { box-shadow: 0 0 0 2px var(--lime), 0 0 32px 6px rgba(167,193,64,0.45); }
+    100% { box-shadow: 0 0 0 0 rgba(167,193,64,0); }
+  }
+  .day-cleared-banner {
+    text-align: center;
+    padding: 16px 12px;
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--lime);
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    animation: lrl-celebrate-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .day-cleared-banner .sub {
+    display: block;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(245,245,247,0.55);
+    letter-spacing: 0.04em;
+    text-transform: none;
+    margin-top: 6px;
+  }
+
   /* Drag-to-reorder visuals */
   .quest-drag-chosen { background: rgba(167,193,64,0.08); border-radius: 8px; box-shadow: 0 12px 30px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(167,193,64,0.4); transform: scale(1.02); cursor: grabbing; transition: transform 0.18s ease, box-shadow 0.18s ease; }
   .quest-drag-ghost { opacity: 0.25; }
@@ -1692,6 +1734,14 @@ window.lrl = (function(){
           </div>
           <button class="ritual-step-action" data-action="jump-tasks">Jump ›</button>
         </div>
+        <div class="ritual-step" data-step="marketing">
+          <button class="ritual-check" aria-label="Toggle done"></button>
+          <div class="ritual-step-body">
+            <div class="ritual-step-label">Post marketing content for the day</div>
+            <div class="ritual-step-meta">Today's social + content drops</div>
+          </div>
+          <button class="ritual-step-action" data-action="jump-marketing">Jump ›</button>
+        </div>
       </div>
     </div>
 
@@ -1715,7 +1765,7 @@ window.lrl = (function(){
     </div>
 
     <div class="quest-row">
-      <div class="panel">
+      <div class="panel" id="quest-panel">
         <div class="panel-title"><span>Today's Quest</span></div>
         <div id="today-quests"><div style="color:var(--navy-dim);font-size:13px;padding:8px 0">loading…</div></div>
       </div>
@@ -2423,7 +2473,7 @@ function setChapterCollapsed(collapsed){
 }
 
 // ====== Morning Ritual ======
-const RITUAL_STEPS = ['inboxes', 'birthdays', 'checkin', 'sequence'];
+const RITUAL_STEPS = ['inboxes', 'birthdays', 'checkin', 'sequence', 'marketing'];
 function ritualKey(){
   return 'lrl-ritual-' + new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
 }
@@ -2504,18 +2554,63 @@ function renderRitual(){
   if (tasksEl){
     tasksEl.textContent = workTasks === 0 ? 'No work tasks yet' : `${workTasks} work task${workTasks===1?'':'s'} on deck`;
   }
+  // Sync the daily lock/unlock + cleared state any time ritual data changes
+  if (typeof applyDailyGamification === 'function') applyDailyGamification();
 }
 
 function toggleRitualStep(step){
+  const wasAllDone = RITUAL_STEPS.every(k => loadRitual()[k]);
   const state = loadRitual();
   state[step] = !state[step];
   saveRitual(state);
   window.lrl?.haptic(state[step] ? 'success' : 'tap');
-  // Confetti when completing the last step
-  const allDone = RITUAL_STEPS.every(k => state[k]);
-  if (allDone) window.lrl?.confetti({ count: 50 });
+  const nowAllDone = RITUAL_STEPS.every(k => state[k]);
+  if (nowAllDone && !wasAllDone) {
+    window.lrl?.confetti({ count: 60 });
+    window.lrl?.toast('Ritual complete · Quest unlocked', 'success');
+    // Pulse the unlocked Today's Quest panel
+    const qp = document.getElementById('quest-panel');
+    if (qp) {
+      qp.classList.add('quest-panel-unlocking');
+      setTimeout(() => qp.classList.remove('quest-panel-unlocking'), 1500);
+    }
+  }
   renderRitual();
+  applyDailyGamification();
 }
+
+// Lock Today's Quest while ritual is incomplete; show "day cleared" celebration
+// when both ritual is done and there are no actionable items left.
+function applyDailyGamification(){
+  const panel = document.getElementById('quest-panel');
+  if (!panel) return;
+  // On weekends or in personal mode, ritual hides and we don't gate the Quest
+  const ritualCard = document.getElementById('ritual-card');
+  const ritualHidden = !ritualCard || ritualCard.classList.contains('weekend')
+    || getComputedStyle(ritualCard).display === 'none';
+  const state = loadRitual();
+  const ritualDone = RITUAL_STEPS.every(k => state[k]);
+  panel.classList.toggle('quest-panel-locked', !ritualHidden && !ritualDone);
+
+  // Day-cleared banner
+  const taskDiv = document.getElementById('today-quests');
+  if (!taskDiv) return;
+  const filtered = (window.TODAY_TASKS || []).filter(t => {
+    if (mode === 'all') return true;
+    return t.source === mode;
+  });
+  const actionableLeft = filtered.filter(t => t.status !== 'Waiting' && !t.done).length;
+  const dayCleared = ritualDone && actionableLeft === 0;
+  // Remove any existing banner first
+  taskDiv.querySelectorAll('.day-cleared-banner').forEach(el => el.remove());
+  if (dayCleared && filtered.length > 0) {
+    const banner = document.createElement('div');
+    banner.className = 'day-cleared-banner';
+    banner.innerHTML = `✨ Day cleared.<span class="sub">The rest is yours.</span>`;
+    taskDiv.prepend(banner);
+  }
+}
+window.applyDailyGamification = applyDailyGamification;
 
 function initRitual(){
   const card = document.getElementById('ritual-card');
@@ -2555,6 +2650,8 @@ function initRitual(){
         document.getElementById('checkin-card')?.scrollIntoView({ behavior:'smooth', block:'center' });
       } else if (action === 'jump-tasks'){
         document.getElementById('today-quests')?.scrollIntoView({ behavior:'smooth', block:'center' });
+      } else if (action === 'jump-marketing'){
+        document.querySelector('.tab[data-tab="marketing"]')?.click();
       }
       return;
     }
@@ -2710,6 +2807,7 @@ function renderTodayQuests(){
     if (!filtered.length){
       const msg = mode === 'all' ? 'Nothing on My Day' : `No ${mode} tasks today`;
       taskDiv.innerHTML = `<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">${msg}</div>`;
+      applyDailyGamification();
     } else {
       const actionable = sortByManualOrder(filtered.filter(t => t.status !== 'Waiting'));
       const waiting = sortByManualOrder(filtered.filter(t => t.status === 'Waiting'));
@@ -2726,6 +2824,7 @@ function renderTodayQuests(){
       html += `<div class="quest-drag-hint" data-no-drag>Tip · long-press a task to drag and reorder</div>`;
       taskDiv.innerHTML = html;
       attachQuestSortable(taskDiv);
+      applyDailyGamification();
     }
   }
   if (calDiv){
