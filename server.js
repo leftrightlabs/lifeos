@@ -1467,7 +1467,15 @@ async function checkinFetchCalendar() {
   });
   const items = (data.items || [])
     .filter((e) => {
-      const title = (e.summary || '').toLowerCase();
+      // Skip canceled events (Google sets status, or the organizer
+      // leaves a "Canceled: ..." stub on attendees' calendars)
+      if (e.status === 'cancelled') return false;
+      const titleRaw = (e.summary || '').trim();
+      if (/^canc?elled?\s*:/i.test(titleRaw)) return false;
+      // Skip events the user has declined
+      const myAttendee = (e.attendees || []).find((a) => a.self);
+      if (myAttendee && myAttendee.responseStatus === 'declined') return false;
+      const title = titleRaw.toLowerCase();
       return !CHECKIN_EXCLUDE_TITLES.some((ex) => title.includes(ex));
     })
     .map((e) => {
