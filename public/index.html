@@ -1201,6 +1201,26 @@
   .lrl-toast.success::before { content: '✓'; color: var(--lime); font-weight: 700; font-size: 14px; }
   .lrl-toast.error { border-color: rgba(255,122,107,0.55); color: #ffd5cf; }
   .lrl-toast.error::before { content: '✕'; color: #ff7a6b; font-weight: 700; font-size: 14px; }
+  .lrl-toast-msg { flex: 1; min-width: 0; }
+  .lrl-toast-undo {
+    margin-left: 8px;
+    background: transparent;
+    border: 1px solid var(--lime);
+    color: var(--lime);
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .lrl-toast-undo:hover { background: rgba(167,193,64,0.14); }
+  .lrl-toast-undo:active { transform: scale(0.94); }
+  .lrl-toast-undo:disabled { opacity: 0.5; cursor: default; }
   @media (max-width: 600px) {
     #lrl-toast-root { bottom: 82px; }
     .lrl-toast { font-size: 12.5px; padding: 10px 14px 10px 12px; }
@@ -1362,18 +1382,42 @@ window.lrl = (function(){
       else                         navigator.vibrate(8);
     } catch(e){}
   }
-  function toast(msg, variant){
+  function toast(msg, variant, opts){
+    opts = opts || {};
     const el = document.createElement('div');
     el.className = 'lrl-toast' + (variant ? ' ' + variant : '');
-    el.textContent = msg;
-    root().appendChild(el);
-    requestAnimationFrame(() => el.classList.add('show'));
-    const ttl = variant === 'error' ? 4400 : 2400;
-    setTimeout(() => {
+    const msgSpan = document.createElement('span');
+    msgSpan.className = 'lrl-toast-msg';
+    msgSpan.textContent = msg;
+    el.appendChild(msgSpan);
+    let dismissed = false;
+    const dismiss = () => {
+      if (dismissed) return;
+      dismissed = true;
       el.classList.remove('show');
       el.classList.add('hide');
       setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 380);
-    }, ttl);
+    };
+    if (typeof opts.undo === 'function'){
+      const btn = document.createElement('button');
+      btn.className = 'lrl-toast-undo';
+      btn.type = 'button';
+      btn.textContent = 'Undo';
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        btn.disabled = true;
+        btn.textContent = '…';
+        haptic('tap');
+        try { await opts.undo(); } catch(_) {}
+        dismiss();
+      });
+      el.appendChild(btn);
+    }
+    root().appendChild(el);
+    requestAnimationFrame(() => el.classList.add('show'));
+    // Undo toasts linger longer so there's time to react
+    const ttl = opts.undo ? 6000 : (variant === 'error' ? 4400 : 2400);
+    setTimeout(dismiss, ttl);
     if (variant === 'error') haptic('error');
     else if (variant === 'success') haptic('success');
     return el;
@@ -1984,15 +2028,38 @@ el('list').addEventListener('click',e=>{
   const btn=e.target.closest('[data-act]');
   const act=btn?btn.dataset.act:null;
   if(act==='check'){
-    const nd=!state.done[id];state.done[id]=nd;state.touched[id]=new Date().toISOString();saveState();render();
+    const prevDone=!!state.done[id];
+    const nd=!prevDone;
+    state.done[id]=nd;state.touched[id]=new Date().toISOString();saveState();render();
     if (nd) window.lrl.haptic('success'); else window.lrl.haptic('tap');
-    afPatch(id,{status:nd?'Done':'Doing'}).catch(err=>{state.done[id]=!nd;saveState();render();window.lrl.toast('Sync failed: '+err.message,'error');});
+    afPatch(id,{status:nd?'Done':'Doing'})
+      .then(()=>{
+        const taskName=(BASE[id]&&BASE[id].name)||'Task';
+        const action=nd?`Marked done: ${taskName}`:`Reopened: ${taskName}`;
+        window.lrl.toast(action,'',{undo:async()=>{
+          state.done[id]=prevDone;state.touched[id]=new Date().toISOString();saveState();render();
+          try{await afPatch(id,{status:prevDone?'Done':'Doing'});}
+          catch(err){window.lrl.toast('Undo failed: '+err.message,'error');}
+        }});
+      })
+      .catch(err=>{state.done[id]=prevDone;saveState();render();window.lrl.toast('Sync failed: '+err.message,'error');});
     return;
   }
   if(act==='star'){
-    const t=task(id);const nv=!t.myDay;state.edits[id]=Object.assign({},state.edits[id],{myDay:nv});state.touched[id]=new Date().toISOString();saveState();render();
+    const t=task(id);const prevMyDay=!!t.myDay;const nv=!prevMyDay;
+    state.edits[id]=Object.assign({},state.edits[id],{myDay:nv});state.touched[id]=new Date().toISOString();saveState();render();
     window.lrl.haptic('tap');
-    afPatch(id,{myDay:nv}).catch(err=>{state.edits[id].myDay=!nv;saveState();render();window.lrl.toast('Sync failed: '+err.message,'error');});
+    afPatch(id,{myDay:nv})
+      .then(()=>{
+        const action=nv?'Added to My Day':'Removed from My Day';
+        window.lrl.toast(action,'',{undo:async()=>{
+          state.edits[id]=Object.assign({},state.edits[id],{myDay:prevMyDay});
+          state.touched[id]=new Date().toISOString();saveState();render();
+          try{await afPatch(id,{myDay:prevMyDay});}
+          catch(err){window.lrl.toast('Undo failed: '+err.message,'error');}
+        }});
+      })
+      .catch(err=>{state.edits[id].myDay=prevMyDay;saveState();render();window.lrl.toast('Sync failed: '+err.message,'error');});
     return;
   }
   if(act==='edit-due'){
@@ -2292,6 +2359,13 @@ document.getElementById('today-quests').addEventListener('click', async (e) => {
     try {
       await patchTask(id, { status: t.done ? 'Done' : 'Doing' });
       item.classList.remove('syncing');
+      const action = t.done ? `Marked done: ${t.name}` : `Reopened: ${t.name}`;
+      window.lrl.toast(action, '', { undo: async () => {
+        t.done = prev;
+        renderTodayQuests();
+        try { await patchTask(id, { status: prev ? 'Done' : 'Doing' }); }
+        catch(err){ window.lrl.toast('Undo failed: ' + err.message, 'error'); }
+      }});
     } catch(err){
       t.done = prev;
       renderTodayQuests();
@@ -2307,14 +2381,21 @@ document.getElementById('today-quests').addEventListener('click', async (e) => {
     window.lrl.haptic('tap');
     if (!newOn){
       // Removing from My Day → animate row out, then drop from list
+      const removedTask = { ...t };
       window.lrl.clearRow(item, async () => {
         TODAY_TASKS = TODAY_TASKS.filter(x => x.id !== id);
         renderTodayQuests();
         try {
           await patchTask(id, { myDay: false });
-          window.lrl.toast('Removed from My Day', 'success');
+          window.lrl.toast(`Removed from My Day: ${t.name}`, '', { undo: async () => {
+            // Re-add the task locally + on the server
+            removedTask.myDay = true;
+            TODAY_TASKS.push(removedTask);
+            renderTodayQuests();
+            try { await patchTask(id, { myDay: true }); }
+            catch(err){ window.lrl.toast('Undo failed: ' + err.message, 'error'); }
+          }});
         } catch(err){
-          // Rollback: refetch and re-render
           window.lrl.toast('Sync failed: ' + err.message, 'error');
           await fetchTodayQuests();
           renderTodayQuests();
