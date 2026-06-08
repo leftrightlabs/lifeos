@@ -1952,6 +1952,28 @@ app.get('/api/finance/xero', async (_req, res) => {
       // Monthly burn = avg of last 3 full months expenses
       const monthlyBurn = burn.expenses / 3;
       const runwayMonths = monthlyBurn > 0 ? bank.totalCash / monthlyBurn : null;
+
+      // Cash Capacity = Relay OPEX + Relay Revenue, divided by $30K/mo burn assumption.
+      // Goal: $90K = 3 months runway.
+      const CASH_CAPACITY_MONTHLY = 30000;
+      const CASH_CAPACITY_GOAL = 90000;
+      const relayOpex = bank.accounts.find(a => /relay.*opex/i.test(a.name));
+      const relayRevenue = bank.accounts.find(a => /relay.*revenue/i.test(a.name));
+      const ccAmount = (relayOpex?.balance || 0) + (relayRevenue?.balance || 0);
+      const cashCapacity = {
+        amount: ccAmount,
+        months: Math.round((ccAmount / CASH_CAPACITY_MONTHLY) * 10) / 10,
+        monthlyBurnAssumed: CASH_CAPACITY_MONTHLY,
+        goalAmount: CASH_CAPACITY_GOAL,
+        goalMonths: CASH_CAPACITY_GOAL / CASH_CAPACITY_MONTHLY,
+        pctToGoal: Math.min(100, Math.round((ccAmount / CASH_CAPACITY_GOAL) * 100)),
+        accounts: [
+          relayOpex ? { name: relayOpex.name, balance: relayOpex.balance } : null,
+          relayRevenue ? { name: relayRevenue.name, balance: relayRevenue.balance } : null,
+        ].filter(Boolean),
+        accountsFound: !!(relayOpex && relayRevenue),
+      };
+
       return {
         currency: 'USD',
         cashOnHand: bank.totalCash,
@@ -1963,6 +1985,7 @@ app.get('/api/finance/xero', async (_req, res) => {
         runwayMonths: runwayMonths != null ? Math.round(runwayMonths * 10) / 10 : null,
         accountsReceivable: bs.accountsReceivable,
         accountsPayable: bs.accountsPayable,
+        cashCapacity,
         asOf: new Date().toISOString(),
       };
     });
