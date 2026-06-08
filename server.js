@@ -1009,8 +1009,10 @@ app.patch('/api/journal/today', async (req, res) => {
 // add a property to JOURNAL DB named "Ritual Done", type Text/rich_text.
 
 function readRitualFromPage(page) {
-  const prop = page?.properties?.['Ritual Done'];
-  if (!prop || prop.type !== 'rich_text') return {};
+  const prop = page?.properties?.['Morning Ritual'];
+  if (!prop) return {};
+  // Support both rich_text (preferred) and title types
+  if (prop.type !== 'rich_text') return {};
   const txt = (prop.rich_text || []).map(r => r.plain_text || '').join('');
   if (!txt.trim()) return {};
   try { return JSON.parse(txt); } catch (e) { return {}; }
@@ -1018,7 +1020,7 @@ function readRitualFromPage(page) {
 
 function ritualStateProperty(state) {
   const json = JSON.stringify(state || {});
-  return { 'Ritual Done': { rich_text: [{ text: { content: json } }] } };
+  return { 'Morning Ritual': { rich_text: [{ text: { content: json } }] } };
 }
 
 app.get('/api/ritual/today', async (_req, res) => {
@@ -1033,7 +1035,7 @@ app.get('/api/ritual/today', async (_req, res) => {
     if (!existing.results.length) return res.json({ state: {}, dayHasRow: false });
     const row = existing.results[0];
     // Check if the property even exists on the schema
-    const hasProp = !!row.properties?.['Ritual Done'];
+    const hasProp = !!row.properties?.['Morning Ritual'];
     res.json({ state: readRitualFromPage(row), dayHasRow: true, hasProperty: hasProp });
   } catch (err) {
     console.error('Ritual GET error:', err.message);
@@ -1052,7 +1054,7 @@ app.patch('/api/ritual/today', async (req, res) => {
   } catch (err) {
     console.error('Ritual PATCH error:', err.message);
     // Most common: the "Ritual Done" property doesn't exist yet on the DB
-    res.status(500).json({ error: err.message, hint: err.message.includes('Ritual Done') ? 'Add a "Ritual Done" rich-text property to your JOURNAL DB.' : undefined });
+    res.status(500).json({ error: err.message, hint: err.message.includes('Morning Ritual') ? 'Add a "Morning Ritual" rich-text property to your JOURNAL DB.' : undefined });
   }
 });
 
