@@ -1957,8 +1957,9 @@ app.get('/api/finance/xero', async (_req, res) => {
       // Goal: $90K = 3 months runway.
       const CASH_CAPACITY_MONTHLY = 30000;
       const CASH_CAPACITY_GOAL = 90000;
-      const relayOpex = bank.accounts.find(a => /relay.*opex/i.test(a.name));
-      const relayRevenue = bank.accounts.find(a => /relay.*revenue/i.test(a.name));
+      // Match any order ("OPEX 2706 RELAY" vs "Relay OPEX")
+      const relayOpex = bank.accounts.find(a => /relay/i.test(a.name) && /opex/i.test(a.name));
+      const relayRevenue = bank.accounts.find(a => /relay/i.test(a.name) && /revenue/i.test(a.name));
       const ccAmount = (relayOpex?.balance || 0) + (relayRevenue?.balance || 0);
       const cashCapacity = {
         amount: ccAmount,
