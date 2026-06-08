@@ -366,7 +366,7 @@
   .chapter-toggle { background: transparent; border: none; color: var(--lime); font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 4px; }
   .chapter-toggle:hover { opacity: 0.85; }
   #chapter-collapse-caret { display: inline-block; transition: transform 0.18s; }
-  .chapter-panel.collapsed { padding: 14px 24px; margin-bottom: 16px; }
+  .chapter-panel.collapsed { padding: 14px 24px; margin-bottom: 16px; border-left-color: transparent; }
   .chapter-panel.collapsed #chapter-collapse-caret { transform: rotate(-90deg); }
   .chapter-panel.collapsed #campaigns-container,
   .chapter-panel.collapsed #milestones-container,
@@ -386,7 +386,7 @@
   .sidequest-alert { background: var(--lime-faint); border-left: 3px solid var(--lime); padding: 14px 18px; border-radius: 4px; margin-bottom: 24px; font-size: 13px; display: flex; align-items: center; gap: 12px; }
 
   .daily-brief { background: var(--white); border: 1px solid rgba(167,193,64,0.18); border-left: 3px solid var(--lime); border-radius: 8px; padding: 18px 22px; margin-bottom: 24px; position: relative; }
-  .daily-brief.collapsed { padding: 12px 22px; }
+  .daily-brief.collapsed { padding: 12px 22px; border-left-color: transparent; }
   .daily-brief.collapsed #brief-body { display: none; }
   .daily-brief-kicker { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--lime); font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .daily-brief.collapsed .daily-brief-kicker { margin-bottom: 0; }
