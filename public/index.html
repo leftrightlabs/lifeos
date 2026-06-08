@@ -245,6 +245,36 @@
   .hrv-bar.today { background: var(--lime); box-shadow: 0 0 8px rgba(167,193,64,0.4); }
   .hrv-bar.empty { background: rgba(255,255,255,0.04); }
 
+  /* Quarter progress section */
+  .q-progress { background: var(--white); border: 1px solid var(--navy-faint); border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; }
+  .q-progress-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .q-progress-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--navy); letter-spacing: 0.02em; }
+  .q-progress-sub { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,245,247,0.5); font-weight: 600; }
+  .q-row { display: grid; grid-template-columns: 110px 1fr 70px; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid rgba(255,255,255,0.04); }
+  .q-row:first-of-type { border-top: none; padding-top: 4px; }
+  .q-row-label { font-size: 12px; color: var(--navy); font-weight: 600; letter-spacing: 0.04em; }
+  .q-row-label .target { color: rgba(245,245,247,0.45); font-weight: 500; font-size: 11px; margin-left: 3px; }
+  .q-row-pct { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--lime); text-align: right; line-height: 1; }
+  .q-row-pct .small { font-size: 11px; color: rgba(245,245,247,0.5); font-weight: 500; font-family: var(--font-body); display: block; margin-top: 3px; letter-spacing: 0.04em; }
+  .q-grid { display: flex; gap: 2px; flex-wrap: nowrap; align-items: stretch; height: 22px; min-width: 0; }
+  .q-cell { flex: 1; min-width: 0; border-radius: 2px; background: rgba(255,255,255,0.04); position: relative; transition: background 0.2s; }
+  .q-cell.hit { background: var(--lime); }
+  .q-cell.partial { background: rgba(167,193,64,0.35); }
+  .q-cell.miss { background: rgba(255,255,255,0.08); }
+  .q-cell.today { box-shadow: 0 0 0 1.5px var(--lime), 0 0 6px rgba(167,193,64,0.6); z-index: 2; }
+  .q-cell.future { background: transparent; }
+  .q-hrv-card { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); }
+  .q-hrv-stat { text-align: center; }
+  .q-hrv-stat .num { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--navy); line-height: 1; }
+  .q-hrv-stat .lab { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,245,247,0.5); font-weight: 600; margin-top: 4px; }
+  @media (max-width: 600px) {
+    .q-row { grid-template-columns: 80px 1fr 56px; gap: 8px; }
+    .q-row-label { font-size: 11px; }
+    .q-row-pct { font-size: 17px; }
+    .q-grid { height: 18px; }
+    .q-progress { padding: 14px 14px; }
+  }
+
   /* Quick log section */
   .health-log { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 16px 18px; margin-top: 18px; }
   .health-log-title { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(245,245,247,0.55); font-weight: 700; margin-bottom: 12px; }
@@ -2796,6 +2826,101 @@ function hrvCardHtml(hrv){
   </div>`;
 }
 
+function quarterCardHtml(d){
+  const q = d.quarter;
+  if (!q || !q.series?.length) return '';
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone:'America/Chicago' });
+  const t = d.targets || { protein: 120, sleepHours: 8 };
+
+  // Each row: how to classify a day cell + how it counts toward attainment
+  const rows = [
+    {
+      key: 'protein', label: 'Protein', meta: `≥ ${t.protein}g`,
+      classify: (day) => {
+        if (day.date > todayStr) return 'future';
+        if (day.protein == null) return 'miss';
+        if (day.protein >= t.protein) return 'hit';
+        if (day.protein > 0) return 'partial';
+        return 'miss';
+      },
+      hit: q.attainment.protein,
+    },
+    {
+      key: 'sleep', label: 'Sleep', meta: `≥ ${t.sleepHours}h`,
+      classify: (day) => {
+        if (day.date > todayStr) return 'future';
+        if (day.sleepHours == null) return 'miss';
+        if (day.sleepHours >= t.sleepHours) return 'hit';
+        if (day.sleepHours > 0) return 'partial';
+        return 'miss';
+      },
+      hit: q.attainment.sleep,
+    },
+    {
+      key: 'walking', label: 'Walking', meta: 'any',
+      classify: (day) => {
+        if (day.date > todayStr) return 'future';
+        return (day.walkMinutes || 0) > 0 ? 'hit' : 'miss';
+      },
+      hit: q.attainment.walking,
+    },
+    {
+      key: 'swimming', label: 'Swimming', meta: 'any',
+      classify: (day) => {
+        if (day.date > todayStr) return 'future';
+        return (day.swimMinutes || 0) > 0 ? 'hit' : 'miss';
+      },
+      hit: q.attainment.swimming,
+    },
+    {
+      key: 'journal', label: 'Journal', meta: 'logged',
+      classify: (day) => {
+        if (day.date > todayStr) return 'future';
+        return day.logged ? 'hit' : 'miss';
+      },
+      hit: q.attainment.journal,
+    },
+  ];
+
+  const rowsHtml = rows.map(r => {
+    const cells = q.series.map(day => {
+      const cls = r.classify(day);
+      const todayCls = day.date === todayStr ? ' today' : '';
+      const valLabel = (() => {
+        if (r.key === 'protein') return day.protein != null ? `${day.protein}g` : '—';
+        if (r.key === 'sleep') return day.sleepHours != null ? `${day.sleepHours}h` : '—';
+        if (r.key === 'walking') return day.walkMinutes ? `${day.walkMinutes}m walk` : (day.logged ? 'no walk' : '—');
+        if (r.key === 'swimming') return day.swimMinutes ? `${day.swimMinutes}m swim` : (day.logged ? 'no swim' : '—');
+        return day.logged ? 'logged' : '—';
+      })();
+      return `<div class="q-cell ${cls}${todayCls}" title="${day.date} · ${valLabel}"></div>`;
+    }).join('');
+    const pct = r.hit.days ? Math.round((r.hit.hit / r.hit.days) * 100) : 0;
+    return `<div class="q-row">
+      <div class="q-row-label">${r.label}<span class="target">${r.meta}</span></div>
+      <div class="q-grid">${cells}</div>
+      <div class="q-row-pct">${pct}%<span class="small">${r.hit.hit}/${r.hit.days}d</span></div>
+    </div>`;
+  }).join('');
+
+  const hrvQ = d.hrv?.quarter;
+  const hrvBlock = hrvQ ? `
+    <div class="q-hrv-card">
+      <div class="q-hrv-stat"><div class="num">${hrvQ.avg}<span style="font-size:11px;color:rgba(245,245,247,0.45);font-family:var(--font-body);font-weight:500;margin-left:2px">ms</span></div><div class="lab">Quarter avg</div></div>
+      <div class="q-hrv-stat"><div class="num">${hrvQ.min}<span style="font-size:11px;color:rgba(245,245,247,0.45);font-family:var(--font-body);font-weight:500;margin-left:2px">ms</span></div><div class="lab">Low</div></div>
+      <div class="q-hrv-stat"><div class="num">${hrvQ.max}<span style="font-size:11px;color:rgba(245,245,247,0.45);font-family:var(--font-body);font-weight:500;margin-left:2px">ms</span></div><div class="lab">High</div></div>
+    </div>` : '';
+
+  return `<div class="q-progress">
+    <div class="q-progress-head">
+      <div class="q-progress-title">${q.label} Progress</div>
+      <div class="q-progress-sub">Day ${q.elapsedDays} of ${q.totalDays}</div>
+    </div>
+    ${rowsHtml}
+    ${hrvBlock}
+  </div>`;
+}
+
 function renderHealth(){
   const body = document.getElementById('health-body');
   if (!body) return;
@@ -2840,6 +2965,7 @@ function renderHealth(){
       ${streakCardHtml({ key:'journal',  label:'Journal Entry',   days:d.streaks.journal,  didToday:!!d.today })}
     </div>
     ${hrvCardHtml(d.hrv)}
+    ${quarterCardHtml(d)}
     <div class="health-log">
       <div class="health-log-title">Quick Log — Today</div>
       <div class="health-log-grid">

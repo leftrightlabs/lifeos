@@ -743,6 +743,30 @@ function chicagoDateNDaysAgo(n) {
   return d.toLocaleDateString('en-CA', { timeZone: TZ });
 }
 
+function currentQuarter() {
+  // Returns { label, start, end, totalDays, elapsedDays, days[] } for the quarter containing today (Chicago time).
+  const todayStr = chicagoToday();
+  const [y, m, d] = todayStr.split('-').map(Number);
+  const qIdx = Math.floor((m - 1) / 3); // 0,1,2,3
+  const startMonth = qIdx * 3;           // 0,3,6,9
+  const endMonth = startMonth + 2;       // 2,5,8,11
+  const startDate = new Date(y, startMonth, 1);
+  const endDate = new Date(y, endMonth + 1, 0); // last day of end month
+  const fmt = (dt) => `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+  const start = fmt(startDate);
+  const end = fmt(endDate);
+  const totalDays = Math.round((endDate - startDate) / 86400000) + 1;
+  const todayDate = new Date(y, m - 1, d);
+  const elapsedDays = Math.min(totalDays, Math.round((todayDate - startDate) / 86400000) + 1);
+  const days = [];
+  for (let i = 0; i < elapsedDays; i++) {
+    const dt = new Date(startDate);
+    dt.setDate(dt.getDate() + i);
+    days.push(fmt(dt));
+  }
+  return { label: `Q${qIdx+1} ${y}`, start, end, totalDays, elapsedDays, days };
+}
+
 function readJournalRow(page) {
   const p = page.properties || {};
   const num = (key) => (p[key]?.number ?? null);
@@ -806,39 +830,75 @@ app.get('/api/journal/rings', async (_req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
     const data = await cached('journal-rings', async () => {
-      const startDate = chicagoDateNDaysAgo(90);
+      const quarter = currentQuarter();
       const endDate = chicagoToday();
+      // Fetch from quarter start (or 90d back, whichever is earlier) through today
+      const ninetyAgo = chicagoDateNDaysAgo(90);
+      const startDate = quarter.start < ninetyAgo ? quarter.start : ninetyAgo;
       const rows = await queryJournalRange(startDate, endDate);
       const today = rows.find(r => r.date === endDate) || null;
-      const yesterday = rows.find(r => r.date === chicagoDateNDaysAgo(1)) || null;
 
       const streaks = {
         walking:  calculateStreak(rows, r => r && (r.walkMinutes || 0) > 0),
         swimming: calculateStreak(rows, r => r && (r.swimMinutes || 0) > 0),
-        journal:  calculateStreak(rows, r => !!r), // existence of row = entry done
+        journal:  calculateStreak(rows, r => !!r),
         protein:  calculateStreak(rows, r => r && (r.protein || 0) >= JOURNAL_TARGETS.protein),
         sleep:    calculateStreak(rows, r => r && (r.sleepHours || 0) >= JOURNAL_TARGETS.sleepHours),
       };
 
-      // Last 7 days for HRV trend
+      // Quarter day-by-day series + attainment
+      const byDate = new Map(rows.filter(r => r.date).map(r => [r.date, r]));
+      const series = quarter.days.map(d => {
+        const r = byDate.get(d) || null;
+        return {
+          date: d,
+          protein: r?.protein ?? null,
+          sleepHours: r?.sleepHours ?? null,
+          walkMinutes: r?.walkMinutes ?? null,
+          swimMinutes: r?.swimMinutes ?? null,
+          hrv: r?.hrv ?? null,
+          logged: !!r,
+        };
+      });
+      const hit = (test) => series.filter(test).length;
+      const attainment = {
+        protein:  { hit: hit(d => (d.protein || 0) >= JOURNAL_TARGETS.protein), days: series.length },
+        sleep:    { hit: hit(d => (d.sleepHours || 0) >= JOURNAL_TARGETS.sleepHours), days: series.length },
+        walking:  { hit: hit(d => (d.walkMinutes || 0) > 0), days: series.length },
+        swimming: { hit: hit(d => (d.swimMinutes || 0) > 0), days: series.length },
+        journal:  { hit: hit(d => d.logged), days: series.length },
+      };
+      const hrvValsQ = series.filter(d => d.hrv != null).map(d => d.hrv);
+      const hrvQuarter = hrvValsQ.length ? {
+        avg: Math.round(hrvValsQ.reduce((a,b) => a+b, 0) / hrvValsQ.length),
+        min: Math.min(...hrvValsQ),
+        max: Math.max(...hrvValsQ),
+        count: hrvValsQ.length,
+      } : null;
+
+      // Last 7 days for HRV sparkline (the today card)
       const last7 = [];
       for (let i = 0; i < 7; i++) {
         const d = chicagoDateNDaysAgo(i);
-        const row = rows.find(r => r.date === d);
+        const row = byDate.get(d) || null;
         last7.push({ date: d, hrv: row?.hrv ?? null });
       }
       const hrvValues = last7.filter(d => d.hrv != null).map(d => d.hrv);
-      const hrvAvg = hrvValues.length ? hrvValues.reduce((a,b) => a+b, 0) / hrvValues.length : null;
+      const hrvAvg7 = hrvValues.length ? Math.round(hrvValues.reduce((a,b) => a+b, 0) / hrvValues.length) : null;
 
       return {
         today,
-        yesterday,
         streaks,
         targets: JOURNAL_TARGETS,
-        hrv: {
-          today: today?.hrv ?? null,
-          avg7: hrvAvg != null ? Math.round(hrvAvg) : null,
-          trend: last7,
+        hrv: { today: today?.hrv ?? null, avg7: hrvAvg7, trend: last7, quarter: hrvQuarter },
+        quarter: {
+          label: quarter.label,
+          start: quarter.start,
+          end: quarter.end,
+          totalDays: quarter.totalDays,
+          elapsedDays: quarter.elapsedDays,
+          series,
+          attainment,
         },
       };
     });
