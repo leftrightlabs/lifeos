@@ -1563,8 +1563,12 @@ app.get('/api/checkin/compose', async (_req, res) => {
 });
 
 app.post('/api/checkin/send', async (req, res) => {
-  const token = process.env.SLACK_BOT_TOKEN;
-  if (!token) return res.status(500).json({ error: 'SLACK_BOT_TOKEN not configured' });
+  // Prefer the user token (post as the actual user) when configured,
+  // otherwise fall back to the bot token (posts as the LifeOS app).
+  const userToken = process.env.SLACK_USER_TOKEN;
+  const botToken = process.env.SLACK_BOT_TOKEN;
+  const token = userToken || botToken;
+  if (!token) return res.status(500).json({ error: 'Slack token not configured (set SLACK_USER_TOKEN or SLACK_BOT_TOKEN)' });
   const { text } = req.body || {};
   if (!text || !text.trim()) return res.status(400).json({ error: 'text required' });
   try {
@@ -1582,17 +1586,18 @@ app.post('/api/checkin/send', async (req, res) => {
     });
     const postData = await postRes.json();
     if (!postData.ok) throw new Error(`Slack: ${postData.error || 'post failed'}`);
-    // Fetch permalink (best-effort)
+    // Permalink fetch — bot token works even if posting as user, so prefer
+    // it for the permalink lookup since it doesn't count against user rate limits.
     let permalink = null;
     try {
       const linkRes = await fetch(
         `https://slack.com/api/chat.getPermalink?channel=${encodeURIComponent(CHECKIN_SLACK_CHANNEL)}&message_ts=${encodeURIComponent(postData.ts)}`,
-        { headers: { Authorization: `Bearer ${token}` } },
+        { headers: { Authorization: `Bearer ${botToken || token}` } },
       );
       const linkData = await linkRes.json();
       if (linkData.ok) permalink = linkData.permalink;
     } catch (_) {}
-    res.json({ ok: true, ts: postData.ts, permalink, channel: postData.channel });
+    res.json({ ok: true, ts: postData.ts, permalink, channel: postData.channel, postedAs: userToken ? 'user' : 'bot' });
   } catch (err) {
     console.error('Checkin send error:', err.message);
     res.status(500).json({ error: err.message });
