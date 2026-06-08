@@ -2604,12 +2604,12 @@ let _ritualSyncTimer = null;
 function syncRitualToServer(state){
   if (_ritualSyncTimer) clearTimeout(_ritualSyncTimer);
   _ritualSyncTimer = setTimeout(() => {
-    fetch('/api/ritual/today', {
+    fetch('/api/ritual/today?ritual=morning', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ state }),
     }).then(r => r.json()).then(d => {
-      if (d.error) console.warn('Ritual sync warning:', d.error, d.hint || '');
+      if (d.error) console.warn('Morning ritual sync warning:', d.error, d.hint || '');
     }).catch(() => {});
   }, 300); // small debounce so rapid checks batch into one PATCH
 }
@@ -2618,12 +2618,12 @@ async function pullRitualFromServer(){
     const r = await fetch('/api/ritual/today');
     const d = await r.json();
     if (d.error) return null;
-    if (d.state && Object.keys(d.state).length){
-      saveRitual(d.state); // cache locally
-      return d.state;
+    if (d.morning && Object.keys(d.morning).length){
+      saveRitual(d.morning); // cache locally
+      return d.morning;
     }
-    if (d.dayHasRow && d.hasProperty === false){
-      console.warn('Add a "Ritual Done" rich-text property to JOURNAL DB to enable cross-device ritual sync.');
+    if (d.dayHasRow && d.hasMorningProperty === false){
+      console.warn('Add a "Morning Ritual" rich-text property and "Morning Done" checkbox to JOURNAL DB to enable cross-device sync.');
     }
   } catch(e){}
   return null;
