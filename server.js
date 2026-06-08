@@ -1018,9 +1018,14 @@ function readRitualFromPage(page) {
   try { return JSON.parse(txt); } catch (e) { return {}; }
 }
 
+const MORNING_RITUAL_STEPS = ['inboxes', 'birthdays', 'checkin', 'sequence', 'marketing'];
 function ritualStateProperty(state) {
   const json = JSON.stringify(state || {});
-  return { 'Morning Ritual': { rich_text: [{ text: { content: json } }] } };
+  const allDone = MORNING_RITUAL_STEPS.every((k) => !!state?.[k]);
+  return {
+    'Morning Ritual': { rich_text: [{ text: { content: json } }] },
+    'Morning Done': { checkbox: allDone },
+  };
 }
 
 app.get('/api/ritual/today', async (_req, res) => {
