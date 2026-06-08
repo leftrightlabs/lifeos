@@ -963,7 +963,7 @@ async function findOrCreateTodayRow() {
   const created = await notion.pages.create({
     parent: { type: 'data_source_id', data_source_id: JOURNAL_DS },
     properties: {
-      Name: { title: [{ text: { content: title } }] },
+      Title: { title: [{ text: { content: title } }] },
       Date: { date: { start: today } },
     },
   });
