@@ -464,12 +464,15 @@
 
   /* ===== Morning Ritual card ===== */
   .ritual-card { background: var(--white); border: 1px solid rgba(255,255,255,0.06); border-left: 3px solid var(--lime); border-radius: 8px; padding: 16px 22px; margin-bottom: 22px; }
-  .ritual-card.done { padding: 12px 22px; border-left-color: transparent; cursor: pointer; }
-  .ritual-card.done .ritual-list { display: none; }
+  .ritual-card.done, .ritual-card.collapsed { padding: 12px 22px; border-left-color: transparent; }
+  .ritual-card.done .ritual-list, .ritual-card.collapsed .ritual-list { display: none; }
   .ritual-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
-  .ritual-card.done .ritual-head { margin-bottom: 0; }
-  .ritual-title { font-family: var(--font-body); font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--lime); }
-  .ritual-card.done .ritual-title { color: rgba(167,193,64,0.55); }
+  .ritual-card.done .ritual-head, .ritual-card.collapsed .ritual-head { margin-bottom: 0; }
+  .ritual-toggle { background: transparent; border: none; color: var(--lime); font-family: var(--font-body); font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .ritual-toggle:hover { opacity: 0.85; }
+  #ritual-caret { display: inline-block; transition: transform 0.18s; }
+  .ritual-card.collapsed #ritual-caret, .ritual-card.done #ritual-caret { transform: rotate(-90deg); }
+  .ritual-card.done .ritual-toggle { color: rgba(167,193,64,0.55); }
   .ritual-status { font-size: 11.5px; color: rgba(245,245,247,0.55); font-weight: 500; }
   .ritual-status.done { color: var(--lime); font-weight: 700; }
   .ritual-list { display: flex; flex-direction: column; gap: 8px; }
@@ -1651,7 +1654,9 @@ window.lrl = (function(){
 
     <div class="ritual-card" id="ritual-card">
       <div class="ritual-head">
-        <div class="ritual-title">Morning Ritual</div>
+        <button class="ritual-toggle" id="ritual-toggle" title="Collapse/expand">
+          <span id="ritual-caret">▾</span> Morning Ritual
+        </button>
         <div class="ritual-status" id="ritual-status">0 of 4 done</div>
       </div>
       <div class="ritual-list" id="ritual-list">
@@ -2130,7 +2135,21 @@ function visible(){return allTasks().filter(t=>{
   if(ui.q){const q=ui.q.toLowerCase();if(!(t.name.toLowerCase().includes(q)||(t.project||'').toLowerCase().includes(q)))return false;}
   return true;});}
 function cmpDue(a,b){const ea=effDate(a),eb=effDate(b);if(!ea&&!eb)return 0;if(!ea)return 1;if(!eb)return -1;return ea-eb;}
-function sortTasks(arr){const s=ui.sort;return arr.sort((a,b)=>{if(s==='name')return a.name.localeCompare(b.name);if(s==='source')return a.source.localeCompare(b.source)||cmpDue(a,b);if(s==='touched'){const la=lastTouched(a),lb=lastTouched(b);return (la?la:0)-(lb?lb:0);}return cmpDue(a,b);});}
+function sortTasks(arr){
+  const s=ui.sort;
+  let orderIds=[];
+  try { orderIds = JSON.parse(localStorage.getItem('lrl-quest-order-v1') || '[]'); } catch(e){}
+  const idx = new Map(orderIds.map((id,i)=>[id,i]));
+  return arr.sort((a,b)=>{
+    const ai=idx.has(a.id)?idx.get(a.id):Infinity;
+    const bi=idx.has(b.id)?idx.get(b.id):Infinity;
+    if(ai!==bi) return ai-bi;
+    if(s==='name')return a.name.localeCompare(b.name);
+    if(s==='source')return a.source.localeCompare(b.source)||cmpDue(a,b);
+    if(s==='touched'){const la=lastTouched(a),lb=lastTouched(b);return (la?la:0)-(lb?lb:0);}
+    return cmpDue(a,b);
+  });
+}
 function escapeHtml(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
 // Compact due label matching Today's Quest style
@@ -2200,6 +2219,31 @@ function render(){
   else if(ui.group==='project'){const map={};arr.forEach(t=>{const k=t.project||'No Project';(map[k]=map[k]||[]).push(t);});Object.keys(map).sort().forEach(k=>{html+=section('p_'+k,k,map[k]);});}
   else{const buckets={};arr.forEach(t=>{const b=bucketOf(t);(buckets[b.key]=buckets[b.key]||{label:b.label,rank:b.rank,items:[]}).items.push(t);});Object.entries(buckets).sort((a,b)=>a[1].rank-b[1].rank).forEach(([key,b])=>{const cls=b.label==='Overdue'?'over':(b.label==='Today'?'today':'');html+=section(key,b.label,b.items,cls);});}
   L.innerHTML=html;updateHeader();
+  // Drag-to-reorder per group
+  if (typeof Sortable !== 'undefined'){
+    L.querySelectorAll('.gbody').forEach(gb => {
+      if (gb._sortable) { try { gb._sortable.destroy(); } catch(_){} }
+      gb._sortable = Sortable.create(gb, {
+        delay: 350,
+        delayOnTouchOnly: true,
+        touchStartThreshold: 8,
+        animation: 220,
+        draggable: '.quest-item',
+        filter: '[data-no-drag], button, a, input, select, textarea, .quest-check, .quest-star, .quest-due-inline, .quest-due-edit',
+        preventOnFilter: false,
+        ghostClass: 'quest-drag-ghost',
+        chosenClass: 'quest-drag-chosen',
+        onStart: () => window.lrl?.haptic('success'),
+        onEnd: () => {
+          // Save global manual order (all rows across all groups, in DOM order)
+          const ids = [...L.querySelectorAll('.quest-item')].map(r => r.dataset.taskId).filter(Boolean);
+          try { localStorage.setItem('lrl-quest-order-v1', JSON.stringify(ids)); } catch(_){}
+          window.lrl?.haptic('tap');
+          window.lrl?.toast('Order saved', 'success');
+        }
+      });
+    });
+  }
 }
 function updateHeader(){
   const live=allTasks().filter(t=>!t.done);
@@ -2476,7 +2520,24 @@ function toggleRitualStep(step){
 function initRitual(){
   const card = document.getElementById('ritual-card');
   if (!card) return;
+  // Restore manually-collapsed state
+  if (localStorage.getItem('lrl-ritual-collapsed') === '1') card.classList.add('collapsed');
+  // Toggle button collapses/expands explicitly
+  document.getElementById('ritual-toggle')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willCollapse = !card.classList.contains('collapsed') && !card.classList.contains('done');
+    if (card.classList.contains('done')){
+      // If auto-collapsed because all done, expand it
+      card.classList.remove('done');
+      localStorage.setItem('lrl-ritual-collapsed', '0');
+    } else {
+      card.classList.toggle('collapsed');
+      localStorage.setItem('lrl-ritual-collapsed', card.classList.contains('collapsed') ? '1' : '0');
+    }
+    window.lrl?.haptic('tap');
+  });
   card.addEventListener('click', (e) => {
+    if (e.target.closest('.ritual-toggle')) return; // handled above
     const checkBtn = e.target.closest('.ritual-check');
     if (checkBtn){
       const step = e.target.closest('.ritual-step')?.dataset.step;
@@ -2496,10 +2557,6 @@ function initRitual(){
         document.getElementById('today-quests')?.scrollIntoView({ behavior:'smooth', block:'center' });
       }
       return;
-    }
-    // Tap on done card → expand it (so she can uncheck if needed)
-    if (card.classList.contains('done')){
-      card.classList.remove('done');
     }
   });
   renderRitual();
