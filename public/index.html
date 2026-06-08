@@ -155,6 +155,13 @@
   .quest-text { flex: 1; min-width: 0; line-height: 1.35; }
   .quest-text.done, .quest-item.done .quest-text { text-decoration: line-through; color: var(--navy-dim); }
   .quest-item.done { opacity: 0.6; }
+  .quest-meta-tags { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; flex-shrink: 0; }
+  @media (max-width: 600px) {
+    .quest-item { flex-wrap: wrap; row-gap: 6px; column-gap: 8px; }
+    .quest-text { flex: 1 1 calc(100% - 64px); min-width: 0; }
+    .quest-star { margin-left: auto; }
+    .quest-meta-tags { flex-basis: 100%; padding-left: 28px; }
+  }
   .quest-sub { font-size: 11.5px; color: rgba(245,245,247,0.5); margin-top: 3px; line-height: 1.35; font-weight: 500; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .quest-sub .sep { color: rgba(245,245,247,0.25); }
   .quest-sub .quest-sub-status { color: rgba(255,183,77,0.85); font-weight: 600; }
@@ -2358,9 +2365,7 @@ function row(t){
     +'<div class="quest-check '+checkedCls+'" data-act="check"></div>'
     +statusDot
     +'<div class="quest-text" data-act="open">'+escapeHtml(t.name)+sub+'</div>'
-    +priHtml
-    +dueHtml
-    +sourceTag
+    +'<div class="quest-meta-tags">'+priHtml+dueHtml+sourceTag+'</div>'
     +star
     +'</div>';
 }
@@ -3122,9 +3127,7 @@ function renderQuestRow(t){
     <div class="quest-check ${checked}" data-act="check"></div>
     ${statusDot}
     <div class="quest-text" data-act="open">${escapeHtml(t.name)}</div>
-    ${priHtml}
-    ${dueHtml}
-    ${tag}
+    <div class="quest-meta-tags">${priHtml}${dueHtml}${tag}</div>
     ${star}
   </div>`;
 }
