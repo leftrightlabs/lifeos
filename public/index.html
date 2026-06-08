@@ -2873,27 +2873,35 @@ function quarterCardHtml(d){
       hit: q.attainment.swimming,
     },
     {
-      key: 'journal', label: 'Journal', meta: 'logged',
+      key: 'journal', label: 'Journal', meta: 'has body text',
       classify: (day) => {
         if (day.date > todayStr) return 'future';
-        return day.logged ? 'hit' : 'miss';
+        return day.hasBody ? 'hit' : 'miss';
       },
       hit: q.attainment.journal,
     },
   ];
+
+  const fmtDate = (iso) => {
+    const [y,m,dd] = iso.split('-').map(Number);
+    const dt = new Date(y, m-1, dd);
+    return dt.toLocaleDateString('en-US', { month:'short', day:'numeric', weekday:'short' });
+  };
 
   const rowsHtml = rows.map(r => {
     const cells = q.series.map(day => {
       const cls = r.classify(day);
       const todayCls = day.date === todayStr ? ' today' : '';
       const valLabel = (() => {
-        if (r.key === 'protein') return day.protein != null ? `${day.protein}g` : '—';
-        if (r.key === 'sleep') return day.sleepHours != null ? `${day.sleepHours}h` : '—';
-        if (r.key === 'walking') return day.walkMinutes ? `${day.walkMinutes}m walk` : (day.logged ? 'no walk' : '—');
-        if (r.key === 'swimming') return day.swimMinutes ? `${day.swimMinutes}m swim` : (day.logged ? 'no swim' : '—');
-        return day.logged ? 'logged' : '—';
+        if (r.key === 'protein') return day.protein != null ? `${day.protein}g protein` : 'no protein logged';
+        if (r.key === 'sleep') return day.sleepHours != null ? `${day.sleepHours}h sleep` : 'no sleep logged';
+        if (r.key === 'walking') return day.walkMinutes ? `${day.walkMinutes} min walk` : 'no walk';
+        if (r.key === 'swimming') return day.swimMinutes ? `${day.swimMinutes} min swim` : 'no swim';
+        if (r.key === 'journal') return day.hasBody ? 'journal written ✓' : (day.logged ? 'row exists, no body' : 'no entry');
+        return '';
       })();
-      return `<div class="q-cell ${cls}${todayCls}" title="${day.date} · ${valLabel}"></div>`;
+      const hover = `${fmtDate(day.date)} · ${valLabel}`;
+      return `<div class="q-cell ${cls}${todayCls}" title="${hover}" data-readout="${hover}"></div>`;
     }).join('');
     const pct = r.hit.days ? Math.round((r.hit.hit / r.hit.days) * 100) : 0;
     return `<div class="q-row">
@@ -2962,7 +2970,7 @@ function renderHealth(){
     <div class="health-grid">
       ${streakCardHtml({ key:'walking',  label:'Walking',         days:d.streaks.walking,  didToday:(today.walkMinutes||0)>0 })}
       ${streakCardHtml({ key:'swimming', label:'Swimming',        days:d.streaks.swimming, didToday:(today.swimMinutes||0)>0 })}
-      ${streakCardHtml({ key:'journal',  label:'Journal Entry',   days:d.streaks.journal,  didToday:!!d.today })}
+      ${streakCardHtml({ key:'journal',  label:'Journal Entry',   days:d.streaks.journal,  didToday:!!d.today?.hasBody })}
     </div>
     ${hrvCardHtml(d.hrv)}
     ${quarterCardHtml(d)}
@@ -3000,6 +3008,16 @@ function attachHealthHandlers(){
   document.querySelectorAll('#health-body input').forEach(input => {
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); saveHealthLog(); }
+    });
+  });
+  // Tap a quarter-grid cell → toast with the date + value
+  document.querySelectorAll('#health-body .q-cell[data-readout]').forEach(cell => {
+    cell.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const txt = cell.dataset.readout;
+      if (!txt) return;
+      window.lrl.haptic('tap');
+      window.lrl.toast(txt);
     });
   });
 }

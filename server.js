@@ -64,9 +64,13 @@ const anthropic = process.env.ANTHROPIC_API_KEY
   : null;
 
 const cache = new Map();
+const CACHE_TTL_OVERRIDES = {
+  'journal-rings': 5 * 60_000, // heavier query (per-row body-text check); cache longer
+};
 async function cached(key, fn) {
+  const ttl = CACHE_TTL_OVERRIDES[key] || CACHE_TTL_MS;
   const hit = cache.get(key);
-  if (hit && Date.now() - hit.t < CACHE_TTL_MS) return hit.v;
+  if (hit && Date.now() - hit.t < ttl) return hit.v;
   const value = await fn();
   cache.set(key, { v: value, t: Date.now() });
   return value;
@@ -808,6 +812,32 @@ async function queryJournalRange(startDate, endDate) {
   return out;
 }
 
+function blockHasText(block) {
+  const textTypes = ['paragraph','heading_1','heading_2','heading_3','bulleted_list_item','numbered_list_item','toggle','quote','callout','to_do'];
+  if (!textTypes.includes(block.type)) return false;
+  const rt = block[block.type]?.rich_text || [];
+  return rt.some((t) => (t.plain_text || '').trim().length > 0);
+}
+
+async function pageHasBodyText(pageId) {
+  try {
+    // Page size 50 is plenty — we only need to know if ANY block has text
+    const r = await notion.blocks.children.list({ block_id: pageId, page_size: 50 });
+    return r.results.some(blockHasText);
+  } catch (err) {
+    return false;
+  }
+}
+
+async function attachJournalBodyFlags(rows) {
+  const CONCURRENCY = 6;
+  for (let i = 0; i < rows.length; i += CONCURRENCY) {
+    const chunk = rows.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(chunk.map((r) => pageHasBodyText(r.id)));
+    chunk.forEach((r, j) => { r.hasBody = results[j]; });
+  }
+}
+
 function calculateStreak(rows, predicate) {
   // rows are sorted descending by date. Walk from today backwards.
   const byDate = new Map(rows.filter(r => r.date).map(r => [r.date, r]));
@@ -836,12 +866,14 @@ app.get('/api/journal/rings', async (_req, res) => {
       const ninetyAgo = chicagoDateNDaysAgo(90);
       const startDate = quarter.start < ninetyAgo ? quarter.start : ninetyAgo;
       const rows = await queryJournalRange(startDate, endDate);
+      // Attach hasBody flag to every row (parallel, concurrency-capped)
+      await attachJournalBodyFlags(rows);
       const today = rows.find(r => r.date === endDate) || null;
 
       const streaks = {
         walking:  calculateStreak(rows, r => r && (r.walkMinutes || 0) > 0),
         swimming: calculateStreak(rows, r => r && (r.swimMinutes || 0) > 0),
-        journal:  calculateStreak(rows, r => !!r),
+        journal:  calculateStreak(rows, r => r && r.hasBody),
         protein:  calculateStreak(rows, r => r && (r.protein || 0) >= JOURNAL_TARGETS.protein),
         sleep:    calculateStreak(rows, r => r && (r.sleepHours || 0) >= JOURNAL_TARGETS.sleepHours),
       };
@@ -858,6 +890,7 @@ app.get('/api/journal/rings', async (_req, res) => {
           swimMinutes: r?.swimMinutes ?? null,
           hrv: r?.hrv ?? null,
           logged: !!r,
+          hasBody: !!r?.hasBody,
         };
       });
       const hit = (test) => series.filter(test).length;
@@ -866,7 +899,7 @@ app.get('/api/journal/rings', async (_req, res) => {
         sleep:    { hit: hit(d => (d.sleepHours || 0) >= JOURNAL_TARGETS.sleepHours), days: series.length },
         walking:  { hit: hit(d => (d.walkMinutes || 0) > 0), days: series.length },
         swimming: { hit: hit(d => (d.swimMinutes || 0) > 0), days: series.length },
-        journal:  { hit: hit(d => d.logged), days: series.length },
+        journal:  { hit: hit(d => d.hasBody), days: series.length },
       };
       const hrvValsQ = series.filter(d => d.hrv != null).map(d => d.hrv);
       const hrvQuarter = hrvValsQ.length ? {
