@@ -1500,23 +1500,6 @@ window.lrl = (function(){
       </div>
     </div>
 
-    <div class="checkin-card" id="checkin-card">
-      <div class="checkin-head">
-        <button class="checkin-toggle" id="checkin-toggle" title="Collapse/expand"><span id="checkin-caret">▾</span> Daily Check-in</button>
-        <div class="checkin-status" id="checkin-status">Not sent today</div>
-      </div>
-      <div class="checkin-body" id="checkin-body">
-        <div class="checkin-loading" id="checkin-loading">Composing today's check-in…</div>
-        <textarea class="checkin-text" id="checkin-text" style="display:none" placeholder="Composing…"></textarea>
-        <div class="checkin-actions" id="checkin-actions" style="display:none">
-          <span class="checkin-meta" id="checkin-meta"></span>
-          <button class="checkin-btn refresh" id="checkin-refresh" title="Re-pull from calendar + tasks">↻ Recompose</button>
-          <button class="checkin-btn copy" id="checkin-copy" title="Copy to clipboard">Copy</button>
-          <button class="checkin-btn send" id="checkin-send">Send to #lrl_team</button>
-        </div>
-      </div>
-    </div>
-
     <div class="chapter-panel" id="chapter-panel">
       <div class="chapter-header">
         <div style="flex:1">
@@ -1544,6 +1527,23 @@ window.lrl = (function(){
       <div class="panel">
         <div class="panel-title"><span>Today's Calendar</span></div>
         <div id="today-calendar"><div style="color:var(--navy-dim);font-size:13px;padding:8px 0">loading…</div></div>
+      </div>
+    </div>
+
+    <div class="checkin-card" id="checkin-card">
+      <div class="checkin-head">
+        <button class="checkin-toggle" id="checkin-toggle" title="Collapse/expand"><span id="checkin-caret">▾</span> Daily Check-in</button>
+        <div class="checkin-status" id="checkin-status">Not sent today</div>
+      </div>
+      <div class="checkin-body" id="checkin-body">
+        <div class="checkin-loading" id="checkin-loading">Composing today's check-in…</div>
+        <textarea class="checkin-text" id="checkin-text" style="display:none" placeholder="Composing…"></textarea>
+        <div class="checkin-actions" id="checkin-actions" style="display:none">
+          <span class="checkin-meta" id="checkin-meta"></span>
+          <button class="checkin-btn refresh" id="checkin-refresh" title="Re-pull from calendar + tasks">↻ Recompose</button>
+          <button class="checkin-btn copy" id="checkin-copy" title="Copy to clipboard">Copy</button>
+          <button class="checkin-btn send" id="checkin-send">Send to #lrl_team</button>
+        </div>
       </div>
     </div>
   </div>
@@ -2695,13 +2695,21 @@ function initCheckin(){
     setCheckinCollapsed(!wasCollapsed);
     if (wasCollapsed && !CHECKIN_LOADED) fetchCheckin();
   });
-  document.getElementById('checkin-refresh')?.addEventListener('click', () => { CHECKIN_LOADED = false; fetchCheckin(); });
+  document.getElementById('checkin-refresh')?.addEventListener('click', async () => {
+    CHECKIN_LOADED = false;
+    await fetchCheckin();
+    // Keep Today's Quest + Calendar in sync with what compose just pulled
+    try { await fetchTodayQuests(); renderTodayQuests(); } catch(e){}
+  });
   document.getElementById('checkin-copy')?.addEventListener('click', copyCheckin);
   document.getElementById('checkin-send')?.addEventListener('click', sendCheckin);
   // Fetch immediately if expanded (and only in work/all mode, not personal)
   const m = document.body.dataset.mode || 'all';
   if (!card.classList.contains('collapsed') && m !== 'personal') {
-    fetchCheckin();
+    fetchCheckin().then(() => {
+      // Compose busts task caches; resync Today's Quest so they agree
+      fetchTodayQuests().then(renderTodayQuests).catch(()=>{});
+    });
   }
 }
 

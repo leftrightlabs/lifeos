@@ -1529,6 +1529,9 @@ function formatCheckinMessage({ events, doing, waiting }) {
 app.get('/api/checkin/compose', async (_req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
+    // Compose always fetches fresh from Notion — also bust task caches so
+    // Today's Quest reflects the same My Day state on next render.
+    invalidateTaskCaches();
     const [events, tasks] = await Promise.all([
       checkinFetchCalendar().catch((err) => {
         console.error('Checkin calendar error:', err.message);
