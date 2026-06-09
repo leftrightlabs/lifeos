@@ -509,14 +509,16 @@ app.get('/api/tasks/all', async (_req, res) => {
   }
 });
 
-async function fetchInbox(account, userIndex) {
+async function fetchInbox(account, userIndex, opts = {}) {
   const auth = authedClient(account);
   if (!auth) return [];
   const gmail = google.gmail({ version: 'v1', auth });
+  const q = opts.q || 'in:inbox is:unread newer_than:7d';
+  const maxResults = opts.maxResults || 15;
   const list = await gmail.users.messages.list({
     userId: 'me',
-    q: 'in:inbox is:unread newer_than:7d',
-    maxResults: 15,
+    q,
+    maxResults,
   });
   const ids = (list.data.messages || []).map((m) => m.id);
   if (!ids.length) return [];
@@ -1353,14 +1355,19 @@ app.post('/api/ai/triage', async (req, res) => {
       ]);
       return [...w, ...l];
     });
-    // Gmail inbox — included in dynamic context so the model can turn emails into tasks.
-    // Falls back to empty if Gmail isn't configured; same cache key the /api/comms/gmail
-    // endpoint uses, so warm cache hits are free.
-    const gmailThreads = await cached('gmail-inbox', async () => {
+    // Gmail inbox for capture — wider scope than the Comms tab. We pull recent
+    // inbox messages (read or unread, last 30d, up to 50 per account) so the
+    // model can find emails she's already opened, like order confirmations or
+    // older threads. Distinct cache key from 'gmail-inbox' so the Comms tab
+    // keeps its tighter unread-last-7d view.
+    const gmailThreads = await cached('gmail-capture', async () => {
       const accounts = configuredAccounts();
       if (!accounts.length) return [];
       const results = await Promise.all(
-        accounts.map((a, i) => fetchInbox(a, i).catch((err) => {
+        accounts.map((a, i) => fetchInbox(a, i, {
+          q: 'in:inbox newer_than:30d',
+          maxResults: 50,
+        }).catch((err) => {
           console.error(`Gmail ${a} error (triage):`, err.message);
           return [];
         })),
@@ -1396,11 +1403,12 @@ app.post('/api/ai/triage', async (req, res) => {
       TRIAGE_JSON_HINT,
     ].join('\n');
 
-    const inboxLines = gmailThreads.slice(0, 15).map((t) => {
+    const inboxLines = gmailThreads.slice(0, 50).map((t) => {
       const from = (t.fromName && t.fromName !== t.fromEmail) ? `${t.fromName} <${t.fromEmail || ''}>` : (t.fromEmail || '?');
       const subj = (t.subject || '(no subject)').slice(0, 140);
       const snip = (t.snippet || '').slice(0, 160);
-      return `  - [${t.account}] from: ${from} · subject: "${subj}"${snip ? ` · snippet: ${snip}` : ''} · url: ${t.url}`;
+      const when = t.internalDate ? new Date(t.internalDate).toLocaleDateString('en-US', { timeZone: TZ, month: 'short', day: 'numeric' }) : '';
+      return `  - [${t.account}]${when ? ` ${when}` : ''} from: ${from} · subject: "${subj}"${snip ? ` · snippet: ${snip}` : ''} · url: ${t.url}`;
     });
     // DYNAMIC context — varies each request. Today's date, calendar, my-day, goals, inbox + user input.
     const dynamicContext = [
@@ -1415,8 +1423,8 @@ app.post('/api/ai/triage', async (req, res) => {
       `ACTIVE GOALS (${ctx.goals.length}):`,
       goalLines.length ? goalLines.join('\n') : '  (none)',
       '',
-      `INBOX — recent unread emails, last 7 days (${gmailThreads.length}):`,
-      inboxLines.length ? inboxLines.join('\n') : '  (no recent unread email, or Gmail not configured)',
+      `INBOX — recent emails (read or unread), last 30 days (${gmailThreads.length}):`,
+      inboxLines.length ? inboxLines.join('\n') : '  (no recent inbox messages, or Gmail not configured)',
       '',
       `Gretchen's input:\n"""\n${text.trim()}\n"""`,
     ].join('\n');
