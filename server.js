@@ -696,11 +696,25 @@ const BRIEF_TTL_MS = 1000 * 60 * 60 * 2;
 
 const REVIEW_STALE_DAYS = 14;
 const REVIEW_WAITING_DAYS = 7;
+// Stale-bucket cutoff: tasks with a due date this far in the future are
+// treated as long-term reminders, not actionable-but-neglected work. Keeps
+// "scheduled for 2030" reminders out of the stale queue.
+const REVIEW_STALE_FUTURE_HORIZON_DAYS = 30;
 
 function daysSince(iso) {
   if (!iso) return Infinity;
   const ms = Date.now() - new Date(iso).getTime();
   return Math.floor(ms / (1000 * 60 * 60 * 24));
+}
+
+// Returns days from Chicago "today" to the given ISO date. Positive = future,
+// negative = past, 0 = today. Uses date-only comparison (no time-of-day drift).
+function daysUntilDate(iso) {
+  if (!iso) return Infinity;
+  const todayMs = Date.parse(chicagoTodayISODate() + 'T00:00:00Z');
+  const dueMs = Date.parse(String(iso).slice(0, 10) + 'T00:00:00Z');
+  if (Number.isNaN(dueMs)) return Infinity;
+  return Math.round((dueMs - todayMs) / 86400000);
 }
 
 // Statuses on the Projects DB that count as "live work" for the Review tab.
@@ -801,7 +815,14 @@ async function reviewTasksForSource(taskDs, source, peopleProp, activeProjectIds
     return d && d < todayISO && t.status !== 'Done';
   });
   const noProjectNoDue = all.filter((t) => !t.hasProject && !t.dueStart);
-  const stale = all.filter((t) => daysSince(t.edited) >= REVIEW_STALE_DAYS);
+  const stale = all.filter((t) => {
+    if (daysSince(t.edited) < REVIEW_STALE_DAYS) return false;
+    // Skip long-term reminders: anything due 30+ days from now isn't stale,
+    // it's just scheduled for later. Reviewing it now is noise.
+    const due = t.dueStart || t.dueEnd;
+    if (due && daysUntilDate(due) >= REVIEW_STALE_FUTURE_HORIZON_DAYS) return false;
+    return true;
+  });
   const stuckWaiting = all.filter((t) => t.status === 'Waiting' && daysSince(t.edited) >= REVIEW_WAITING_DAYS);
   return { all, overdue, noProjectNoDue, stale, stuckWaiting };
 }
