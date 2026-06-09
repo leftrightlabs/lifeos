@@ -1138,7 +1138,17 @@
   .autofocus-app .sub {margin:13px 0 0;color:#c7cede;font-size:13px;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
   .autofocus-app .sub b {color:#fff;font-weight:600}
   .autofocus-app .statgrid {display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin:14px 0 16px}
-  .autofocus-app .stat {background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;border-top:3px solid var(--line-2);display:flex;align-items:center;gap:10px;min-width:0}
+  .autofocus-app .stat {background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;border-top:3px solid var(--line-2);display:flex;align-items:center;gap:10px;min-width:0;cursor:pointer;user-select:none;transition:background 0.15s,transform 0.1s,box-shadow 0.15s}
+  .autofocus-app .stat:hover {background:rgba(255,255,255,0.04)}
+  .autofocus-app .stat:active {transform:scale(0.97)}
+  .autofocus-app .stat:focus-visible {outline:2px solid var(--lime);outline-offset:2px}
+  .autofocus-app .stat.active {background:rgba(255,255,255,0.08);box-shadow:inset 0 0 0 1.5px currentColor}
+  .autofocus-app .stat.s-open.active {color:rgba(245,245,247,0.7)}
+  .autofocus-app .stat.s-work.active {color:#5d9cec}
+  .autofocus-app .stat.s-personal.active {color:#c084fc}
+  .autofocus-app .stat.s-today.active {color:#d4a854}
+  .autofocus-app .stat.s-over.active {color:#ff7a6b}
+  .autofocus-app .stat.s-myday.active {color:var(--lime)}
   .autofocus-app .stat .statn {font-family:var(--font-d);font-weight:800;font-size:24px;color:var(--navy);line-height:1;flex-shrink:0;letter-spacing:-0.02em}
   .autofocus-app .stat .statl {font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
   .autofocus-app .stat.s-open {border-top-color:var(--navy)}
@@ -2526,15 +2536,27 @@ function bucketOf(t){const e=effDate(t);if(!e)return{key:'none',label:'No Due Da
 function notYetDue(t){if(t.recurring){const nd=nextDue(t);return nd&&nd>today;}const s=parseD(t.dueStart),e=parseD(t.dueEnd);if(s&&e&&s>today)return true;return false;}
 
 const el=id=>document.getElementById(id);
-const ui={src:'all',sort:'due',group:'bucket',q:'',myday:false,routines:false,showdone:false};
+const ui={src:'all',sort:'due',group:'bucket',q:'',myday:false,routines:false,showdone:false,statFilter:null};
+try { const sf = localStorage.getItem('lrl-stat-filter'); if (sf) ui.statFilter = sf; } catch(e){}
 
-function visible(){return allTasks().filter(t=>{
-  if(t.done&&!ui.showdone)return false;
-  if(ui.src!=='all'&&t.source!==ui.src)return false;
-  if(ui.myday&&!t.myDay)return false;
-  if(!ui.routines&&notYetDue(t)&&!t.done)return false;
-  if(ui.q){const q=ui.q.toLowerCase();if(!(t.name.toLowerCase().includes(q)||(t.project||'').toLowerCase().includes(q)))return false;}
-  return true;});}
+function visible(){
+  const sf=ui.statFilter;
+  return allTasks().filter(t=>{
+    if(t.done&&!ui.showdone)return false;
+    if(ui.src!=='all'&&t.source!==ui.src)return false;
+    if(ui.myday&&!t.myDay)return false;
+    if(!ui.routines&&notYetDue(t)&&!t.done)return false;
+    if(ui.q){const q=ui.q.toLowerCase();if(!(t.name.toLowerCase().includes(q)||(t.project||'').toLowerCase().includes(q)))return false;}
+    if(sf){
+      if(sf==='work'&&t.source!=='work')return false;
+      if(sf==='personal'&&t.source!=='personal')return false;
+      if(sf==='myday'&&!t.myDay)return false;
+      if(sf==='today'){const e=effDate(t);if(!(e&&daysFrom(e)===0&&!notYetDue(t)))return false;}
+      if(sf==='overdue'){const e=effDate(t);if(!(e&&daysFrom(e)<0&&!notYetDue(t)))return false;}
+    }
+    return true;
+  });
+}
 function cmpDue(a,b){const ea=effDate(a),eb=effDate(b);if(!ea&&!eb)return 0;if(!ea)return 1;if(!eb)return -1;return ea-eb;}
 function sortTasks(arr){
   const s=ui.sort;
@@ -2650,8 +2672,11 @@ function updateHeader(){
   const od=live.filter(t=>{const e=effDate(t);return e&&daysFrom(e)<0&&!notYetDue(t);}).length;
   const td=live.filter(t=>{const e=effDate(t);return e&&daysFrom(e)===0&&!notYetDue(t);}).length;
   const md=live.filter(t=>t.myDay).length;
-  const tile=(n,label,cls)=>'<div class="stat '+cls+'"><div class="statn">'+n+'</div><div class="statl">'+label+'</div></div>';
-  el('hdrstats').innerHTML=tile(live.length,'Open','s-open')+tile(work,'Work','s-work')+tile(pers,'Personal','s-personal')+tile(td,'Today','s-today')+tile(od,'Overdue','s-over')+tile(md,'My Day','s-myday');
+  const tile=(n,label,cls,filter)=>{
+    const active=ui.statFilter===filter?' active':'';
+    return '<div class="stat '+cls+active+'" data-filter="'+filter+'" role="button" tabindex="0" aria-pressed="'+(active?'true':'false')+'" title="Filter to '+label.toLowerCase()+'"><div class="statn">'+n+'</div><div class="statl">'+label+'</div></div>';
+  };
+  el('hdrstats').innerHTML=tile(live.length,'Open','s-open','open')+tile(work,'Work','s-work','work')+tile(pers,'Personal','s-personal','personal')+tile(td,'Today','s-today','today')+tile(od,'Overdue','s-over','overdue')+tile(md,'My Day','s-myday','myday');
   const d=el('hdrdate'); if(d) d.innerHTML='<span class="dot"></span>'+TODAY.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 }
 
@@ -2755,6 +2780,31 @@ window.addEventListener('lrl-refresh-focus', async () => {
 el('q').addEventListener('input',e=>{ui.q=e.target.value;render();});
 el('sortsel').addEventListener('change',e=>{ui.sort=e.target.value;render();});
 el('groupsel').addEventListener('change',e=>{ui.group=e.target.value;render();});
+
+// Click stat tiles to filter task list. Clicking active tile (or "Open") clears the filter.
+(function wireStatTileFilters(){
+  const host = el('hdrstats');
+  if (!host) return;
+  const apply = (filter) => {
+    const next = (ui.statFilter === filter || filter === 'open') ? null : filter;
+    ui.statFilter = next;
+    try { localStorage.setItem('lrl-stat-filter', next || ''); } catch(_){}
+    window.lrl?.haptic('tap');
+    render();
+  };
+  host.addEventListener('click', (e) => {
+    const tile = e.target.closest('.stat[data-filter]');
+    if (!tile) return;
+    apply(tile.dataset.filter);
+  });
+  host.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const tile = e.target.closest('.stat[data-filter]');
+    if (!tile) return;
+    e.preventDefault();
+    apply(tile.dataset.filter);
+  });
+})();
 // Autofocus listens for global mode changes
 function syncAutofocusToMode(){
   const m = localStorage.getItem('lrl-mode') || 'all';
