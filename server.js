@@ -1130,7 +1130,7 @@ const RITUAL_CONFIGS = {
   morning: {
     textProp: 'Morning Ritual',
     doneProp: 'Morning Done',
-    steps: ['inboxes', 'birthdays', 'checkin', 'sequence', 'marketing', 'notionComments', 'slackMessages', 'reviewCalendar'],
+    steps: ['inboxes', 'birthdays', 'checkin', 'sequence', 'marketing', 'notionComments', 'slackMessages', 'reviewCalendar', 'braindump'],
   },
   evening: {
     textProp: 'Evening Ritual',

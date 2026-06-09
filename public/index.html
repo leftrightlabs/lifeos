@@ -2224,6 +2224,14 @@ window.lrl = (function(){
           </div>
           <button class="ritual-step-action" data-action="jump-calendar">Jump ›</button>
         </div>
+        <div class="ritual-step" data-step="braindump">
+          <button class="ritual-check" aria-label="Toggle done"></button>
+          <div class="ritual-step-body">
+            <div class="ritual-step-label">Submit braindump</div>
+            <div class="ritual-step-meta">Capture → Claude triage</div>
+          </div>
+          <button class="ritual-step-action" data-action="open-triage">Open ›</button>
+        </div>
       </div>
     </div>
 
@@ -3043,7 +3051,7 @@ function setChapterCollapsed(collapsed){
 }
 
 // ====== Morning Ritual ======
-const RITUAL_STEPS = ['inboxes', 'birthdays', 'checkin', 'sequence', 'marketing', 'notionComments', 'slackMessages', 'reviewCalendar'];
+const RITUAL_STEPS = ['inboxes', 'birthdays', 'checkin', 'sequence', 'marketing', 'notionComments', 'slackMessages', 'reviewCalendar', 'braindump'];
 function ritualKey(){
   return 'lrl-ritual-' + new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
 }
@@ -3325,6 +3333,8 @@ function initRitual(){
         window.openExternalSafe?.('https://app.slack.com/client');
       } else if (action === 'jump-calendar'){
         document.getElementById('today-calendar')?.scrollIntoView({ behavior:'smooth', block:'center' });
+      } else if (action === 'open-triage'){
+        openTriageModal?.();
       }
       return;
     }
