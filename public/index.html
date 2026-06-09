@@ -1108,12 +1108,17 @@
   .comms-row.gmail-personal { border-left-color: var(--lime); }
   .comms-row.slack { border-left-color: #4a154b; }
   .comms-unread-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--lime); flex-shrink: 0; }
-  .comms-unread-dot.read { background: transparent; }
+  .comms-unread-dot.read { background: transparent; border: 1.5px solid rgba(245,245,247,0.18); width: 8px; height: 8px; box-sizing: border-box; }
   .comms-content { flex: 1; min-width: 0; }
-  .comms-row-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .comms-row-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; min-width: 0; }
   .comms-sender { font-weight: 600; font-size: 13px; color: var(--navy); flex-shrink: 0; }
+  .comms-subject { font-size: 13px; color: var(--navy-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
   .comms-channel { font-size: 11px; color: var(--navy-dim); flex-shrink: 0; }
   .comms-snippet { font-size: 13px; color: var(--navy-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Read messages: dimmer than unread for visual hierarchy. */
+  .comms-row.is-read .comms-sender { font-weight: 500; color: var(--navy-dim); }
+  .comms-row.is-read .comms-subject,
+  .comms-row.is-read .comms-snippet { opacity: 0.7; }
   .comms-time { font-size: 11px; color: var(--navy-dim); flex-shrink: 0; text-align: right; min-width: 60px; }
   .comms-source-tag { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 6px; border-radius: 3px; font-weight: 600; flex-shrink: 0; }
   .source-slack { background: rgba(74,21,75,0.25); color: #c896d8; border: 1px solid rgba(200,150,216,0.3); }
@@ -2208,7 +2213,7 @@ window.lrl = (function(){
   <div class="tab-content" data-content="comms">
     <div class="section-label">Communications</div>
     <h1 class="page-title"><span>Comms</span></h1>
-    <div class="page-subtitle">Every unread message in one place. Live Gmail (work + personal). Slack arrives in a later day.</div>
+    <div class="page-subtitle">Every message in one place. Live Gmail (work + personal). Slack arrives in a later day.</div>
 
     <div class="comms-controls">
       <span class="control-label">Source:</span>
@@ -2216,6 +2221,12 @@ window.lrl = (function(){
         <button class="filter-btn active" data-comms-filter="all">All</button>
         <button class="filter-btn" data-comms-filter="gmail-work">Work Email</button>
         <button class="filter-btn" data-comms-filter="gmail-personal">Personal Email</button>
+      </div>
+      <span class="control-label" style="margin-left:14px">Status:</span>
+      <div class="filter-group">
+        <button class="filter-btn active" data-comms-status="unread">Unread</button>
+        <button class="filter-btn" data-comms-status="read">Read</button>
+        <button class="filter-btn" data-comms-status="all">All</button>
       </div>
     </div>
 
@@ -3286,16 +3297,18 @@ window.addEventListener('lrl-mode-changed', renderEvening);
 
 async function fetchComms(){
   try {
-    const r = await fetch('/api/comms/gmail');
+    const status = window.commsStatus || 'unread';
+    const r = await fetch('/api/comms/gmail?status=' + encodeURIComponent(status));
     const d = await r.json();
     COMMS_DATA = (d.threads||[]).map(t => ({
       id: t.id,
       source: 'gmail-' + t.account,
       sender: t.fromName || t.fromEmail,
+      subject: t.subject,
       channel: 'INBOX',
       snippet: t.snippet,
       time: t.internalDate ? new Date(t.internalDate).toISOString() : null,
-      unread: true,
+      unread: !!t.unread,
       permalink: t.url,
     }));
     window.COMMS_DATA = COMMS_DATA;
@@ -3980,19 +3993,29 @@ function renderComms() {
   // Local comms filter (still works within mode)
   if (commsFilter !== 'all') items = items.filter(c => c.source === commsFilter);
   items.sort((a, b) => new Date(b.time) - new Date(a.time));
+  const status = window.commsStatus || 'unread';
+  const emptyMsg = status === 'read'
+    ? 'No read messages in this window.'
+    : status === 'all'
+      ? 'Nothing in your inbox.'
+      : 'Inbox zero.';
   if (!items.length){
-    list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--navy-dim);">Inbox zero.</div>';
+    list.innerHTML = `<div style="padding:24px;text-align:center;color:var(--navy-dim);">${emptyMsg}</div>`;
     return;
   }
-  let html = `<div class="comms-group-header"><span>Unread (${items.length})</span><span>${items.filter(c=>c.source==='gmail-personal').length} personal · ${items.filter(c=>c.source==='gmail-work').length} work</span></div>`;
+  const headerLabel = status === 'read' ? 'Read' : status === 'all' ? 'Inbox' : 'Unread';
+  let html = `<div class="comms-group-header"><span>${headerLabel} (${items.length})</span><span>${items.filter(c=>c.source==='gmail-personal').length} personal · ${items.filter(c=>c.source==='gmail-work').length} work</span></div>`;
   items.forEach(c => {
     const sourceTag = { 'gmail-work': 'Work', 'gmail-personal': 'Personal', 'slack': 'Slack' }[c.source] || c.source;
+    const senderLine = c.subject
+      ? `<span class="comms-sender">${escapeHtml(c.sender)}</span> <span class="comms-subject">· ${escapeHtml(c.subject)}</span>`
+      : `<span class="comms-sender">${escapeHtml(c.sender)}</span>`;
     html += `
-      <div class="comms-row ${c.source}" onclick="window.openExternalSafe('${c.permalink||'#'}')">
+      <div class="comms-row ${c.source} ${c.unread ? '' : 'is-read'}" onclick="window.openExternalSafe('${c.permalink||'#'}')">
         <div class="comms-unread-dot ${c.unread ? '' : 'read'}"></div>
         <div class="comms-content">
           <div class="comms-row-top">
-            <span class="comms-sender">${escapeHtml(c.sender)}</span>
+            ${senderLine}
             <span class="comms-source-tag source-${c.source}">${sourceTag}</span>
           </div>
           <div class="comms-snippet">${escapeHtml(c.snippet)}</div>
@@ -4007,6 +4030,26 @@ document.querySelectorAll('[data-comms-filter]').forEach(btn => {
     document.querySelectorAll('[data-comms-filter]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     commsFilter = btn.dataset.commsFilter;
+    renderComms();
+  });
+});
+// Read/Unread/All status — changes which Gmail query the server runs, so
+// re-fetch (not just re-filter) when this changes. Persisted in localStorage.
+try { window.commsStatus = localStorage.getItem('lrl-comms-status') || 'unread'; } catch(_){ window.commsStatus = 'unread'; }
+document.querySelectorAll('[data-comms-status]').forEach(btn => {
+  if (btn.dataset.commsStatus === window.commsStatus) {
+    document.querySelectorAll('[data-comms-status]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  btn.addEventListener('click', async () => {
+    document.querySelectorAll('[data-comms-status]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    window.commsStatus = btn.dataset.commsStatus;
+    try { localStorage.setItem('lrl-comms-status', window.commsStatus); } catch(_){}
+    window.lrl?.haptic('tap');
+    const listEl = document.getElementById('comms-list');
+    if (listEl) listEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--navy-dim);">loading…</div>';
+    await fetchComms();
     renderComms();
   });
 });

@@ -548,27 +548,43 @@ async function fetchInbox(account, userIndex, opts = {}) {
       snippet: decodeEntities(msg.snippet || ''),
       date: headers.Date || null,
       internalDate: msg.internalDate ? Number(msg.internalDate) : null,
+      unread: Array.isArray(msg.labelIds) ? msg.labelIds.includes('UNREAD') : false,
       url: `https://mail.google.com/mail/u/${userIndex}/#inbox/${msg.threadId}`,
     };
   });
 }
 
-app.get('/api/comms/gmail', async (_req, res) => {
+// Build the Gmail search query for the Comms tab. The Comms surface shows
+// the inbox itself — controlled by the read-status filter the user picks.
+function commsGmailQuery(status, days) {
+  const span = `newer_than:${Math.max(1, Math.min(days || 30, 90))}d`;
+  if (status === 'read') return `in:inbox -is:unread ${span}`;
+  if (status === 'all') return `in:inbox ${span}`;
+  return `in:inbox is:unread ${span}`; // default = unread
+}
+
+app.get('/api/comms/gmail', async (req, res) => {
   const accounts = configuredAccounts();
   if (!accounts.length) {
     return res.status(500).json({ error: 'No Google refresh tokens configured' });
   }
+  // status: 'unread' (default) | 'read' | 'all'
+  const status = ['read', 'all', 'unread'].includes(req.query.status) ? req.query.status : 'unread';
+  const days = Number(req.query.days) || (status === 'unread' ? 7 : 30);
+  const max = status === 'unread' ? 25 : 75; // wider net when showing more
+  const cacheKey = `gmail-inbox-${status}-${days}`;
   try {
-    const threads = await cached('gmail-inbox', async () => {
+    const threads = await cached(cacheKey, async () => {
+      const q = commsGmailQuery(status, days);
       const results = await Promise.all(
-        accounts.map((a, i) => fetchInbox(a, i).catch((err) => {
+        accounts.map((a, i) => fetchInbox(a, i, { q, maxResults: max }).catch((err) => {
           console.error(`Gmail ${a} error:`, err.message);
           return [];
         })),
       );
       return results.flat().sort((a, b) => (b.internalDate || 0) - (a.internalDate || 0));
     });
-    res.json({ threads });
+    res.json({ threads, status, days });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
