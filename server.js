@@ -725,6 +725,29 @@ async function fetchActiveProjectIds() {
   return activeIds;
 }
 
+// Returns true if a task row's properties indicate it's a recurring task or
+// already has a future occurrence scheduled — in either case, we hide it from
+// the Review tab (recurring tasks self-manage; future-occurrence ones aren't
+// actionable yet). Defensive against a few common Notion property spellings.
+function isRecurringOrFutureScheduled(props) {
+  if (!props) return false;
+  // Recurring checkbox — accept both "Recurring?" and "Recurring"
+  if (props['Recurring?']?.checkbox) return true;
+  if (props['Recurring']?.checkbox) return true;
+  // Next Occurrence — accept a few spellings; could be a date, formula, or text field
+  const occCandidates = ['Next Occurrence', 'Next occurrence', 'Next Occurence', 'Next occurence'];
+  for (const key of occCandidates) {
+    const v = props[key];
+    if (!v) continue;
+    if (v.date?.start) return true;
+    if (v.formula?.date?.start) return true;
+    if (v.formula?.string && v.formula.string.trim()) return true;
+    if (v.formula?.number != null) return true;
+    if (Array.isArray(v.rich_text) && v.rich_text.length > 0) return true;
+  }
+  return false;
+}
+
 async function reviewTasksForSource(taskDs, source, peopleProp, activeProjectIds) {
   // Get all open tasks (Status != Done) — already have these helpers
   const data = await queryTasks(taskDs, { peopleProp, myDayOnly: false });
@@ -745,13 +768,17 @@ async function reviewTasksForSource(taskDs, source, peopleProp, activeProjectIds
       projectIds: projectRel.map((r) => r.id),
       edited: p.last_edited_time || null,
       url: p.url,
+      _recurringOrFuture: isRecurringOrFutureScheduled(props),
     };
   });
-  // Project-status filter: hide tasks tied to inactive projects. Tasks with no
-  // project at all still pass through (the noProjectNoDue bucket relies on them).
-  const all = activeProjectIds
-    ? rawAll.filter((t) => !t.hasProject || t.projectIds.some((id) => activeProjectIds.has(id)))
-    : rawAll;
+  // Combined filter:
+  //   - Drop recurring or future-scheduled tasks (they aren't actionable here)
+  //   - Drop tasks attached only to inactive projects (no-project tasks stay)
+  const all = rawAll.filter((t) => {
+    if (t._recurringOrFuture) return false;
+    if (activeProjectIds && t.hasProject && !t.projectIds.some((id) => activeProjectIds.has(id))) return false;
+    return true;
+  });
   const todayISO = chicagoTodayISODate();
   const overdue = all.filter((t) => {
     const d = t.dueEnd || t.dueStart;

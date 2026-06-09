@@ -811,7 +811,9 @@
   .review-item { padding: 12px 18px; border-top: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 8px; }
   .review-item.clearing { opacity: 0.4; transition: opacity 0.3s; }
   .review-item-row { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
-  .review-item-name { flex: 1; min-width: 200px; font-size: 14px; color: var(--navy); font-weight: 500; line-height: 1.4; }
+  .review-item-name { flex: 1; min-width: 200px; font-size: 14px; color: var(--navy); font-weight: 500; line-height: 1.4; cursor: pointer; border-radius: 4px; padding: 2px 4px; margin: -2px -4px; transition: background 0.12s; }
+  .review-item-name:hover { background: rgba(255,255,255,0.05); }
+  .review-item-name:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
   .review-item-meta { font-size: 11px; color: var(--navy-dim); margin-top: 2px; }
   .review-source-pill { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; font-weight: 600; flex-shrink: 0; }
   .review-source-pill.work { background: rgba(93,156,236,0.15); color: #9cc5f5; }
@@ -3718,6 +3720,8 @@ document.getElementById('task-save-btn')?.addEventListener('click', async () => 
       renderTodayQuests();
     } else if (scope === 'focus'){
       window.dispatchEvent(new CustomEvent('lrl-refresh-focus'));
+    } else if (scope === 'review'){
+      try { await fetchReview(); } catch(e){}
     }
   } catch (err) {
     window.lrl.toast('Save failed: ' + err.message, 'error');
@@ -4346,7 +4350,7 @@ function reviewItemHtml(item, sectionKey){
   controls += `<button class="review-btn subtle" data-act="snooze" data-id="${item.id}" title="Hide from this review (until next refresh)">Skip</button>`;
   return `<div class="review-item${cleared ? ' clearing' : ''}" data-id="${item.id}">
     <div class="review-item-row">
-      <div class="review-item-name">${escapeHtml(item.name)}${meta}</div>
+      <div class="review-item-name" data-act="open-edit" data-id="${item.id}" role="button" tabindex="0" title="Edit task">${escapeHtml(item.name)}${meta}</div>
       <span class="review-source-pill ${item.source}">${item.source}</span>
     </div>
     <div class="review-controls">${controls}</div>
@@ -4391,6 +4395,18 @@ function renderReview(){
   attachReviewHandlers();
 }
 
+// Look up a review item by id across all sections of REVIEW_DATA. Used to
+// open the shared task-edit modal from a Review row click.
+function findReviewItemById(id){
+  if (!REVIEW_DATA || !id) return null;
+  for (const sec of REVIEW_SECTIONS){
+    const list = REVIEW_DATA[sec.key] || [];
+    const hit = list.find(t => t.id === id);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 function attachReviewHandlers(){
   const body = document.getElementById('review-body');
   if (!body) return;
@@ -4402,6 +4418,20 @@ function attachReviewHandlers(){
       collapsed[key] = !collapsed[key];
       localStorage.setItem(REVIEW_COLLAPSED_KEY, JSON.stringify(collapsed));
       renderReview();
+    });
+  });
+  // Click (or Enter/Space) on the task name opens the shared edit modal.
+  body.querySelectorAll('[data-act="open-edit"]').forEach(el => {
+    const open = (e) => {
+      e.stopPropagation();
+      const id = el.dataset.id;
+      const item = findReviewItemById(id);
+      if (!item) return;
+      window.openTaskEdit && window.openTaskEdit({ ...item, project: null }, 'review');
+    };
+    el.addEventListener('click', open);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e); }
     });
   });
   body.querySelectorAll('[data-act="mark-done"]').forEach(el => {
