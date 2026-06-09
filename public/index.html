@@ -1750,8 +1750,13 @@
     0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.85; }
     50%      { transform: translateY(-12px) rotate(180deg); opacity: 1; }
   }
-  /* If you swap in an <img class="review-victory-gif">, this sizes it. */
-  .review-victory-gif { display: block; width: 220px; height: auto; margin: 0 auto 28px; border-radius: 12px; }
+  /* Marvin-the-Martian GIF (file lives in /public/marvin-victory.gif). */
+  .review-victory-gif {
+    display: block; max-width: 280px; width: 100%; height: auto;
+    margin: 0 auto 28px; border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 60px rgba(167,193,64,0.15);
+    animation: lrl-victory-wobble 2.6s ease-in-out infinite;
+  }
 
   .review-victory-headline {
     font-family: var(--font-display);
@@ -4461,13 +4466,7 @@ function showReviewVictory(){
   overlay.className = 'review-victory-overlay';
   overlay.innerHTML = `
     <div class="review-victory-card">
-      <div class="review-victory-character" aria-hidden="true">
-        <div class="char-crest"></div>
-        <div class="char-helmet"></div>
-        <div class="char-face"></div>
-        <div class="char-eye left"></div>
-        <div class="char-eye right"></div>
-      </div>
+      <img class="review-victory-gif" src="/marvin-victory.gif" alt="Marvin the Martian" onerror="this.style.display='none'" />
       <div class="review-victory-headline">INBOX ZERO</div>
       <div class="review-victory-quote">
         "Where's the kaboom?<br/>There was supposed to be an <em>earth-shattering</em> kaboom!"
