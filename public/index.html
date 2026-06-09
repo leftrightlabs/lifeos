@@ -677,7 +677,10 @@
   .ritual-status { font-size: 11.5px; color: rgba(245,245,247,0.55); font-weight: 500; }
   .ritual-status.done { color: var(--lime); font-weight: 700; }
   .ritual-list { display: flex; flex-direction: column; gap: 8px; }
-  .ritual-step { display: flex; align-items: center; gap: 12px; padding: 11px 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; transition: all 0.2s; }
+  .ritual-step { display: flex; align-items: center; gap: 12px; padding: 11px 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; transition: all 0.2s; cursor: grab; }
+  .ritual-step:active { cursor: grabbing; }
+  .ritual-drag-chosen { background: rgba(167,193,64,0.08); box-shadow: 0 12px 30px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(167,193,64,0.4); transform: scale(1.02); transition: transform 0.18s ease, box-shadow 0.18s ease; }
+  .ritual-drag-ghost { opacity: 0.25; }
   .ritual-step.checked { background: rgba(167,193,64,0.05); border-color: rgba(167,193,64,0.18); }
   .ritual-step.checked .ritual-step-label { color: rgba(245,245,247,0.45); }
   .ritual-step.checked .ritual-step-label::after { content: ''; }
@@ -3326,7 +3329,60 @@ function initRitual(){
       return;
     }
   });
+  // Apply saved order + wire drag-to-reorder for the morning list
+  applyRitualSavedOrder('ritual-list', 'lrl-ritual-morning-order-v1');
+  initRitualSortable('ritual-list', 'lrl-ritual-morning-order-v1');
   renderRitual();
+}
+
+// Apply a saved order to a ritual list. Reads an array of data-step keys from
+// localStorage and reorders the children of the given <ul/div> to match. Steps
+// not in the saved order keep their original position at the end — so adding
+// a new step in HTML doesn't break the layout.
+function applyRitualSavedOrder(listId, storageKey){
+  const list = document.getElementById(listId);
+  if (!list) return;
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch(_){ saved = []; }
+  if (!Array.isArray(saved) || !saved.length) return;
+  const steps = [...list.querySelectorAll('.ritual-step')];
+  const byKey = new Map(steps.map(el => [el.dataset.step, el]));
+  // Move saved keys (in order) to the front of the list
+  saved.forEach(key => {
+    const el = byKey.get(key);
+    if (el) list.appendChild(el);
+  });
+  // Anything not in saved (e.g. a step added in HTML later) appends after,
+  // preserving its HTML order
+  steps.forEach(el => { if (!saved.includes(el.dataset.step)) list.appendChild(el); });
+}
+
+// Wire SortableJS to a ritual list so the user can long-press + drag steps to
+// reorder. Order is saved to localStorage by data-step key.
+function initRitualSortable(listId, storageKey){
+  const list = document.getElementById(listId);
+  if (!list || typeof Sortable === 'undefined') return;
+  if (list._sortable) { try { list._sortable.destroy(); } catch(_){} }
+  list._sortable = Sortable.create(list, {
+    delay: 300,                  // long-press needed on touch — won't fire on a normal tap
+    delayOnTouchOnly: true,      // mouse can drag immediately
+    touchStartThreshold: 8,
+    animation: 200,
+    draggable: '.ritual-step',
+    // Don't start a drag when the press lands on an interactive control
+    filter: '.ritual-check, .ritual-step-action, button, a',
+    preventOnFilter: false,
+    ghostClass: 'ritual-drag-ghost',
+    chosenClass: 'ritual-drag-chosen',
+    onStart: () => window.lrl?.haptic('success'),
+    onEnd: () => {
+      const keys = [...list.querySelectorAll('.ritual-step')]
+        .map(el => el.dataset.step).filter(Boolean);
+      try { localStorage.setItem(storageKey, JSON.stringify(keys)); } catch(_){}
+      window.lrl?.haptic('tap');
+      window.lrl?.toast('Order saved', 'success');
+    },
+  });
 }
 
 // Refresh ritual when underlying data changes
@@ -3449,6 +3505,9 @@ function initEvening(){
       if (step) toggleEveningStep(step);
     }
   });
+  // Apply saved order + wire drag-to-reorder for the evening list
+  applyRitualSavedOrder('evening-list', 'lrl-ritual-evening-order-v1');
+  initRitualSortable('evening-list', 'lrl-ritual-evening-order-v1');
   pullEveningFromServer().then(s => { if (s) renderEvening(); });
   renderEvening();
 }
