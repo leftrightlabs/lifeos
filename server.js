@@ -1972,10 +1972,10 @@ app.get('/api/finance/xero', async (_req, res) => {
 
       const xLog = (name) => (err) => { console.error(`[xero] ${name} failed:`, err.message); return null; };
       const [bankRaw, mtdRaw, qtdRaw, ytdRaw, burnRaw, bsRaw] = await Promise.all([
-        // BankSummary takes a date range; omitting it sometimes returns empty,
-        // so pass fromDate = monthStart + toDate = today for current-month
-        // activity (the closing balance is what we actually read).
-        xeroGet('/api.xro/2.0/Reports/BankSummary', { fromDate: monthStart, toDate: todayStr }).catch(xLog('BankSummary')),
+        // BankSummary takes a single optional `date` (closing date), NOT a
+        // fromDate/toDate range. Pass today's date so closing balances are
+        // as of today.
+        xeroGet('/api.xro/2.0/Reports/BankSummary', { date: todayStr }).catch(xLog('BankSummary')),
         xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: monthStart, toDate: todayStr }).catch(xLog('P&L MTD')),
         xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: quarterStart, toDate: todayStr }).catch(xLog('P&L QTD')),
         xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: yearStart, toDate: todayStr }).catch(xLog('P&L YTD')),
