@@ -1962,21 +1962,41 @@ app.get('/api/finance/xero', async (_req, res) => {
     const data = await cached('xero-finance', async () => {
       const today = new Date();
       const monthStart = ymd(new Date(today.getFullYear(), today.getMonth(), 1));
+      const qStartMonth = Math.floor(today.getMonth() / 3) * 3;
+      const quarterStart = ymd(new Date(today.getFullYear(), qStartMonth, 1));
+      const yearStart = ymd(new Date(today.getFullYear(), 0, 1));
       const todayStr = ymd(today);
       // 3 months ago for burn rate baseline
       const burnStart = ymd(new Date(today.getFullYear(), today.getMonth() - 3, 1));
       const burnEnd = ymd(new Date(today.getFullYear(), today.getMonth(), 0)); // end of last month
 
-      const [bankRaw, mtdRaw, burnRaw, bsRaw] = await Promise.all([
+      const [bankRaw, mtdRaw, qtdRaw, ytdRaw, burnRaw, bsRaw] = await Promise.all([
         xeroGet('/api.xro/2.0/Reports/BankSummary').catch(() => null),
         xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: monthStart, toDate: todayStr }).catch(() => null),
+        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: quarterStart, toDate: todayStr }).catch(() => null),
+        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: yearStart, toDate: todayStr }).catch(() => null),
         xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: burnStart, toDate: burnEnd }).catch(() => null),
         xeroGet('/api.xro/2.0/Reports/BalanceSheet', { date: todayStr }).catch(() => null),
       ]);
       const bank = bankRaw ? parseBankSummary(bankRaw.Reports?.[0]) : { accounts: [], totalCash: 0 };
       const mtd = mtdRaw ? parseProfitAndLoss(mtdRaw.Reports?.[0]) : { income: 0, expenses: 0, net: 0 };
+      const qtd = qtdRaw ? parseProfitAndLoss(qtdRaw.Reports?.[0]) : { income: 0, expenses: 0, net: 0 };
+      const ytd = ytdRaw ? parseProfitAndLoss(ytdRaw.Reports?.[0]) : { income: 0, expenses: 0, net: 0 };
       const burn = burnRaw ? parseProfitAndLoss(burnRaw.Reports?.[0]) : { income: 0, expenses: 0, net: 0 };
       const bs = bsRaw ? parseBalanceSheet(bsRaw.Reports?.[0]) : { accountsReceivable: 0, accountsPayable: 0 };
+
+      // Categorize accounts: anything with negative balance OR matching
+      // /credit|\bcc\b/ in the name is a credit card; everything else is a
+      // regular bank account.
+      const bankAccounts = [];
+      const creditCards = [];
+      for (const a of bank.accounts) {
+        const looksLikeCard = /credit|\bcc\b/i.test(a.name) || a.balance < 0;
+        if (looksLikeCard) creditCards.push(a);
+        else bankAccounts.push(a);
+      }
+      const bankTotal = bankAccounts.reduce((s, a) => s + a.balance, 0);
+      const creditTotal = creditCards.reduce((s, a) => s + a.balance, 0);
       // Monthly burn = avg of last 3 full months expenses
       const monthlyBurn = burn.expenses / 3;
       const runwayMonths = monthlyBurn > 0 ? bank.totalCash / monthlyBurn : null;
@@ -2007,9 +2027,19 @@ app.get('/api/finance/xero', async (_req, res) => {
         currency: 'USD',
         cashOnHand: bank.totalCash,
         accounts: bank.accounts,
+        bankAccounts,
+        creditCards,
+        bankTotal,
+        creditTotal,
         mtdRevenue: mtd.income,
         mtdExpenses: mtd.expenses,
         mtdNet: mtd.net,
+        qtdRevenue: qtd.income,
+        qtdExpenses: qtd.expenses,
+        qtdNet: qtd.net,
+        ytdRevenue: ytd.income,
+        ytdExpenses: ytd.expenses,
+        ytdNet: ytd.net,
         monthlyBurn,
         runwayMonths: runwayMonths != null ? Math.round(runwayMonths * 10) / 10 : null,
         accountsReceivable: bs.accountsReceivable,

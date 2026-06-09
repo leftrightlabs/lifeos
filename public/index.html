@@ -365,6 +365,39 @@
   .fin-auth-prompt a:hover { text-decoration: underline; }
   .fin-as-of { font-size: 11px; color: rgba(245,245,247,0.4); text-align: right; margin-top: 12px; }
 
+  /* Cash Capacity collapsible */
+  .fin-capacity .fin-cap-toggle { background: transparent; border: none; color: rgba(245,245,247,0.6); font-family: var(--font-body); font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .fin-capacity .fin-cap-toggle:hover { opacity: 0.85; }
+  .fin-cap-caret { display: inline-block; transition: transform 0.18s; }
+  .fin-capacity.collapsed .fin-cap-caret { transform: rotate(-90deg); }
+  .fin-capacity.collapsed .fin-cap-amount,
+  .fin-capacity.collapsed .fin-cap-goal,
+  .fin-capacity.collapsed .fin-cap-bar,
+  .fin-capacity.collapsed .fin-cap-tier,
+  .fin-capacity.collapsed .fin-cap-accounts,
+  .fin-capacity.collapsed .fin-cap-warn { display: none; }
+  .fin-capacity.collapsed { padding: 14px 26px; }
+  .fin-capacity.collapsed .fin-cap-row { margin: 4px 0 0; align-items: center; gap: 18px; }
+  .fin-capacity.collapsed .fin-cap-months { font-size: 32px; }
+
+  /* Revenue tile triplet (MTD / QTD / YTD) */
+  .fin-kpi.rev-mtd { border-top-color: #818cf8; }
+  .fin-kpi.rev-qtd { border-top-color: #a78bfa; }
+  .fin-kpi.rev-ytd { border-top-color: #c084fc; }
+
+  /* Accounts group cards (Bank / Credit) */
+  .fin-accounts-group { background: var(--white); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+  .fin-accounts-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; cursor: pointer; gap: 12px; }
+  .fin-accounts-head:hover { background: rgba(255,255,255,0.02); }
+  .fin-accounts-toggle { background: transparent; border: none; color: rgba(245,245,247,0.65); font-family: var(--font-body); font-size: 11px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+  .fin-accounts-caret { display: inline-block; transition: transform 0.18s; }
+  .fin-accounts-group.collapsed .fin-accounts-caret { transform: rotate(-90deg); }
+  .fin-accounts-group.collapsed .fin-accounts-body { display: none; }
+  .fin-accounts-total { font-family: var(--font-display); font-size: 17px; font-weight: 800; color: var(--navy); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .fin-accounts-total.negative { color: #ff7a6b; }
+  .fin-accounts-body { padding: 0 18px 12px; }
+  .fin-accounts-body .fin-row .value.negative { color: #ff7a6b; }
+
   /* ===== Health rings + streaks ===== */
   .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 18px; }
   .health-card { background: var(--white); border: 1px solid var(--navy-faint); border-radius: 12px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
@@ -4690,9 +4723,10 @@ function renderFinance(d){
   const ccMonths = cc.months ?? 0;
   const capacityTier = ccMonths >= 3 ? '' : (ccMonths >= 1 ? 'warning' : 'short');
   const ccBarPct = Math.min(100, cc.pctToGoal || 0);
+  const ccCollapsed = localStorage.getItem('lrl-fin-cap-collapsed') === '1' ? 'collapsed' : '';
   const capacityHero = `
-    <div class="fin-capacity ${capacityTier}">
-      <div class="fin-cap-label">Cash Capacity</div>
+    <div class="fin-capacity ${capacityTier} ${ccCollapsed}" id="fin-capacity">
+      <button class="fin-cap-toggle" id="fin-cap-toggle"><span class="fin-cap-caret">▾</span> Cash Capacity</button>
       <div class="fin-cap-row">
         <div class="fin-cap-months">${ccMonths}<span class="unit">mo</span></div>
         <div>
@@ -4717,41 +4751,44 @@ function renderFinance(d){
   const burnLine = d.monthlyBurn > 0 ? `Burn ~${fmtMoneyFull(d.monthlyBurn)}/mo (last 3mo avg)` : 'Not enough history yet';
   const netNeg = d.mtdNet < 0;
 
-  const accountsRows = (d.accounts || []).length
-    ? d.accounts.map(a => `<div class="fin-row"><span class="label">${escapeHtml(a.name)}</span><span class="value">${fmtMoneyFull(a.balance)}</span></div>`).join('')
-      + `<div class="fin-row total"><span class="label">Total cash</span><span class="value">${fmtMoneyFull(d.cashOnHand)}</span></div>`
+  // Account group helpers
+  const bankRows = (d.bankAccounts || []).length
+    ? d.bankAccounts.map(a => `<div class="fin-row"><span class="label">${escapeHtml(a.name)}</span><span class="value">${fmtMoneyFull(a.balance)}</span></div>`).join('')
     : '<div class="fin-row"><span class="label" style="color:rgba(245,245,247,0.45)">No bank accounts found</span></div>';
+  const ccRows = (d.creditCards || []).length
+    ? d.creditCards.map(a => `<div class="fin-row"><span class="label">${escapeHtml(a.name)}</span><span class="value ${a.balance < 0 ? 'negative' : ''}">${fmtMoneyFull(a.balance)}</span></div>`).join('')
+    : '<div class="fin-row"><span class="label" style="color:rgba(245,245,247,0.45)">No credit cards found</span></div>';
+  const bankCollapsed = localStorage.getItem('lrl-fin-bank-collapsed') === '1' ? 'collapsed' : '';
+  const ccCardsCollapsed = localStorage.getItem('lrl-fin-cc-collapsed') === '1' ? 'collapsed' : '';
 
   const html = `
     ${capacityHero}
     <div class="fin-kpi-grid">
-      <div class="fin-kpi cash">
-        <div class="fin-kpi-label">Cash on hand</div>
-        <div class="fin-kpi-value">${fmtMoneyFull(d.cashOnHand)}</div>
-        <div class="fin-kpi-meta">${(d.accounts||[]).length} account${(d.accounts||[]).length===1?'':'s'}</div>
+      <div class="fin-kpi rev-mtd">
+        <div class="fin-kpi-label">MTD Revenue</div>
+        <div class="fin-kpi-value">${fmtMoneyFull(d.mtdRevenue)}</div>
+        <div class="fin-kpi-meta">Expenses ${fmtMoneyFull(d.mtdExpenses)}</div>
+      </div>
+      <div class="fin-kpi rev-qtd">
+        <div class="fin-kpi-label">QTD Revenue</div>
+        <div class="fin-kpi-value">${fmtMoneyFull(d.qtdRevenue || 0)}</div>
+        <div class="fin-kpi-meta">Expenses ${fmtMoneyFull(d.qtdExpenses || 0)}</div>
+      </div>
+      <div class="fin-kpi rev-ytd">
+        <div class="fin-kpi-label">YTD Revenue</div>
+        <div class="fin-kpi-value">${fmtMoneyFull(d.ytdRevenue || 0)}</div>
+        <div class="fin-kpi-meta">Expenses ${fmtMoneyFull(d.ytdExpenses || 0)}</div>
       </div>
       <div class="fin-kpi runway ${runwayShort ? 'short' : ''}">
         <div class="fin-kpi-label">Actual runway</div>
         <div class="fin-kpi-value">${runwayDisplay}</div>
         <div class="fin-kpi-meta">${burnLine}</div>
       </div>
-      <div class="fin-kpi revenue">
-        <div class="fin-kpi-label">MTD revenue</div>
-        <div class="fin-kpi-value">${fmtMoneyFull(d.mtdRevenue)}</div>
-        <div class="fin-kpi-meta">Expenses ${fmtMoneyFull(d.mtdExpenses)}</div>
-      </div>
       <div class="fin-kpi net ${netNeg ? 'negative' : ''}">
         <div class="fin-kpi-label">MTD net</div>
         <div class="fin-kpi-value">${fmtMoneyFull(d.mtdNet)}</div>
         <div class="fin-kpi-meta">${netNeg ? 'In the red this month' : 'In the black'}</div>
       </div>
-    </div>
-
-    <div class="fin-card">
-      <div class="fin-card-head">
-        <div class="fin-card-title">Bank accounts</div>
-      </div>
-      ${accountsRows}
     </div>
 
     <div class="fin-twocol">
@@ -4771,9 +4808,47 @@ function renderFinance(d){
       </div>
     </div>
 
+    <div class="fin-accounts-group ${bankCollapsed}" id="fin-bank-group">
+      <div class="fin-accounts-head" data-toggle="bank">
+        <button class="fin-accounts-toggle"><span class="fin-accounts-caret">▾</span> Bank Accounts</button>
+        <span class="fin-accounts-total">${fmtMoneyFull(d.bankTotal || 0)}</span>
+      </div>
+      <div class="fin-accounts-body">${bankRows}</div>
+    </div>
+
+    <div class="fin-accounts-group ${ccCardsCollapsed}" id="fin-cc-group">
+      <div class="fin-accounts-head" data-toggle="cc">
+        <button class="fin-accounts-toggle"><span class="fin-accounts-caret">▾</span> Credit Cards</button>
+        <span class="fin-accounts-total ${(d.creditTotal || 0) < 0 ? 'negative' : ''}">${fmtMoneyFull(d.creditTotal || 0)}</span>
+      </div>
+      <div class="fin-accounts-body">${ccRows}</div>
+    </div>
+
     <div class="fin-as-of">As of ${new Date(d.asOf).toLocaleString('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</div>
   `;
   body.innerHTML = html;
+  attachFinanceHandlers();
+}
+
+function attachFinanceHandlers(){
+  document.getElementById('fin-cap-toggle')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const card = document.getElementById('fin-capacity');
+    if (!card) return;
+    card.classList.toggle('collapsed');
+    localStorage.setItem('lrl-fin-cap-collapsed', card.classList.contains('collapsed') ? '1' : '0');
+    window.lrl?.haptic('tap');
+  });
+  document.querySelectorAll('#finance-body .fin-accounts-head').forEach(head => {
+    head.addEventListener('click', (e) => {
+      const group = head.closest('.fin-accounts-group');
+      if (!group) return;
+      group.classList.toggle('collapsed');
+      const key = head.dataset.toggle === 'bank' ? 'lrl-fin-bank-collapsed' : 'lrl-fin-cc-collapsed';
+      localStorage.setItem(key, group.classList.contains('collapsed') ? '1' : '0');
+      window.lrl?.haptic('tap');
+    });
+  });
 }
 
 function maybeLoadFinance(){
