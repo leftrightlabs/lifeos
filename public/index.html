@@ -219,7 +219,7 @@
   /* === Daily gamification: lock/unlock/cleared states === */
   .quest-panel-locked { position: relative; opacity: 0.55; transition: opacity 0.5s ease; }
   .quest-panel-locked::after {
-    content: '🔒  Finish morning ritual to unlock';
+    content: '🔒  Finish morning routine to unlock';
     position: absolute;
     top: 16px; right: 18px;
     font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
@@ -1323,7 +1323,12 @@
   .privacy-on .fin-row .value,
   .privacy-on .kpi-value,
   .privacy-on .kpi-change,
-  .privacy-on .progress-large .progress-header {
+  .privacy-on .progress-large .progress-header,
+  .privacy-on .quest-text,
+  .privacy-on .quest-sub,
+  .privacy-on .cal-event-title,
+  .privacy-on .cal-allday-pill,
+  .privacy-on .review-item-name {
     filter: blur(10px);
     user-select: none;
     -webkit-user-select: none;
@@ -1337,7 +1342,12 @@
   .privacy-on .fin-cap-months:active,
   .privacy-on .fin-cap-amount:active,
   .privacy-on .fin-row .value:active,
-  .privacy-on .kpi-value:active { filter: blur(0); }
+  .privacy-on .kpi-value:active,
+  .privacy-on .quest-text:active,
+  .privacy-on .quest-sub:active,
+  .privacy-on .cal-event-title:active,
+  .privacy-on .cal-allday-pill:active,
+  .privacy-on .review-item-name:active { filter: blur(0); }
 
   /* =====================================================================
      PREMIUM POLISH — Tier 1: tap feedback, spring checks, toast, confetti
@@ -1828,7 +1838,7 @@ window.lrl = (function(){
       <div class="day-path-stage" data-stage="ritual" data-action="jump-ritual">
         <span class="day-path-dot"></span>
         <div class="day-path-body">
-          <div class="day-path-label">Ritual</div>
+          <div class="day-path-label">Routine</div>
           <div class="day-path-meta" id="day-path-ritual-meta">0 of 5 done</div>
         </div>
       </div>
@@ -1882,7 +1892,7 @@ window.lrl = (function(){
     <div class="ritual-card morning-only" id="ritual-card">
       <div class="ritual-head">
         <button class="ritual-toggle" id="ritual-toggle" title="Collapse/expand">
-          <span id="ritual-caret">▾</span> Morning Ritual
+          <span id="ritual-caret">▾</span> Morning Routine
         </button>
         <div class="ritual-status" id="ritual-status">0 of 4 done</div>
       </div>
@@ -1961,7 +1971,7 @@ window.lrl = (function(){
     <div class="ritual-card evening" id="evening-card">
       <div class="ritual-head">
         <button class="ritual-toggle" id="evening-toggle" title="Collapse/expand">
-          <span id="evening-caret">▾</span> Evening Ritual
+          <span id="evening-caret">▾</span> Evening Routine
         </button>
         <div class="ritual-status" id="evening-status">0 of 6 done</div>
       </div>
@@ -2812,7 +2822,7 @@ function toggleRitualStep(step){
   const nowAllDone = RITUAL_STEPS.every(k => state[k]);
   if (nowAllDone && !wasAllDone) {
     window.lrl?.confetti({ count: 60 });
-    window.lrl?.toast('Ritual complete · Quest unlocked', 'success');
+    window.lrl?.toast('Routine complete · Quest unlocked', 'success');
     // Pulse the unlocked Today's Quest panel
     const qp = document.getElementById('quest-panel');
     if (qp) {
@@ -3062,7 +3072,7 @@ function toggleEveningStep(step){
   const nowAllDone = visibleEveningSteps().every(k => state[k]);
   if (nowAllDone && !wasAllDone){
     window.lrl?.confetti({ count: 40 });
-    window.lrl?.toast('Evening ritual complete · Sleep well', 'success');
+    window.lrl?.toast('Evening routine complete · Sleep well', 'success');
   }
   renderEvening();
 }
