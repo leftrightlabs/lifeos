@@ -1477,10 +1477,10 @@
   .privacy-on .comms-snippet,
   /* Sales pipeline — NDA-protected client data: names, deal values, recon */
   .privacy-on #sales-body .mkt-kpi .k-num,
-  .privacy-on .sales-deal-name,
-  .privacy-on .sales-deal-val,
+  .privacy-on .sales-card-name,
+  .privacy-on .sales-card-val,
   .privacy-on .sales-badge.prod,
-  .privacy-on .sales-stage-meta b,
+  .privacy-on .sales-col-meta b,
   .privacy-on .sales-win-name,
   .privacy-on .sales-win-val,
   .privacy-on .sales-detail-name,
@@ -1513,10 +1513,10 @@
   .privacy-on .comms-subject:active,
   .privacy-on .comms-snippet:active,
   .privacy-on #sales-body .mkt-kpi .k-num:active,
-  .privacy-on .sales-deal-name:active,
-  .privacy-on .sales-deal-val:active,
+  .privacy-on .sales-card-name:active,
+  .privacy-on .sales-card-val:active,
   .privacy-on .sales-badge.prod:active,
-  .privacy-on .sales-stage-meta b:active,
+  .privacy-on .sales-col-meta b:active,
   .privacy-on .sales-win-name:active,
   .privacy-on .sales-win-val:active,
   .privacy-on .sales-detail-name:active,
@@ -1940,7 +1940,23 @@
   .mkt-kpi .k-lab { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-dim); font-weight: 600; margin-top: 6px; }
   .mkt-kpi.alert .k-num { color: #ff7a6b; }
   .mkt-kpi.today .k-num { color: var(--lime); }
-  @container mktbody (max-width: 560px) { .mkt-kpis { grid-template-columns: repeat(2, 1fr); } }
+  .mkt-kpi.okr .k-num { color: var(--lime); }
+  .mkt-kpis-okr { grid-template-columns: repeat(3, 1fr); }
+  .mkt-strip-label { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; margin: 4px 2px 8px; }
+  @container mktbody (max-width: 560px) { .mkt-kpis { grid-template-columns: repeat(2, 1fr); } .mkt-kpis-okr { grid-template-columns: repeat(3, 1fr); } }
+  @container mktbody (max-width: 380px) { .mkt-kpis-okr { grid-template-columns: 1fr; } }
+
+  /* Per-channel published bar chart */
+  .mkt-chart { display: flex; flex-direction: column; gap: 7px; }
+  .mkt-chart-row { display: flex; align-items: center; gap: 10px; }
+  .mkt-chart-label { width: 134px; font-size: 12px; color: var(--navy); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+  .mkt-chart-track { flex: 1; height: 18px; background: rgba(255,255,255,0.04); border-radius: 5px; overflow: hidden; }
+  .mkt-chart-fill { height: 100%; border-radius: 5px; min-width: 4px; transition: width 0.4s ease; background: var(--navy-dim); }
+  .mkt-chart-fill.linkedin { background: #5d9cec; } .mkt-chart-fill.instagram { background: #e1306c; }
+  .mkt-chart-fill.facebook { background: #4267b2; } .mkt-chart-fill.youtube { background: #ff4a3d; }
+  .mkt-chart-fill.email { background: #a78bfa; } .mkt-chart-fill.blog { background: var(--lime); }
+  .mkt-chart-count { width: 26px; text-align: right; font-size: 12.5px; font-weight: 700; color: var(--navy); flex-shrink: 0; }
+  @container mktbody (max-width: 460px) { .mkt-chart-label { width: 100px; font-size: 11px; } }
 
   .mkt-section { background: var(--white); border: 1px solid var(--navy-faint); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
   .mkt-sec-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; cursor: pointer; user-select: none; }
@@ -2069,6 +2085,30 @@
 
   /* =========================== SALES TAB =========================== */
   #sales-body { container: salesbody / inline-size; }
+  /* Kanban board: stacked columns on mobile, left-to-right columns on desktop */
+  .sales-board { display: flex; flex-direction: column; gap: 12px; }
+  .sales-col { background: rgba(255,255,255,0.02); border: 1px solid var(--navy-faint); border-radius: 10px; padding: 10px 10px 4px; }
+  .sales-col-head { display: flex; align-items: center; gap: 8px; padding: 2px 2px 8px; }
+  .sales-col-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--navy-dim); }
+  .sales-col-dot.s0,.sales-col-dot.s1 { background: var(--navy-dim); }
+  .sales-col-dot.s2,.sales-col-dot.s3 { background: #a7c0e8; }
+  .sales-col-dot.s4,.sales-col-dot.s5 { background: #f0c36a; }
+  .sales-col-dot.s6,.sales-col-dot.s7 { background: var(--lime); }
+  .sales-col-name { font-size: 12px; font-weight: 700; color: var(--navy); letter-spacing: 0.02em; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sales-col-meta { font-size: 11px; color: var(--navy-dim); font-weight: 600; white-space: nowrap; }
+  .sales-col-meta b { color: var(--lime); font-weight: 700; }
+  .sales-col-body { display: flex; flex-direction: column; gap: 8px; padding-bottom: 6px; }
+  .sales-card { background: var(--white); border: 1px solid var(--navy-faint); border-radius: 8px; padding: 10px 11px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+  .sales-card:hover { border-color: var(--navy); background: var(--gray-100); }
+  .sales-card:active { transform: scale(0.99); }
+  .sales-card-name { font-size: 13px; font-weight: 600; color: var(--navy); line-height: 1.3; }
+  .sales-card-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+  .sales-card-val { font-family: var(--font-display); font-size: 15px; font-weight: 800; color: var(--navy); margin-right: auto; }
+  .sales-card-val.zero { color: var(--navy-dim); font-weight: 600; }
+  @container salesbody (min-width: 680px) {
+    .sales-board { flex-direction: row; align-items: flex-start; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x proximity; }
+    .sales-col { flex: 1 0 210px; max-width: 320px; scroll-snap-align: start; align-self: stretch; }
+  }
   /* Stage subgroup inside the pipeline section */
   .sales-stage { margin-top: 10px; }
   .sales-stage-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,0.03); cursor: pointer; user-select: none; }
@@ -6458,13 +6498,19 @@ document.addEventListener('visibilitychange', async () => {
     MKT.cal = d; MKT.calMonth = d.month || m;
     return d;
   }
+  async function fetchMktStats(fresh){
+    const r = await fetch('/api/marketing/stats' + (fresh?'?fresh=1':''));
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    MKT.stats = d; return d;
+  }
 
   async function maybeLoadMarketing(){
     if (MKT.loaded || MKT.loading) return;
     MKT.loading = true;
     const body = document.getElementById('mkt-body');
     try {
-      await Promise.all([ fetchMktToday(true), fetchMktCalendar(chiMonth(), true) ]);
+      await Promise.all([ fetchMktToday(true), fetchMktCalendar(chiMonth(), true), fetchMktStats(true) ]);
       MKT.loaded = true;
       renderMktBody();
     } catch(err){
@@ -6588,6 +6634,22 @@ document.addEventListener('visibilitychange', async () => {
     const todayN = q.filter(([b])=>b==='today').length;
     const today = chiToday();
 
+    // OKR strip — published output against the quarterly lens.
+    const stats = MKT.stats || {};
+    const okrStrip = `<div class="mkt-strip-label">Published Output${stats.quarterLabel?' · '+mEsc(stats.quarterLabel):''}</div>
+    <div class="mkt-kpis mkt-kpis-okr">
+      <div class="mkt-kpi okr"><div class="k-num">${stats.publishedQuarter??'—'}</div><div class="k-lab">This Quarter</div></div>
+      <div class="mkt-kpi"><div class="k-num">${stats.publishedMonth??'—'}</div><div class="k-lab">This Month</div></div>
+      <div class="mkt-kpi"><div class="k-num">${stats.publishedYear??'—'}</div><div class="k-lab">This Year</div></div>
+    </div>`;
+
+    const byChan = (stats.byChannel||[]);
+    const maxCh = byChan.reduce((m,c)=>Math.max(m,c.count),0) || 1;
+    const chartInner = byChan.length
+      ? `<div class="mkt-chart">${byChan.map(c=>`<div class="mkt-chart-row"><span class="mkt-chart-label" title="${mEsc(c.name)}">${mEsc(c.name)}</span><span class="mkt-chart-track"><span class="mkt-chart-fill ${c.platform}" style="width:${Math.round(c.count/maxCh*100)}%"></span></span><span class="mkt-chart-count">${c.count}</span></div>`).join('')}</div>`
+      : '<div class="mkt-empty">Nothing published this quarter yet.</div>';
+
+    const opLabel = `<div class="mkt-strip-label">Right Now</div>`;
     const kpis = `<div class="mkt-kpis">
       <div class="mkt-kpi ${overdueN?'alert':''}"><div class="k-num">${overdueN}</div><div class="k-lab">Overdue</div></div>
       <div class="mkt-kpi today"><div class="k-num">${todayN}</div><div class="k-lab">Due Today</div></div>
@@ -6598,7 +6660,9 @@ document.addEventListener('visibilitychange', async () => {
     const queueInner = q.length ? q.map(([b,a])=>cardHtml(a,b)).join('') : '<div class="mkt-empty">Nothing to publish right now — you\'re all caught up. 🎉</div>';
     const weekInner = week.length ? week.map(a=>`<div class="mkt-row" data-mkt-open="${a.id}"><span class="mkt-row-date">${dateChip(a.publishDate)}</span><span class="mkt-row-name">${mEsc(a.name)}</span><span class="mkt-status ${statusCls(a.status)}">${mEsc(a.status||'—')}</span></div>`).join('') : '<div class="mkt-empty">Nothing scheduled in the next 7 days.</div>';
 
-    body.innerHTML = kpis
+    body.innerHTML = okrStrip
+      + section('bychannel','By Channel'+(stats.quarterLabel?' · '+mEsc(stats.quarterLabel):''), byChan.reduce((n,c)=>n+c.count,0), false, chartInner)
+      + opLabel + kpis
       + section('queue','Publish Queue', q.length, overdueN>0, queueInner)
       + section('week','This Week', week.length, false, weekInner)
       + section('cal','Content Calendar', (MKT.cal&&MKT.cal.days)?Object.values(MKT.cal.days).reduce((n,a)=>n+a.length,0):0, false, calendarHtml());
@@ -6679,7 +6743,7 @@ document.addEventListener('visibilitychange', async () => {
   document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') closeMktModal(); });
 
   // Refresh hook: re-pull marketing when the global Refresh fires (if loaded)
-  window.addEventListener('lrl-refresh', async ()=>{ if(!MKT.loaded) return; try{ await Promise.all([fetchMktToday(true), fetchMktCalendar(MKT.calMonth||chiMonth(),true)]); renderMktBody(); }catch(_){} });
+  window.addEventListener('lrl-refresh', async ()=>{ if(!MKT.loaded) return; try{ await Promise.all([fetchMktToday(true), fetchMktCalendar(MKT.calMonth||chiMonth(),true), fetchMktStats(true)]); renderMktBody(); }catch(_){} });
 })();
 </script>
 
@@ -6707,29 +6771,27 @@ document.addEventListener('visibilitychange', async () => {
   }
   window.maybeLoadSales = maybeLoadSales;
 
-  function dealRow(d){
+  function dealCard(d){
     const subs=[];
     if (d.typeOfSale) subs.push(`<span class="sales-badge type">${esc(d.typeOfSale)}</span>`);
     const nd = d.callCompleted || d.callBooked;
     if (nd) subs.push(`<span class="sales-badge date">${d.callBooked&&!d.callCompleted?'call ':''}${dchip(nd)}</span>`);
-    (d.products||[]).slice(0,2).forEach(p=>subs.push(`<span class="sales-badge prod">${esc(p)}</span>`));
+    (d.products||[]).slice(0,1).forEach(p=>subs.push(`<span class="sales-badge prod">${esc(p)}</span>`));
     if (d.hasRecon) subs.push('<span class="sales-badge recon">Recon</span>');
-    return `<div class="sales-deal" data-sales-open="${d.id}">
-      <div class="sales-deal-main"><div class="sales-deal-name">${esc(d.name)}</div><div class="sales-deal-sub">${subs.join('')}</div></div>
-      <div class="sales-deal-val ${d.value?'':'zero'}">${money(d.value)}</div>
+    return `<div class="sales-card" data-sales-open="${d.id}">
+      <div class="sales-card-name">${esc(d.name)}</div>
+      <div class="sales-card-row"><span class="sales-card-val ${d.value?'':'zero'}">${money(d.value)}</span>${subs.join('')}</div>
     </div>`;
   }
-  function stageBlock(st){
+  function stageColumn(st){
     const idx=STAGES.indexOf(st.name);
-    const key='stage:'+st.name; const collapsed=!!S.collapsed[key];
-    return `<div class="sales-stage${collapsed?' collapsed':''}" data-stage="${esc(st.name)}">
-      <div class="sales-stage-head" data-sales-stage-toggle="${esc(st.name)}">
-        <span class="sales-stage-caret">▾</span>
-        <span class="sales-stage-dot s${idx}"></span>
-        <span class="sales-stage-name">${esc(st.name)}</span>
-        <span class="sales-stage-meta">${st.count} · <b>${money(st.value)}</b></span>
+    return `<div class="sales-col" data-stage="${esc(st.name)}">
+      <div class="sales-col-head">
+        <span class="sales-col-dot s${idx}"></span>
+        <span class="sales-col-name" title="${esc(st.name)}">${esc(st.name)}</span>
+        <span class="sales-col-meta">${st.count} · <b>${money(st.value)}</b></span>
       </div>
-      <div class="sales-stage-body">${st.deals.map(dealRow).join('')}</div>
+      <div class="sales-col-body">${st.deals.map(dealCard).join('')}</div>
     </div>`;
   }
   function section(key,title,count,inner){
@@ -6748,7 +6810,7 @@ document.addEventListener('visibilitychange', async () => {
       <div class="mkt-kpi"><div class="k-num">${d.winRate==null?'—':d.winRate+'%'}</div><div class="k-lab">Win Rate (Qtr)</div></div>
     </div>`;
     const stages=(d.stages||[]);
-    const pipeInner = stages.length ? stages.map(stageBlock).join('') : '<div class="mkt-empty">No open deals right now.</div>';
+    const pipeInner = stages.length ? `<div class="sales-board">${stages.map(stageColumn).join('')}</div>` : '<div class="mkt-empty">No open deals right now.</div>';
     const wins=(d.recentWins||[]);
     const winsInner = wins.length ? wins.map(w=>`<div class="sales-win" data-sales-open="${w.id}"><span class="sales-win-name">${esc(w.name)}</span><span class="sales-win-date">${w.dateWon?dchip(w.dateWon):''}</span><span class="sales-win-val">${money(w.value)}</span></div>`).join('') : '<div class="mkt-empty">No closed-won deals yet.</div>';
     body.innerHTML = kpis
@@ -6799,8 +6861,6 @@ document.addEventListener('visibilitychange', async () => {
     const t=e.target;
     const sec=t.closest('[data-sales-toggle]');
     if (sec){ const k=sec.dataset.salesToggle; S.collapsed[k]=!S.collapsed[k]; saveCollapse(); sec.closest('.mkt-section').classList.toggle('collapsed'); return; }
-    const stg=t.closest('[data-sales-stage-toggle]');
-    if (stg){ const k='stage:'+stg.dataset.salesStageToggle; S.collapsed[k]=!S.collapsed[k]; saveCollapse(); stg.closest('.sales-stage').classList.toggle('collapsed'); return; }
     const op=t.closest('[data-sales-open]');
     if (op){ openSalesDeal(op.dataset.salesOpen); return; }
     const won=t.closest('[data-sales-won]');

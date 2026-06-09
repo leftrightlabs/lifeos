@@ -2843,6 +2843,57 @@ app.get('/api/marketing/today', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// GET /api/marketing/stats — OKR-shaped output: published counts for the
+// quarter / month / year, plus a per-channel breakdown for the quarter.
+app.get('/api/marketing/stats', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    if (req.query.fresh === '1') cache.delete('marketing-stats');
+    const data = await cached('marketing-stats', async () => {
+      const channelMap = await fetchMarketingChannelMap();
+      const today = chicagoTodayISODate();
+      const q = currentQuarter();
+      const yearStart = today.slice(0, 4) + '-01-01';
+      const monthStart = today.slice(0, 7) + '-01';
+      // Pull everything published since the start of the year (covers all 3 windows).
+      const pages = [];
+      let cursor;
+      do {
+        const r = await notion.dataSources.query({
+          data_source_id: MARKETING_ASSETS_DS,
+          filter: { and: [
+            { property: 'Status', status: { equals: 'Published' } },
+            { property: 'Publish Date', date: { on_or_after: yearStart } },
+          ] },
+          page_size: 100,
+          start_cursor: cursor,
+        });
+        pages.push(...r.results);
+        cursor = r.has_more ? r.next_cursor : null;
+      } while (cursor);
+      const assets = pages.map((pg) => serializeMarketingAsset(pg, channelMap));
+      let publishedYear = 0, publishedQuarter = 0, publishedMonth = 0;
+      const channelTally = {};
+      const channelPlatform = {};
+      for (const a of assets) {
+        const d = a.publishDate; if (!d) continue;
+        publishedYear++;
+        if (d >= monthStart && d <= today) publishedMonth++;
+        if (d >= q.start && d <= q.end) {
+          publishedQuarter++;
+          // Tally where it went (targeted channels ∪ channels with a live URL).
+          for (const c of a.channels) { channelTally[c.name] = (channelTally[c.name] || 0) + 1; channelPlatform[c.name] = c.platform; }
+        }
+      }
+      const byChannel = Object.entries(channelTally)
+        .map(([name, count]) => ({ name, count, platform: channelPlatform[name] || 'other' }))
+        .sort((a, b) => b.count - a.count);
+      return { quarterLabel: q.label, publishedQuarter, publishedMonth, publishedYear, byChannel };
+    });
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // GET /api/marketing/calendar?month=YYYY-MM — lightweight month grid data.
 app.get('/api/marketing/calendar', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
