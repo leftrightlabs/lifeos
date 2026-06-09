@@ -2041,6 +2041,72 @@
   .mkt-modal.open .mkt-modal-content { animation: lrl-modal-pop 0.3s cubic-bezier(0.34,1.56,0.64,1); }
   .mkt-modal-content .mkt-card { margin-top: 0; border: none; }
   .mkt-modal-close { position: sticky; top: 0; float: right; background: transparent; border: none; color: var(--navy-dim); font-size: 24px; cursor: pointer; padding: 10px 16px; z-index: 2; }
+
+  /* =========================== SALES TAB =========================== */
+  #sales-body { container: salesbody / inline-size; }
+  /* Stage subgroup inside the pipeline section */
+  .sales-stage { margin-top: 10px; }
+  .sales-stage-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,0.03); cursor: pointer; user-select: none; }
+  .sales-stage-head:hover { background: rgba(255,255,255,0.05); }
+  .sales-stage-caret { color: var(--navy-dim); font-size: 11px; transition: transform 0.2s; }
+  .sales-stage.collapsed .sales-stage-caret { transform: rotate(-90deg); }
+  .sales-stage-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--navy-dim); }
+  .sales-stage-name { font-size: 12.5px; font-weight: 700; color: var(--navy); letter-spacing: 0.02em; flex: 1; }
+  .sales-stage-meta { font-size: 11.5px; color: var(--navy-dim); font-weight: 600; }
+  .sales-stage-meta b { color: var(--lime); font-weight: 700; }
+  .sales-stage.collapsed .sales-stage-body { display: none; }
+  /* stage dot accents along the funnel */
+  .sales-stage-dot.s0,.sales-stage-dot.s1 { background: var(--navy-dim); }
+  .sales-stage-dot.s2,.sales-stage-dot.s3 { background: #a7c0e8; }
+  .sales-stage-dot.s4,.sales-stage-dot.s5 { background: #f0c36a; }
+  .sales-stage-dot.s6,.sales-stage-dot.s7 { background: var(--lime); }
+
+  .sales-deal { display: flex; align-items: center; gap: 10px; padding: 11px 10px; border-bottom: 1px solid var(--navy-faint); cursor: pointer; }
+  .sales-deal:last-child { border-bottom: none; }
+  .sales-deal:hover { background: rgba(255,255,255,0.02); }
+  .sales-deal-main { flex: 1; min-width: 0; }
+  .sales-deal-name { font-size: 13.5px; color: var(--navy); font-weight: 600; line-height: 1.3; }
+  .sales-deal-sub { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
+  .sales-deal-val { font-family: var(--font-display); font-size: 15px; font-weight: 800; color: var(--navy); white-space: nowrap; flex-shrink: 0; }
+  .sales-deal-val.zero { color: var(--navy-dim); font-weight: 600; }
+  .sales-badge { font-size: 10px; font-weight: 600; letter-spacing: 0.03em; padding: 2px 7px; border-radius: 4px; background: rgba(255,255,255,0.06); color: var(--navy-dim); }
+  .sales-badge.type { background: rgba(122,157,216,0.16); color: #a7c0e8; }
+  .sales-badge.date { color: var(--navy-dim); }
+  .sales-badge.prod { background: rgba(167,193,64,0.14); color: var(--lime); }
+  .sales-badge.recon { background: rgba(240,195,106,0.14); color: #e0b15a; }
+
+  /* stage pill (detail modal + recent wins) */
+  .sales-pill { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: rgba(255,255,255,0.08); color: var(--navy-dim); }
+  .sales-pill.open { background: rgba(122,157,216,0.18); color: #a7c0e8; }
+  .sales-pill.won { background: rgba(167,193,64,0.18); color: var(--lime); }
+  .sales-pill.lost { background: rgba(255,122,107,0.16); color: #ff9b8e; }
+
+  .sales-win { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-bottom: 1px solid var(--navy-faint); cursor: pointer; }
+  .sales-win:last-child { border-bottom: none; }
+  .sales-win:hover { background: rgba(255,255,255,0.02); }
+  .sales-win-name { flex: 1; min-width: 0; font-size: 13px; color: var(--navy); }
+  .sales-win-date { font-size: 11px; color: var(--navy-dim); white-space: nowrap; }
+  .sales-win-val { font-family: var(--font-display); font-weight: 800; color: var(--lime); white-space: nowrap; }
+
+  /* Detail modal body */
+  .sales-detail { padding: 16px; }
+  .sales-detail-top { display: flex; align-items: flex-start; gap: 10px; }
+  .sales-detail-name { font-size: 17px; font-weight: 800; color: var(--navy); line-height: 1.25; flex: 1; }
+  .sales-detail-val { font-family: var(--font-display); font-size: 26px; font-weight: 800; color: var(--navy); margin: 10px 0 4px; }
+  .sales-detail-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px 16px; margin: 12px 0; }
+  .sales-fact { font-size: 12px; }
+  .sales-fact .l { color: var(--navy-dim); text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; font-weight: 700; }
+  .sales-fact .v { color: var(--navy); margin-top: 2px; }
+  .sales-recon { margin-top: 14px; border-top: 1px solid var(--navy-faint); padding-top: 12px; }
+  .sales-recon-head { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; margin-bottom: 8px; }
+  .sales-recon-body { font-size: 13px; line-height: 1.55; color: var(--navy); white-space: pre-wrap; word-break: break-word; max-height: 320px; overflow-y: auto; background: rgba(0,0,0,0.12); border-radius: 8px; padding: 12px; }
+  .sales-detail-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--navy-faint); }
+  .sales-sel { background: rgba(0,0,0,0.2); border: 1px solid var(--navy-faint); color: var(--navy); border-radius: 6px; padding: 6px 8px; font-size: 12px; font-family: var(--font-body); color-scheme: dark; }
+  .sales-btn { font-size: 12px; font-weight: 700; border: none; border-radius: 6px; padding: 7px 14px; cursor: pointer; }
+  .sales-btn.won { background: var(--lime); color: var(--navy-accent); }
+  .sales-btn.lost { background: rgba(255,122,107,0.16); color: #ff9b8e; border: 1px solid rgba(255,122,107,0.35); }
+  .sales-btn:disabled { opacity: 0.5; cursor: default; }
+  .sales-valedit { width: 110px; background: rgba(0,0,0,0.2); border: 1px solid var(--navy-faint); color: var(--navy); border-radius: 6px; padding: 6px 8px; font-size: 12px; font-family: var(--font-body); }
 </style>
 </head>
 <body>
@@ -2275,7 +2341,7 @@ window.lrl = (function(){
     <button class="tab" data-tab="autofocus" data-modes="all,work,personal">Focus</button>
     <button class="tab" data-tab="comms" data-modes="all,work,personal">Comms</button>
     <button class="tab" data-tab="review" data-modes="all,work,personal">Review</button>
-    <button class="tab" data-tab="pipeline" data-modes="work">Pipeline</button>
+    <button class="tab" data-tab="pipeline" data-modes="work">Sales</button>
     <button class="tab" data-tab="projects" data-modes="work">Projects</button>
     <button class="tab" data-tab="marketing" data-modes="work">Marketing</button>
     <button class="tab" data-tab="finance" data-modes="work">Finance</button>
@@ -2567,28 +2633,11 @@ window.lrl = (function(){
   <!-- PIPELINE TAB -->
   <div class="tab-content" data-content="pipeline">
     <div class="section-label">Sales Pipeline</div>
-    <h1 class="page-title"><span>Pipeline</span></h1>
-    <div class="page-subtitle">Where every deal sits in the offer ladder, and what to do next.</div>
-    <div class="kpi-grid">
-      <div class="kpi-card"><div class="kpi-label">Active Deals</div><div class="kpi-value"><span>12</span></div><div class="kpi-change">$48K total pipeline</div></div>
-      <div class="kpi-card"><div class="kpi-label">Close Rate (Q2)</div><div class="kpi-value"><span>38%</span></div><div class="kpi-change positive">↑ 8% vs Q1</div></div>
-      <div class="kpi-card"><div class="kpi-label">Avg Deal Size</div><div class="kpi-value"><span>$9.4K</span></div><div class="kpi-change">Breakthrough tier mode</div></div>
-      <div class="kpi-card"><div class="kpi-label">Days to Close</div><div class="kpi-value"><span>34</span></div><div class="kpi-change">From first touch</div></div>
-    </div>
-    <div class="panel">
-      <div class="panel-title"><span>Offer Ladder Flow</span></div>
-      <div class="stage-row"><div class="stage-label">Brand Advantage</div><div class="stage-bar"><div class="stage-fill warm" style="width: 80%"></div></div><div class="stage-value">28</div></div>
-      <div class="stage-row"><div class="stage-label">Get Clear Intensive</div><div class="stage-bar"><div class="stage-fill" style="width: 55%"></div></div><div class="stage-value">7</div></div>
-      <div class="stage-row"><div class="stage-label">Refresh ($5.5K)</div><div class="stage-bar"><div class="stage-fill" style="width: 35%"></div></div><div class="stage-value">3</div></div>
-      <div class="stage-row"><div class="stage-label">Breakthrough ($9.5K)</div><div class="stage-bar"><div class="stage-fill" style="width: 65%"></div></div><div class="stage-value">5</div></div>
-      <div class="stage-row"><div class="stage-label">Transformation</div><div class="stage-bar"><div class="stage-fill" style="width: 20%"></div></div><div class="stage-value">2</div></div>
-      <div class="stage-row"><div class="stage-label">Metamorphosis</div><div class="stage-bar"><div class="stage-fill" style="width: 10%"></div></div><div class="stage-value">1</div></div>
-    </div>
-    <div style="margin-top: 16px;" class="panel">
-      <div class="panel-title"><span>Active Opportunities</span></div>
-      <div style="font-size: 13px; color: var(--navy-dim); padding: 8px 0;">Placeholder — will pipe in once we connect Notion DEALS [DB].</div>
-    </div>
+    <h1 class="page-title"><span>Sales</span></h1>
+    <div class="page-subtitle">Every open deal by stage, what's closing, and the lead research behind each one.</div>
+    <div id="sales-body"><div style="color:var(--navy-dim);font-size:13px;padding:20px 0">loading…</div></div>
   </div>
+  <div class="mkt-modal" id="sales-modal"><div class="mkt-modal-content" id="sales-modal-content"></div></div>
 
   <!-- PROJECTS TAB -->
   <div class="tab-content" data-content="projects">
@@ -4509,6 +4558,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     if (tab.dataset.tab === 'health') maybeLoadHealth();
     if (tab.dataset.tab === 'finance') maybeLoadFinance();
     if (tab.dataset.tab === 'marketing') maybeLoadMarketing();
+    if (tab.dataset.tab === 'pipeline') maybeLoadSales();
   });
 });
 
@@ -6078,6 +6128,7 @@ document.addEventListener('keydown', (e) => {
       if (saved === 'health') maybeLoadHealth();
       if (saved === 'finance') maybeLoadFinance();
       if (saved === 'marketing') maybeLoadMarketing();
+      if (saved === 'pipeline') maybeLoadSales();
     }
   }
   // Apply mode (filters tab visibility + sets active button)
@@ -6604,6 +6655,149 @@ document.addEventListener('visibilitychange', async () => {
 
   // Refresh hook: re-pull marketing when the global Refresh fires (if loaded)
   window.addEventListener('lrl-refresh', async ()=>{ if(!MKT.loaded) return; try{ await Promise.all([fetchMktToday(true), fetchMktCalendar(MKT.calMonth||chiMonth(),true)]); renderMktBody(); }catch(_){} });
+})();
+</script>
+
+<!-- =========================== SALES PIPELINE =========================== -->
+<script>
+(function(){
+  const STAGES = ['New / To Qualify','Engaged / In Conversation','Consult Scheduled','No Show / Reschedule','Consult Completed','Build Scope','Decision Pending','On Hold','Closed Won','Closed Lost'];
+  const stageGroup = (s)=> s==='Closed Won'?'won':(s==='Closed Lost'?'lost':'open');
+  const COLLAPSE_KEY='lrl-sales-collapsed-v1';
+  const S = { loaded:false, loading:false, data:null, dealsById:{}, collapsed:{} };
+  try { S.collapsed = JSON.parse(localStorage.getItem(COLLAPSE_KEY)||'{}'); } catch(_){}
+  const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const money=(n)=> (n==null||n==='')?'—':'$'+Number(n).toLocaleString('en-US',{maximumFractionDigits:0});
+  const dchip=(ds)=>{ if(!ds) return ''; const dt=new Date(ds+'T12:00:00'); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
+  const saveCollapse=()=>{ try{localStorage.setItem(COLLAPSE_KEY,JSON.stringify(S.collapsed));}catch(_){} };
+
+  async function fetchSales(fresh){ const r=await fetch('/api/sales/pipeline'+(fresh?'?fresh=1':'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.data=d; (d.stages||[]).forEach(st=>st.deals.forEach(x=>S.dealsById[x.id]=x)); (d.recentWins||[]).forEach(x=>S.dealsById[x.id]=x); return d; }
+
+  async function maybeLoadSales(){
+    if (S.loaded||S.loading) return; S.loading=true;
+    const body=document.getElementById('sales-body');
+    try { await fetchSales(true); S.loaded=true; renderSales(); }
+    catch(err){ if(body) body.innerHTML=`<div class="mkt-empty">Couldn't load sales: ${esc(err.message)}</div>`; }
+    finally { S.loading=false; }
+  }
+  window.maybeLoadSales = maybeLoadSales;
+
+  function dealRow(d){
+    const subs=[];
+    if (d.typeOfSale) subs.push(`<span class="sales-badge type">${esc(d.typeOfSale)}</span>`);
+    const nd = d.callCompleted || d.callBooked;
+    if (nd) subs.push(`<span class="sales-badge date">${d.callBooked&&!d.callCompleted?'call ':''}${dchip(nd)}</span>`);
+    (d.products||[]).slice(0,2).forEach(p=>subs.push(`<span class="sales-badge prod">${esc(p)}</span>`));
+    if (d.hasRecon) subs.push('<span class="sales-badge recon">Recon</span>');
+    return `<div class="sales-deal" data-sales-open="${d.id}">
+      <div class="sales-deal-main"><div class="sales-deal-name">${esc(d.name)}</div><div class="sales-deal-sub">${subs.join('')}</div></div>
+      <div class="sales-deal-val ${d.value?'':'zero'}">${money(d.value)}</div>
+    </div>`;
+  }
+  function stageBlock(st){
+    const idx=STAGES.indexOf(st.name);
+    const key='stage:'+st.name; const collapsed=!!S.collapsed[key];
+    return `<div class="sales-stage${collapsed?' collapsed':''}" data-stage="${esc(st.name)}">
+      <div class="sales-stage-head" data-sales-stage-toggle="${esc(st.name)}">
+        <span class="sales-stage-caret">▾</span>
+        <span class="sales-stage-dot s${idx}"></span>
+        <span class="sales-stage-name">${esc(st.name)}</span>
+        <span class="sales-stage-meta">${st.count} · <b>${money(st.value)}</b></span>
+      </div>
+      <div class="sales-stage-body">${st.deals.map(dealRow).join('')}</div>
+    </div>`;
+  }
+  function section(key,title,count,inner){
+    const collapsed=!!S.collapsed[key];
+    return `<div class="mkt-section${collapsed?' collapsed':''}">
+      <div class="mkt-sec-head" data-sales-toggle="${key}"><span class="mkt-sec-caret">▾</span><span class="mkt-sec-title">${title}</span><span class="mkt-sec-count ${count===0?'zero':''}">${count}</span></div>
+      <div class="mkt-sec-body">${inner}</div>
+    </div>`;
+  }
+  function renderSales(){
+    const body=document.getElementById('sales-body'); if(!body) return; const d=S.data||{};
+    const kpis=`<div class="mkt-kpis">
+      <div class="mkt-kpi"><div class="k-num">${d.openCount||0}</div><div class="k-lab">Open Deals</div></div>
+      <div class="mkt-kpi"><div class="k-num">${money(d.openValue||0)}</div><div class="k-lab">Open Pipeline</div></div>
+      <div class="mkt-kpi today"><div class="k-num">${money((d.won&&d.won.value)||0)}</div><div class="k-lab">Won · ${esc(d.quarterLabel||'Qtr')}</div></div>
+      <div class="mkt-kpi"><div class="k-num">${d.winRate==null?'—':d.winRate+'%'}</div><div class="k-lab">Win Rate (Qtr)</div></div>
+    </div>`;
+    const stages=(d.stages||[]);
+    const pipeInner = stages.length ? stages.map(stageBlock).join('') : '<div class="mkt-empty">No open deals right now.</div>';
+    const wins=(d.recentWins||[]);
+    const winsInner = wins.length ? wins.map(w=>`<div class="sales-win" data-sales-open="${w.id}"><span class="sales-win-name">${esc(w.name)}</span><span class="sales-win-date">${w.dateWon?dchip(w.dateWon):''}</span><span class="sales-win-val">${money(w.value)}</span></div>`).join('') : '<div class="mkt-empty">No closed-won deals yet.</div>';
+    body.innerHTML = kpis
+      + section('pipeline','Pipeline', d.openCount||0, pipeInner)
+      + section('wins','Recent Wins', wins.length, winsInner);
+  }
+
+  function detailHtml(d){
+    const grp=stageGroup(d.status);
+    const facts=[];
+    facts.push(['Stage', `<span class="sales-pill ${grp}">${esc(d.status||'—')}</span>`]);
+    if (d.typeOfSale) facts.push(['Type of Sale', esc(d.typeOfSale)]);
+    if (d.callBooked) facts.push(['Call Booked', dchip(d.callBooked)]);
+    if (d.callCompleted) facts.push(['Call Completed', dchip(d.callCompleted)]);
+    if (d.dateWon) facts.push(['Date Won', dchip(d.dateWon)]);
+    if (d.dateLost) facts.push(['Date Lost', dchip(d.dateLost)]);
+    if (d.products&&d.products.length) facts.push(['Product Interest', d.products.map(esc).join(', ')]);
+    const reconBlock = d.recon&&d.recon.trim()
+      ? `<div class="sales-recon"><div class="sales-recon-head">Lead Research / Recon</div><div class="sales-recon-body">${esc(d.recon)}</div></div>`
+      : `<div class="sales-recon"><div class="sales-recon-head">Lead Research / Recon</div><div class="mkt-empty">No recon notes yet.</div></div>`;
+    return `<button class="mkt-modal-close" data-sales-close>×</button>
+      <div class="sales-detail">
+        <div class="sales-detail-top"><div class="sales-detail-name">${esc(d.name)}</div><span class="sales-pill ${grp}">${esc(d.status||'—')}</span></div>
+        <div class="sales-detail-val">${money(d.value)}</div>
+        <div class="sales-detail-grid">${facts.map(([l,v])=>`<div class="sales-fact"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('')}</div>
+        ${reconBlock}
+        <div class="sales-detail-actions">
+          <select class="sales-sel" data-sales-stage="${d.id}">${STAGES.map(s=>`<option ${s===d.status?'selected':''}>${s}</option>`).join('')}</select>
+          <input class="sales-valedit" data-sales-val="${d.id}" type="number" inputmode="decimal" value="${d.value==null?'':d.value}" placeholder="$ value">
+          <button class="sales-btn won" data-sales-won="${d.id}">Mark Won</button>
+          <button class="sales-btn lost" data-sales-lost="${d.id}">Lost</button>
+          <a class="mkt-openlink" href="${window.toNotionLink(d.url)}" target="_blank" rel="noopener">Open in Notion ↗</a>
+        </div>
+      </div>`;
+  }
+  async function openSalesDeal(id){
+    const modal=document.getElementById('sales-modal'); const el=document.getElementById('sales-modal-content');
+    el.innerHTML='<button class="mkt-modal-close" data-sales-close>×</button><div class="mkt-empty" style="padding:30px">Loading…</div>';
+    modal.classList.add('open'); document.body.style.overflow='hidden';
+    try { const r=await fetch('/api/sales/deal/'+id); const d=await r.json(); if(d.error) throw new Error(d.error); S.dealsById[d.deal.id]=d.deal; el.innerHTML=detailHtml(d.deal); }
+    catch(err){ el.innerHTML='<button class="mkt-modal-close" data-sales-close>×</button><div class="mkt-empty" style="padding:30px">'+esc(err.message)+'</div>'; }
+  }
+  function closeSalesModal(){ document.getElementById('sales-modal').classList.remove('open'); document.body.style.overflow=''; }
+
+  async function salesPatch(id,payload){ const r=await fetch('/api/sales/deal/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error||'save failed');} return r.json(); }
+
+  document.addEventListener('click', async (e)=>{
+    const t=e.target;
+    const sec=t.closest('[data-sales-toggle]');
+    if (sec){ const k=sec.dataset.salesToggle; S.collapsed[k]=!S.collapsed[k]; saveCollapse(); sec.closest('.mkt-section').classList.toggle('collapsed'); return; }
+    const stg=t.closest('[data-sales-stage-toggle]');
+    if (stg){ const k='stage:'+stg.dataset.salesStageToggle; S.collapsed[k]=!S.collapsed[k]; saveCollapse(); stg.closest('.sales-stage').classList.toggle('collapsed'); return; }
+    const op=t.closest('[data-sales-open]');
+    if (op){ openSalesDeal(op.dataset.salesOpen); return; }
+    const won=t.closest('[data-sales-won]');
+    if (won){ const id=won.dataset.salesWon; won.disabled=true; won.textContent='…'; try{ await salesPatch(id,{status:'Closed Won'}); window.lrl?.haptic('celebrate'); window.lrl?.confetti?.({count:70}); window.lrl?.toast('Deal won 🎉','success'); await fetchSales(true); closeSalesModal(); renderSales(); }catch(err){ won.disabled=false; won.textContent='Mark Won'; window.lrl?.toast('Failed: '+err.message,'error'); } return; }
+    const lost=t.closest('[data-sales-lost]');
+    if (lost){ const id=lost.dataset.salesLost; lost.disabled=true; try{ await salesPatch(id,{status:'Closed Lost'}); window.lrl?.haptic('tap'); window.lrl?.toast('Marked lost','success'); await fetchSales(true); closeSalesModal(); renderSales(); }catch(err){ lost.disabled=false; window.lrl?.toast('Failed: '+err.message,'error'); } return; }
+    if (t.closest('[data-sales-close]') || t.id==='sales-modal'){ closeSalesModal(); return; }
+  });
+  document.addEventListener('change', async (e)=>{
+    const sel=e.target.closest('[data-sales-stage]');
+    if (sel){ const id=sel.dataset.salesStage; const ns=sel.value; const d=S.dealsById[id]; try{ await salesPatch(id,{status:ns}); if(d)d.status=ns; window.lrl?.haptic('tap'); window.lrl?.toast('Stage → '+ns,'success'); await fetchSales(true); if(d&&d.recon!==undefined){ document.getElementById('sales-modal-content').innerHTML=detailHtml(d); } renderSales(); }catch(err){ window.lrl?.toast('Failed: '+err.message,'error'); if(d)sel.value=d.status; } return; }
+  });
+  // commit value edit on blur / Enter
+  document.addEventListener('blur', async (e)=>{
+    const inp=e.target.closest&&e.target.closest('[data-sales-val]'); if(!inp) return;
+    const id=inp.dataset.salesVal; const d=S.dealsById[id]; const v=inp.value===''?null:Number(inp.value);
+    if (d && (d.value==null?'':d.value)===(v==null?'':v)) return; // unchanged
+    try{ await salesPatch(id,{value:v}); if(d)d.value=v; window.lrl?.toast('Value saved','success'); await fetchSales(true); renderSales(); }catch(err){ window.lrl?.toast('Failed: '+err.message,'error'); }
+  }, true);
+  document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') closeSalesModal(); if(e.key==='Enter'&&e.target.closest&&e.target.closest('[data-sales-val]')) e.target.blur(); });
+
+  window.addEventListener('lrl-refresh', async ()=>{ if(!S.loaded) return; try{ await fetchSales(true); renderSales(); }catch(_){} });
 })();
 </script>
 

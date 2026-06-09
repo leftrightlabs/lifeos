@@ -2502,6 +2502,161 @@ app.post('/api/ai/triage/apply', async (req, res) => {
   res.json({ results });
 });
 
+// =========================== SALES PIPELINE ===========================
+const SALES_PIPELINE_DS = 'cec1b3e9-791d-4a55-bd80-b0226552f543';
+const SALES_PRODUCTS_DS = '6e492b13-f5c7-4b8f-812e-3e05f1dc48ee';
+
+// Canonical funnel order + grouping (open vs won vs lost). Mirrors the
+// Pipeline Status options in Notion's SALES PIPELINE board.
+const SALES_STAGES = [
+  { name: 'New / To Qualify', group: 'open' },
+  { name: 'Engaged / In Conversation', group: 'open' },
+  { name: 'Consult Scheduled', group: 'open' },
+  { name: 'No Show / Reschedule', group: 'open' },
+  { name: 'Consult Completed', group: 'open' },
+  { name: 'Build Scope', group: 'open' },
+  { name: 'Decision Pending', group: 'open' },
+  { name: 'On Hold', group: 'open' },
+  { name: 'Closed Won', group: 'won' },
+  { name: 'Closed Lost', group: 'lost' },
+];
+const SALES_STAGE_INDEX = Object.fromEntries(SALES_STAGES.map((s, i) => [s.name, i]));
+const SALES_STAGE_GROUP = Object.fromEntries(SALES_STAGES.map((s) => [s.name, s.group]));
+
+// product page-id (dashless) -> Product Name
+async function fetchSalesProductMap() {
+  return cached('sales-product-map', async () => {
+    const map = {};
+    let cursor;
+    do {
+      const r = await notion.dataSources.query({ data_source_id: SALES_PRODUCTS_DS, page_size: 100, start_cursor: cursor });
+      for (const p of r.results) {
+        const name = p.properties?.['Product Name']?.title?.[0]?.plain_text || '';
+        if (name) map[p.id.replace(/-/g, '')] = name;
+      }
+      cursor = r.has_more ? r.next_cursor : null;
+    } while (cursor);
+    return map;
+  });
+}
+
+function serializeDeal(page, productMap, opts = {}) {
+  const p = page.properties || {};
+  const rt = (prop) => (prop?.rich_text || []).map((t) => t.plain_text).join('');
+  const archivedName = p.Archived?.status?.name || p.Archived?.select?.name || '';
+  const out = {
+    id: page.id,
+    url: page.url,
+    name: p['Deal Name']?.title?.[0]?.plain_text || '(untitled deal)',
+    value: typeof p['Deal Value']?.number === 'number' ? p['Deal Value'].number : null,
+    status: p['Pipeline Status']?.status?.name || null,
+    typeOfSale: p['Type of Sale']?.select?.name || null,
+    callBooked: p['Call Booked']?.date?.start || null,
+    callCompleted: p['Call Completed']?.date?.start || null,
+    dateWon: p['Date Won']?.date?.start || null,
+    dateLost: p['Date Lost']?.date?.start || null,
+    products: (p['Product Interest']?.relation || []).map((r) => productMap[r.id.replace(/-/g, '')]).filter(Boolean),
+    archived: archivedName === '__YES__',
+    created: page.created_time || null,
+  };
+  const recon = rt(p.Recon);
+  if (opts.includeRecon) out.recon = recon;
+  out.hasRecon = !!recon.trim();
+  return out;
+}
+
+async function queryAllDeals() {
+  const all = [];
+  let cursor;
+  do {
+    const r = await notion.dataSources.query({
+      data_source_id: SALES_PIPELINE_DS,
+      sorts: [{ property: 'Deal Value', direction: 'descending' }],
+      page_size: 100,
+      start_cursor: cursor,
+    });
+    all.push(...r.results);
+    cursor = r.has_more ? r.next_cursor : null;
+  } while (cursor);
+  return all;
+}
+
+// GET /api/sales/pipeline — open deals grouped by stage + headline metrics.
+app.get('/api/sales/pipeline', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    if (req.query.fresh === '1') cache.delete('sales-pipeline');
+    const data = await cached('sales-pipeline', async () => {
+      const productMap = await fetchSalesProductMap().catch(() => ({}));
+      const pages = await queryAllDeals();
+      const deals = pages.map((pg) => serializeDeal(pg, productMap)).filter((d) => !d.archived);
+      const q = currentQuarter();
+      const openStages = SALES_STAGES.filter((s) => s.group === 'open');
+      const stages = openStages.map((s) => ({ name: s.name, deals: [], count: 0, value: 0 }));
+      const byName = Object.fromEntries(stages.map((s) => [s.name, s]));
+      let openCount = 0, openValue = 0;
+      const won = { count: 0, value: 0 }, lost = { count: 0 };
+      const recentWins = [];
+      for (const d of deals) {
+        const grp = SALES_STAGE_GROUP[d.status] || 'open';
+        if (grp === 'open') {
+          const bucket = byName[d.status] || byName['New / To Qualify'];
+          if (bucket) { bucket.deals.push(d); bucket.count++; bucket.value += d.value || 0; }
+          openCount++; openValue += d.value || 0;
+        } else if (grp === 'won') {
+          if (d.dateWon && d.dateWon >= q.start && d.dateWon <= q.end) { won.count++; won.value += d.value || 0; }
+          recentWins.push(d);
+        } else if (grp === 'lost') {
+          if (d.dateLost && d.dateLost >= q.start && d.dateLost <= q.end) lost.count++;
+        }
+      }
+      recentWins.sort((a, b) => (b.dateWon || '').localeCompare(a.dateWon || ''));
+      const decided = won.count + lost.count;
+      return {
+        stages: stages.filter((s) => s.count > 0),
+        openCount, openValue,
+        won, lost,
+        winRate: decided ? Math.round((won.count / decided) * 100) : null,
+        quarterLabel: q.label,
+        recentWins: recentWins.slice(0, 12),
+      };
+    });
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/sales/deal/:id — full single deal incl. the Recon brief.
+app.get('/api/sales/deal/:id', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    const productMap = await fetchSalesProductMap().catch(() => ({}));
+    const page = await notion.pages.retrieve({ page_id: dashifyId(req.params.id) });
+    res.json({ deal: serializeDeal(page, productMap, { includeRecon: true }) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// PATCH /api/sales/deal/:id — move stage, edit value, mark won/lost.
+app.patch('/api/sales/deal/:id', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  const { status, value, dateWon, dateLost } = req.body || {};
+  try {
+    const properties = {};
+    if (status !== undefined && status !== null) {
+      properties['Pipeline Status'] = { status: { name: status } };
+      // Stamp the win/loss date automatically when entering a closed stage.
+      if (status === 'Closed Won' && dateWon === undefined) properties['Date Won'] = { date: { start: chicagoTodayISODate() } };
+      if (status === 'Closed Lost' && dateLost === undefined) properties['Date Lost'] = { date: { start: chicagoTodayISODate() } };
+    }
+    if (value !== undefined) properties['Deal Value'] = { number: value === null || value === '' ? null : Number(value) };
+    if (dateWon !== undefined) properties['Date Won'] = dateWon ? { date: { start: dateWon } } : { date: null };
+    if (dateLost !== undefined) properties['Date Lost'] = dateLost ? { date: { start: dateLost } } : { date: null };
+    if (!Object.keys(properties).length) return res.status(400).json({ error: 'no supported fields to update' });
+    await notion.pages.update({ page_id: dashifyId(req.params.id), properties });
+    cache.delete('sales-pipeline');
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // =========================== MARKETING PUBLISHING ===========================
 const MARKETING_ASSETS_DS = '4170ff99-ce76-42b5-bcf2-7f672c362ec4';
 const MARKETING_CHANNELS_DS = '87918a28-58ab-43d9-a038-7f0adec3f5d5';
