@@ -1430,7 +1430,10 @@
   .privacy-on .quest-sub,
   .privacy-on .cal-event-title,
   .privacy-on .cal-allday-pill,
-  .privacy-on .review-item-name {
+  .privacy-on .review-item-name,
+  .privacy-on .comms-sender,
+  .privacy-on .comms-subject,
+  .privacy-on .comms-snippet {
     filter: blur(10px);
     user-select: none;
     -webkit-user-select: none;
@@ -1451,7 +1454,10 @@
   .privacy-on .quest-sub:active,
   .privacy-on .cal-event-title:active,
   .privacy-on .cal-allday-pill:active,
-  .privacy-on .review-item-name:active { filter: blur(0); }
+  .privacy-on .review-item-name:active,
+  .privacy-on .comms-sender:active,
+  .privacy-on .comms-subject:active,
+  .privacy-on .comms-snippet:active { filter: blur(0); }
 
   /* =====================================================================
      PREMIUM POLISH — Tier 1: tap feedback, spring checks, toast, confetti
@@ -2299,13 +2305,6 @@ window.lrl = (function(){
         <h1 class="page-title"><span>Current Focus</span></h1>
         <p class="page-subtitle" id="hdrdate"></p>
         <div class="statgrid" id="hdrstats"></div>
-        <div class="syncbar">
-          <div class="syncrow">
-            <button class="btn-ghost" id="refreshbtn">↻ Refresh from Notion</button>
-            <span style="flex:1"></span>
-            <span style="font-size:12px;color:var(--muted)">Edits sync to Notion automatically.</span>
-          </div>
-        </div>
         <div class="toolbar">
           <div class="search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
@@ -2956,7 +2955,6 @@ function bindTog(id,key,wrap){el(id).addEventListener('change',e=>{ui[key]=e.tar
 bindTog('myday','myday','tg-myday');bindTog('routines','routines','tg-routines');bindTog('showdone','showdone','tg-done');
 el('expandall').addEventListener('click',()=>{state.collapsed[ui.group]={};saveState();render();});
 el('collapseall').addEventListener('click',()=>{document.querySelectorAll('.ghead').forEach(h=>setCollapsed(h.dataset.gkey,true));render();});
-el('refreshbtn').addEventListener('click',async()=>{await fetchTasks();render();});
 
 (async()=>{await loadState();await fetchTasks();syncAutofocusToMode();})();
 })();
