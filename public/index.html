@@ -1797,11 +1797,19 @@
   }
   .review-victory-quote .attr { display: block; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(245,245,247,0.45); margin-top: 10px; font-style: normal; }
   .review-victory-dismiss {
-    margin-top: 24px; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
-    color: rgba(245,245,247,0.45); background: transparent; border: none; cursor: pointer;
-    animation: lrl-victory-fadein 0.4s ease-out 1.5s both;
+    margin-top: 28px; padding: 10px 32px;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: rgba(245,245,247,0.6); background: transparent;
+    border: 1px solid rgba(245,245,247,0.22); border-radius: 999px; cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+    animation: lrl-victory-fadein 0.4s ease-out 1.2s both;
   }
-  .review-victory-dismiss:hover { color: var(--lime); }
+  .review-victory-dismiss:hover { color: var(--lime); border-color: var(--lime); }
+
+  /* Zero-state streak is the hidden easter egg trigger */
+  .review-streak.zero { cursor: pointer; transition: opacity 0.15s; }
+  .review-streak.zero:hover { opacity: 0.8; }
+  .review-streak.zero:active { opacity: 0.6; }
 
   /* Tab content fade on switch */
   .tab-content.active { animation: lrl-fade-in 0.26s ease-out; }
@@ -4656,7 +4664,7 @@ function showReviewVictory(){
         "Where's the kaboom?<br/>There was supposed to be an <em>earth-shattering</em> kaboom!"
         <span class="attr">— Marvin the Martian</span>
       </div>
-      <button class="review-victory-dismiss" type="button">tap anywhere to dismiss</button>
+      <button class="review-victory-dismiss" type="button">Dismiss</button>
     </div>
   `;
   document.body.appendChild(overlay);
@@ -4670,8 +4678,7 @@ function showReviewVictory(){
     setTimeout(() => overlay.remove(), 320);
   };
   overlay.addEventListener('click', dismiss);
-  // Auto-dismiss after 6 seconds if the user doesn't tap
-  setTimeout(dismiss, 6000);
+  // No auto-dismiss — user taps the button (or anywhere on the overlay) to close
 }
 
 function renderReviewStreak(opts){
@@ -4722,6 +4729,11 @@ function renderReviewStreak(opts){
     }
   }
   _lastStreakDisplay = newDisplay;
+  // Easter egg: tapping the zero-state streak re-triggers the Marvin overlay.
+  // No date-check bypass needed — showReviewVictory() just stacks a fresh one.
+  el.onclick = remaining === 0
+    ? () => { showReviewVictory(); window.lrl?.haptic('celebrate'); }
+    : null;
 }
 
 function projectOptionsHtml(currentId){
