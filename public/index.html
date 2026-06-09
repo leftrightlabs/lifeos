@@ -1474,7 +1474,20 @@
   .privacy-on .review-item-name,
   .privacy-on .comms-sender,
   .privacy-on .comms-subject,
-  .privacy-on .comms-snippet {
+  .privacy-on .comms-snippet,
+  /* Sales pipeline — NDA-protected client data: names, deal values, recon */
+  .privacy-on #sales-body .mkt-kpi .k-num,
+  .privacy-on .sales-deal-name,
+  .privacy-on .sales-deal-val,
+  .privacy-on .sales-badge.prod,
+  .privacy-on .sales-stage-meta b,
+  .privacy-on .sales-win-name,
+  .privacy-on .sales-win-val,
+  .privacy-on .sales-detail-name,
+  .privacy-on .sales-detail-val,
+  .privacy-on .sales-fact .v,
+  .privacy-on .sales-recon-body,
+  .privacy-on .sales-valedit {
     filter: blur(10px);
     user-select: none;
     -webkit-user-select: none;
@@ -1498,7 +1511,19 @@
   .privacy-on .review-item-name:active,
   .privacy-on .comms-sender:active,
   .privacy-on .comms-subject:active,
-  .privacy-on .comms-snippet:active { filter: blur(0); }
+  .privacy-on .comms-snippet:active,
+  .privacy-on #sales-body .mkt-kpi .k-num:active,
+  .privacy-on .sales-deal-name:active,
+  .privacy-on .sales-deal-val:active,
+  .privacy-on .sales-badge.prod:active,
+  .privacy-on .sales-stage-meta b:active,
+  .privacy-on .sales-win-name:active,
+  .privacy-on .sales-win-val:active,
+  .privacy-on .sales-detail-name:active,
+  .privacy-on .sales-detail-val:active,
+  .privacy-on .sales-fact .v:active,
+  .privacy-on .sales-recon-body:active,
+  .privacy-on .sales-valedit:active { filter: blur(0); }
 
   /* =====================================================================
      PREMIUM POLISH — Tier 1: tap feedback, spring checks, toast, confetti
