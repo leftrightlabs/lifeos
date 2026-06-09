@@ -4452,7 +4452,31 @@ function updateReviewStreak(){
 
 let _lastStreakDisplay = null; // tracks the last rendered number for flip animation
 let _reviewVictoryShown = false; // armed when remaining > 0; fires once on transition to 0
-let _previousReviewRemaining = null; // null on first render — prevents celebration when page loads already at zero
+let _previousReviewRemaining = null; // null on first render — used by transition detection
+const REVIEW_VICTORY_LAST_DATE_KEY = 'lrl-review-victory-date'; // YYYY-MM-DD of last shown celebration
+
+// Should the Inbox Zero celebration fire right now? Two ways to trigger:
+//   1. Transition: just cleared the last item this session (remaining went >0 → 0)
+//   2. First view today: page opens with already-zero state, and we haven't
+//      shown the celebration yet today (per Chicago calendar day)
+// _reviewVictoryShown guards against double-firing within one cleared state.
+function maybeFireReviewVictory(remainingNow){
+  if (remainingNow > 0) {
+    _reviewVictoryShown = false; // re-arm for next clear
+    return;
+  }
+  if (_reviewVictoryShown) return;
+  const todayISO = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+  let lastDate = null;
+  try { lastDate = localStorage.getItem(REVIEW_VICTORY_LAST_DATE_KEY); } catch(_){}
+  const transitionedToZero = _previousReviewRemaining !== null && _previousReviewRemaining > 0;
+  const firstViewToday = lastDate !== todayISO;
+  if (transitionedToZero || firstViewToday) {
+    _reviewVictoryShown = true;
+    try { localStorage.setItem(REVIEW_VICTORY_LAST_DATE_KEY, todayISO); } catch(_){}
+    showReviewVictory();
+  }
+}
 
 // Show the "Inbox Zero" celebration overlay. Marvin-the-Martian homage —
 // the "Where's the kaboom?" line is the nod; the character is original
@@ -4493,35 +4517,33 @@ function showReviewVictory(){
 function renderReviewStreak(){
   const el = document.getElementById('review-streak');
   if (!el) return;
-  const totals = reviewTotals();
-  const remaining = totals.total - totals.done;
-  const streak = updateReviewStreak();
-  if (totals.total === 0){
+  // If review data hasn't arrived yet, show a loading placeholder and bail.
+  // Don't trigger the celebration before we know whether there's actual work.
+  if (!REVIEW_DATA) {
     el.className = 'review-streak';
-    el.innerHTML = `<span style="opacity:0.6">Nothing to review yet — loading or already clean.</span>`;
+    el.innerHTML = `<span style="opacity:0.6">Loading review queue…</span>`;
     _lastStreakDisplay = null;
     return;
   }
+  const totals = reviewTotals();
+  const remaining = totals.total - totals.done;
+  const streak = updateReviewStreak();
   let newDisplay, html;
   if (remaining === 0){
     el.className = 'review-streak zero';
     newDisplay = streak.days || 1;
-    html = `<span class="review-streak-num" id="rs-num">${newDisplay}</span><span>days at Inbox Zero. Clean slate.</span>`;
-    // Celebrate ONLY when the count transitions from >0 to 0 (she just cleared
-    // the last one). _previousReviewRemaining is null on first render, so a
-    // page load that's already at zero won't trigger this.
-    const justCleared = _previousReviewRemaining !== null && _previousReviewRemaining > 0;
-    if (justCleared && !_reviewVictoryShown) {
-      _reviewVictoryShown = true;
-      showReviewVictory();
-    }
+    const dayWord = newDisplay === 1 ? 'day' : 'days';
+    html = `<span class="review-streak-num" id="rs-num">${newDisplay}</span><span>${dayWord} at Inbox Zero. Clean slate.</span>`;
   } else {
     el.className = 'review-streak';
     newDisplay = remaining;
     html = `<span class="review-streak-num" id="rs-num">${newDisplay}</span><span>flagged item${remaining===1?'':'s'} to clear${streak.days > 0 ? ` · last streak: ${streak.days}d` : ''}</span>`;
-    // Re-arm so the next time she clears everything, the celebration fires again
-    _reviewVictoryShown = false;
   }
+  el.innerHTML = html;
+  // Maybe fire the Marvin celebration — handles both "just cleared the last"
+  // and "first view of the day at zero" cases. Reads/writes _previousReviewRemaining
+  // and the localStorage date key internally.
+  maybeFireReviewVictory(remaining);
   _previousReviewRemaining = remaining;
   el.innerHTML = html;
   // If number changed from last render, trigger flip on the just-rendered span
