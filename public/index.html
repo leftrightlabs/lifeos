@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
 <title>LRL Command Center — Q2 2026</title>
@@ -80,7 +80,20 @@
     text-rendering: optimizeLegibility;
     font-feature-settings: 'cv11', 'ss03';
   }
-  .app { max-width: 1400px; margin: 0 auto; padding: 24px; }
+  .app {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+    /* Respect iPhone notch / Dynamic Island / home indicator when running in Capacitor */
+    padding-top: max(24px, env(safe-area-inset-top));
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+    padding-left: max(24px, env(safe-area-inset-left));
+    padding-right: max(24px, env(safe-area-inset-right));
+  }
+  /* When running as installed iOS app: lock body to full viewport, disable rubber-band scroll bg flash */
+  html.capacitor-native, html.capacitor-native body { overscroll-behavior: none; }
+  html.capacitor-native body { position: fixed; inset: 0; overflow: auto; -webkit-overflow-scrolling: touch; }
+  html.capacitor-native a, html.capacitor-native button { -webkit-touch-callout: none; }
 
   /* HEADER */
   .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; border-bottom: 1px solid var(--navy-faint); margin-bottom: 24px; }
@@ -988,7 +1001,13 @@
   }
 
   @media (max-width: 768px) {
-    .app { padding: 16px; }
+    .app {
+      padding: 16px;
+      padding-top: max(16px, env(safe-area-inset-top));
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
+      padding-left: max(16px, env(safe-area-inset-left));
+      padding-right: max(16px, env(safe-area-inset-right));
+    }
     .quest-row { grid-template-columns: 1fr; }
     .chapter-header { flex-direction: column; gap: 12px; }
     .xp-display { text-align: left; }
@@ -1692,6 +1711,37 @@
 <body>
 
 <script>
+// =========== Capacitor native bootstrap ===========
+// When this site is loaded inside the LifeOS iOS app, window.Capacitor is injected
+// by the native runtime before page scripts run. Detect it once, mark <html>, and
+// configure native-only chrome (status bar, keyboard, splash). On web, this is a no-op.
+(function bootstrapCapacitor(){
+  const cap = window.Capacitor;
+  if (!cap || typeof cap.isNativePlatform !== 'function' || !cap.isNativePlatform()) return;
+  document.documentElement.classList.add('capacitor-native');
+  try {
+    const SB = cap.Plugins && cap.Plugins.StatusBar;
+    if (SB) {
+      SB.setStyle({ style: 'DARK' });           // light text on dark bg
+      SB.setBackgroundColor({ color: '#0a0f1e' });
+      SB.setOverlaysWebView({ overlay: false }); // app content sits below status bar
+    }
+    const Kb = cap.Plugins && cap.Plugins.Keyboard;
+    if (Kb) Kb.setAccessoryBarVisible({ isVisible: false }).catch(()=>{});
+    const App = cap.Plugins && cap.Plugins.App;
+    if (App) {
+      // Deep link handler — if Slack/Xero/Notion OAuth redirects via custom scheme,
+      // pull out the path and navigate to it inside the WebView.
+      App.addListener('appUrlOpen', (data) => {
+        try {
+          const u = new URL(data.url);
+          if (u.pathname) location.href = u.pathname + u.search + u.hash;
+        } catch(e){}
+      });
+    }
+  } catch(e){ console.warn('[capacitor bootstrap]', e); }
+})();
+
 // Runtime shims — replace Claude artifact APIs with browser equivalents
 window.storage = window.storage || {
   get: async (k) => ({ value: localStorage.getItem(k) }),
@@ -1727,6 +1777,24 @@ window.lrl = (function(){
   }
   function haptic(kind){
     try {
+      // Native iOS (Capacitor): real Taptic Engine via the Haptics plugin.
+      // window.Capacitor is auto-injected by the native runtime, so this
+      // only fires inside the iOS app. On web, falls through to vibrate.
+      const cap = window.Capacitor;
+      if (cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform()) {
+        const H = cap.Plugins && cap.Plugins.Haptics;
+        if (H) {
+          if (kind === 'success')        H.notification({ type: 'SUCCESS' });
+          else if (kind === 'error')     H.notification({ type: 'ERROR' });
+          else if (kind === 'celebrate') {
+            H.notification({ type: 'SUCCESS' });
+            setTimeout(() => H.impact({ style: 'HEAVY' }), 80);
+          }
+          else                            H.impact({ style: 'LIGHT' });
+          return;
+        }
+      }
+      // Web fallback (Android Chrome supports navigator.vibrate; iOS Safari is silent)
       if (!navigator.vibrate) return;
       if (kind === 'success')      navigator.vibrate([14, 30, 18]);
       else if (kind === 'error')   navigator.vibrate([24, 40, 24, 40, 24]);

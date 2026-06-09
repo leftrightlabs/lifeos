@@ -1,0 +1,34 @@
+{
+  "appId": "com.leftrightlabs.lifeos",
+  "appName": "LifeOS",
+  "webDir": "public",
+  "server": {
+    "url": "https://lifeos.gretchencawthon.com",
+    "cleartext": false,
+    "androidScheme": "https",
+    "iosScheme": "https"
+  },
+  "ios": {
+    "backgroundColor": "#0a0f1e",
+    "contentInset": "never",
+    "scrollEnabled": true,
+    "allowsLinkPreview": false,
+    "limitsNavigationsToAppBoundDomains": false,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0a0f1e",
+      "overlaysWebView": false
+    },
+    "Keyboard": {
+      "resize": "native",
+      "style": "DARK",
+      "resizeOnFullScreen": true
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}
