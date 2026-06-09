@@ -4598,29 +4598,30 @@ function renderReview(){
   let collapsed = {};
   try { collapsed = JSON.parse(localStorage.getItem(REVIEW_COLLAPSED_KEY) || '{}'); } catch(e) {}
   const cleared = getClearedSet();
-  const html = REVIEW_SECTIONS.map(sec => {
+  const sectionHtmls = REVIEW_SECTIONS.map(sec => {
     const items = reviewModeFilter(REVIEW_DATA[sec.key] || []).filter(i => !cleared.has(i.id));
     const total = reviewModeFilter(REVIEW_DATA[sec.key] || []).length;
+    // Hide the section entirely if there's nothing actionable left in it.
+    // The page-level streak banner ("N days at Inbox Zero. Clean slate.")
+    // handles the overall feedback when every bucket is empty.
+    if (items.length === 0) return '';
     const done = total - items.length;
     const pct = total ? Math.round((done / total) * 100) : 100;
-    const isCleared = items.length === 0 && total > 0;
-    const isEmpty = total === 0;
     const isCollapsed = collapsed[sec.key];
-    const countCls = items.length === 0 ? 'zero' : '';
-    const list = isEmpty
-      ? `<div class="review-empty">No ${sec.title.toLowerCase()} flagged. ✓</div>`
-      : isCleared
-        ? `<div class="review-celebrate">✨ All cleared.</div>`
-        : items.map(i => reviewItemHtml(i, sec.key)).join('');
-    return `<div class="review-section ${isCleared ? 'cleared' : ''} ${isCollapsed ? 'collapsed' : ''}" data-section="${sec.key}">
+    const list = items.map(i => reviewItemHtml(i, sec.key)).join('');
+    return `<div class="review-section ${isCollapsed ? 'collapsed' : ''}" data-section="${sec.key}">
       <div class="review-section-head" data-act="toggle-section" data-section="${sec.key}">
-        <div class="review-section-title">${sec.title} <span class="review-count ${countCls}">${items.length}${total ? ` of ${total}` : ''}</span></div>
+        <div class="review-section-title">${sec.title} <span class="review-count">${items.length}${total > items.length ? ` of ${total}` : ''}</span></div>
         <div class="review-section-hint">${sec.hint}</div>
       </div>
-      ${total > 0 ? `<div class="review-section-progress"><div class="review-section-progress-bar" style="width:${pct}%"></div></div>` : ''}
+      <div class="review-section-progress"><div class="review-section-progress-bar" style="width:${pct}%"></div></div>
       <div class="review-list">${list}</div>
     </div>`;
-  }).join('');
+  });
+  const html = sectionHtmls.filter(Boolean).join('');
+  // If every section is empty, the page-level streak banner already says
+  // "Clean slate" — no need for a second empty-state card here. Render
+  // an empty body so the streak banner is the whole story.
   body.innerHTML = html;
   attachReviewHandlers();
 }
