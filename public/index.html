@@ -4514,7 +4514,8 @@ function showReviewVictory(){
   setTimeout(dismiss, 6000);
 }
 
-function renderReviewStreak(){
+function renderReviewStreak(opts){
+  opts = opts || {};
   const el = document.getElementById('review-streak');
   if (!el) return;
   // If review data hasn't arrived yet, show a loading placeholder and bail.
@@ -4542,8 +4543,12 @@ function renderReviewStreak(){
   el.innerHTML = html;
   // Maybe fire the Marvin celebration — handles both "just cleared the last"
   // and "first view of the day at zero" cases. Reads/writes _previousReviewRemaining
-  // and the localStorage date key internally.
-  maybeFireReviewVictory(remaining);
+  // and the localStorage date key internally. Skipped when caller is just
+  // re-rendering for a non-work reason (mode switch, filter change, etc.) so
+  // we don't celebrate flipping into a mode that happens to have zero items.
+  if (!opts.skipVictory) {
+    maybeFireReviewVictory(remaining);
+  }
   _previousReviewRemaining = remaining;
   el.innerHTML = html;
   // If number changed from last render, trigger flip on the just-rendered span
@@ -4609,10 +4614,11 @@ function reviewItemHtml(item, sectionKey){
   </div>`;
 }
 
-function renderReview(){
+function renderReview(opts){
+  opts = opts || {};
   const body = document.getElementById('review-body');
   if (!body) return;
-  renderReviewStreak();
+  renderReviewStreak({ skipVictory: !!opts.skipVictory });
   if (!REVIEW_DATA){
     body.innerHTML = `<div style="color:var(--navy-dim);font-size:13px;padding:20px 0">loading…</div>`;
     return;
@@ -4789,7 +4795,10 @@ async function fetchReview(){
 }
 
 // Re-render when mode changes
-window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderReview(); });
+// Mode switches are a filter change, not an "I finished my work" moment —
+// skip the celebration trigger so flipping to a mode that happens to have
+// zero items doesn't fire the Marvin overlay.
+window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderReview({ skipVictory: true }); });
 
 // ====== Health rings + streaks ======
 let HEALTH_DATA = null;
