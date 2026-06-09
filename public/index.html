@@ -5849,14 +5849,11 @@ function escapeMs(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<'
 function renderCampaigns() {
   const container = document.getElementById('campaigns-container');
   if (!container) return;
-  const currentMode = (typeof mode !== 'undefined' ? mode : (localStorage.getItem('lrl-mode') || 'all'));
-  const showBiz = currentMode === 'all' || currentMode === 'work';
-  const showLife = currentMode === 'all' || currentMode === 'personal';
-  if (selectedCampaign === 'business' && !showBiz) selectedCampaign = showLife ? 'life' : null;
-  if (selectedCampaign === 'life' && !showLife) selectedCampaign = showBiz ? 'business' : null;
+  // Rocks are quarterly priorities — always show both columns in all 3 modes.
+  // The mode lens applies to tasks/comms; rocks are the company game board.
   let html = '<div class="campaigns-grid">';
-  if (showBiz) html += campaignCardHTML('business');
-  if (showLife) html += campaignCardHTML('life');
+  html += campaignCardHTML('business');
+  html += campaignCardHTML('life');
   html += '</div>';
   container.innerHTML = html;
   renderMilestones();
