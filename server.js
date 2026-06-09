@@ -463,6 +463,19 @@ app.get('/api/goals', async (_req, res) => {
   }
 });
 
+app.post('/api/tasks', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  const { source, name, status, priority, myDay, dueStart } = req.body || {};
+  if (!source || !name) return res.status(400).json({ error: 'source and name are required' });
+  try {
+    const result = await createNotionTask({ source, name, status, priority, myDay, dueStart });
+    invalidateTaskCaches();
+    res.json({ ok: true, id: result.id, url: result.url });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.patch('/api/tasks/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { id } = req.params;

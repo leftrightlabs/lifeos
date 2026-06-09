@@ -162,6 +162,15 @@
   .panel-title span { display: inline; }
   .panel-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
   .panel-title-row .panel-title { margin-bottom: 0; }
+  .panel-add-btn { width: 28px; height: 28px; border-radius: 50%; background: rgba(167,193,64,0.12); border: 1.5px solid rgba(167,193,64,0.35); color: var(--lime); font-size: 20px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; padding: 0 0 1px; }
+  .panel-add-btn:hover { background: rgba(167,193,64,0.22); border-color: var(--lime); }
+  .panel-add-btn:active { transform: scale(0.9); }
+  /* Source toggle for new-task modal */
+  .task-source-toggle { display: flex; gap: 6px; margin-bottom: 14px; }
+  .task-source-opt { padding: 5px 16px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0.05em; cursor: pointer; border: 1.5px solid rgba(255,255,255,0.12); background: transparent; color: rgba(245,245,247,0.45); transition: all 0.15s; font-family: var(--font-body); }
+  .task-source-opt.active.work { background: rgba(93,156,236,0.18); border-color: #5d9cec; color: #9cc5f5; }
+  .task-source-opt.active.personal { background: rgba(167,193,64,0.15); border-color: var(--lime); color: var(--lime); }
+  .task-source-opt:hover:not(.active) { border-color: rgba(255,255,255,0.25); color: rgba(245,245,247,0.7); }
   .tqf-group { display: inline-flex; gap: 2px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; padding: 3px; }
   .tqf-btn { background: transparent; border: none; padding: 4px 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; color: rgba(245,245,247,0.55); cursor: pointer; border-radius: 999px; font-family: var(--font-body); transition: all 0.15s; text-transform: uppercase; }
   .tqf-btn:hover { color: var(--navy); }
@@ -2251,7 +2260,10 @@ window.lrl = (function(){
 
     <div class="quest-row">
       <div class="panel" id="quest-panel">
-        <div class="panel-title"><span>Today's Quest</span></div>
+        <div class="panel-title-row">
+          <div class="panel-title" style="margin-bottom:0"><span>Today's Quest</span></div>
+          <button class="panel-add-btn" id="quest-add-btn" title="Add task" aria-label="Add task">+</button>
+        </div>
         <div id="today-quests"><div style="color:var(--navy-dim);font-size:13px;padding:8px 0">loading…</div></div>
       </div>
       <div class="panel">
@@ -2578,6 +2590,10 @@ window.lrl = (function(){
       <button class="task-modal-close" id="task-modal-close" title="Close" aria-label="Close">×</button>
     </div>
     <div class="task-source-pill" id="task-source"><span class="dot"></span><span class="label">work</span></div>
+    <div class="task-source-toggle" id="task-source-toggle" style="display:none">
+      <button class="task-source-opt work active" data-source="work" type="button">Work</button>
+      <button class="task-source-opt personal" data-source="personal" type="button">Personal</button>
+    </div>
     <div class="task-field">
       <label>Task</label>
       <textarea id="task-name-input" placeholder="Task name" rows="2"></textarea>
@@ -3952,12 +3968,49 @@ document.getElementById('today-quests').addEventListener('click', async (e) => {
 
 // ====== Task edit modal (shared across Today's Quest + Focus) ======
 let editingTask = null; // { id, source, url, name, status, priority, dueStart, dueEnd, myDay, project, scope }
+let _createMode = false; // true when the modal is in "new task" mode
+
+function _setTaskModalMode(mode) { // mode: 'edit' | 'create'
+  const isCreate = mode === 'create';
+  document.querySelector('#task-modal .task-modal-title').textContent = isCreate ? 'New Task' : 'Edit Task';
+  document.getElementById('task-source').style.display = isCreate ? 'none' : '';
+  document.getElementById('task-source-toggle').style.display = isCreate ? '' : 'none';
+  document.getElementById('task-open-notion-btn').style.display = isCreate ? 'none' : '';
+  document.getElementById('task-save-btn').textContent = isCreate ? 'Create' : 'Save';
+  document.getElementById('task-project-line').style.display = 'none';
+}
+
+function openTaskCreate() {
+  _createMode = true;
+  editingTask = null;
+  const modal = document.getElementById('task-modal');
+  if (!modal) return;
+  _setTaskModalMode('create');
+  // Reset fields — default My Day on, status Planned
+  document.getElementById('task-name-input').value = '';
+  document.getElementById('task-myday-input').checked = true;
+  document.getElementById('task-status-input').value = 'Planned';
+  document.getElementById('task-priority-input').value = '';
+  document.getElementById('task-due-input').value = '';
+  document.getElementById('task-dueend-input').value = '';
+  // Reset source toggle to Work
+  document.querySelectorAll('#task-source-toggle .task-source-opt').forEach(b => {
+    b.classList.toggle('active', b.dataset.source === 'work');
+  });
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('task-name-input')?.focus(), 60);
+  window.lrl?.haptic('tap');
+}
+window.openTaskCreate = openTaskCreate;
 
 function openTaskEdit(t, scope){
   if (!t || !t.id) return;
+  _createMode = false;
   editingTask = { ...t, scope: scope || 'quest' }; // scope = 'quest' or 'focus'
   const modal = document.getElementById('task-modal');
   if (!modal) return;
+  _setTaskModalMode('edit');
   const src = (t.source === 'work') ? 'work' : 'personal';
   const sourceEl = document.getElementById('task-source');
   sourceEl.className = 'task-source-pill ' + src;
@@ -3985,7 +4038,19 @@ function closeTaskEdit(){
   document.getElementById('task-modal')?.classList.remove('open');
   document.body.style.overflow = '';
   editingTask = null;
+  _createMode = false;
 }
+
+// Source toggle buttons in new-task mode
+document.getElementById('task-source-toggle')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.task-source-opt');
+  if (!btn) return;
+  document.querySelectorAll('#task-source-toggle .task-source-opt').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+});
+
+// + button on Today's Quest panel
+document.getElementById('quest-add-btn')?.addEventListener('click', () => openTaskCreate());
 
 document.getElementById('task-modal-close')?.addEventListener('click', closeTaskEdit);
 document.getElementById('task-modal')?.addEventListener('click', (e) => {
@@ -3998,8 +4063,43 @@ document.getElementById('task-open-notion-btn')?.addEventListener('click', () =>
   openNotion(url);
 });
 document.getElementById('task-save-btn')?.addEventListener('click', async () => {
-  if (!editingTask) return;
   const btn = document.getElementById('task-save-btn');
+
+  // ── CREATE MODE ──────────────────────────────────────────────────────────
+  if (_createMode) {
+    const source = document.querySelector('#task-source-toggle .task-source-opt.active')?.dataset.source || 'work';
+    const body = {
+      source,
+      name: document.getElementById('task-name-input').value.trim(),
+      status: document.getElementById('task-status-input').value || 'Planned',
+      priority: document.getElementById('task-priority-input').value || null,
+      myDay: document.getElementById('task-myday-input').checked,
+      dueStart: document.getElementById('task-due-input').value || null,
+    };
+    if (!body.name) { window.lrl.toast('Task name is required', 'error'); return; }
+    btn.disabled = true; btn.textContent = 'Creating…';
+    try {
+      const r = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) { const j = await r.json().catch(()=>({})); throw new Error(j.error || 'create failed'); }
+      window.lrl.haptic('success');
+      window.lrl.toast('Task created', 'success');
+      closeTaskEdit();
+      await fetchTodayQuests();
+      renderTodayQuests();
+    } catch (err) {
+      window.lrl.toast('Create failed: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Create';
+    }
+    return;
+  }
+
+  // ── EDIT MODE ────────────────────────────────────────────────────────────
+  if (!editingTask) return;
   const body = {
     name: document.getElementById('task-name-input').value.trim(),
     status: document.getElementById('task-status-input').value,
