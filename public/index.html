@@ -5936,6 +5936,21 @@ function renderCampaigns() {
   html += '</div>';
   container.innerHTML = html;
   renderMilestones();
+  // Update the "N of M rocks complete" footer badge with live data
+  const rocksSummaryEl = document.getElementById('rocks-summary');
+  if (rocksSummaryEl) {
+    const allGoals = GOALS_DATA;
+    const total = allGoals.length;
+    if (total > 0) {
+      // A rock is "complete" if all its milestones are done (or it has no milestones but status = Done)
+      const complete = allGoals.filter(g =>
+        g.progress.total > 0
+          ? g.progress.done === g.progress.total
+          : g.status === 'Done'
+      ).length;
+      rocksSummaryEl.textContent = `${complete} of ${total} rock${total === 1 ? '' : 's'} complete`;
+    }
+  }
 }
 
 window.addEventListener('lrl-mode-changed', () => renderCampaigns());
