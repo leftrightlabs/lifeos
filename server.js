@@ -67,6 +67,7 @@ const anthropic = process.env.ANTHROPIC_API_KEY
 const cache = new Map();
 const CACHE_TTL_OVERRIDES = {
   'journal-rings': 5 * 60_000, // heavier query (per-row body-text check); cache longer
+  'vto-goals': 10 * 60_000,    // goals rarely change
 };
 async function cached(key, fn) {
   const ttl = CACHE_TTL_OVERRIDES[key] || CACHE_TTL_MS;
@@ -2012,7 +2013,7 @@ app.get('/api/finance/xero', async (_req, res) => {
       const burnEnd = `${burnEndY}-${pad(burnEndMonth)}-${pad(burnEndLastDay)}`;
 
       const xLog = (name) => (err) => { console.error(`[xero] ${name} failed:`, err.message); return null; };
-      const [bankRaw, mtdRaw, qtdRaw, ytdRaw, burnRaw, bsRaw] = await Promise.all([
+      const [bankRaw, mtdRaw, qtdRaw, ytdRaw, burnRaw, bsRaw, vtoGoals] = await Promise.all([
         // BankSummary takes a single optional `date` (closing date), NOT a
         // fromDate/toDate range. Pass today's date so closing balances are
         // as of today.
@@ -2023,6 +2024,7 @@ app.get('/api/finance/xero', async (_req, res) => {
         xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: yearStart, toDate: todayStr, paymentsOnly: 'true' }).catch(xLog('P&L YTD')),
         xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: burnStart, toDate: burnEnd, paymentsOnly: 'true' }).catch(xLog('P&L burn')),
         xeroGet('/api.xro/2.0/Reports/BalanceSheet', { date: todayStr }).catch(xLog('BalanceSheet')),
+        cached('vto-goals', fetchVtoGoals),
       ]);
       const bank = bankRaw ? parseBankSummary(bankRaw.Reports?.[0]) : { accounts: [], totalCash: 0 };
       const mtd = mtdRaw ? parseProfitAndLoss(mtdRaw.Reports?.[0]) : { income: 0, expenses: 0, net: 0 };
@@ -2077,6 +2079,8 @@ app.get('/api/finance/xero', async (_req, res) => {
         accountsFound: !!(relayOpex && relayRevenue),
       };
 
+      const revenueGoals = periodGoals(vtoGoals?.revenue, mNum);
+      const profitGoals  = periodGoals(vtoGoals?.profit, mNum);
       return {
         currency: 'USD',
         cashOnHand: bank.totalCash,
@@ -2099,6 +2103,10 @@ app.get('/api/finance/xero', async (_req, res) => {
         accountsReceivable: bs.accountsReceivable,
         accountsPayable: bs.accountsPayable,
         cashCapacity,
+        goals: {
+          revenue: revenueGoals,
+          profit: profitGoals,
+        },
         asOf: new Date().toISOString(),
       };
     });
@@ -2110,6 +2118,48 @@ app.get('/api/finance/xero', async (_req, res) => {
     res.status(500).json({ error: err.message, needsAuth });
   }
 });
+
+const VTO_SCORECARD_DS = 'c359c68c-02bb-4fae-b4cb-3a512e5eafab';
+
+async function fetchVtoGoals() {
+  if (!notion) return {};
+  try {
+    const data = await notion.dataSources.query({
+      data_source_id: VTO_SCORECARD_DS,
+      page_size: 50,
+    });
+    const goals = {};
+    for (const page of data.results) {
+      const props = page.properties || {};
+      const name = props.Metric?.title?.[0]?.plain_text;
+      if (!name) continue;
+      goals[name.toLowerCase()] = {
+        name,
+        goal: props.Goal?.number ?? null,
+        breakEven: props['Break Even']?.number ?? null,
+        cadence: props.Cadence?.select?.name || null,
+        direction: props.Direction?.select?.name || null,
+        unit: props.Unit?.rich_text?.[0]?.plain_text || null,
+      };
+    }
+    return goals;
+  } catch (err) {
+    console.warn('[vto] goals fetch failed:', err.message);
+    return {};
+  }
+}
+
+// Period multipliers for monthly metrics → MTD/QTD/YTD goal values
+function periodGoals(monthlyMetric, currentMonth) {
+  if (!monthlyMetric || monthlyMetric.goal == null) return null;
+  const goal = monthlyMetric.goal;
+  const be = monthlyMetric.breakEven;
+  return {
+    mtd: { goal, breakEven: be },
+    qtd: { goal: goal * 3, breakEven: be != null ? be * 3 : null },
+    ytd: { goal: goal * currentMonth, breakEven: be != null ? be * currentMonth : null },
+  };
+}
 
 // One-click sync of monthly Xero P&L into the VTO Weekly Actuals DB.
 // Creates one Revenue row + one Profit row per month in the current quarter,

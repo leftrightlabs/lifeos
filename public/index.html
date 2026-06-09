@@ -385,6 +385,22 @@
   .fin-kpi.rev-qtd { border-top-color: #a78bfa; }
   .fin-kpi.rev-ytd { border-top-color: #c084fc; }
 
+  /* Goal progress bar inside KPI tiles */
+  .fin-kpi-goal { font-size: 11px; color: rgba(245,245,247,0.6); margin-top: 8px; font-weight: 500; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+  .fin-kpi-goal .pct { font-weight: 700; }
+  .fin-kpi-goal .pct.lime { color: var(--lime); }
+  .fin-kpi-goal .pct.amber { color: #d4a854; }
+  .fin-kpi-goal .pct.red { color: #ff7a6b; }
+  .fin-kpi-bar { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 6px; overflow: hidden; position: relative; }
+  .fin-kpi-bar-fill { height: 100%; background: var(--lime); border-radius: 2px; transition: width 0.5s; }
+  .fin-kpi-bar-fill.amber { background: #d4a854; }
+  .fin-kpi-bar-fill.red { background: #ff7a6b; }
+  .fin-kpi-bar-be { position: absolute; top: -2px; bottom: -2px; width: 1.5px; background: rgba(255,255,255,0.5); }
+  .privacy-on .fin-kpi-goal,
+  .privacy-on .fin-kpi-bar { filter: blur(10px); user-select: none; }
+  .privacy-on .fin-kpi-goal:active,
+  .privacy-on .fin-kpi-bar:active { filter: blur(0); }
+
   /* Accounts group cards (Bank / Credit) */
   .fin-accounts-group { background: var(--white); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
   .fin-accounts-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; cursor: pointer; gap: 12px; }
@@ -4720,6 +4736,28 @@ async function fetchFinance(){
   }
 }
 
+function finGoalBlock(actual, goalObj){
+  if (!goalObj || goalObj.goal == null || goalObj.goal === 0) return '';
+  const goal = goalObj.goal;
+  const be = goalObj.breakEven;
+  const pct = (actual / goal) * 100;
+  const pctDisplay = Math.round(pct);
+  let tier = 'red';
+  if (pct >= 100) tier = 'lime';
+  else if (be != null && actual >= be) tier = 'amber';
+  else if (be == null && pct >= 50) tier = 'amber';
+  const barPct = Math.max(0, Math.min(100, pct));
+  const bePct = be != null ? Math.max(0, Math.min(100, (be / goal) * 100)) : null;
+  return `<div class="fin-kpi-goal">
+    <span>${fmtMoneyFull(goal)} goal</span>
+    <span class="pct ${tier}">${pctDisplay}%</span>
+  </div>
+  <div class="fin-kpi-bar">
+    <div class="fin-kpi-bar-fill ${tier === 'lime' ? '' : tier}" style="width:${barPct}%"></div>
+    ${bePct != null ? `<div class="fin-kpi-bar-be" style="left:${bePct}%" title="Break even ${fmtMoneyFull(be)}"></div>` : ''}
+  </div>`;
+}
+
 function renderFinance(d){
   const body = document.getElementById('finance-body');
   if (!body) return;
@@ -4772,16 +4810,19 @@ function renderFinance(d){
         <div class="fin-kpi-label">MTD Revenue</div>
         <div class="fin-kpi-value">${fmtMoneyFull(d.mtdRevenue)}</div>
         <div class="fin-kpi-meta">Expenses ${fmtMoneyFull(d.mtdExpenses)}</div>
+        ${finGoalBlock(d.mtdRevenue, d.goals?.revenue?.mtd)}
       </div>
       <div class="fin-kpi rev-qtd">
         <div class="fin-kpi-label">QTD Revenue</div>
         <div class="fin-kpi-value">${fmtMoneyFull(d.qtdRevenue || 0)}</div>
         <div class="fin-kpi-meta">Expenses ${fmtMoneyFull(d.qtdExpenses || 0)}</div>
+        ${finGoalBlock(d.qtdRevenue || 0, d.goals?.revenue?.qtd)}
       </div>
       <div class="fin-kpi rev-ytd">
         <div class="fin-kpi-label">YTD Revenue</div>
         <div class="fin-kpi-value">${fmtMoneyFull(d.ytdRevenue || 0)}</div>
         <div class="fin-kpi-meta">Expenses ${fmtMoneyFull(d.ytdExpenses || 0)}</div>
+        ${finGoalBlock(d.ytdRevenue || 0, d.goals?.revenue?.ytd)}
       </div>
       <div class="fin-kpi runway ${runwayShort ? 'short' : ''}">
         <div class="fin-kpi-label">Actual runway</div>
@@ -4792,6 +4833,7 @@ function renderFinance(d){
         <div class="fin-kpi-label">MTD net</div>
         <div class="fin-kpi-value">${fmtMoneyFull(d.mtdNet)}</div>
         <div class="fin-kpi-meta">${netNeg ? 'In the red this month' : 'In the black'}</div>
+        ${finGoalBlock(d.mtdNet, d.goals?.profit?.mtd)}
       </div>
     </div>
 
