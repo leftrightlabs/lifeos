@@ -400,7 +400,7 @@ function invalidateTaskCaches() {
 async function fetchGoalsForSource(projectsDs, tasksDs, source, projectPropName) {
   const projectsRes = await notion.dataSources.query({
     data_source_id: projectsDs,
-    filter: { property: 'Rock', checkbox: { equals: true } },
+    filter: { property: 'ROCK', checkbox: { equals: true } },
     page_size: 50,
   });
   return Promise.all(projectsRes.results.map(async (proj) => {
@@ -463,24 +463,6 @@ app.get('/api/goals', async (_req, res) => {
   }
 });
 
-// Diagnostic: shows raw property names from the first few work projects so
-// we can confirm the exact checkbox column name. Remove after debugging.
-app.get('/api/goals/debug', async (_req, res) => {
-  if (!notion) return res.status(500).json({ error: 'no notion' });
-  try {
-    const raw = await notion.dataSources.query({ data_source_id: WORK_PROJECTS_DS, page_size: 5 });
-    const summary = raw.results.map(p => ({
-      name: p.properties?.Name?.title?.[0]?.plain_text,
-      propertyKeys: Object.keys(p.properties || {}),
-      checkboxProps: Object.entries(p.properties || {})
-        .filter(([, v]) => v.type === 'checkbox')
-        .map(([k, v]) => ({ key: k, value: v.checkbox })),
-    }));
-    res.json({ count: raw.results.length, projects: summary });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 app.post('/api/tasks', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
