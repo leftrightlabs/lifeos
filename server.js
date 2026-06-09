@@ -392,7 +392,7 @@ app.get('/api/tasks/life-all', async (_req, res) => {
 });
 
 function invalidateTaskCaches() {
-  ['work-myday', 'life-myday', 'work-all', 'life-all', 'tasks-all', 'goals', 'review'].forEach(k => cache.delete(k));
+  ['work-myday', 'life-myday', 'work-all', 'life-all', 'tasks-all', 'goals', 'review', 'xero-finance', 'journal-rings', 'calendar-today'].forEach(k => cache.delete(k));
 }
 
 async function fetchGoalsForSource(projectsDs, tasksDs, source, projectPropName) {
@@ -1970,13 +1970,17 @@ app.get('/api/finance/xero', async (_req, res) => {
       const burnStart = ymd(new Date(today.getFullYear(), today.getMonth() - 3, 1));
       const burnEnd = ymd(new Date(today.getFullYear(), today.getMonth(), 0)); // end of last month
 
+      const xLog = (name) => (err) => { console.error(`[xero] ${name} failed:`, err.message); return null; };
       const [bankRaw, mtdRaw, qtdRaw, ytdRaw, burnRaw, bsRaw] = await Promise.all([
-        xeroGet('/api.xro/2.0/Reports/BankSummary').catch(() => null),
-        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: monthStart, toDate: todayStr }).catch(() => null),
-        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: quarterStart, toDate: todayStr }).catch(() => null),
-        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: yearStart, toDate: todayStr }).catch(() => null),
-        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: burnStart, toDate: burnEnd }).catch(() => null),
-        xeroGet('/api.xro/2.0/Reports/BalanceSheet', { date: todayStr }).catch(() => null),
+        // BankSummary takes a date range; omitting it sometimes returns empty,
+        // so pass fromDate = monthStart + toDate = today for current-month
+        // activity (the closing balance is what we actually read).
+        xeroGet('/api.xro/2.0/Reports/BankSummary', { fromDate: monthStart, toDate: todayStr }).catch(xLog('BankSummary')),
+        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: monthStart, toDate: todayStr }).catch(xLog('P&L MTD')),
+        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: quarterStart, toDate: todayStr }).catch(xLog('P&L QTD')),
+        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: yearStart, toDate: todayStr }).catch(xLog('P&L YTD')),
+        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: burnStart, toDate: burnEnd }).catch(xLog('P&L burn')),
+        xeroGet('/api.xro/2.0/Reports/BalanceSheet', { date: todayStr }).catch(xLog('BalanceSheet')),
       ]);
       const bank = bankRaw ? parseBankSummary(bankRaw.Reports?.[0]) : { accounts: [], totalCash: 0 };
       const mtd = mtdRaw ? parseProfitAndLoss(mtdRaw.Reports?.[0]) : { income: 0, expenses: 0, net: 0 };
