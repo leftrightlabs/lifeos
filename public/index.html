@@ -2197,6 +2197,30 @@ window.lrl = (function(){
           </div>
           <button class="ritual-step-action" data-action="jump-marketing">Jump ›</button>
         </div>
+        <div class="ritual-step" data-step="notionComments">
+          <button class="ritual-check" aria-label="Toggle done"></button>
+          <div class="ritual-step-body">
+            <div class="ritual-step-label">Respond to Notion comments</div>
+            <div class="ritual-step-meta">Notion inbox</div>
+          </div>
+          <button class="ritual-step-action" data-action="open-notion-inbox">Open ↗</button>
+        </div>
+        <div class="ritual-step" data-step="slackMessages">
+          <button class="ritual-check" aria-label="Toggle done"></button>
+          <div class="ritual-step-body">
+            <div class="ritual-step-label">Respond to Slack messages</div>
+            <div class="ritual-step-meta">DMs + mentions</div>
+          </div>
+          <button class="ritual-step-action" data-action="open-slack">Open ↗</button>
+        </div>
+        <div class="ritual-step" data-step="reviewCalendar">
+          <button class="ritual-check" aria-label="Toggle done"></button>
+          <div class="ritual-step-body">
+            <div class="ritual-step-label">Review calendar</div>
+            <div class="ritual-step-meta">Today's meetings</div>
+          </div>
+          <button class="ritual-step-action" data-action="jump-calendar">Jump ›</button>
+        </div>
       </div>
     </div>
 
@@ -3016,7 +3040,7 @@ function setChapterCollapsed(collapsed){
 }
 
 // ====== Morning Ritual ======
-const RITUAL_STEPS = ['inboxes', 'birthdays', 'checkin', 'sequence', 'marketing'];
+const RITUAL_STEPS = ['inboxes', 'birthdays', 'checkin', 'sequence', 'marketing', 'notionComments', 'slackMessages', 'reviewCalendar'];
 function ritualKey(){
   return 'lrl-ritual-' + new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
 }
@@ -3292,6 +3316,12 @@ function initRitual(){
         document.getElementById('today-quests')?.scrollIntoView({ behavior:'smooth', block:'center' });
       } else if (action === 'jump-marketing'){
         document.querySelector('.tab[data-tab="marketing"]')?.click();
+      } else if (action === 'open-notion-inbox'){
+        window.openExternalSafe?.('https://www.notion.so/leftrightlabs');
+      } else if (action === 'open-slack'){
+        window.openExternalSafe?.('https://app.slack.com/client');
+      } else if (action === 'jump-calendar'){
+        document.getElementById('today-calendar')?.scrollIntoView({ behavior:'smooth', block:'center' });
       }
       return;
     }
