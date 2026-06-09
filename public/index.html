@@ -1175,6 +1175,13 @@
   .autofocus-app .stat.s-today {border-top-color:var(--today)}
   .autofocus-app .stat.s-over {border-top-color:var(--over)}
   .autofocus-app .stat.s-myday {border-top-color:var(--lime)}
+  /* In single-mode views, hide the opposite-side tile entirely — and the
+     same-side tile is redundant with Open (which is already filtered), so
+     hide that too. Leaves: Open · Today · Overdue · My Day. */
+  body[data-mode="work"] .autofocus-app .stat.s-personal,
+  body[data-mode="work"] .autofocus-app .stat.s-work,
+  body[data-mode="personal"] .autofocus-app .stat.s-work,
+  body[data-mode="personal"] .autofocus-app .stat.s-personal { display: none; }
   @media(max-width:760px){.autofocus-app .statgrid {grid-template-columns:repeat(3,1fr);gap:6px}.autofocus-app .stat {padding:8px 10px;gap:8px}.autofocus-app .stat .statn {font-size:20px}.autofocus-app .stat .statl {font-size:11px;letter-spacing:.04em}}
   .autofocus-app .dot {width:5px;height:5px;border-radius:50%;background:var(--lime);display:inline-block;margin-right:7px}
   .autofocus-app .syncbar {background:#fff;border:1px solid var(--line);border-left:3px solid var(--lime);border-radius:10px;padding:11px 14px;margin-bottom:12px;font-size:13px}
@@ -2806,10 +2813,14 @@ function render(){
   }
 }
 function updateHeader(){
-  const live=allTasks().filter(t=>!t.done);
+  // Stat tiles count from the same base as visible(): open tasks, mode-filtered,
+  // and excluding future recurrences (unless "show routines" toggle is on).
+  // This keeps the Open count consistent with what's actually rendered below.
+  let live = allTasks().filter(t => !t.done && !(notYetDue(t) && !ui.routines));
+  if (ui.src !== 'all') live = live.filter(t => t.source === ui.src);
   const work=live.filter(t=>t.source==='work').length, pers=live.filter(t=>t.source==='personal').length;
-  const od=live.filter(t=>{const e=effDate(t);return e&&daysFrom(e)<0&&!notYetDue(t);}).length;
-  const td=live.filter(t=>{const e=effDate(t);return e&&daysFrom(e)===0&&!notYetDue(t);}).length;
+  const od=live.filter(t=>{const e=effDate(t);return e&&daysFrom(e)<0;}).length;
+  const td=live.filter(t=>{const e=effDate(t);return e&&daysFrom(e)===0;}).length;
   const md=live.filter(t=>t.myDay).length;
   const tile=(n,label,cls,filter)=>{
     const active=ui.statFilter===filter?' active':'';
@@ -2948,6 +2959,23 @@ el('groupsel').addEventListener('change',e=>{ui.group=e.target.value;render();})
 function syncAutofocusToMode(){
   const m = localStorage.getItem('lrl-mode') || 'all';
   ui.src = (m === 'all' || m === 'combined') ? 'all' : m;
+  // Group: "Work / Personal" is meaningless in single-mode views — hide the
+  // option, and if the user happens to be on that grouping when entering a
+  // single mode, snap them back to bucket grouping.
+  const grpSel = document.getElementById('groupsel');
+  if (grpSel) {
+    const srcOpt = grpSel.querySelector('option[value="source"]');
+    if (srcOpt) {
+      const inSingleMode = ui.src !== 'all';
+      srcOpt.hidden = inSingleMode;
+      srcOpt.disabled = inSingleMode;
+      if (inSingleMode && ui.group === 'source') {
+        ui.group = 'bucket';
+        saveState();
+        grpSel.value = 'bucket';
+      }
+    }
+  }
   render();
 }
 window.addEventListener('lrl-mode-changed', syncAutofocusToMode);
