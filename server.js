@@ -2017,10 +2017,11 @@ app.get('/api/finance/xero', async (_req, res) => {
         // fromDate/toDate range. Pass today's date so closing balances are
         // as of today.
         xeroGet('/api.xro/2.0/Reports/BankSummary', { date: todayStr }).catch(xLog('BankSummary')),
-        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: monthStart, toDate: todayStr }).catch(xLog('P&L MTD')),
-        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: quarterStart, toDate: todayStr }).catch(xLog('P&L QTD')),
-        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: yearStart, toDate: todayStr }).catch(xLog('P&L YTD')),
-        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: burnStart, toDate: burnEnd }).catch(xLog('P&L burn')),
+        // paymentsOnly=true → cash basis (money actually moved, not invoiced)
+        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: monthStart, toDate: todayStr, paymentsOnly: 'true' }).catch(xLog('P&L MTD')),
+        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: quarterStart, toDate: todayStr, paymentsOnly: 'true' }).catch(xLog('P&L QTD')),
+        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: yearStart, toDate: todayStr, paymentsOnly: 'true' }).catch(xLog('P&L YTD')),
+        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: burnStart, toDate: burnEnd, paymentsOnly: 'true' }).catch(xLog('P&L burn')),
         xeroGet('/api.xro/2.0/Reports/BalanceSheet', { date: todayStr }).catch(xLog('BalanceSheet')),
       ]);
       const bank = bankRaw ? parseBankSummary(bankRaw.Reports?.[0]) : { accounts: [], totalCash: 0 };
