@@ -68,6 +68,7 @@ const cache = new Map();
 const CACHE_TTL_OVERRIDES = {
   'journal-rings': 5 * 60_000, // heavier query (per-row body-text check); cache longer
   'vto-goals': 10 * 60_000,    // goals rarely change
+  'active-projects': 5 * 60_000, // project status changes slowly
 };
 async function cached(key, fn) {
   const ttl = CACHE_TTL_OVERRIDES[key] || CACHE_TTL_MS;
@@ -684,10 +685,48 @@ function daysSince(iso) {
   return Math.floor(ms / (1000 * 60 * 60 * 24));
 }
 
-async function reviewTasksForSource(taskDs, source, peopleProp) {
+// Statuses on the Projects DB that count as "live work" for the Review tab.
+// Tasks attached to projects outside this set are hidden from the Review queues —
+// the review tab is for nudging open work, not surfacing tasks on paused/done projects.
+const ACTIVE_PROJECT_STATUSES = new Set(['Active', 'Ongoing']);
+
+async function fetchProjectStatusMap(projectsDs) {
+  const map = new Map();
+  if (!notion) return map;
+  let cursor;
+  do {
+    const res = await notion.dataSources.query({
+      data_source_id: projectsDs,
+      page_size: 100,
+      start_cursor: cursor,
+    });
+    res.results.forEach((p) => {
+      const status = p.properties?.Status?.status?.name || null;
+      map.set(p.id, status);
+    });
+    cursor = res.has_more ? res.next_cursor : null;
+  } while (cursor);
+  return map;
+}
+
+// Returns a Set of project page IDs (across both Work + Life projects DBs) whose
+// Status is in ACTIVE_PROJECT_STATUSES. Used by the Review tab to filter out
+// tasks tied to inactive projects.
+async function fetchActiveProjectIds() {
+  const [workMap, lifeMap] = await Promise.all([
+    fetchProjectStatusMap(WORK_PROJECTS_DS),
+    fetchProjectStatusMap(LIFE_PROJECTS_DS),
+  ]);
+  const activeIds = new Set();
+  for (const [id, status] of workMap) if (ACTIVE_PROJECT_STATUSES.has(status)) activeIds.add(id);
+  for (const [id, status] of lifeMap) if (ACTIVE_PROJECT_STATUSES.has(status)) activeIds.add(id);
+  return activeIds;
+}
+
+async function reviewTasksForSource(taskDs, source, peopleProp, activeProjectIds) {
   // Get all open tasks (Status != Done) — already have these helpers
   const data = await queryTasks(taskDs, { peopleProp, myDayOnly: false });
-  const all = data.results.map((p) => {
+  const rawAll = data.results.map((p) => {
     const props = p.properties || {};
     const due = props.Due?.date || {};
     const projectRel = props.Project?.relation || [];
@@ -701,10 +740,16 @@ async function reviewTasksForSource(taskDs, source, peopleProp) {
       priority: props['Priority 2']?.select?.name || props.Priority?.status?.name || null,
       myDay: !!props['My Day']?.checkbox,
       hasProject: projectRel.length > 0,
+      projectIds: projectRel.map((r) => r.id),
       edited: p.last_edited_time || null,
       url: p.url,
     };
   });
+  // Project-status filter: hide tasks tied to inactive projects. Tasks with no
+  // project at all still pass through (the noProjectNoDue bucket relies on them).
+  const all = activeProjectIds
+    ? rawAll.filter((t) => !t.hasProject || t.projectIds.some((id) => activeProjectIds.has(id)))
+    : rawAll;
   const todayISO = chicagoTodayISODate();
   const overdue = all.filter((t) => {
     const d = t.dueEnd || t.dueStart;
@@ -720,9 +765,10 @@ app.get('/api/review', async (_req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
     const data = await cached('review', async () => {
+      const activeProjectIds = await cached('active-projects', fetchActiveProjectIds);
       const [work, personal] = await Promise.all([
-        reviewTasksForSource(WORK_TASKS_DS, 'work', 'Assigned'),
-        reviewTasksForSource(LIFE_TASKS_DS, 'personal', null),
+        reviewTasksForSource(WORK_TASKS_DS, 'work', 'Assigned', activeProjectIds),
+        reviewTasksForSource(LIFE_TASKS_DS, 'personal', null, activeProjectIds),
       ]);
       const combine = (k) => [...work[k], ...personal[k]];
       return {
