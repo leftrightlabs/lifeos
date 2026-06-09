@@ -6028,27 +6028,40 @@ function escapeMs(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<'
 function renderCampaigns() {
   const container = document.getElementById('campaigns-container');
   if (!container) return;
-  // Rocks are quarterly priorities — always show both columns in all 3 modes.
-  // The mode lens applies to tasks/comms; rocks are the company game board.
+  // Mode lens applies to rocks too: ALL → both, WORK → work only,
+  // PERSONAL → personal only.
+  const currentMode = (typeof mode !== 'undefined' ? mode : (localStorage.getItem('lrl-mode') || 'all'));
+  const showBiz = currentMode === 'all' || currentMode === 'work';
+  const showLife = currentMode === 'all' || currentMode === 'personal';
+  // If a campaign is expanded but its column is now hidden, snap selection.
+  if (selectedCampaign === 'business' && !showBiz) selectedCampaign = showLife ? 'life' : null;
+  if (selectedCampaign === 'life' && !showLife) selectedCampaign = showBiz ? 'business' : null;
   let html = '<div class="campaigns-grid">';
-  html += campaignCardHTML('business');
-  html += campaignCardHTML('life');
+  if (showBiz) html += campaignCardHTML('business');
+  if (showLife) html += campaignCardHTML('life');
   html += '</div>';
   container.innerHTML = html;
   renderMilestones();
-  // Update the "N of M rocks complete" footer badge with live data
+  // Update the "N of M rocks complete" footer badge — count only the
+  // rocks visible in the current mode.
   const rocksSummaryEl = document.getElementById('rocks-summary');
   if (rocksSummaryEl) {
-    const allGoals = GOALS_DATA;
-    const total = allGoals.length;
+    const visibleGoals = GOALS_DATA.filter(g => {
+      if (g.source === 'work') return showBiz;
+      return showLife; // 'personal'
+    });
+    const total = visibleGoals.length;
     if (total > 0) {
-      // A rock is "complete" if all its milestones are done (or it has no milestones but status = Done)
-      const complete = allGoals.filter(g =>
+      // A rock is "complete" if all its milestones are done (or it has no
+      // milestones but status = Done).
+      const complete = visibleGoals.filter(g =>
         g.progress.total > 0
           ? g.progress.done === g.progress.total
           : g.status === 'Done'
       ).length;
       rocksSummaryEl.textContent = `${complete} of ${total} rock${total === 1 ? '' : 's'} complete`;
+    } else {
+      rocksSummaryEl.textContent = 'No rocks in view';
     }
   }
 }
