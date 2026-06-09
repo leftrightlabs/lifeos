@@ -456,9 +456,13 @@ async function fetchGoalsForSource(projectsDs, tasksDs, source, projectPropName)
   }));
 }
 
-app.get('/api/goals', async (_req, res) => {
+app.get('/api/goals', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
+    // ?fresh=1 bypasses the 60s cache so milestone completion state reflects
+    // the current Notion truth immediately (used by the app's Refresh button
+    // and the auto-resync when the tab regains focus).
+    if (req.query.fresh === '1' || req.query.fresh === 'true') cache.delete('goals');
     const goals = await cached('goals', async () => {
       const [work, life] = await Promise.all([
         fetchGoalsForSource(WORK_PROJECTS_DS, WORK_TASKS_DS, 'work', 'Project'),

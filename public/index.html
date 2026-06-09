@@ -5979,15 +5979,20 @@ document.addEventListener('keydown', (e) => {
 <!-- =========================== CHAPTER & MILESTONE SYSTEM =========================== -->
 <script>
 let GOALS_DATA = []; // populated by fetchGoals()
+let _lastGoalsFetch = 0; // ms timestamp of the last successful goals fetch
 const MS_STORAGE_KEY = 'lrl-milestones-state-v1';
 let msState = { life_chapter: null };
 let selectedCampaign = null; // 'business' | 'life' | null
 
-async function fetchGoals(){
+async function fetchGoals(opts){
+  opts = opts || {};
   try {
-    const r = await fetch('/api/goals');
+    // fresh=1 bypasses the server's 60s goals cache so milestone completion
+    // state mirrors Notion right now (used on Refresh + tab-focus resync).
+    const r = await fetch('/api/goals' + (opts.fresh ? '?fresh=1' : ''));
     const d = await r.json();
     GOALS_DATA = d.goals || [];
+    _lastGoalsFetch = Date.now();
   } catch(e) { console.error('fetchGoals', e); GOALS_DATA = []; }
 }
 
@@ -6166,6 +6171,11 @@ async function unlockMilestone(msId){
     if (!r.ok) throw new Error('sync failed');
     window.lrl.haptic('success');
     window.lrl.confetti({ count: 50 });
+    // Reconcile with Notion truth once the unlock animation has played. The
+    // PATCH handler already busted the server goals cache, so this fresh fetch
+    // confirms the app matches Notion (status === Done) and keeps the two from
+    // drifting. Delayed so it doesn't cut the celebration short.
+    setTimeout(async () => { await fetchGoals({ fresh: true }); renderCampaigns(); }, 1700);
   } catch (err){
     ms.done = false;
     goal.progress.done -= 1;
@@ -6192,8 +6202,16 @@ document.addEventListener('click', (e) => {
   if (url && !action) openNotion(url);
 });
 (async () => { await loadMsState(); await fetchGoals(); renderCampaigns(); })();
-// Refresh goals when refresh button clicked
-window.addEventListener('lrl-refresh', async () => { await fetchGoals(); renderCampaigns(); });
+// Refresh button → pull current Notion state (bypass cache)
+window.addEventListener('lrl-refresh', async () => { await fetchGoals({ fresh: true }); renderCampaigns(); });
+// Auto-resync when returning to the app — e.g. after completing a milestone
+// over in Notion. Throttled so flicking between windows doesn't hammer Notion.
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState !== 'visible') return;
+  if (Date.now() - _lastGoalsFetch < 8000) return;
+  await fetchGoals({ fresh: true });
+  renderCampaigns();
+});
 </script>
 
 </body>
