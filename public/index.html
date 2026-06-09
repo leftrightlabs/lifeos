@@ -158,6 +158,11 @@
 
   .quest-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 28px; }
   .panel { background: var(--white); border-radius: 6px; padding: 20px 22px; border: 1px solid var(--navy-faint); }
+  /* Make the Today's Quest panel a query container so task rows wrap their
+     badges based on the PANEL's width, not the viewport's. This keeps quest +
+     calendar side by side in a narrow split-screen window while still giving
+     each task title the full-width, badges-below treatment it gets on mobile. */
+  #quest-panel { container: questpanel / inline-size; }
   .panel-title { font-family: var(--font-display); font-weight: 800; font-size: 17px; color: var(--navy); margin-bottom: 16px; line-height: 1.2; letter-spacing: -0.01em; }
   .panel-title span { display: inline; }
   .panel-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -186,8 +191,10 @@
   .quest-text.done, .quest-item.done .quest-text { text-decoration: line-through; color: var(--navy-dim); }
   .quest-item.done { opacity: 0.6; }
   .quest-meta-tags { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; flex-shrink: 0; }
-  @media (max-width: 600px) {
-    /* Mobile: keep [check][dot][title][star] on row 1, wrap badges to row 2 */
+  /* Keep [check][dot][title][star] on row 1, wrap badges to row 2 — fires
+     whenever the quest panel is narrow (true mobile OR a narrow split-screen
+     window), regardless of the overall viewport width. */
+  @container questpanel (max-width: 520px) {
     .quest-item { flex-wrap: wrap; row-gap: 4px; column-gap: 8px; }
     .quest-text { flex: 1; min-width: 0; order: 3; }
     .quest-star { order: 4; margin-left: 4px; }
@@ -3651,6 +3658,11 @@ function attachQuestSortable(container){
     delayOnTouchOnly: true, // mouse drags immediately
     touchStartThreshold: 8,
     animation: 220,
+    // The quest panel is now a CSS container (container-type: inline-size),
+    // which makes it a containing block for position:fixed too. SortableJS's
+    // touch drag mirror is fixed-positioned, so anchor it to <body> to keep it
+    // tracking the finger correctly instead of offsetting inside the panel.
+    fallbackOnBody: true,
     draggable: '.quest-item',
     filter: '[data-no-drag], button, a, input, select, textarea, .quest-check, .quest-star, .quest-due-inline, .quest-due-edit',
     preventOnFilter: false,
