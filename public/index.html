@@ -1906,6 +1906,141 @@
   .theme-btn:hover { color: var(--navy); }
   .theme-btn.active { background: var(--lime); color: var(--navy-accent); font-weight: 700; }
   @media (max-width: 720px) { .theme-btn { padding: 5px 8px; font-size: 10px; } }
+
+  /* =========================== MARKETING TAB =========================== */
+  #mkt-body { container: mktbody / inline-size; }
+  .mkt-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+  .mkt-kpi { background: var(--white); border: 1px solid var(--navy-faint); border-radius: 8px; padding: 12px 14px; }
+  .mkt-kpi .k-num { font-family: var(--font-display); font-size: 26px; font-weight: 800; color: var(--navy); line-height: 1; }
+  .mkt-kpi .k-lab { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-dim); font-weight: 600; margin-top: 6px; }
+  .mkt-kpi.alert .k-num { color: #ff7a6b; }
+  .mkt-kpi.today .k-num { color: var(--lime); }
+  @container mktbody (max-width: 560px) { .mkt-kpis { grid-template-columns: repeat(2, 1fr); } }
+
+  .mkt-section { background: var(--white); border: 1px solid var(--navy-faint); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+  .mkt-sec-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; cursor: pointer; user-select: none; }
+  .mkt-sec-head:hover { background: rgba(255,255,255,0.02); }
+  .mkt-sec-caret { color: var(--lime); font-size: 12px; transition: transform 0.2s; }
+  .mkt-section.collapsed .mkt-sec-caret { transform: rotate(-90deg); }
+  .mkt-sec-title { font-family: var(--font-display); font-weight: 800; font-size: 15px; color: var(--navy); letter-spacing: 0.02em; text-transform: uppercase; flex: 1; }
+  .mkt-sec-count { font-size: 11px; font-weight: 700; color: var(--navy-accent); background: var(--lime); border-radius: 999px; padding: 2px 9px; }
+  .mkt-sec-count.zero { background: rgba(255,255,255,0.08); color: var(--navy-dim); }
+  .mkt-sec-count.alert { background: #ff7a6b; color: #fff; }
+  .mkt-sec-body { padding: 4px 18px 18px; }
+  .mkt-section.collapsed .mkt-sec-body { display: none; }
+  .mkt-empty { color: var(--navy-dim); font-size: 13px; padding: 10px 2px; }
+
+  /* Asset card */
+  .mkt-card { border: 1px solid var(--navy-faint); border-radius: 10px; padding: 16px; margin-top: 12px; background: rgba(255,255,255,0.015); }
+  .mkt-card.overdue { border-left: 3px solid #ff7a6b; }
+  .mkt-card.today { border-left: 3px solid var(--lime); }
+  .mkt-card-top { display: flex; align-items: flex-start; gap: 10px; }
+  .mkt-card-title { font-size: 15px; font-weight: 700; color: var(--navy); line-height: 1.3; flex: 1; min-width: 0; }
+  .mkt-status { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
+  .mkt-status.idea { background: rgba(255,255,255,0.08); color: var(--navy-dim); }
+  .mkt-status.drafting { background: rgba(240,195,106,0.16); color: #f0c36a; }
+  .mkt-status.review { background: rgba(212,168,84,0.18); color: #e0b15a; }
+  .mkt-status.approved { background: rgba(167,193,64,0.16); color: var(--lime); }
+  .mkt-status.scheduled { background: rgba(122,157,216,0.18); color: #a7c0e8; }
+  .mkt-status.published { background: rgba(93,156,236,0.18); color: #9cc5f5; }
+  .mkt-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+  .mkt-badge { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 4px; background: rgba(255,255,255,0.06); color: var(--navy-dim); }
+  .mkt-badge.date { color: var(--navy); }
+  .mkt-badge.date.od { color: #ff7a6b; font-weight: 700; }
+  .mkt-badge.date.tdy { color: var(--lime); font-weight: 700; }
+  .mkt-badge.fmt { background: rgba(240,195,106,0.14); color: #e0b15a; }
+  .mkt-badge.need { background: rgba(255,122,107,0.14); color: #ff9b8e; }
+  .mkt-topic { font-size: 12px; color: var(--navy-dim); margin-top: 8px; line-height: 1.45; font-style: italic; }
+
+  /* Media */
+  .mkt-media { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .mkt-media-item { width: 130px; }
+  .mkt-thumb { width: 130px; height: 130px; border-radius: 8px; object-fit: cover; background: rgba(0,0,0,0.25); border: 1px solid var(--navy-faint); cursor: zoom-in; display: block; }
+  .mkt-file-tile { width: 130px; height: 130px; border-radius: 8px; border: 1px solid var(--navy-faint); background: rgba(0,0,0,0.2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; cursor: pointer; text-align: center; padding: 8px; }
+  .mkt-file-ext { font-family: var(--font-display); font-weight: 800; font-size: 20px; color: var(--lime); letter-spacing: 0.04em; }
+  .mkt-file-name { font-size: 10px; color: var(--navy-dim); line-height: 1.2; word-break: break-word; max-height: 28px; overflow: hidden; }
+  .mkt-dl { display: block; text-align: center; margin-top: 6px; font-size: 11px; font-weight: 600; color: var(--lime); text-decoration: none; padding: 4px; border: 1px solid rgba(167,193,64,0.3); border-radius: 6px; }
+  .mkt-dl:hover { background: rgba(167,193,64,0.1); }
+
+  /* Copy sections */
+  .mkt-copy-wrap { margin-top: 14px; }
+  .mkt-copy-allbtn { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--lime); background: rgba(167,193,64,0.1); border: 1px solid rgba(167,193,64,0.3); border-radius: 6px; padding: 5px 12px; cursor: pointer; }
+  .mkt-copy-allbtn:hover { background: rgba(167,193,64,0.18); }
+  .mkt-copy-sec { border: 1px solid var(--navy-faint); border-radius: 8px; margin-top: 8px; overflow: hidden; }
+  .mkt-copy-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(255,255,255,0.02); }
+  .mkt-copy-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--navy); flex: 1; }
+  .mkt-copy-btn { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--navy-accent); background: var(--lime); border: none; border-radius: 5px; padding: 4px 10px; cursor: pointer; flex-shrink: 0; }
+  .mkt-copy-btn.copied { background: #5d9cec; }
+  .mkt-copy-text { font-size: 13px; line-height: 1.55; color: var(--navy); white-space: pre-wrap; word-break: break-word; padding: 10px 12px; max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.12); margin: 0; font-family: var(--font-body); }
+
+  /* Channels checklist */
+  .mkt-chan-wrap { margin-top: 14px; border-top: 1px solid var(--navy-faint); padding-top: 12px; }
+  .mkt-chan-title { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; margin-bottom: 8px; }
+  .mkt-chan { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+  .mkt-chan-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .mkt-chan-dot.linkedin { background: #5d9cec; } .mkt-chan-dot.instagram { background: #e1306c; }
+  .mkt-chan-dot.facebook { background: #4267b2; } .mkt-chan-dot.youtube { background: #ff4a3d; }
+  .mkt-chan-dot.email { background: #a78bfa; } .mkt-chan-dot.blog { background: var(--lime); } .mkt-chan-dot.other { background: var(--navy-dim); }
+  .mkt-chan-name { font-size: 12px; color: var(--navy); font-weight: 600; width: 116px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mkt-chan-input { flex: 1; min-width: 0; background: rgba(0,0,0,0.2); border: 1px solid var(--navy-faint); border-radius: 6px; color: var(--navy); font-size: 12px; padding: 5px 8px; font-family: var(--font-body); }
+  .mkt-chan-input:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
+  .mkt-chan-save { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--navy-accent); background: var(--lime); border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; flex-shrink: 0; }
+  .mkt-chan-live { flex: 1; min-width: 0; font-size: 12px; }
+  .mkt-chan-live a { color: #9cc5f5; text-decoration: none; word-break: break-all; }
+  .mkt-chan-live a:hover { text-decoration: underline; }
+  .mkt-chan-check { color: var(--lime); font-weight: 700; flex-shrink: 0; }
+  .mkt-chan-edit { font-size: 10px; color: var(--navy-dim); background: none; border: none; cursor: pointer; flex-shrink: 0; text-decoration: underline; }
+  @container mktbody (max-width: 460px) {
+    .mkt-chan { flex-wrap: wrap; }
+    .mkt-chan-name { width: auto; flex: 1; }
+    .mkt-chan-input { flex: 1 1 100%; order: 5; }
+  }
+
+  /* Card actions */
+  .mkt-card-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
+  .mkt-status-sel { background: rgba(0,0,0,0.2); border: 1px solid var(--navy-faint); color: var(--navy); border-radius: 6px; padding: 6px 8px; font-size: 12px; font-family: var(--font-body); color-scheme: dark; }
+  .mkt-pubbtn { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; color: var(--navy-accent); background: var(--lime); border: none; border-radius: 6px; padding: 7px 16px; cursor: pointer; }
+  .mkt-pubbtn:hover { filter: brightness(1.05); }
+  .mkt-pubbtn:disabled { opacity: 0.5; cursor: default; }
+  .mkt-openlink { font-size: 12px; color: var(--navy-dim); text-decoration: none; margin-left: auto; }
+  .mkt-openlink:hover { color: var(--lime); }
+
+  /* This-week compact rows */
+  .mkt-row { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--navy-faint); cursor: pointer; }
+  .mkt-row:last-child { border-bottom: none; }
+  .mkt-row:hover { background: rgba(255,255,255,0.02); }
+  .mkt-row-date { font-size: 11px; font-weight: 700; color: var(--navy-dim); width: 52px; flex-shrink: 0; }
+  .mkt-row-name { font-size: 13px; color: var(--navy); flex: 1; min-width: 0; }
+
+  /* Calendar */
+  .mkt-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .mkt-cal-month { font-family: var(--font-display); font-weight: 800; font-size: 16px; color: var(--navy); }
+  .mkt-cal-nav { background: rgba(255,255,255,0.06); border: 1px solid var(--navy-faint); color: var(--navy); width: 30px; height: 30px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  .mkt-cal-nav:hover { background: rgba(167,193,64,0.12); border-color: var(--lime); }
+  .mkt-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .mkt-cal-dow { text-align: center; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; color: var(--navy-dim); text-transform: uppercase; padding: 4px 0; }
+  .mkt-cal-cell { aspect-ratio: 1 / 1; border: 1px solid var(--navy-faint); border-radius: 6px; padding: 4px; display: flex; flex-direction: column; gap: 2px; cursor: pointer; min-height: 0; background: rgba(255,255,255,0.01); }
+  .mkt-cal-cell.empty { background: none; border-color: transparent; cursor: default; }
+  .mkt-cal-cell.today { border-color: var(--lime); box-shadow: inset 0 0 0 1px var(--lime); }
+  .mkt-cal-cell.sel { background: rgba(167,193,64,0.12); border-color: var(--lime); }
+  .mkt-cal-cell:hover:not(.empty) { background: rgba(255,255,255,0.04); }
+  .mkt-cal-dnum { font-size: 11px; font-weight: 600; color: var(--navy-dim); }
+  .mkt-cal-cell.today .mkt-cal-dnum { color: var(--lime); font-weight: 800; }
+  .mkt-cal-dots { display: flex; flex-wrap: wrap; gap: 2px; align-content: flex-start; }
+  .mkt-cal-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .mkt-cal-dot.published { background: #9cc5f5; } .mkt-cal-dot.scheduled { background: #a7c0e8; }
+  .mkt-cal-dot.approved, .mkt-cal-dot.review, .mkt-cal-dot.drafting { background: #f0c36a; } .mkt-cal-dot.idea { background: var(--navy-dim); }
+  .mkt-cal-daylist { margin-top: 14px; border-top: 1px solid var(--navy-faint); padding-top: 12px; }
+  .mkt-cal-daylist-head { font-size: 12px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+  @container mktbody (max-width: 480px) { .mkt-cal-grid { gap: 2px; } .mkt-cal-cell { padding: 2px; } .mkt-cal-dnum { font-size: 10px; } }
+
+  /* Detail modal */
+  .mkt-modal { position: fixed; inset: 0; background: rgba(10,15,30,0.8); backdrop-filter: blur(4px); display: none; align-items: flex-start; justify-content: center; padding: 50px 16px 20px; z-index: 120; overflow-y: auto; }
+  .mkt-modal.open { display: flex; }
+  .mkt-modal-content { background: var(--cream); border: 1px solid var(--navy-faint); border-radius: 14px; max-width: 620px; width: 100%; box-shadow: 0 24px 60px rgba(0,0,0,0.6); }
+  .mkt-modal.open .mkt-modal-content { animation: lrl-modal-pop 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+  .mkt-modal-content .mkt-card { margin-top: 0; border: none; }
+  .mkt-modal-close { position: sticky; top: 0; float: right; background: transparent; border: none; color: var(--navy-dim); font-size: 24px; cursor: pointer; padding: 10px 16px; z-index: 2; }
 </style>
 </head>
 <body>
@@ -2472,14 +2607,10 @@ window.lrl = (function(){
   <div class="tab-content" data-content="marketing">
     <div class="section-label">Marketing Engine</div>
     <h1 class="page-title"><span>Marketing</span></h1>
-    <div class="page-subtitle">Content engine, campaign performance, and lead gen. (Static placeholder.)</div>
-    <div class="kpi-grid">
-      <div class="kpi-card"><div class="kpi-label">Content Queue</div><div class="kpi-value"><span>14</span></div><div class="kpi-change positive">2.3 weeks ahead</div></div>
-      <div class="kpi-card"><div class="kpi-label">Published / Week</div><div class="kpi-value"><span>4</span></div><div class="kpi-change">YT + LI + IG + FB</div></div>
-      <div class="kpi-card"><div class="kpi-label">New Leads (30d)</div><div class="kpi-value"><span>47</span></div><div class="kpi-change positive">↑ 12 vs prior 30</div></div>
-      <div class="kpi-card"><div class="kpi-label">Brand Advantage Quiz</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending integration</div></div>
-    </div>
+    <div class="page-subtitle">Publish today's content, track where it went live, and see what's ahead.</div>
+    <div id="mkt-body"><div style="color:var(--navy-dim);font-size:13px;padding:20px 0">loading…</div></div>
   </div>
+  <div class="mkt-modal" id="mkt-modal"><div class="mkt-modal-content" id="mkt-modal-content"></div></div>
 
   <!-- FINANCE TAB -->
   <div class="tab-content" data-content="finance">
@@ -4377,6 +4508,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     localStorage.setItem('lrl-active-tab', tab.dataset.tab);
     if (tab.dataset.tab === 'health') maybeLoadHealth();
     if (tab.dataset.tab === 'finance') maybeLoadFinance();
+    if (tab.dataset.tab === 'marketing') maybeLoadMarketing();
   });
 });
 
@@ -5945,6 +6077,7 @@ document.addEventListener('keydown', (e) => {
       contentEl.classList.add('active');
       if (saved === 'health') maybeLoadHealth();
       if (saved === 'finance') maybeLoadFinance();
+      if (saved === 'marketing') maybeLoadMarketing();
     }
   }
   // Apply mode (filters tab visibility + sets active button)
@@ -6212,6 +6345,266 @@ document.addEventListener('visibilitychange', async () => {
   await fetchGoals({ fresh: true });
   renderCampaigns();
 });
+</script>
+
+<!-- =========================== MARKETING PUBLISHING =========================== -->
+<script>
+(function(){
+  const STATUSES = ['Idea','Drafting','Review','Approved','Scheduled','Published'];
+  const COLLAPSE_KEY = 'lrl-mkt-collapsed-v1';
+  const MKT = { loaded:false, loading:false, data:null, cal:null, calMonth:null, calSel:null, assetsById:{}, collapsed:{} };
+  try { MKT.collapsed = JSON.parse(localStorage.getItem(COLLAPSE_KEY) || '{}'); } catch(_){}
+
+  const mEsc = (s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const chiToday = ()=> new Date().toLocaleDateString('en-CA',{timeZone:'America/Chicago'});
+  const chiMonth = ()=> chiToday().slice(0,7);
+  const statusCls = (s)=> (s||'idea').toLowerCase().split(' ')[0];
+  const shortUrl = (u)=>{ const s=String(u||'').replace(/^https?:\/\//,'').replace(/\/$/,''); return s.length>34?s.slice(0,33)+'…':s; };
+
+  async function mktCopy(text){
+    try { if (navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(text); return true; } } catch(_){}
+    try { const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.left='-9999px'; document.body.appendChild(ta); ta.focus(); ta.select(); const ok=document.execCommand('copy'); document.body.removeChild(ta); return ok; } catch(_){ return false; }
+  }
+
+  async function fetchMktToday(fresh){
+    const r = await fetch('/api/marketing/today' + (fresh?'?fresh=1':''));
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    MKT.data = d;
+    [].concat(d.overdue||[], d.dueToday||[], d.thisWeek||[], d.publishedToday||[]).forEach(a=>{ MKT.assetsById[a.id]=a; });
+    return d;
+  }
+  async function fetchMktCalendar(month, fresh){
+    const m = month || chiMonth();
+    const r = await fetch('/api/marketing/calendar?month=' + m + (fresh?'&fresh=1':''));
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    MKT.cal = d; MKT.calMonth = d.month || m;
+    return d;
+  }
+
+  async function maybeLoadMarketing(){
+    if (MKT.loaded || MKT.loading) return;
+    MKT.loading = true;
+    const body = document.getElementById('mkt-body');
+    try {
+      await Promise.all([ fetchMktToday(true), fetchMktCalendar(chiMonth(), true) ]);
+      MKT.loaded = true;
+      renderMktBody();
+    } catch(err){
+      if (body) body.innerHTML = `<div class="mkt-empty">Couldn't load marketing: ${mEsc(err.message)}</div>`;
+    } finally { MKT.loading = false; }
+  }
+  window.maybeLoadMarketing = maybeLoadMarketing;
+
+  // ---- render ----
+  function dateBadge(dateStr, today){
+    if (!dateStr) return '<span class="mkt-badge date">no date</span>';
+    if (dateStr < today){ const days=Math.round((new Date(today)-new Date(dateStr))/864e5); return `<span class="mkt-badge date od">${days}d overdue</span>`; }
+    if (dateStr === today) return '<span class="mkt-badge date tdy">Today</span>';
+    const dt=new Date(dateStr+'T12:00:00'); return `<span class="mkt-badge date">${dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</span>`;
+  }
+  function mediaHtml(a){
+    if (!a.media || !a.media.length) return '';
+    return '<div class="mkt-media">' + a.media.map(m=>{
+      const inner = m.kind==='image'
+        ? `<img class="mkt-thumb" src="${mEsc(m.src)}" loading="lazy" data-mkt-zoom="${mEsc(m.src)}" alt="${mEsc(m.name)}">`
+        : `<div class="mkt-file-tile" data-mkt-zoom="${mEsc(m.src)}"><div class="mkt-file-ext">${mEsc((m.ext||'file').toUpperCase())}</div><div class="mkt-file-name">${mEsc(m.name)}</div></div>`;
+      return `<div class="mkt-media-item">${inner}<a class="mkt-dl" href="${mEsc(m.download)}" download>↓ Download</a></div>`;
+    }).join('') + '</div>';
+  }
+  function copyHtml(a){
+    if (!a.copy || !a.copy.length) return '<div class="mkt-chan-wrap"><div class="mkt-chan-title">Copy</div><div class="mkt-empty">No copy in the page body yet — open in Notion to add it.</div></div>';
+    return `<div class="mkt-copy-wrap">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span class="mkt-chan-title" style="margin:0;flex:1">Copy</span>
+        <button class="mkt-copy-allbtn" data-mkt-copyall="${a.id}">Copy all</button>
+      </div>
+      ${a.copy.map((s,i)=>`<div class="mkt-copy-sec">
+        <div class="mkt-copy-head"><span class="mkt-copy-label">${mEsc(s.heading||'Body')}</span><button class="mkt-copy-btn" data-mkt-copy="${a.id}" data-sec="${i}">Copy</button></div>
+        <pre class="mkt-copy-text">${mEsc(s.text)}</pre>
+      </div>`).join('')}
+    </div>`;
+  }
+  function chanRowHtml(id, c){
+    const head = `<span class="mkt-chan-dot ${c.platform}"></span><span class="mkt-chan-name" title="${mEsc(c.name)}">${mEsc(c.name)}</span>`;
+    if (c.url){
+      return `<div class="mkt-chan" data-asset="${id}" data-chan="${mEsc(c.field)}">${head}<span class="mkt-chan-live"><a href="${mEsc(c.url)}" target="_blank" rel="noopener">✓ ${mEsc(shortUrl(c.url))}</a></span><button class="mkt-chan-edit" data-mkt-chanedit>edit</button></div>`;
+    }
+    return `<div class="mkt-chan" data-asset="${id}" data-chan="${mEsc(c.field)}">${head}<input class="mkt-chan-input" placeholder="paste live URL…" inputmode="url"><button class="mkt-chan-save" data-mkt-chansave>Save</button></div>`;
+  }
+  function channelsHtml(a){
+    if (!a.channels || !a.channels.length) return `<div class="mkt-chan-wrap"><div class="mkt-chan-title">Publish to & track</div><div class="mkt-empty">No channels set on this asset in Notion. Add them on the asset's CHANNELS field.</div></div>`;
+    return `<div class="mkt-chan-wrap"><div class="mkt-chan-title">Publish to & track</div>${a.channels.map(c=>chanRowHtml(a.id,c)).join('')}</div>`;
+  }
+  function cardHtml(a, bucket){
+    const today = chiToday();
+    const st = a.status || 'Idea';
+    const fmts = (a.formats||[]).map(f=>`<span class="mkt-badge fmt">${mEsc(f)}</span>`).join('');
+    const ct = a.contentType ? `<span class="mkt-badge">${mEsc(a.contentType)}</span>`:'';
+    const needs = (a.needs||[]).map(n=>`<span class="mkt-badge need">${mEsc(n)}</span>`).join('');
+    const cardCls = bucket==='overdue'?' overdue':(bucket==='today'?' today':'');
+    const pubDone = st==='Published';
+    return `<div class="mkt-card${cardCls}" data-asset-card="${a.id}">
+      <div class="mkt-card-top">
+        <div class="mkt-card-title">${mEsc(a.name)}</div>
+        <span class="mkt-status ${statusCls(st)}">${mEsc(st)}</span>
+      </div>
+      <div class="mkt-meta">${dateBadge(a.publishDate,today)}${fmts}${ct}${needs}</div>
+      ${a.primaryTopic?`<div class="mkt-topic">${mEsc(a.primaryTopic)}</div>`:''}
+      ${mediaHtml(a)}
+      ${copyHtml(a)}
+      ${channelsHtml(a)}
+      <div class="mkt-card-actions">
+        <select class="mkt-status-sel" data-mkt-status="${a.id}">${STATUSES.map(s=>`<option ${s===st?'selected':''}>${s}</option>`).join('')}</select>
+        <button class="mkt-pubbtn" data-mkt-publish="${a.id}" ${pubDone?'disabled':''}>${pubDone?'Published ✓':'Mark Published'}</button>
+        <a class="mkt-openlink" href="${window.toNotionLink(a.url)}" target="_blank" rel="noopener">Open in Notion ↗</a>
+      </div>
+    </div>`;
+  }
+  function section(key, title, count, alert, inner){
+    const collapsed = !!MKT.collapsed[key];
+    const cntCls = count===0?'zero':(alert?'alert':'');
+    return `<div class="mkt-section${collapsed?' collapsed':''}" data-mkt-sec="${key}">
+      <div class="mkt-sec-head" data-mkt-toggle="${key}"><span class="mkt-sec-caret">▾</span><span class="mkt-sec-title">${title}</span><span class="mkt-sec-count ${cntCls}">${count}</span></div>
+      <div class="mkt-sec-body">${inner}</div>
+    </div>`;
+  }
+  function queueAssets(){
+    if (!MKT.data) return [];
+    return [].concat((MKT.data.overdue||[]).map(a=>['overdue',a]), (MKT.data.dueToday||[]).map(a=>['today',a]))
+      .filter(([,a])=> (a.status||'')!=='Published');
+  }
+  function calendarHtml(){
+    const c = MKT.cal; const month = MKT.calMonth || chiMonth();
+    const [y,m] = month.split('-').map(Number);
+    const first = new Date(y, m-1, 1); const startDow = first.getDay(); const daysIn = new Date(y, m, 0).getDate();
+    const today = chiToday();
+    const monthLabel = first.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    const dows = ['S','M','T','W','T','F','S'].map(d=>`<div class="mkt-cal-dow">${d}</div>`).join('');
+    let cells = '';
+    for (let i=0;i<startDow;i++) cells += '<div class="mkt-cal-cell empty"></div>';
+    for (let d=1; d<=daysIn; d++){
+      const ds = `${month}-${String(d).padStart(2,'0')}`;
+      const items = (c && c.days && c.days[ds]) || [];
+      const dots = items.slice(0,6).map(it=>`<span class="mkt-cal-dot ${statusCls(it.status)}"></span>`).join('');
+      const cls = (ds===today?' today':'') + (ds===MKT.calSel?' sel':'');
+      cells += `<div class="mkt-cal-cell${cls}" data-mkt-day="${ds}"><span class="mkt-cal-dnum">${d}</span><div class="mkt-cal-dots">${dots}</div></div>`;
+    }
+    let dayList = '';
+    if (MKT.calSel){
+      const items = (c && c.days && c.days[MKT.calSel]) || [];
+      const sel = new Date(MKT.calSel+'T12:00:00');
+      dayList = `<div class="mkt-cal-daylist"><div class="mkt-cal-daylist-head">${sel.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})} — ${items.length} item${items.length===1?'':'s'}</div>`
+        + (items.length? items.map(it=>`<div class="mkt-row" data-mkt-open="${it.id}"><span class="mkt-status ${statusCls(it.status)}" style="margin-right:2px">${mEsc(it.status||'—')}</span><span class="mkt-row-name">${mEsc(it.name)}</span></div>`).join('') : '<div class="mkt-empty">Nothing scheduled.</div>')
+        + '</div>';
+    }
+    return `<div class="mkt-cal-head"><button class="mkt-cal-nav" data-mkt-month="prev">‹</button><span class="mkt-cal-month">${monthLabel}</span><button class="mkt-cal-nav" data-mkt-month="next">›</button></div>
+      <div class="mkt-cal-grid">${dows}${cells}</div>${dayList}`;
+  }
+  function renderMktBody(){
+    const body = document.getElementById('mkt-body'); if (!body) return;
+    const d = MKT.data || {};
+    const q = queueAssets();
+    const week = (d.thisWeek||[]);
+    const pubToday = (d.publishedToday||[]).length;
+    const overdueN = q.filter(([b])=>b==='overdue').length;
+    const todayN = q.filter(([b])=>b==='today').length;
+    const today = chiToday();
+
+    const kpis = `<div class="mkt-kpis">
+      <div class="mkt-kpi ${overdueN?'alert':''}"><div class="k-num">${overdueN}</div><div class="k-lab">Overdue</div></div>
+      <div class="mkt-kpi today"><div class="k-num">${todayN}</div><div class="k-lab">Due Today</div></div>
+      <div class="mkt-kpi"><div class="k-num">${week.length}</div><div class="k-lab">This Week</div></div>
+      <div class="mkt-kpi"><div class="k-num">${pubToday}</div><div class="k-lab">Published Today</div></div>
+    </div>`;
+
+    const queueInner = q.length ? q.map(([b,a])=>cardHtml(a,b)).join('') : '<div class="mkt-empty">Nothing to publish right now — you\'re all caught up. 🎉</div>';
+    const weekInner = week.length ? week.map(a=>`<div class="mkt-row" data-mkt-open="${a.id}"><span class="mkt-row-date">${dateChip(a.publishDate)}</span><span class="mkt-row-name">${mEsc(a.name)}</span><span class="mkt-status ${statusCls(a.status)}">${mEsc(a.status||'—')}</span></div>`).join('') : '<div class="mkt-empty">Nothing scheduled in the next 7 days.</div>';
+
+    body.innerHTML = kpis
+      + section('queue','Publish Queue', q.length, overdueN>0, queueInner)
+      + section('week','This Week', week.length, false, weekInner)
+      + section('cal','Content Calendar', (MKT.cal&&MKT.cal.days)?Object.values(MKT.cal.days).reduce((n,a)=>n+a.length,0):0, false, calendarHtml());
+  }
+  function dateChip(ds){ if(!ds) return ''; const dt=new Date(ds+'T12:00:00'); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+
+  function renderMktModalCard(a){
+    const el = document.getElementById('mkt-modal-content');
+    el.innerHTML = '<button class="mkt-modal-close" data-mkt-close>×</button>' + cardHtml(a,'detail');
+  }
+  async function openMktAsset(id){
+    const modal = document.getElementById('mkt-modal'); const el = document.getElementById('mkt-modal-content');
+    el.innerHTML = '<button class="mkt-modal-close" data-mkt-close>×</button><div class="mkt-empty" style="padding:30px">Loading…</div>';
+    modal.classList.add('open'); document.body.style.overflow='hidden';
+    try {
+      const r = await fetch('/api/marketing/asset/'+id); const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      MKT.assetsById[d.asset.id] = d.asset;
+      renderMktModalCard(d.asset);
+    } catch(err){ el.innerHTML = '<button class="mkt-modal-close" data-mkt-close>×</button><div class="mkt-empty" style="padding:30px">'+mEsc(err.message)+'</div>'; }
+  }
+  function closeMktModal(){ document.getElementById('mkt-modal').classList.remove('open'); document.body.style.overflow=''; }
+
+  async function mktPatch(id, payload){
+    const r = await fetch('/api/marketing/asset/'+id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    if (!r.ok){ const j=await r.json().catch(()=>({})); throw new Error(j.error||'save failed'); }
+    return r.json();
+  }
+
+  // ---- delegated events (covers body + modal) ----
+  document.addEventListener('click', async (e)=>{
+    const t = e.target;
+    // section collapse
+    const tog = t.closest('[data-mkt-toggle]');
+    if (tog){ const k=tog.dataset.mktToggle; MKT.collapsed[k]=!MKT.collapsed[k]; try{localStorage.setItem(COLLAPSE_KEY,JSON.stringify(MKT.collapsed));}catch(_){}; tog.closest('.mkt-section').classList.toggle('collapsed'); return; }
+    // copy section
+    const cp = t.closest('[data-mkt-copy]');
+    if (cp){ const a=MKT.assetsById[cp.dataset.mktCopy]; const sec=a&&a.copy&&a.copy[+cp.dataset.sec]; if(sec){ const ok=await mktCopy(sec.text); cp.textContent=ok?'Copied':'⌘C'; cp.classList.add('copied'); window.lrl?.haptic('success'); window.lrl?.toast(ok?'Copied to clipboard':'Select & copy manually', ok?'success':'error'); setTimeout(()=>{cp.textContent='Copy';cp.classList.remove('copied');},1400);} return; }
+    // copy all
+    const cpa = t.closest('[data-mkt-copyall]');
+    if (cpa){ const a=MKT.assetsById[cpa.dataset.mktCopyall]; if(a&&a.copy){ const txt=a.copy.map(s=>(s.heading?s.heading+'\n':'')+s.text).join('\n\n'); const ok=await mktCopy(txt); cpa.textContent=ok?'Copied!':'Manual'; window.lrl?.haptic('success'); window.lrl?.toast(ok?'All copy copied':'Select & copy manually', ok?'success':'error'); setTimeout(()=>cpa.textContent='Copy all',1400);} return; }
+    // channel edit (revert live link → input prefilled with the URL)
+    const ced = t.closest('[data-mkt-chanedit]');
+    if (ced){ const row=ced.closest('.mkt-chan'); const id=row.dataset.asset, field=row.dataset.chan; const a=MKT.assetsById[id]; const c=(a&&a.channels.find(x=>x.field===field))||{field,name:field,platform:'other',url:''}; const cur=c.url||''; const blank={...c,url:''}; const tmp=document.createElement('div'); tmp.innerHTML=chanRowHtml(id,blank); const newRow=tmp.firstElementChild; row.replaceWith(newRow); const inp=newRow.querySelector('.mkt-chan-input'); if(inp){ inp.value=cur; inp.focus(); } return; }
+    // channel save
+    const csv = t.closest('[data-mkt-chansave]');
+    if (csv){ const row=csv.closest('.mkt-chan'); const id=row.dataset.asset, field=row.dataset.chan; const inp=row.querySelector('.mkt-chan-input'); const url=(inp.value||'').trim(); if(!url){window.lrl?.toast('Paste a URL first','error');return;} csv.disabled=true; csv.textContent='…'; try{ await mktPatch(id,{channelUrls:{[field]:url}}); const a=MKT.assetsById[id]; const c=a&&a.channels.find(x=>x.field===field); if(c)c.url=url; row.outerHTML=chanRowHtml(id,c||{field,name:field,platform:'other',url}); window.lrl?.haptic('success'); window.lrl?.toast('Saved '+field,'success'); }catch(err){ csv.disabled=false; csv.textContent='Save'; window.lrl?.toast('Save failed: '+err.message,'error'); } return; }
+    // calendar month nav
+    const mn = t.closest('[data-mkt-month]');
+    if (mn){ const [y,m]=MKT.calMonth.split('-').map(Number); const dt=new Date(y,m-1+(mn.dataset.mktMonth==='next'?1:-1),1); const nm=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`; MKT.calSel=null; try{ await fetchMktCalendar(nm,true); renderMktBody(); }catch(_){}; return; }
+    // calendar day select
+    const day = t.closest('[data-mkt-day]');
+    if (day){ MKT.calSel = (MKT.calSel===day.dataset.mktDay)?null:day.dataset.mktDay; renderMktBody(); return; }
+    // open asset detail (week row / calendar day item)
+    const op = t.closest('[data-mkt-open]');
+    if (op){ openMktAsset(op.dataset.mktOpen); return; }
+    // media zoom → open proxied file in new tab
+    const zm = t.closest('[data-mkt-zoom]');
+    if (zm){ window.openExternalSafe ? window.openExternalSafe(zm.dataset.mktZoom) : window.open(zm.dataset.mktZoom,'_blank'); return; }
+    // publish
+    const pb = t.closest('[data-mkt-publish]');
+    if (pb){ const id=pb.dataset.mktPublish; const a=MKT.assetsById[id]; pb.disabled=true; pb.textContent='Publishing…'; try{ const payload={status:'Published'}; if(a&&!a.publishDate) payload.publishDate=chiToday(); await mktPatch(id,payload); if(a){a.status='Published'; if(payload.publishDate)a.publishDate=payload.publishDate;} window.lrl?.haptic('celebrate'); window.lrl?.confetti?.({count:60}); window.lrl?.toast('Published ✓','success'); const inModal=pb.closest('.mkt-modal-content'); await fetchMktToday(true); if(inModal){ closeMktModal(); } renderMktBody(); }catch(err){ pb.disabled=false; pb.textContent='Mark Published'; window.lrl?.toast('Failed: '+err.message,'error'); } return; }
+    // modal close
+    if (t.closest('[data-mkt-close]') || t.id==='mkt-modal'){ closeMktModal(); return; }
+  });
+  // status dropdown change
+  document.addEventListener('change', async (e)=>{
+    const sel = e.target.closest('[data-mkt-status]'); if(!sel) return;
+    const id=sel.dataset.mktStatus; const a=MKT.assetsById[id]; const newStatus=sel.value;
+    try{ await mktPatch(id,{status:newStatus}); if(a)a.status=newStatus; window.lrl?.haptic('tap'); window.lrl?.toast('Status → '+newStatus,'success');
+      const inModal=sel.closest('.mkt-modal-content');
+      if(inModal && a){ renderMktModalCard(a); }
+      // reflect on the card pill + (if it left the queue) the body
+      if(newStatus==='Published'){ await fetchMktToday(true); }
+      renderMktBody();
+    }catch(err){ window.lrl?.toast('Failed: '+err.message,'error'); if(a)sel.value=a.status||'Idea'; }
+  });
+  document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') closeMktModal(); });
+
+  // Refresh hook: re-pull marketing when the global Refresh fires (if loaded)
+  window.addEventListener('lrl-refresh', async ()=>{ if(!MKT.loaded) return; try{ await Promise.all([fetchMktToday(true), fetchMktCalendar(MKT.calMonth||chiMonth(),true)]); renderMktBody(); }catch(_){} });
+})();
 </script>
 
 </body>
