@@ -400,7 +400,7 @@ function invalidateTaskCaches() {
 async function fetchGoalsForSource(projectsDs, tasksDs, source, projectPropName) {
   const projectsRes = await notion.dataSources.query({
     data_source_id: projectsDs,
-    filter: { property: 'Rocks', checkbox: { equals: true } },
+    filter: { property: 'Rock', checkbox: { equals: true } },
     page_size: 50,
   });
   return Promise.all(projectsRes.results.map(async (proj) => {
