@@ -2111,6 +2111,113 @@ app.get('/api/finance/xero', async (_req, res) => {
   }
 });
 
+// One-click sync of monthly Xero P&L into the VTO Weekly Actuals DB.
+// Creates one Revenue row + one Profit row per month in the current quarter,
+// using cash basis to match how she views her dashboard.
+const VTO_ACTUALS_DS = '4c032800-ae59-4e2c-bc56-98efd87143d2';
+const VTO_REVENUE_METRIC = '37a458f0-8cd9-81e3-bab7-c26cab799a4c';
+const VTO_PROFIT_METRIC  = '37a458f0-8cd9-814a-9c8d-fdce184b9c25';
+
+app.get('/api/finance/sync-vto-quarter', async (_req, res) => {
+  if (!notion) return res.status(500).type('html').send('<pre>NOTION_TOKEN not configured</pre>');
+  try {
+    const todayStr = chicagoToday();
+    const [yNum, mNum] = todayStr.split('-').map(Number);
+    const pad = (n) => String(n).padStart(2, '0');
+    const qStartMonth = Math.floor((mNum - 1) / 3) * 3 + 1;
+    const quarterLabel = `Q${Math.floor((mNum - 1) / 3) + 1} ${yNum}`;
+
+    // Check for existing actuals so we don't duplicate
+    const existing = await notion.dataSources.query({
+      data_source_id: VTO_ACTUALS_DS,
+      page_size: 100,
+    });
+    const existingKeys = new Set(existing.results.map((r) => {
+      const metricRel = r.properties?.Metric?.relation?.[0]?.id || '';
+      const weekEnd = r.properties?.['Week Ending']?.date?.start || '';
+      return `${metricRel}::${weekEnd}`;
+    }));
+
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const created = [];
+    const skipped = [];
+    for (let i = 0; i < 3; i++) {
+      const m = qStartMonth + i;
+      if (m > mNum) break; // future month — skip
+      const monthStart = `${yNum}-${pad(m)}-01`;
+      const lastDay = new Date(yNum, m, 0).getDate();
+      const isCurrentMonth = m === mNum;
+      const monthEnd = isCurrentMonth ? todayStr : `${yNum}-${pad(m)}-${pad(lastDay)}`;
+
+      const pnlRaw = await xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', {
+        fromDate: monthStart,
+        toDate: monthEnd,
+        paymentsOnly: 'true',
+      });
+      const pnl = parseProfitAndLoss(pnlRaw.Reports?.[0]);
+      const label = `${monthNames[m-1]} ${yNum}`;
+      const notes = isCurrentMonth
+        ? `Cash basis P&L from Xero. Partial month — through ${todayStr}.`
+        : 'Cash basis P&L from Xero. Full month.';
+
+      // Revenue row
+      const revKey = `${VTO_REVENUE_METRIC}::${monthEnd}`;
+      if (existingKeys.has(revKey)) {
+        skipped.push({ metric: 'Revenue', month: label, reason: 'already exists' });
+      } else {
+        await notion.pages.create({
+          parent: { type: 'data_source_id', data_source_id: VTO_ACTUALS_DS },
+          properties: {
+            Entry:        { title: [{ text: { content: `Revenue · ${label}` } }] },
+            Metric:       { relation: [{ id: VTO_REVENUE_METRIC }] },
+            Actual:       { number: pnl.income },
+            'Week Ending':{ date: { start: monthEnd } },
+            Notes:        { rich_text: [{ text: { content: notes } }] },
+          },
+        });
+        created.push({ metric: 'Revenue', month: label, value: pnl.income, date: monthEnd });
+      }
+
+      // Profit row (net)
+      const profKey = `${VTO_PROFIT_METRIC}::${monthEnd}`;
+      if (existingKeys.has(profKey)) {
+        skipped.push({ metric: 'Profit', month: label, reason: 'already exists' });
+      } else {
+        await notion.pages.create({
+          parent: { type: 'data_source_id', data_source_id: VTO_ACTUALS_DS },
+          properties: {
+            Entry:        { title: [{ text: { content: `Profit · ${label}` } }] },
+            Metric:       { relation: [{ id: VTO_PROFIT_METRIC }] },
+            Actual:       { number: pnl.net },
+            'Week Ending':{ date: { start: monthEnd } },
+            Notes:        { rich_text: [{ text: { content: notes } }] },
+          },
+        });
+        created.push({ metric: 'Profit', month: label, value: pnl.net, date: monthEnd });
+      }
+    }
+
+    const fmt = (n) => new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits: 0 }).format(n);
+    const rows = created.map(c => `<tr><td>${c.metric}</td><td>${c.month}</td><td style="text-align:right">${fmt(c.value)}</td><td>${c.date}</td></tr>`).join('');
+    const skipRows = skipped.map(s => `<tr><td>${s.metric}</td><td>${s.month}</td><td colspan="2" style="color:rgba(245,245,247,0.5)">${s.reason}</td></tr>`).join('');
+    res.type('html').send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>VTO sync</title>
+<style>body{font-family:-apple-system,system-ui,sans-serif;background:#0a0f1e;color:#f5f5f7;padding:32px;max-width:780px;margin:0 auto;line-height:1.5}
+h1{color:#10b981;font-size:22px;margin:0 0 6px}h2{font-size:13px;color:rgba(245,245,247,0.55);letter-spacing:.12em;text-transform:uppercase;margin:22px 0 10px;font-weight:700}
+table{width:100%;border-collapse:collapse;background:#131a30;border-radius:10px;overflow:hidden}td,th{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:left;font-size:13px}
+th{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,245,247,0.55);font-weight:700}tr:last-child td{border-bottom:none}
+a{color:#818cf8;text-decoration:none}a:hover{text-decoration:underline}</style></head><body>
+<h1>✓ Synced ${quarterLabel} to VTO Actuals</h1>
+<p>Cash-basis Revenue + Profit pulled from Xero for each month and written to the VTO Weekly Actuals DB in Notion.</p>
+${created.length ? `<h2>Created (${created.length})</h2><table><tr><th>Metric</th><th>Month</th><th style="text-align:right">Value</th><th>Date</th></tr>${rows}</table>` : ''}
+${skipped.length ? `<h2>Skipped (${skipped.length})</h2><table><tr><th>Metric</th><th>Month</th><th colspan="2">Reason</th></tr>${skipRows}</table>` : ''}
+<p style="margin-top:24px"><a href="/">← Back to LifeOS</a></p>
+</body></html>`);
+  } catch (err) {
+    console.error('VTO sync error:', err.message);
+    res.status(500).type('html').send(`<pre style="color:#ff7a6b;font-family:system-ui;padding:20px">VTO sync failed: ${err.message}</pre>`);
+  }
+});
+
 app.post('/api/ai/triage/apply', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { actions } = req.body || {};
