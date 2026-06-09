@@ -1922,17 +1922,48 @@ function parseBankSummary(report) {
 }
 
 function parseProfitAndLoss(report) {
-  // Two-column reports: [Label, Amount]. Sometimes more columns for periods.
+  // Xero P&L: nested sections (Income / COGS / Expenses / etc.) each ending
+  // in a SummaryRow. Cell 0 is label, last cell is amount (works for
+  // single-period AND multi-period reports).
   let income = 0, expenses = 0, net = 0;
   const rows = flattenReportRows(report?.Rows);
+  const rowValue = (r) => {
+    const cells = r.Cells || [];
+    // Walk from the right to find the first non-zero value (current period
+    // in multi-period reports is usually the last column).
+    for (let i = cells.length - 1; i >= 1; i--) {
+      const v = parseNum(cells[i].Value);
+      if (v !== 0) return v;
+    }
+    return parseNum(cells[1]?.Value);
+  };
   for (const r of rows) {
-    const label = String(cellVal(r, 0)).toLowerCase();
-    const val = parseNum(cellVal(r, 1));
-    if (/^total income/.test(label) || /^total revenue/.test(label) || /^total trading income/.test(label)) income = val;
-    else if (/^total operating expenses/.test(label) || /^total expenses/.test(label)) expenses = val;
-    else if (/^net profit/.test(label) || /^net loss/.test(label) || /^profit\/\(loss\)/.test(label) || /^net \(loss\)/.test(label)) net = val;
+    const label = String(cellVal(r, 0)).toLowerCase().trim();
+    if (!label) continue;
+    const val = rowValue(r);
+    if (/^total\s*(trading\s*)?(income|revenue|sales)\b/.test(label)) {
+      if (val) income = val;
+    }
+    // Catch many flavors of expense totals
+    else if (
+      /^total\s+.*(operating\s*expense|expense|outgoing)/.test(label) ||
+      /^total\s+cost\s+of\s+good/.test(label) ||
+      /^total\s+cogs\b/.test(label) ||
+      label === 'total expenses' ||
+      label === 'total operating expenses' ||
+      label === 'total less operating expenses'
+    ) {
+      if (val) expenses = Math.max(expenses, Math.abs(val));
+    }
+    else if (
+      /^net\s+(profit|loss|income|earnings)\b/.test(label) ||
+      /^profit\/\(loss\)/.test(label) ||
+      /^profit\s+before\s+tax/.test(label) ||
+      /^operating\s+profit/.test(label)
+    ) {
+      if (val) net = val;
+    }
   }
-  // If net wasn't found, derive it
   if (net === 0 && (income || expenses)) net = income - expenses;
   return { income, expenses, net };
 }
@@ -1988,6 +2019,14 @@ app.get('/api/finance/xero', async (_req, res) => {
       const ytd = ytdRaw ? parseProfitAndLoss(ytdRaw.Reports?.[0]) : { income: 0, expenses: 0, net: 0 };
       const burn = burnRaw ? parseProfitAndLoss(burnRaw.Reports?.[0]) : { income: 0, expenses: 0, net: 0 };
       const bs = bsRaw ? parseBalanceSheet(bsRaw.Reports?.[0]) : { accountsReceivable: 0, accountsPayable: 0 };
+      // Diagnostic: if YTD has income but zero expenses, the parser missed the
+      // expense rows. Log the raw labels so we can tune the regex.
+      if (ytd.income > 0 && ytd.expenses === 0 && ytdRaw) {
+        const labels = flattenReportRows(ytdRaw.Reports?.[0]?.Rows)
+          .map(r => cellVal(r, 0))
+          .filter(Boolean);
+        console.warn('[xero] P&L YTD has income but 0 expenses. Labels in report:', labels);
+      }
 
       // Categorize accounts: anything with negative balance OR matching
       // /credit|\bcc\b/ in the name is a credit card; everything else is a
