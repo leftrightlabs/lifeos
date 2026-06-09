@@ -1661,6 +1661,117 @@
     100% { transform: scale(1); opacity: 1; }
   }
 
+  /* ====== Inbox-Zero VICTORY overlay — "Where's the kaboom?" Marvin homage ====== */
+  .review-victory-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at center, rgba(10,15,30,0.85) 0%, rgba(10,15,30,0.96) 70%);
+    backdrop-filter: blur(8px);
+    animation: lrl-victory-fadein 0.35s ease-out;
+    cursor: pointer;
+    padding: 24px;
+  }
+  @keyframes lrl-victory-fadein { from { opacity: 0; } to { opacity: 1; } }
+  .review-victory-card {
+    text-align: center; max-width: 480px;
+    animation: lrl-victory-card-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+  }
+  @keyframes lrl-victory-card-in {
+    0%   { transform: scale(0.5) translateY(40px); opacity: 0; }
+    60%  { transform: scale(1.06) translateY(0); opacity: 1; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  /* CSS-rendered "Marvin"-style character. Swap this whole block for an
+     <img src="marvin.gif" class="review-victory-gif"> if you have a GIF. */
+  .review-victory-character {
+    width: 180px; height: 220px; margin: 0 auto 28px;
+    position: relative;
+    animation: lrl-victory-wobble 2.4s ease-in-out infinite;
+  }
+  @keyframes lrl-victory-wobble {
+    0%, 100% { transform: translateY(0) rotate(-2deg); }
+    50%      { transform: translateY(-8px) rotate(2deg); }
+  }
+  /* Crest (Roman helmet style) */
+  .review-victory-character .char-crest {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 110px; height: 50px;
+    background: linear-gradient(90deg, #d4a854 0%, #f0c36a 50%, #d4a854 100%);
+    border-radius: 100px 100px 8px 8px / 60px 60px 4px 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4), inset 0 -8px 16px rgba(0,0,0,0.25);
+  }
+  .review-victory-character .char-crest::before {
+    content: ''; position: absolute; top: -28px; left: 50%; transform: translateX(-50%);
+    width: 16px; height: 36px;
+    background: linear-gradient(180deg, #c84a3a 0%, #8a2a1f 100%);
+    border-radius: 8px 8px 2px 2px;
+  }
+  /* Helmet body */
+  .review-victory-character .char-helmet {
+    position: absolute; top: 26px; left: 50%; transform: translateX(-50%);
+    width: 140px; height: 130px;
+    background: linear-gradient(135deg, #4a8a3f 0%, #2f6230 50%, #1f4520 100%);
+    border-radius: 70px 70px 30px 30px;
+    box-shadow: inset -10px -16px 30px rgba(0,0,0,0.4), 0 8px 20px rgba(0,0,0,0.5);
+  }
+  /* Face cavity (the visor) */
+  .review-victory-character .char-face {
+    position: absolute; top: 76px; left: 50%; transform: translateX(-50%);
+    width: 92px; height: 60px;
+    background: #0a0f1e;
+    border-radius: 50%;
+    box-shadow: inset 0 4px 8px rgba(0,0,0,0.6);
+  }
+  /* Eyes */
+  .review-victory-character .char-eye {
+    position: absolute; top: 92px;
+    width: 14px; height: 14px;
+    background: #f5f5f7;
+    border-radius: 50%;
+    animation: lrl-victory-blink 3.2s infinite;
+    box-shadow: 0 0 6px rgba(245,245,247,0.6);
+  }
+  .review-victory-character .char-eye.left  { left: calc(50% - 22px); }
+  .review-victory-character .char-eye.right { left: calc(50% + 8px); }
+  @keyframes lrl-victory-blink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    94%, 96%      { transform: scaleY(0.1); }
+  }
+  /* Tiny floating stars for the kaboom that never happened */
+  .review-victory-character::before,
+  .review-victory-character::after {
+    content: '✦'; position: absolute; color: #f0c36a;
+    font-size: 22px; opacity: 0.85;
+    animation: lrl-victory-float 2.8s ease-in-out infinite;
+  }
+  .review-victory-character::before { top: 14px; left: -10px; animation-delay: 0s; }
+  .review-victory-character::after  { top: 36px; right: -14px; font-size: 18px; animation-delay: 1s; color: #c5dc78; }
+  @keyframes lrl-victory-float {
+    0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.85; }
+    50%      { transform: translateY(-12px) rotate(180deg); opacity: 1; }
+  }
+  /* If you swap in an <img class="review-victory-gif">, this sizes it. */
+  .review-victory-gif { display: block; width: 220px; height: auto; margin: 0 auto 28px; border-radius: 12px; }
+
+  .review-victory-headline {
+    font-family: var(--font-display);
+    font-size: 36px; font-weight: 900; letter-spacing: -0.02em;
+    color: var(--lime);
+    margin-bottom: 14px;
+    text-shadow: 0 0 30px rgba(167,193,64,0.5);
+  }
+  .review-victory-quote {
+    font-size: 15px; line-height: 1.5; color: rgba(245,245,247,0.85);
+    margin-bottom: 6px; font-style: italic;
+  }
+  .review-victory-quote .attr { display: block; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(245,245,247,0.45); margin-top: 10px; font-style: normal; }
+  .review-victory-dismiss {
+    margin-top: 24px; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: rgba(245,245,247,0.45); background: transparent; border: none; cursor: pointer;
+    animation: lrl-victory-fadein 0.4s ease-out 1.5s both;
+  }
+  .review-victory-dismiss:hover { color: var(--lime); }
+
   /* Tab content fade on switch */
   .tab-content.active { animation: lrl-fade-in 0.26s ease-out; }
   @keyframes lrl-fade-in {
@@ -4335,6 +4446,51 @@ function updateReviewStreak(){
 }
 
 let _lastStreakDisplay = null; // tracks the last rendered number for flip animation
+let _reviewVictoryShown = false; // armed when remaining > 0; fires once on transition to 0
+let _previousReviewRemaining = null; // null on first render — prevents celebration when page loads already at zero
+
+// Show the "Inbox Zero" celebration overlay. Marvin-the-Martian homage —
+// the "Where's the kaboom?" line is the nod; the character is original
+// CSS art so we don't ship copyrighted IP. To swap in a real GIF later,
+// replace the character div with: <img class="review-victory-gif" src="...">
+function showReviewVictory(){
+  // Don't double-stack if one's already up
+  if (document.getElementById('review-victory')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'review-victory';
+  overlay.className = 'review-victory-overlay';
+  overlay.innerHTML = `
+    <div class="review-victory-card">
+      <div class="review-victory-character" aria-hidden="true">
+        <div class="char-crest"></div>
+        <div class="char-helmet"></div>
+        <div class="char-face"></div>
+        <div class="char-eye left"></div>
+        <div class="char-eye right"></div>
+      </div>
+      <div class="review-victory-headline">INBOX ZERO</div>
+      <div class="review-victory-quote">
+        "Where's the kaboom?<br/>There was supposed to be an <em>earth-shattering</em> kaboom!"
+        <span class="attr">— Marvin the Martian</span>
+      </div>
+      <button class="review-victory-dismiss" type="button">tap anywhere to dismiss</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  // Layered confetti for full effect
+  setTimeout(() => window.lrl?.confetti({ count: 120 }), 200);
+  setTimeout(() => window.lrl?.confetti({ count: 60, colors: ['#f0c36a','#d4a854','#a7c140','#c84a3a','#f5f5f7'] }), 700);
+  window.lrl?.haptic('celebrate');
+  const dismiss = () => {
+    overlay.style.transition = 'opacity 0.3s ease-out';
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.remove(), 320);
+  };
+  overlay.addEventListener('click', dismiss);
+  // Auto-dismiss after 6 seconds if the user doesn't tap
+  setTimeout(dismiss, 6000);
+}
+
 function renderReviewStreak(){
   const el = document.getElementById('review-streak');
   if (!el) return;
@@ -4352,11 +4508,22 @@ function renderReviewStreak(){
     el.className = 'review-streak zero';
     newDisplay = streak.days || 1;
     html = `<span class="review-streak-num" id="rs-num">${newDisplay}</span><span>days at Inbox Zero. Clean slate.</span>`;
+    // Celebrate ONLY when the count transitions from >0 to 0 (she just cleared
+    // the last one). _previousReviewRemaining is null on first render, so a
+    // page load that's already at zero won't trigger this.
+    const justCleared = _previousReviewRemaining !== null && _previousReviewRemaining > 0;
+    if (justCleared && !_reviewVictoryShown) {
+      _reviewVictoryShown = true;
+      showReviewVictory();
+    }
   } else {
     el.className = 'review-streak';
     newDisplay = remaining;
     html = `<span class="review-streak-num" id="rs-num">${newDisplay}</span><span>flagged item${remaining===1?'':'s'} to clear${streak.days > 0 ? ` · last streak: ${streak.days}d` : ''}</span>`;
+    // Re-arm so the next time she clears everything, the celebration fires again
+    _reviewVictoryShown = false;
   }
+  _previousReviewRemaining = remaining;
   el.innerHTML = html;
   // If number changed from last render, trigger flip on the just-rendered span
   if (_lastStreakDisplay !== null && _lastStreakDisplay !== newDisplay){
