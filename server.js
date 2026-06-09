@@ -1991,15 +1991,25 @@ function ymd(d) {
 app.get('/api/finance/xero', async (_req, res) => {
   try {
     const data = await cached('xero-finance', async () => {
-      const today = new Date();
-      const monthStart = ymd(new Date(today.getFullYear(), today.getMonth(), 1));
-      const qStartMonth = Math.floor(today.getMonth() / 3) * 3;
-      const quarterStart = ymd(new Date(today.getFullYear(), qStartMonth, 1));
-      const yearStart = ymd(new Date(today.getFullYear(), 0, 1));
-      const todayStr = ymd(today);
-      // 3 months ago for burn rate baseline
-      const burnStart = ymd(new Date(today.getFullYear(), today.getMonth() - 3, 1));
-      const burnEnd = ymd(new Date(today.getFullYear(), today.getMonth(), 0)); // end of last month
+      // Use Chicago time for all date boundaries (Railway runs UTC, which
+      // would otherwise shift "today" by ±1 day in the evening).
+      const todayStr = chicagoToday(); // YYYY-MM-DD in America/Chicago
+      const [yNum, mNum] = todayStr.split('-').map(Number);
+      const pad = (n) => String(n).padStart(2, '0');
+      const monthStart = `${yNum}-${pad(mNum)}-01`;
+      const qStart = Math.floor((mNum - 1) / 3) * 3 + 1;
+      const quarterStart = `${yNum}-${pad(qStart)}-01`;
+      const yearStart = `${yNum}-01-01`;
+      // 3 full months prior, ending last day of last month
+      const burnStartM = mNum - 3;
+      const burnStartY = burnStartM < 1 ? yNum - 1 : yNum;
+      const burnStartMonth = ((burnStartM - 1 + 12) % 12) + 1;
+      const burnStart = `${burnStartY}-${pad(burnStartMonth)}-01`;
+      const burnEndM = mNum - 1;
+      const burnEndY = burnEndM < 1 ? yNum - 1 : yNum;
+      const burnEndMonth = ((burnEndM - 1 + 12) % 12) + 1;
+      const burnEndLastDay = new Date(burnEndY, burnEndMonth, 0).getDate();
+      const burnEnd = `${burnEndY}-${pad(burnEndMonth)}-${pad(burnEndLastDay)}`;
 
       const xLog = (name) => (err) => { console.error(`[xero] ${name} failed:`, err.message); return null; };
       const [bankRaw, mtdRaw, qtdRaw, ytdRaw, burnRaw, bsRaw] = await Promise.all([
