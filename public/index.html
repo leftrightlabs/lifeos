@@ -183,6 +183,11 @@
   .tqf-btn[data-tqf="personal"].active { background: #5d9cec; color: var(--navy-accent); }
   .quest-item { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--cream-2); cursor: pointer; font-size: 15px; }
   .quest-item:last-child { border-bottom: none; }
+  /* The drag-hint div is always the real last child (even when hidden on
+     desktop), so :last-child never matches the visually-last task. Drop the
+     border on the task that sits just before the hint or the waiting divider. */
+  .quest-item:has(+ .quest-drag-hint),
+  .quest-item:has(+ .quest-waiting-divider) { border-bottom: none; }
   .quest-check { width: 18px; height: 18px; border: 1.5px solid var(--navy-dim); border-radius: 4px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
   .quest-check:hover { border-color: var(--navy); }
   .quest-check.checked { background: var(--navy); border-color: var(--navy); color: var(--lime); }
@@ -2268,7 +2273,7 @@ window.lrl = (function(){
     <div class="quest-row">
       <div class="panel" id="quest-panel">
         <div class="panel-title-row">
-          <div class="panel-title" style="margin-bottom:0"><span>Today's Quest</span></div>
+          <div class="panel-title" style="margin-bottom:0"><span>Today's Tasks</span></div>
           <button class="panel-add-btn" id="quest-add-btn" title="Add task" aria-label="Add task">+</button>
         </div>
         <div id="today-quests"><div style="color:var(--navy-dim);font-size:13px;padding:8px 0">loading…</div></div>
