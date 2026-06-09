@@ -26,6 +26,14 @@
     if (t !== 'indigo' && t !== 'minimal') t = 'indigo';
     document.documentElement.classList.add('theme-' + t);
   })();
+  // Restore privacy mode pre-paint so sensitive numbers don't flash unblurred.
+  (function(){
+    try {
+      if (localStorage.getItem('lrl-privacy') === '1') {
+        document.documentElement.classList.add('privacy-on');
+      }
+    } catch(e){}
+  })();
 </script>
 <style>
   :root {
@@ -1288,6 +1296,49 @@
 
   .version-tag { position: fixed; bottom: 0.5rem; right: 0.75rem; font-size: 0.6rem; color: rgba(245, 245, 247, 0.22); letter-spacing: 0.1em; pointer-events: none; }
 
+  /* === Privacy mode (blur sensitive numbers for demos) === */
+  .privacy-fab { position: fixed; bottom: 0.5rem; left: 0.75rem; z-index: 95; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: rgba(245,245,247,0.5); width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; transition: all 0.18s; }
+  .privacy-fab:hover { color: var(--navy); border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.06); }
+  .privacy-fab svg { width: 16px; height: 16px; }
+  .privacy-on .privacy-fab { background: var(--lime); color: var(--navy-accent); border-color: var(--lime); }
+  .privacy-on .privacy-fab:hover { background: var(--lime-light); }
+  .privacy-fab .icon-off { display: none; }
+  .privacy-on .privacy-fab .icon-on { display: none; }
+  .privacy-on .privacy-fab .icon-off { display: inline-block; }
+  /* Mini status pill so she remembers privacy mode is on */
+  .privacy-status { position: fixed; bottom: 0.7rem; left: 50px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--navy-accent); background: var(--lime); padding: 3px 10px; border-radius: 999px; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 95; }
+  .privacy-on .privacy-status { opacity: 1; }
+
+  /* Blur sensitive values when privacy mode is on. We blur the VALUES,
+     not the labels — so the layout still shows that there IS a number
+     here, but the actual figure is unreadable. */
+  .privacy-on .lrl-private,
+  .privacy-on [data-private],
+  .privacy-on .fin-kpi-value,
+  .privacy-on .fin-cap-months,
+  .privacy-on .fin-cap-amount,
+  .privacy-on .fin-cap-goal,
+  .privacy-on .fin-cap-bar,
+  .privacy-on .fin-cap-accounts,
+  .privacy-on .fin-row .value,
+  .privacy-on .kpi-value,
+  .privacy-on .kpi-change,
+  .privacy-on .progress-large .progress-header {
+    filter: blur(10px);
+    user-select: none;
+    -webkit-user-select: none;
+    transition: filter 0.25s ease;
+  }
+  /* Long-press / tap to peek: temporarily unblur for 1.5s when actively pressed.
+     Honors :active pseudo so it works for mouse + touch. */
+  .privacy-on .lrl-private:active,
+  .privacy-on [data-private]:active,
+  .privacy-on .fin-kpi-value:active,
+  .privacy-on .fin-cap-months:active,
+  .privacy-on .fin-cap-amount:active,
+  .privacy-on .fin-row .value:active,
+  .privacy-on .kpi-value:active { filter: blur(0); }
+
   /* =====================================================================
      PREMIUM POLISH — Tier 1: tap feedback, spring checks, toast, confetti
      ===================================================================== */
@@ -2288,6 +2339,18 @@ window.lrl = (function(){
     </div>
   </div>
 </div>
+
+<button class="privacy-fab" id="privacy-fab" title="Toggle privacy mode (blur sensitive data)" aria-label="Toggle privacy mode">
+  <svg class="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+  <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+    <line x1="1" y1="1" x2="23" y2="23"/>
+  </svg>
+</button>
+<div class="privacy-status">Privacy</div>
 
 <span class="version-tag">v: day-6</span>
 
@@ -3503,6 +3566,26 @@ function openExternalSafe(url){
   }
 }
 window.openExternalSafe = openExternalSafe;
+
+// ===== Privacy mode (blur sensitive data) =====
+window.setPrivacy = function(on){
+  document.documentElement.classList.toggle('privacy-on', !!on);
+  document.body.classList.toggle('privacy-on', !!on);
+  try { localStorage.setItem('lrl-privacy', on ? '1' : '0'); } catch(e){}
+};
+window.togglePrivacy = function(){
+  const on = !document.documentElement.classList.contains('privacy-on');
+  window.setPrivacy(on);
+  window.lrl?.haptic('tap');
+  window.lrl?.toast(on ? 'Privacy mode on — sensitive data blurred' : 'Privacy mode off', '');
+};
+document.addEventListener('DOMContentLoaded', () => {
+  // Sync body class with html (pre-paint script only sets html)
+  if (document.documentElement.classList.contains('privacy-on')) {
+    document.body.classList.add('privacy-on');
+  }
+  document.getElementById('privacy-fab')?.addEventListener('click', window.togglePrivacy);
+});
 
 function pad2(n){ return String(n).padStart(2,'0'); }
 function chicagoYMD(iso){
