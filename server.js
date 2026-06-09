@@ -398,11 +398,20 @@ function invalidateTaskCaches() {
 }
 
 async function fetchGoalsForSource(projectsDs, tasksDs, source, projectPropName) {
-  const projectsRes = await notion.dataSources.query({
-    data_source_id: projectsDs,
-    filter: { property: 'ROCK', checkbox: { equals: true } },
-    page_size: 50,
-  });
+  let projectsRes;
+  try {
+    projectsRes = await notion.dataSources.query({
+      data_source_id: projectsDs,
+      filter: { property: 'ROCK', checkbox: { equals: true } },
+      page_size: 50,
+    });
+  } catch (err) {
+    // A renamed/missing ROCK property (or any query failure) on one database
+    // should degrade to "no rocks" for that source — never throw and take down
+    // the whole /api/goals call (and with it the work rocks + daily brief).
+    console.error(`Rocks query failed for ${source}:`, err.message);
+    return [];
+  }
   return Promise.all(projectsRes.results.map(async (proj) => {
     const props = proj.properties || {};
     let milestones = [];
@@ -2512,6 +2521,35 @@ const server = app.listen(PORT, () => {
   console.log(`LifeOS listening on port ${PORT}`);
 });
 
-process.on('SIGTERM', () => {
-  server.close(() => process.exit(0));
+// Graceful shutdown: stop accepting new connections, let in-flight requests
+// finish, then exit. A hard timeout guarantees we exit before Railway's grace
+// window expires and escalates to SIGKILL (which is what produced the noisy
+// "npm error signal SIGTERM" on every deploy).
+let shuttingDown = false;
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`${signal} received — shutting down gracefully`);
+  server.close(() => {
+    console.log('HTTP server closed cleanly');
+    process.exit(0);
+  });
+  // Don't let keep-alive connections hold us open past the deploy grace window.
+  setTimeout(() => {
+    console.warn('Forcing exit after shutdown timeout');
+    process.exit(0);
+  }, 8000).unref();
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+// Safety net: an unhandled async rejection or thrown error anywhere in a
+// request handler would otherwise terminate the process (Node ≥15 exits on
+// unhandled rejections), which Railway sees as a crash and restarts — the
+// "crashes then eventually loads" symptom. Log loudly and keep serving.
+process.on('unhandledRejection', (reason) => {
+  console.error('UNHANDLED REJECTION (kept alive):', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION (kept alive):', err);
 });
