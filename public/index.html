@@ -322,6 +322,12 @@
   .cal-now-line::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 8px; height: 8px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 12px rgba(167,193,64,0.7); }
   .cal-now-line::after { content: 'NOW'; position: absolute; right: 0; top: 50%; transform: translateY(-50%); font-size: 9px; font-weight: 700; letter-spacing: 0.14em; color: var(--lime); background: var(--white); padding: 0 6px; }
 
+  /* Hidden-past badge + day-done celebration */
+  .cal-past-hidden { font-size: 11px; color: rgba(245,245,247,0.32); padding: 2px 0 6px 2px; letter-spacing: 0.01em; }
+  .cal-day-done { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 20px 12px 12px; }
+  .cal-day-done-text { font-size: 13px; font-weight: 700; color: var(--lime); margin-top: 10px; letter-spacing: 0.01em; }
+  .cal-day-done-sub { font-size: 11px; color: rgba(245,245,247,0.42); margin-top: 5px; line-height: 1.5; }
+
   /* All-day band at top */
   .cal-allday { display: flex; gap: 10px; padding: 4px 0 10px; align-items: flex-start; border-bottom: 1px dashed rgba(255,255,255,0.07); margin-bottom: 8px; }
   .cal-allday-label { font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(245,245,247,0.5); font-weight: 700; min-width: 76px; flex-shrink: 0; padding-top: 4px; }
@@ -3696,6 +3702,7 @@ function renderTodayQuests(){
       calDiv.innerHTML = `<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">${msg}</div>`;
     } else {
       const now = new Date();
+      const HOUR_MS = 60 * 60 * 1000;
       const allDay = filtered.filter(e => e.allDay);
       const timed = filtered.filter(e => !e.allDay).sort((a,b) => new Date(a.start) - new Date(b.start));
       let html = '';
@@ -3708,51 +3715,101 @@ function renderTodayQuests(){
           + `</div></div>`;
       }
 
-      let nowInserted = false;
-      timed.forEach(e => {
-        const start = new Date(e.start);
-        const end = e.end ? new Date(e.end) : null;
-        const isPast = end ? end <= now : start < now;
-        const isLive = !isPast && start <= now && (!end || end > now);
+      if (timed.length) {
+        // Split into past vs upcoming/live based on end time
+        const pastEvents = timed.filter(e => {
+          const end = e.end ? new Date(e.end) : new Date(e.start);
+          return end <= now;
+        });
+        const upcoming = timed.filter(e => {
+          const end = e.end ? new Date(e.end) : new Date(e.start);
+          return end > now;
+        });
 
-        // Insert NOW divider just before the first upcoming event
-        if (!nowInserted && !isPast && !isLive && start > now){
-          html += `<div class="cal-now-line"></div>`;
-          nowInserted = true;
+        // The most recently completed event
+        const lastPast = pastEvents.length ? pastEvents[pastEvents.length - 1] : null;
+        const lastPastEnd = lastPast
+          ? (lastPast.end ? new Date(lastPast.end) : new Date(lastPast.start))
+          : null;
+        // Expire the last past event once we're ≥1 h past its end
+        const lastPastExpired = lastPastEnd && (now - lastPastEnd) >= HOUR_MS;
+
+        // All timed events are done AND we're ≥1 h past the last one → celebrate
+        const showCelebration = upcoming.length === 0 && pastEvents.length > 0 && lastPastExpired;
+
+        if (showCelebration) {
+          html += `<div class="cal-day-done">
+            <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="26" cy="26" r="22" fill="rgba(167,193,64,0.07)" stroke="rgba(167,193,64,0.2)" stroke-width="1.5"/>
+              <circle cx="26" cy="26" r="14" fill="rgba(167,193,64,0.12)" stroke="var(--lime)" stroke-width="1.5"/>
+              <path d="M18 26L23 32L34 20" stroke="var(--lime)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M38 9L39 12.5L42.5 13.5L39 14.5L38 18L37 14.5L33.5 13.5L37 12.5Z" fill="var(--lime)" opacity="0.65"/>
+              <path d="M11 7L11.5 9.5L14 10L11.5 10.5L11 13L10.5 10.5L8 10L10.5 9.5Z" fill="#a7c0e8" opacity="0.65"/>
+              <circle cx="43" cy="30" r="2" fill="#7a9dd8" opacity="0.5"/>
+              <circle cx="7" cy="34" r="1.5" fill="var(--lime)" opacity="0.4"/>
+              <circle cx="26" cy="4" r="1.5" fill="var(--lime)" opacity="0.45"/>
+            </svg>
+            <div class="cal-day-done-text">Day wrapped — all events done</div>
+            <div class="cal-day-done-sub">Make the rest of the day yours.</div>
+          </div>`;
+        } else {
+          // Show at most the single most-recent past event (if < 1 h old)
+          const showPast = lastPast && !lastPastExpired;
+          const hiddenCount = pastEvents.length - (showPast ? 1 : 0);
+
+          if (hiddenCount > 0) {
+            html += `<div class="cal-past-hidden">↑ ${hiddenCount} earlier event${hiddenCount !== 1 ? 's' : ''}</div>`;
+          }
+
+          if (showPast) {
+            const e = lastPast;
+            const start = new Date(e.start);
+            const end = e.end ? new Date(e.end) : null;
+            const startTxt = fmtTime(e.start);
+            const endTxt = end ? fmtTime(e.end) : '';
+            const durMin = end ? Math.max(0, Math.round((end - start) / 60000)) : 0;
+            const durTxt = durMin >= 60 ? (durMin % 60 === 0 ? `${durMin/60}h` : `${(durMin/60).toFixed(1)}h`) : `${durMin}m`;
+            const timeLine = endTxt
+              ? `${startTxt}<span class="end"> – ${endTxt}</span>${durMin ? `<span class="dur">${durTxt}</span>` : ''}`
+              : startTxt;
+            html += `<div class="cal-event past" data-event-id="${e.id}" data-event-account="${e.account}">
+              <div class="cal-event-bar ${e.account}"></div>
+              <div class="cal-event-time">${timeLine}</div>
+              <div class="cal-event-body">
+                <div class="cal-event-title">${escapeHtml(e.title)}</div>
+                <div class="cal-event-meta"><span class="cal-event-acct ${e.account}">${e.account}</span></div>
+              </div>
+            </div>`;
+          }
+
+          // NOW divider: between past and upcoming, or trailing if all done but recent
+          if (upcoming.length > 0 || showPast) {
+            html += `<div class="cal-now-line"></div>`;
+          }
+
+          upcoming.forEach(e => {
+            const start = new Date(e.start);
+            const end = e.end ? new Date(e.end) : null;
+            const isLive = start <= now && (!end || end > now);
+            const liveCls = isLive ? ' live' : '';
+            const nowPill = isLive ? '<span class="cal-event-now-pill">Now</span>' : '';
+            const startTxt = fmtTime(e.start);
+            const endTxt = end ? fmtTime(e.end) : '';
+            const durMin = end ? Math.max(0, Math.round((end - start) / 60000)) : 0;
+            const durTxt = durMin >= 60 ? (durMin % 60 === 0 ? `${durMin/60}h` : `${(durMin/60).toFixed(1)}h`) : `${durMin}m`;
+            const timeLine = endTxt
+              ? `${startTxt}<span class="end"> – ${endTxt}</span>${durMin ? `<span class="dur">${durTxt}</span>` : ''}`
+              : startTxt;
+            html += `<div class="cal-event${liveCls}" data-event-id="${e.id}" data-event-account="${e.account}">
+              <div class="cal-event-bar ${e.account}"></div>
+              <div class="cal-event-time">${timeLine}</div>
+              <div class="cal-event-body">
+                <div class="cal-event-title">${escapeHtml(e.title)}</div>
+                <div class="cal-event-meta"><span class="cal-event-acct ${e.account}">${e.account}</span>${nowPill}</div>
+              </div>
+            </div>`;
+          });
         }
-
-        const startTxt = fmtTime(e.start);
-        const endTxt = end ? fmtTime(e.end) : '';
-        const durMin = end ? Math.max(0, Math.round((end - start) / 60000)) : 0;
-        const durTxt = durMin >= 60
-          ? (durMin % 60 === 0 ? `${durMin/60}h` : `${(durMin/60).toFixed(1)}h`)
-          : `${durMin}m`;
-        const pastCls = isPast ? ' past' : '';
-        const liveCls = isLive ? ' live' : '';
-        const nowPill = isLive ? '<span class="cal-event-now-pill">Now</span>' : '';
-        const timeLine = endTxt
-          ? `${startTxt}<span class="end"> – ${endTxt}</span>${durMin ? `<span class="dur">${durTxt}</span>` : ''}`
-          : startTxt;
-
-        html += `<div class="cal-event${pastCls}${liveCls}" data-event-id="${e.id}" data-event-account="${e.account}">
-          <div class="cal-event-bar ${e.account}"></div>
-          <div class="cal-event-time">${timeLine}</div>
-          <div class="cal-event-body">
-            <div class="cal-event-title">${escapeHtml(e.title)}</div>
-            <div class="cal-event-meta">
-              <span class="cal-event-acct ${e.account}">${e.account}</span>
-              ${nowPill}
-            </div>
-          </div>
-        </div>`;
-      });
-
-      // If nothing upcoming, drop a NOW marker after the past events
-      if (!nowInserted && timed.length && timed.every(e => {
-        const end = e.end ? new Date(e.end) : null;
-        return end ? end <= now : new Date(e.start) < now;
-      })){
-        html += `<div class="cal-now-line"></div>`;
       }
 
       calDiv.innerHTML = html;
