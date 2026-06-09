@@ -472,25 +472,6 @@ app.get('/api/goals', async (_req, res) => {
   }
 });
 
-// Diagnostic: inspect the LIFE (personal) projects DB property names so we
-// can confirm the rock checkbox column name on that database. Remove after.
-app.get('/api/goals/debug-life', async (_req, res) => {
-  if (!notion) return res.status(500).json({ error: 'no notion' });
-  try {
-    const raw = await notion.dataSources.query({ data_source_id: LIFE_PROJECTS_DS, page_size: 8 });
-    const summary = raw.results.map(p => ({
-      name: p.properties?.Name?.title?.[0]?.plain_text,
-      checkboxProps: Object.entries(p.properties || {})
-        .filter(([, v]) => v.type === 'checkbox')
-        .map(([k, v]) => ({ key: k, value: v.checkbox })),
-    }));
-    res.json({ count: raw.results.length, projects: summary });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-
 app.post('/api/tasks', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { source, name, status, priority, myDay, dueStart } = req.body || {};
