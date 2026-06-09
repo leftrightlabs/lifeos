@@ -315,12 +315,12 @@
   .cal-allday-pill .pill-dot.personal { background: var(--lime); }
 
   /* ===== Finance dashboard (Xero) ===== */
-  .fin-row { display: grid; gap: 12px; margin-bottom: 14px; }
-  .fin-row-revenue { grid-template-columns: repeat(3, 1fr); }
-  .fin-row-cash { grid-template-columns: 1.6fr 1fr; }
-  .fin-row-net { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .fin-grid { display: grid; gap: 12px; margin-bottom: 14px; }
+  .fin-grid-revenue { grid-template-columns: repeat(3, 1fr); }
+  .fin-grid-cash { grid-template-columns: 1.6fr 1fr; }
+  .fin-grid-net { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
   @media (max-width: 760px) {
-    .fin-row-revenue, .fin-row-cash, .fin-row-net { grid-template-columns: 1fr; }
+    .fin-grid-revenue, .fin-grid-cash, .fin-grid-net { grid-template-columns: 1fr; }
   }
   .fin-capacity { background: linear-gradient(135deg, var(--white), rgba(167,193,64,0.04)); border: 1px solid rgba(167,193,64,0.25); border-left: 3px solid var(--lime); border-radius: 12px; padding: 16px 18px; }
   .fin-capacity.short { border-color: rgba(255,122,107,0.35); border-left-color: #ff7a6b; background: linear-gradient(135deg, var(--white), rgba(255,122,107,0.05)); }
@@ -4806,7 +4806,7 @@ function renderFinance(d){
   const ccCardsCollapsed = localStorage.getItem('lrl-fin-cc-collapsed') === '1' ? 'collapsed' : '';
 
   const html = `
-    <div class="fin-row fin-row-revenue">
+    <div class="fin-grid fin-grid-revenue">
       <div class="fin-kpi rev-ytd">
         <div class="fin-kpi-label">YTD Revenue</div>
         <div class="fin-kpi-value">${fmtMoneyFull(d.ytdRevenue || 0)}</div>
@@ -4827,7 +4827,7 @@ function renderFinance(d){
       </div>
     </div>
 
-    <div class="fin-row fin-row-cash">
+    <div class="fin-grid fin-grid-cash">
       ${capacityCard}
       <div class="fin-kpi runway ${runwayShort ? 'short' : ''}">
         <div class="fin-kpi-label">Actual runway</div>
@@ -4836,7 +4836,7 @@ function renderFinance(d){
       </div>
     </div>
 
-    <div class="fin-row fin-row-net">
+    <div class="fin-grid fin-grid-net">
       <div class="fin-kpi net ${netNeg ? 'negative' : ''}">
         <div class="fin-kpi-label">MTD net</div>
         <div class="fin-kpi-value">${fmtMoneyFull(d.mtdNet)}</div>
