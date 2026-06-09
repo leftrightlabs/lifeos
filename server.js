@@ -1297,7 +1297,7 @@ CRITICAL: Your entire response must be ONE JSON object and NOTHING else — no m
 
 Action types you can emit:
 - create_project: a new Notion project (in the work SYSTEMS or personal FOCUS database). source = "work" or "personal". Required: name. Use this when she says things like "set up a project for X" or "create a course / launch / build / area called Y". A project is a container for related tasks (vs. a single task).
-- create_task: a new Notion task. source = "work" or "personal". Required: name. Optional: dueStart (YYYY-MM-DD), myDay (boolean), priority ("URGENT" | "HIGH" | "NORMAL" | null), projectId (uuid from the project list), projectRef (string — the exact "name" of a create_project action earlier in this same plan; the server resolves it to the new project's id after creation).
+- create_task: a new Notion task. source = "work" or "personal". Required: name. Optional: dueStart (YYYY-MM-DD), myDay (boolean), priority ("URGENT" | "HIGH" | "NORMAL" | null), projectId (uuid from the project list), projectRef (string — the exact "name" of a create_project action earlier in this same plan; the server resolves it to the new project's id after creation), status ("Planned" | "Doing" | "Waiting" | "Agenda" | "Done" — defaults to Planned), body (string — appears as paragraph(s) in the Notion task page body; use this to preserve email context, URLs, or notes. Plain text only, separate paragraphs with blank lines).
 - update_task: change fields on an existing Notion task. Required: taskId (uuid from ALL OPEN TASKS context — use the EXACT id shown). Optional: dueStart (YYYY-MM-DD, or empty string "" to clear), dueEnd, myDay (boolean), priority ("URGENT" | "HIGH" | "NORMAL"), status ("Done" | "Doing" | "Planned" | "Agenda" | "Waiting"), name (string).
 - create_event: a calendar event. account = "work" or "personal". Required: title, start, end. If allDay=true, start/end are YYYY-MM-DD; otherwise ISO datetime with America/Chicago offset (-05:00 CDT or -06:00 CST). location optional.
 
@@ -1309,6 +1309,13 @@ Routing heuristics:
 - LRL/clients/business/marketing/work-finance → "work"
 - Health/LEGO/household/family/personal finance/errands → "personal"
 - If unclear, prefer "personal"
+
+Email handling:
+- The INBOX section in the dynamic context lists recent unread emails from her Gmail (subject, sender, snippet, URL). You CAN read these — they are real emails she has.
+- When she says things like "turn these emails into tasks", "add the bricklink orders as waiting tasks", "make a follow-up from this email", use the actual subject/sender/snippet from the INBOX. Do NOT use placeholder text like "Email from #1".
+- Match emails by sender, subject keyword, or recency as she describes them. If she says "the two bricklink emails", look for INBOX entries with "bricklink" in sender or subject.
+- When creating a task from an email, ALWAYS include the body field with: subject line, sender, the email URL (so she can click through), and the snippet if useful. Format the body as plain text, multi-line. Example body value: "From: BrickLink <noreply@bricklink.com>\\nSubject: Order #5012345 confirmed\\n\\nhttps://mail.google.com/mail/u/0/#inbox/188abc\\n\\nSnippet: Your order from PartsKing has been confirmed and is being prepared..."
+- If she's creating a waiting/follow-up task from an email, set status: "Waiting".
 
 My Day defaults to false. Set true only if she signals today/tomorrow or time-sensitivity.
 Priority defaults to null. Only set HIGH/URGENT if she signals urgency.
@@ -1324,7 +1331,7 @@ const TRIAGE_JSON_HINT = `Return ONLY valid JSON in this exact shape, no prose, 
   "intro": "one sentence, warm casual tone",
   "actions": [
     { "type": "create_project", "label": "short summary", "source": "work"|"personal", "name": "project name" },
-    { "type": "create_task", "label": "short summary", "source": "work"|"personal", "name": "task name", "dueStart": "YYYY-MM-DD" (optional), "myDay": true|false (optional), "priority": "URGENT"|"HIGH"|"NORMAL" (optional), "projectId": "uuid" (optional), "projectRef": "exact name of a create_project in this same plan" (optional) },
+    { "type": "create_task", "label": "short summary", "source": "work"|"personal", "name": "task name", "dueStart": "YYYY-MM-DD" (optional), "myDay": true|false (optional), "priority": "URGENT"|"HIGH"|"NORMAL" (optional), "status": "Planned"|"Doing"|"Waiting"|"Agenda" (optional, default Planned), "projectId": "uuid" (optional), "projectRef": "exact name of a create_project in this same plan" (optional), "body": "optional multi-line plain text — email link, notes, context" },
     { "type": "update_task", "label": "short summary of what's changing", "taskId": "exact uuid from ALL OPEN TASKS", "dueStart": "YYYY-MM-DD"|"" (optional), "myDay": true|false (optional), "priority": "URGENT"|"HIGH"|"NORMAL" (optional), "status": "Done"|"Doing"|"Planned"|"Agenda"|"Waiting" (optional), "name": "new name" (optional) },
     { "type": "create_event", "label": "short summary", "account": "work"|"personal", "title": "event title", "start": "ISO datetime with TZ offset, or YYYY-MM-DD if allDay", "end": "same format", "allDay": true|false (optional), "location": "optional string" }
   ]
@@ -1346,6 +1353,20 @@ app.post('/api/ai/triage', async (req, res) => {
       ]);
       return [...w, ...l];
     });
+    // Gmail inbox — included in dynamic context so the model can turn emails into tasks.
+    // Falls back to empty if Gmail isn't configured; same cache key the /api/comms/gmail
+    // endpoint uses, so warm cache hits are free.
+    const gmailThreads = await cached('gmail-inbox', async () => {
+      const accounts = configuredAccounts();
+      if (!accounts.length) return [];
+      const results = await Promise.all(
+        accounts.map((a, i) => fetchInbox(a, i).catch((err) => {
+          console.error(`Gmail ${a} error (triage):`, err.message);
+          return [];
+        })),
+      );
+      return results.flat().sort((a, b) => (b.internalDate || 0) - (a.internalDate || 0));
+    }).catch(() => []);
     const workProjects = projects.filter((p) => p.source === 'work');
     const lifeProjects = projects.filter((p) => p.source === 'personal');
     const projectList = [
@@ -1375,7 +1396,13 @@ app.post('/api/ai/triage', async (req, res) => {
       TRIAGE_JSON_HINT,
     ].join('\n');
 
-    // DYNAMIC context — varies each request. Today's date, calendar, my-day, goals + user input.
+    const inboxLines = gmailThreads.slice(0, 15).map((t) => {
+      const from = (t.fromName && t.fromName !== t.fromEmail) ? `${t.fromName} <${t.fromEmail || ''}>` : (t.fromEmail || '?');
+      const subj = (t.subject || '(no subject)').slice(0, 140);
+      const snip = (t.snippet || '').slice(0, 160);
+      return `  - [${t.account}] from: ${from} · subject: "${subj}"${snip ? ` · snippet: ${snip}` : ''} · url: ${t.url}`;
+    });
+    // DYNAMIC context — varies each request. Today's date, calendar, my-day, goals, inbox + user input.
     const dynamicContext = [
       `Today is ${todayLabel} (${todayISO}).`,
       '',
@@ -1387,6 +1414,9 @@ app.post('/api/ai/triage', async (req, res) => {
       '',
       `ACTIVE GOALS (${ctx.goals.length}):`,
       goalLines.length ? goalLines.join('\n') : '  (none)',
+      '',
+      `INBOX — recent unread emails, last 7 days (${gmailThreads.length}):`,
+      inboxLines.length ? inboxLines.join('\n') : '  (no recent unread email, or Gmail not configured)',
       '',
       `Gretchen's input:\n"""\n${text.trim()}\n"""`,
     ].join('\n');
@@ -1467,12 +1497,12 @@ async function createNotionProject({ source, name }) {
   return { id: page.id, name, url: page.url };
 }
 
-async function createNotionTask({ source, name, dueStart, myDay, priority, projectId }) {
+async function createNotionTask({ source, name, dueStart, myDay, priority, projectId, body, status }) {
   const dsId = TASK_DS_BY_SOURCE[source];
   if (!dsId) throw new Error(`unknown source: ${source}`);
   const properties = {
     Name: { title: [{ text: { content: name } }] },
-    Status: { status: { name: 'Planned' } },
+    Status: { status: { name: status || 'Planned' } },
   };
   if (myDay) properties['My Day'] = { checkbox: true };
   if (dueStart) properties.Due = { date: { start: dueStart, end: null } };
@@ -1481,10 +1511,24 @@ async function createNotionTask({ source, name, dueStart, myDay, priority, proje
   if (source === 'work') {
     properties.Assigned = { people: [{ id: GRETCHEN_USER_ID }] };
   }
-  const page = await notion.pages.create({
+  const createArgs = {
     parent: { type: 'data_source_id', data_source_id: dsId },
     properties,
-  });
+  };
+  // If body is provided (e.g. email context, notes, links), drop it onto the
+  // page as paragraph blocks. Split on blank lines so multi-paragraph bodies
+  // render cleanly in Notion. Each paragraph capped at Notion's text limit.
+  if (body && String(body).trim()) {
+    const paragraphs = String(body).trim().split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+    createArgs.children = paragraphs.map((p) => ({
+      object: 'block',
+      type: 'paragraph',
+      paragraph: {
+        rich_text: [{ type: 'text', text: { content: p.slice(0, 1900) } }],
+      },
+    }));
+  }
+  const page = await notion.pages.create(createArgs);
   return { id: page.id, url: page.url };
 }
 
