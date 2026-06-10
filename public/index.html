@@ -4479,12 +4479,20 @@ async function loadTaskProjects(force){
   catch(e){ TASK_PROJECTS = TASK_PROJECTS || []; }
   return TASK_PROJECTS;
 }
-function getCreateSource(){ return document.querySelector('#task-source-toggle .task-source-opt.active')?.dataset.source || 'personal'; }
+function getCreateSource(){
+  // In edit mode the source toggle is hidden, so fall back to the task's own
+  // source — that's the database its project must come from.
+  if (!_createMode && editingTask) return (editingTask.source === 'work') ? 'work' : 'personal';
+  return document.querySelector('#task-source-toggle .task-source-opt.active')?.dataset.source || 'personal';
+}
+// Statuses that count as "pickable" in the project menu — active work only.
+// (Name resolution for an existing task's project uses the full list instead.)
+const TASK_ACTIVE_STATUSES = ['Planned', 'Active', 'Ongoing', 'Billing', 'Doing'];
 function renderProjectMenu(query){
   const menu = document.getElementById('task-project-menu'); if (!menu) return;
   const source = getCreateSource();
   const q = (query || '').trim().toLowerCase();
-  let list = (TASK_PROJECTS || []).filter(p => p.source === source);
+  let list = (TASK_PROJECTS || []).filter(p => p.source === source && TASK_ACTIVE_STATUSES.includes(p.status));
   if (q) list = list.filter(p => p.name.toLowerCase().includes(q));
   list.sort((a,b) => a.name.localeCompare(b.name));
   list = list.slice(0, 60);
@@ -4510,10 +4518,11 @@ function populateTaskProjects(){
   if (!combo || !search || !hidden) return;
   const open = () => combo.classList.add('open');
   const close = () => combo.classList.remove('open');
-  search.addEventListener('focus', () => { renderProjectMenu(search.value); open(); });
-  // Also open on click so re-tapping an already-focused field (e.g. after
-  // picking, or after the menu was dismissed) reopens the list.
-  search.addEventListener('click', () => { renderProjectMenu(search.value); open(); });
+  // On focus/click show the FULL active list (ignore the pre-filled project
+  // name as a filter) so an already-assigned task still offers every project
+  // to switch to. Typing then filters live.
+  search.addEventListener('focus', () => { renderProjectMenu(''); open(); });
+  search.addEventListener('click', () => { renderProjectMenu(''); open(); });
   search.addEventListener('input', () => { hidden.value = ''; renderProjectMenu(search.value); open(); });
   // mousedown (not click) so we set the value before the input blurs
   combo.addEventListener('mousedown', (e) => {
@@ -4572,12 +4581,33 @@ function openTaskEdit(t, scope){
   document.getElementById('task-priority-input').value = t.priority || '';
   document.getElementById('task-due-input').value = (t.dueStart || '').slice(0,10);
   document.getElementById('task-dueend-input').value = (t.dueEnd || '').slice(0,10);
+  // Project: when this surface knows the task's project state (projectId is
+  // defined — even if null), show the editable selector pre-seeded with the
+  // current project. Otherwise fall back to the read-only line.
+  const projField = document.getElementById('task-project-field');
   const projLine = document.getElementById('task-project-line');
-  if (t.project){
-    document.getElementById('task-project-name').textContent = t.project;
-    projLine.style.display = '';
-  } else {
+  if (t.projectId !== undefined){
+    projField.style.display = '';
     projLine.style.display = 'none';
+    const projHidden = document.getElementById('task-project-input');
+    const projSearch = document.getElementById('task-project-search');
+    if (projHidden) projHidden.value = t.projectId || '';   // seed now so an untouched save keeps it
+    if (projSearch) projSearch.value = '';
+    document.getElementById('task-project-combo')?.classList.remove('open');
+    loadTaskProjects().then(() => {
+      if (_createMode || !editingTask || editingTask.id !== t.id) return; // modal moved on
+      const match = (TASK_PROJECTS || []).find(p => p.id === t.projectId);
+      if (projSearch) projSearch.value = match ? match.name : '';
+      renderProjectMenu('');
+    });
+  } else {
+    projField.style.display = 'none';
+    if (t.project){
+      document.getElementById('task-project-name').textContent = t.project;
+      projLine.style.display = '';
+    } else {
+      projLine.style.display = 'none';
+    }
   }
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -4662,6 +4692,12 @@ document.getElementById('task-save-btn')?.addEventListener('click', async () => 
     dueStart: document.getElementById('task-due-input').value || null,
     dueEnd: document.getElementById('task-dueend-input').value || null,
   };
+  // Only touch the project when this surface showed the editable selector,
+  // so opening a task from a surface that doesn't know its project can never
+  // silently clear it.
+  if (editingTask.projectId !== undefined){
+    body.projectId = document.getElementById('task-project-input').value || null;
+  }
   if (!body.name) { window.lrl.toast('Task name is required', 'error'); return; }
   btn.disabled = true; btn.textContent = 'Saving…';
   const id = editingTask.id;

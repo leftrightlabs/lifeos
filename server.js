@@ -122,6 +122,7 @@ function simplifyTask(page, source) {
     recurInterval: props['Recur Interval']?.number || null,
     priority: props['Priority 2']?.select?.name || props.Priority?.status?.name || null,
     project: null,
+    projectId: (props.Project?.relation || [])[0]?.id || null,
     url: page.url,
   };
 }
@@ -496,11 +497,11 @@ app.get('/api/projects', async (req, res) => {
   try {
     if (req.query.fresh === '1') cache.delete('projects-list');
     const all = await cached('projects-list', fetchActiveProjects);
-    // Only show projects in an active state — drop Done/On Hold/etc. Whitelist
-    // spans both vocabularies: work uses Active/Billing, personal uses Doing.
-    const ACTIVE_PROJECT_STATUSES = ['Planned', 'Active', 'Ongoing', 'Billing', 'Doing'];
-    const projects = all.filter((p) => ACTIVE_PROJECT_STATUSES.includes(p.status));
-    res.json({ projects });
+    // Return every non-archived project (each carrying its status). The client
+    // shows only active statuses in the picker menu, but needs the full set to
+    // resolve the *name* of a task's current project even when that project is
+    // no longer in an active state.
+    res.json({ projects: all });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -509,7 +510,7 @@ app.get('/api/projects', async (req, res) => {
 app.patch('/api/tasks/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { id } = req.params;
-  const { name, status, dueStart, dueEnd, myDay, priority } = req.body || {};
+  const { name, status, dueStart, dueEnd, myDay, priority, projectId } = req.body || {};
   try {
     const properties = {};
     if (name !== undefined && name !== null) {
@@ -524,6 +525,10 @@ app.patch('/api/tasks/:id', async (req, res) => {
     if (myDay !== undefined) properties['My Day'] = { checkbox: !!myDay };
     if (priority !== undefined) {
       properties['Priority 2'] = priority ? { select: { name: priority } } : { select: null };
+    }
+    // projectId: a uuid sets the Project relation; null/'' clears it.
+    if (projectId !== undefined) {
+      properties.Project = projectId ? { relation: [{ id: projectId }] } : { relation: [] };
     }
     if (!Object.keys(properties).length) {
       return res.status(400).json({ error: 'No supported fields to update' });
@@ -1254,22 +1259,31 @@ app.patch('/api/ritual/today', async (req, res) => {
 
 async function fetchActiveProjects() {
   if (!notion) return [];
+  // Page through every non-archived project so a task's project can always be
+  // resolved by id (the DBs can exceed Notion's 100-row page limit).
+  const allPages = async (dsId) => {
+    const out = [];
+    let cursor;
+    do {
+      const res = await notion.dataSources.query({
+        data_source_id: dsId,
+        filter: { property: 'Archived', checkbox: { equals: false } },
+        page_size: 100,
+        start_cursor: cursor,
+      }).catch(() => ({ results: [], has_more: false }));
+      out.push(...(res.results || []));
+      cursor = res.has_more ? res.next_cursor : null;
+    } while (cursor);
+    return out;
+  };
   const [work, life] = await Promise.all([
-    notion.dataSources.query({
-      data_source_id: WORK_PROJECTS_DS,
-      filter: { property: 'Archived', checkbox: { equals: false } },
-      page_size: 100,
-    }).catch(() => ({ results: [] })),
-    notion.dataSources.query({
-      data_source_id: LIFE_PROJECTS_DS,
-      filter: { property: 'Archived', checkbox: { equals: false } },
-      page_size: 100,
-    }).catch(() => ({ results: [] })),
+    allPages(WORK_PROJECTS_DS),
+    allPages(LIFE_PROJECTS_DS),
   ]);
   const map = (p, source) => ({ id: p.id, source, name: p.properties.Name?.title?.[0]?.plain_text || '(untitled)', status: p.properties.Status?.status?.name || null });
   return [
-    ...work.results.map((p) => map(p, 'work')),
-    ...life.results.map((p) => map(p, 'personal')),
+    ...work.map((p) => map(p, 'work')),
+    ...life.map((p) => map(p, 'personal')),
   ];
 }
 
