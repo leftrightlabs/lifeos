@@ -6864,7 +6864,7 @@ document.addEventListener('visibilitychange', async () => {
         <span class="pulse-contact-days pulse-${col==='red'?'red':(col==='amber'?'amber':'green')}">${days}</span>
       </div>`;
     }).join('');
-    const more = o.total>o.contacts.length ? `<div class="mkt-empty" style="padding-top:8px">Showing ${o.contacts.length} of ${o.total} — log a touch to clear the top.</div>` : '';
+    const more = o.more ? `<div class="mkt-empty" style="padding-top:8px">Showing your most overdue — log a touch to clear the top.</div>` : '';
     return `<div class="pulse-overdue-list">${rows}</div>${more}`;
   }
 

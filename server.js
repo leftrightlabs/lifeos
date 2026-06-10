@@ -2697,31 +2697,26 @@ app.get('/api/sales/overdue', async (req, res) => {
   try {
     if (req.query.fresh === '1') cache.delete('sales-overdue');
     const data = await cached('sales-overdue', async () => {
-      const out = [];
-      let cursor;
-      do {
-        const r = await notion.dataSources.query({
-          data_source_id: CONTACTS_DS,
-          filter: { and: [
-            { property: 'Archive', checkbox: { equals: false } },
-            { or: PULSE_RELATIONSHIPS.map((name) => ({ property: 'Relationship', select: { equals: name } })) },
-          ] },
-          page_size: 100,
-          start_cursor: cursor,
-        });
-        out.push(...r.results.map(serializeContactRow));
-        cursor = r.has_more ? r.next_cursor : null;
-      } while (cursor);
+      // Two bounded, parallel queries instead of paginating the whole (800+)
+      // contact list — never-touched, plus oldest-touched (Notion-sorted). This
+      // surfaces exactly the most-overdue without the multi-second full sweep.
+      const relFilter = { or: PULSE_RELATIONSHIPS.map((name) => ({ property: 'Relationship', select: { equals: name } })) };
+      const baseAnd = (extra) => ({ and: [ { property: 'Archive', checkbox: { equals: false } }, relFilter, extra ] });
+      const [neverRes, touchedRes] = await Promise.all([
+        notion.dataSources.query({ data_source_id: CONTACTS_DS, filter: baseAnd({ property: 'Last Touched', date: { is_empty: true } }), page_size: 100 }),
+        notion.dataSources.query({ data_source_id: CONTACTS_DS, filter: baseAnd({ property: 'Last Touched', date: { is_not_empty: true } }), sorts: [{ property: 'Last Touched', direction: 'ascending' }], page_size: 60 }),
+      ]);
       const today = chicagoTodayISODate();
+      const out = [...neverRes.results, ...touchedRes.results].map(serializeContactRow);
       out.forEach((c) => { c.daysSince = c.lastTouched ? Math.max(0, Math.round((new Date(today) - new Date(c.lastTouched)) / 864e5)) : null; });
-      // Never-touched first, then oldest-touched first.
+      // Never-touched first (alphabetical), then oldest-touched first.
       out.sort((a, b) => {
         if (!a.lastTouched && !b.lastTouched) return a.name.localeCompare(b.name);
         if (!a.lastTouched) return -1;
         if (!b.lastTouched) return 1;
         return a.lastTouched.localeCompare(b.lastTouched);
       });
-      return { contacts: out.slice(0, 250), total: out.length };
+      return { contacts: out, total: out.length, more: neverRes.has_more || touchedRes.has_more };
     });
     res.json(data);
   } catch (err) { res.status(500).json({ error: err.message }); }
