@@ -23,6 +23,8 @@ const WORK_TASKS_DS = '28c458f08cd9818599e7000bc2115872';
 const LIFE_TASKS_DS = '265458f08cd981699efe000b4de14ca4';
 const WORK_PROJECTS_DS = '28c458f08cd98131a475000b81db3c1b';
 const LIFE_PROJECTS_DS = '265458f08cd9814eaf0e000bceaa7f80';
+const PROJECT_AREA_DS = 'd5b03c5c-9322-4345-91ea-f5731bf6d141';   // AREA relation target
+const PROJECT_SYSTEM_DS = 'af61f960-9aa0-46ce-996f-74090f39635f'; // SYSTEM relation target
 const JOURNAL_DS = '25a458f08cd9804bb6d1000b78cb4186';
 const JOURNAL_DB_ID = '25a458f08cd980f9991af90b30ec68d8';
 const CACHE_TTL_MS = 60_000;
@@ -69,6 +71,7 @@ const CACHE_TTL_OVERRIDES = {
   'journal-rings': 5 * 60_000, // heavier query (per-row body-text check); cache longer
   'vto-goals': 10 * 60_000,    // goals rarely change
   'active-projects': 5 * 60_000, // project status changes slowly
+  'projects-board': 5 * 60_000,  // Projects tab board (area/system maps + paginated projects)
 };
 async function cached(key, fn) {
   const ttl = CACHE_TTL_OVERRIDES[key] || CACHE_TTL_MS;
@@ -502,6 +505,99 @@ app.get('/api/projects', async (req, res) => {
     // resolve the *name* of a task's current project even when that project is
     // no longer in an active state.
     res.json({ projects: all });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Build an id -> title map for a relation target data source (paginated).
+async function fetchRelationNameMap(dsId) {
+  const map = {};
+  if (!notion) return map;
+  let cursor;
+  do {
+    const r = await notion.dataSources
+      .query({ data_source_id: dsId, page_size: 100, start_cursor: cursor })
+      .catch(() => ({ results: [], has_more: false }));
+    for (const pg of r.results) {
+      const titleProp = Object.values(pg.properties || {}).find((x) => x.type === 'title');
+      map[pg.id] = titleProp?.title?.[0]?.plain_text || '(untitled)';
+    }
+    cursor = r.has_more ? r.next_cursor : null;
+  } while (cursor);
+  return map;
+}
+
+// Full board of work projects for the Projects tab: status, AREA + SYSTEM
+// (resolved to names), owners, dates, and a derived at-risk flag.
+async function fetchProjectsBoard() {
+  if (!notion) return { projects: [], areas: [], systems: [] };
+  const [areaMap, systemMap] = await Promise.all([
+    fetchRelationNameMap(PROJECT_AREA_DS).catch(() => ({})),
+    fetchRelationNameMap(PROJECT_SYSTEM_DS).catch(() => ({})),
+  ]);
+  const pages = [];
+  let cursor;
+  do {
+    const r = await notion.dataSources.query({
+      data_source_id: WORK_PROJECTS_DS,
+      filter: { property: 'Archived', checkbox: { equals: false } },
+      page_size: 100,
+      start_cursor: cursor,
+    });
+    pages.push(...r.results);
+    cursor = r.has_more ? r.next_cursor : null;
+  } while (cursor);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayMs = today.getTime();
+
+  const projects = pages.map((p) => {
+    const pr = p.properties;
+    const status = pr.Status?.status?.name || null;
+    const deadline = pr['Target Deadline']?.date?.start || null;
+    const due = pr.Due?.date?.start || null;
+    const end = deadline || due; // scheduled end for timeline + at-risk
+    const created = pr.Created?.created_time || null;
+    const completed = pr.Completed?.date?.start || null;
+    const areas = (pr.AREA?.relation || []).map((r) => areaMap[r.id]).filter(Boolean);
+    const systems = (pr.SYSTEM?.relation || []).map((r) => systemMap[r.id]).filter(Boolean);
+    const owners = (pr.Assigned?.people || []).map((u) => u.name).filter(Boolean);
+    const atRisk = !!end && status !== 'Done' && new Date(end).getTime() < todayMs;
+    return {
+      id: p.id,
+      url: p.url,
+      name: pr.Name?.title?.[0]?.plain_text || '(untitled)',
+      status,
+      area: areas[0] || null,
+      areas,
+      system: systems[0] || null,
+      systems,
+      owners,
+      due,
+      deadline,
+      end,
+      created,
+      completed,
+      rock: !!pr.ROCK?.checkbox,
+      atRisk,
+    };
+  });
+
+  // Distinct area/system names present, for filter chips
+  const areas = [...new Set(projects.flatMap((p) => p.areas))].sort();
+  const systems = [...new Set(projects.flatMap((p) => p.systems))].sort();
+  return { projects, areas, systems };
+}
+
+// GET /api/projects/board — everything the Projects tab needs.
+app.get('/api/projects/board', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    if (req.query.fresh === '1') cache.delete('projects-board');
+    const data = await cached('projects-board', fetchProjectsBoard);
+    res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

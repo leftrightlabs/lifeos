@@ -2069,6 +2069,98 @@
   .theme-item.active .t-check { opacity: 1; }
   .theme-item.active { background: rgba(var(--edge-rgb), 0.04); }
 
+  /* =========================== PROJECTS TAB =========================== */
+  #projects-body { container: projbody / inline-size; }
+  /* Clickable status count cards (act as filters, like the Focus stat tiles) */
+  .proj-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); gap: 8px; margin-bottom: 18px; }
+  .proj-stat { background: var(--white); border: 1px solid rgba(var(--edge-rgb), 0.08); border-top: 3px solid rgba(var(--edge-rgb), 0.15); border-radius: 10px; padding: 10px 12px; cursor: pointer; user-select: none; transition: background 0.15s, box-shadow 0.15s, transform 0.1s; }
+  .proj-stat:hover { background: rgba(var(--edge-rgb), 0.04); }
+  .proj-stat:active { transform: scale(0.97); }
+  .proj-stat:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+  .proj-stat.active { box-shadow: inset 0 0 0 1.5px currentColor; background: rgba(var(--edge-rgb), 0.07); }
+  .proj-stat .n { font-family: var(--font-display); font-weight: 800; font-size: 22px; color: var(--navy); line-height: 1; letter-spacing: -0.02em; }
+  .proj-stat .n.risk { color: #ff7a6b; }
+  .proj-stat .l { font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .proj-stat.s-all { border-top-color: rgba(var(--ink-rgb), 0.4); } .proj-stat.s-all.active { color: rgba(var(--ink-rgb), 0.7); }
+  .proj-stat.s-active { border-top-color: #5d9cec; } .proj-stat.s-active.active { color: #5d9cec; }
+  .proj-stat.s-ongoing { border-top-color: var(--lime); } .proj-stat.s-ongoing.active { color: var(--lime); }
+  .proj-stat.s-billing { border-top-color: #3fa776; } .proj-stat.s-billing.active { color: #3fa776; }
+  .proj-stat.s-planned { border-top-color: #d4a854; } .proj-stat.s-planned.active { color: #d4a854; }
+  .proj-stat.s-onhold { border-top-color: #9aa0e0; } .proj-stat.s-onhold.active { color: #9aa0e0; }
+  .proj-stat.s-risk { border-top-color: #ff7a6b; } .proj-stat.s-risk.active { color: #ff7a6b; }
+  .proj-stat.s-done { border-top-color: rgba(var(--ink-rgb), 0.3); } .proj-stat.s-done.active { color: rgba(var(--ink-rgb), 0.6); }
+
+  /* Controls: group-by + area filter */
+  .proj-controls { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .proj-ctl-group { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .proj-ctl-label { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; }
+  .proj-seg { display: inline-flex; background: rgba(var(--edge-rgb), 0.04); border: 1px solid rgba(var(--edge-rgb), 0.1); border-radius: 999px; padding: 3px; }
+  .proj-seg button { border: 0; background: transparent; padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 600; color: rgba(var(--ink-rgb), 0.55); cursor: pointer; border-radius: 999px; font-family: var(--font-body); transition: all 0.15s; }
+  .proj-seg button.on { background: var(--lime); color: var(--navy-accent); }
+  .proj-chip { border: 1px solid rgba(var(--edge-rgb), 0.12); background: transparent; color: rgba(var(--ink-rgb), 0.6); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
+  .proj-chip.on { border-color: var(--lime); color: var(--navy); background: var(--lime-faint); }
+
+  /* Collapsible timeline */
+  .proj-timeline-panel { background: var(--white); border: 1px solid rgba(var(--edge-rgb), 0.07); border-radius: 12px; margin-bottom: 18px; overflow: hidden; }
+  .proj-tl-head { display: flex; align-items: center; gap: 8px; padding: 13px 16px; cursor: pointer; }
+  .proj-tl-head h3 { font-family: var(--font-display); font-size: 14px; font-weight: 800; color: var(--navy); margin: 0; letter-spacing: -0.01em; }
+  .proj-tl-head .caret { transition: transform 0.18s; color: var(--navy-dim); font-size: 11px; display: inline-block; }
+  .proj-timeline-panel.collapsed .caret { transform: rotate(-90deg); }
+  .proj-tl-sub { font-size: 11.5px; color: var(--navy-dim); margin-left: auto; }
+  .proj-tl-body { padding: 0 16px 14px; overflow-x: auto; }
+  .proj-timeline-panel.collapsed .proj-tl-body { display: none; }
+  .proj-tl-months { display: flex; border-bottom: 1px solid rgba(var(--edge-rgb), 0.1); margin: 4px 0 8px; padding-left: 160px; min-width: 480px; }
+  .proj-tl-month { flex: 1; font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; padding: 4px 0; border-left: 1px solid rgba(var(--edge-rgb), 0.06); text-align: center; }
+  .proj-tl-row { display: flex; align-items: center; padding: 3px 0; min-width: 480px; }
+  .proj-tl-name { width: 160px; box-sizing: border-box; flex-shrink: 0; font-size: 12px; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 10px; cursor: pointer; }
+  .proj-tl-name:hover { color: var(--lime); }
+  .proj-tl-track { position: relative; flex: 1; height: 22px; }
+  .proj-tl-grid { position: absolute; inset: 0; display: flex; pointer-events: none; }
+  .proj-tl-grid span { flex: 1; border-left: 1px solid rgba(var(--edge-rgb), 0.05); }
+  .proj-tl-bar { position: absolute; top: 4px; height: 14px; border-radius: 4px; background: var(--lime); cursor: pointer; min-width: 6px; }
+  .proj-tl-bar.done { background: rgba(var(--ink-rgb), 0.25); }
+  .proj-tl-bar.risk { background: #ff7a6b; }
+  .proj-tl-undated { font-size: 11.5px; color: var(--navy-dim); padding: 10px 0 0; }
+
+  /* Grouped project list */
+  .proj-group { margin-bottom: 16px; }
+  .proj-group-head { display: flex; align-items: center; gap: 9px; padding: 0 2px 7px; border-bottom: 2px solid rgba(var(--edge-rgb), 0.14); margin-bottom: 4px; cursor: pointer; }
+  .proj-group-head .caret { font-size: 11px; color: var(--navy-dim); transition: transform 0.18s; display: inline-block; }
+  .proj-group.collapsed .caret { transform: rotate(-90deg); }
+  .proj-group.collapsed .proj-group-body { display: none; }
+  .proj-group-head h3 { font-family: var(--font-display); font-size: 15px; font-weight: 800; color: var(--navy); margin: 0; letter-spacing: -0.01em; flex: 1; }
+  .proj-group-head .cnt { font-size: 12px; color: var(--navy-dim); font-weight: 600; }
+  .proj-row { display: flex; align-items: center; gap: 12px; background: var(--white); border: 1px solid rgba(var(--edge-rgb), 0.07); border-left: 3px solid rgba(var(--edge-rgb), 0.15); border-radius: 9px; padding: 11px 14px; margin-top: 7px; cursor: pointer; transition: background 0.15s; }
+  .proj-row:hover { background: rgba(var(--edge-rgb), 0.03); }
+  .proj-row.st-active { border-left-color: #5d9cec; }
+  .proj-row.st-ongoing { border-left-color: var(--lime); }
+  .proj-row.st-billing { border-left-color: #3fa776; }
+  .proj-row.st-planned { border-left-color: #d4a854; }
+  .proj-row.st-onhold { border-left-color: #9aa0e0; }
+  .proj-row.st-done { border-left-color: rgba(var(--ink-rgb), 0.25); opacity: 0.72; }
+  .proj-row.risk { border-left-color: #ff7a6b; }
+  .proj-row-main { flex: 1; min-width: 0; }
+  .proj-row-name { font-size: 14px; font-weight: 600; color: var(--navy); display: flex; align-items: center; gap: 7px; word-break: break-word; }
+  .proj-row-name .rock { color: var(--lime); font-size: 12px; flex-shrink: 0; }
+  .proj-row-sub { font-size: 11.5px; color: var(--navy-dim); margin-top: 3px; display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+  .proj-row-sub .sep { opacity: 0.4; }
+  .proj-badge { font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; padding: 2px 7px; border-radius: 4px; flex-shrink: 0; }
+  .proj-badge.st-active { background: rgba(93,156,236,0.16); color: #9cc5f5; }
+  .proj-badge.st-ongoing { background: var(--lime-faint); color: var(--lime); }
+  .proj-badge.st-billing { background: rgba(63,167,118,0.16); color: #5fc596; }
+  .proj-badge.st-planned { background: rgba(212,168,84,0.16); color: #d4a854; }
+  .proj-badge.st-onhold { background: rgba(154,160,224,0.16); color: #b8bdf0; }
+  .proj-badge.st-done { background: rgba(var(--edge-rgb), 0.07); color: var(--navy-dim); }
+  .proj-badge.st-none { background: rgba(var(--edge-rgb), 0.07); color: var(--navy-dim); }
+  .proj-risk-flag { font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; color: #ff7a6b; background: rgba(255,122,107,0.14); padding: 2px 7px; border-radius: 4px; flex-shrink: 0; }
+  .proj-due { font-size: 11.5px; color: var(--navy-dim); white-space: nowrap; flex-shrink: 0; }
+  .proj-due.over { color: #ff7a6b; font-weight: 600; }
+  .proj-empty { text-align: center; color: var(--navy-dim); padding: 40px 0; font-size: 14px; }
+  @container projbody (max-width: 560px) {
+    .proj-row { flex-wrap: wrap; gap: 7px; }
+    .proj-due { width: 100%; order: 5; }
+  }
+
   /* =========================== MARKETING TAB =========================== */
   #mkt-body { container: mktbody / inline-size; }
   .mkt-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
@@ -2925,13 +3017,8 @@ window.lrl = (function(){
   <div class="tab-content" data-content="projects">
     <div class="section-label">Client Delivery</div>
     <h1 class="page-title"><span>Projects</span></h1>
-    <div class="page-subtitle">Live client projects, health status, and next milestones. (Static placeholder — wires to PROJECTS [DB] in a later day.)</div>
-    <div class="kpi-grid">
-      <div class="kpi-card"><div class="kpi-label">Active Projects</div><div class="kpi-value"><span>8</span></div><div class="kpi-change">3 in design phase</div></div>
-      <div class="kpi-card"><div class="kpi-label">At Risk</div><div class="kpi-value"><span>1</span></div><div class="kpi-change negative">Needs attention</div></div>
-      <div class="kpi-card"><div class="kpi-label">Closing This Week</div><div class="kpi-value"><span>2</span></div><div class="kpi-change">Final deliverables out</div></div>
-      <div class="kpi-card"><div class="kpi-label">Avg Cycle Time</div><div class="kpi-value"><span>10w</span></div><div class="kpi-change">Target: 8 weeks</div></div>
-    </div>
+    <div class="page-subtitle">Every live project — tap a card to filter by status, group by area, and see the delivery timeline.</div>
+    <div id="projects-body"><div style="color:var(--navy-dim);font-size:13px;padding:20px 0">loading…</div></div>
   </div>
 
   <!-- MARKETING TAB -->
@@ -4952,6 +5039,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     if (tab.dataset.tab === 'finance') maybeLoadFinance();
     if (tab.dataset.tab === 'marketing') maybeLoadMarketing();
     if (tab.dataset.tab === 'pipeline') maybeLoadSales();
+    if (tab.dataset.tab === 'projects') window.maybeLoadProjects?.();
   });
 });
 
@@ -6554,6 +6642,7 @@ document.addEventListener('keydown', (e) => {
         if (saved === 'finance') window.maybeLoadFinance?.();
         if (saved === 'marketing') window.maybeLoadMarketing?.();
         if (saved === 'pipeline') window.maybeLoadSales?.();
+        if (saved === 'projects') window.maybeLoadProjects?.();
       }, 0);
     }
   }
@@ -6848,6 +6937,186 @@ document.addEventListener('visibilitychange', async () => {
   await fetchGoals({ fresh: true });
   renderCampaigns();
 });
+</script>
+
+<!-- =========================== PROJECTS TAB =========================== -->
+<script>
+(function(){
+  const P = { data: null, statusFilter: null, areaFilter: null, groupBy: 'area', collapsed: {} };
+  const TL_KEY = 'lrl-proj-timeline-collapsed';
+  let _loaded = false;
+  const esc = (s) => (window.escapeHtml ? escapeHtml(String(s ?? '')) : String(s ?? ''));
+  const statusClass = (s) => ({ 'Active':'active','Ongoing':'ongoing','Billing':'billing','Planned':'planned','On Hold':'onhold','Done':'done' }[s] || 'none');
+  const openUrl = (url) => { if (!url) return; (window.openNotion ? openNotion(url) : window.open(url, '_blank', 'noopener')); };
+
+  async function load(fresh){
+    const body = document.getElementById('projects-body');
+    try {
+      const r = await fetch('/api/projects/board' + (fresh ? '?fresh=1' : ''));
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      P.data = d;
+      render();
+    } catch(e){
+      if (body) body.innerHTML = '<div class="proj-empty">Couldn’t load projects: ' + esc(e.message) + '</div>';
+    }
+  }
+
+  function filtered(){
+    const ps = (P.data && P.data.projects) || [];
+    return ps.filter((p) => {
+      if (P.statusFilter === 'atrisk') { if (!p.atRisk) return false; }
+      else if (P.statusFilter) { if (p.status !== P.statusFilter) return false; }
+      if (P.areaFilter === '__none__') { if (p.areas.length) return false; }
+      else if (P.areaFilter) { if (!p.areas.includes(P.areaFilter)) return false; }
+      return true;
+    });
+  }
+
+  function statsHTML(){
+    const ps = P.data.projects;
+    const count = (s) => ps.filter((p) => p.status === s).length;
+    const cards = [{ key:null, cls:'all', label:'All Projects', n:ps.length }];
+    ['Active','Ongoing','Billing','Planned','On Hold'].forEach((s) => { const n = count(s); if (n) cards.push({ key:s, cls:statusClass(s), label:s, n }); });
+    cards.push({ key:'atrisk', cls:'risk', label:'At Risk', n:ps.filter((p) => p.atRisk).length });
+    const doneN = count('Done'); if (doneN) cards.push({ key:'Done', cls:'done', label:'Done', n:doneN });
+    return '<div class="proj-stats">' + cards.map((c) => {
+      const active = (c.key === null && !P.statusFilter) || (P.statusFilter === c.key);
+      return `<div class="proj-stat s-${c.cls} ${active ? 'active' : ''}" data-status="${c.key === null ? '' : esc(c.key)}" tabindex="0" role="button">
+        <div class="n ${c.cls === 'risk' ? 'risk' : ''}">${c.n}</div><div class="l">${esc(c.label)}</div></div>`;
+    }).join('') + '</div>';
+  }
+
+  function controlsHTML(){
+    const groups = [['area','Area'],['system','System'],['status','Status'],['owner','Owner'],['none','None']];
+    const seg = groups.map(([k,l]) => `<button data-group="${k}" class="${P.groupBy === k ? 'on' : ''}">${l}</button>`).join('');
+    const areas = (P.data.areas || []);
+    const hasNoArea = P.data.projects.some((p) => !p.areas.length);
+    let areaChips = '';
+    if (areas.length || hasNoArea){
+      areaChips = '<div class="proj-ctl-group"><span class="proj-ctl-label">Area</span>'
+        + `<button class="proj-chip ${!P.areaFilter ? 'on' : ''}" data-area="">All</button>`
+        + areas.map((a) => `<button class="proj-chip ${P.areaFilter === a ? 'on' : ''}" data-area="${esc(a)}">${esc(a)}</button>`).join('')
+        + (hasNoArea ? `<button class="proj-chip ${P.areaFilter === '__none__' ? 'on' : ''}" data-area="__none__">No area</button>` : '')
+        + '</div>';
+    }
+    return '<div class="proj-controls"><div class="proj-ctl-group"><span class="proj-ctl-label">Group by</span><div class="proj-seg">' + seg + '</div></div>' + areaChips + '</div>';
+  }
+
+  function timelineHTML(){
+    const ps = filtered();
+    const collapsed = localStorage.getItem(TL_KEY) === '1';
+    const dated = ps.filter((p) => p.end).map((p) => {
+      const e = new Date(p.end);
+      let s = p.created ? new Date(p.created) : null;
+      if (!s || s > e) s = new Date(e.getFullYear(), e.getMonth(), 1);
+      return Object.assign({}, p, { _s:s, _e:e });
+    });
+    const undated = ps.length - dated.length;
+    if (!dated.length){
+      return `<div class="proj-timeline-panel ${collapsed ? 'collapsed' : ''}" id="proj-tl">
+        <div class="proj-tl-head" id="proj-tl-head"><span class="caret">▾</span><h3>Timeline</h3><span class="proj-tl-sub">No scheduled dates in view</span></div>
+        <div class="proj-tl-body"><div class="proj-tl-undated">${undated} project${undated === 1 ? '' : 's'} with no Target Deadline or Due date.</div></div></div>`;
+    }
+    let minS = dated[0]._s, maxE = dated[0]._e;
+    dated.forEach((p) => { if (p._s < minS) minS = p._s; if (p._e > maxE) maxE = p._e; });
+    const startM = new Date(minS.getFullYear(), minS.getMonth(), 1);
+    const endM = new Date(maxE.getFullYear(), maxE.getMonth(), 1);
+    const months = []; const cur = new Date(startM);
+    while (cur <= endM && months.length < 36){ months.push(new Date(cur)); cur.setMonth(cur.getMonth() + 1); }
+    const N = months.length;
+    const idxOf = (d) => { const mi = (d.getFullYear() - startM.getFullYear()) * 12 + (d.getMonth() - startM.getMonth()); return Math.max(0, Math.min(N - 1, mi)); };
+    const monthHdr = months.map((m) => `<div class="proj-tl-month">${m.toLocaleString('en-US', { month:'short' })}${m.getMonth() === 0 ? (" ’" + String(m.getFullYear()).slice(2)) : ''}</div>`).join('');
+    const rows = dated.slice().sort((a,b) => a._s - b._s).map((p) => {
+      const sI = idxOf(p._s), eI = idxOf(p._e);
+      const left = (sI / N) * 100, width = ((eI - sI + 1) / N) * 100;
+      const barCls = p.atRisk ? 'risk' : (p.status === 'Done' ? 'done' : '');
+      const endTxt = p._e.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+      return `<div class="proj-tl-row"><div class="proj-tl-name" data-url="${esc(p.url)}" title="${esc(p.name)}">${esc(p.name)}</div>
+        <div class="proj-tl-track"><div class="proj-tl-grid">${months.map(() => '<span></span>').join('')}</div>
+        <div class="proj-tl-bar ${barCls}" data-url="${esc(p.url)}" style="left:${left}%;width:${width}%" title="${esc(p.name)} · ends ${endTxt}"></div></div></div>`;
+    }).join('');
+    const undatedNote = undated ? `<div class="proj-tl-undated">+ ${undated} project${undated === 1 ? '' : 's'} with no scheduled dates (not shown above).</div>` : '';
+    return `<div class="proj-timeline-panel ${collapsed ? 'collapsed' : ''}" id="proj-tl">
+      <div class="proj-tl-head" id="proj-tl-head"><span class="caret">▾</span><h3>Timeline</h3><span class="proj-tl-sub">${dated.length} scheduled</span></div>
+      <div class="proj-tl-body"><div class="proj-tl-months">${monthHdr}</div>${rows}${undatedNote}</div></div>`;
+  }
+
+  function rowHTML(p){
+    const sc = statusClass(p.status);
+    const rowCls = p.atRisk ? 'risk' : ('st-' + sc);
+    const sub = [];
+    if (p.system && P.groupBy !== 'system') sub.push(esc(p.system));
+    if (p.owners.length) sub.push(esc(p.owners.join(', ')));
+    const subHtml = sub.length ? '<div class="proj-row-sub">' + sub.map((s,i) => (i ? '<span class="sep">·</span>' : '') + s).join('') + '</div>' : '';
+    const dateStr = p.end ? new Date(p.end).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '';
+    return `<div class="proj-row ${rowCls}" data-url="${esc(p.url)}">
+      <div class="proj-row-main"><div class="proj-row-name">${p.rock ? '<span class="rock">★</span>' : ''}${esc(p.name)}</div>${subHtml}</div>
+      ${p.atRisk ? '<span class="proj-risk-flag">At risk</span>' : ''}
+      <span class="proj-badge st-${sc}">${esc(p.status || '—')}</span>
+      ${dateStr ? `<span class="proj-due ${p.atRisk ? 'over' : ''}">${dateStr}</span>` : ''}</div>`;
+  }
+
+  function listHTML(){
+    const ps = filtered();
+    if (!ps.length) return '<div class="proj-empty">No projects match these filters.</div>';
+    const keyFn = ({
+      area: (p) => p.area || 'No Area',
+      system: (p) => p.system || 'No System',
+      status: (p) => p.status || 'No Status',
+      owner: (p) => p.owners[0] || 'Unassigned',
+      none: () => 'All Projects',
+    })[P.groupBy] || ((p) => p.area || 'No Area');
+    const groups = {};
+    ps.forEach((p) => { const k = keyFn(p); (groups[k] = groups[k] || []).push(p); });
+    let keys = Object.keys(groups);
+    if (P.groupBy === 'status'){ const ord = ['Active','Ongoing','Billing','Planned','On Hold','Done','No Status']; keys.sort((a,b) => ord.indexOf(a) - ord.indexOf(b)); }
+    else { keys.sort((a,b) => { const na = /^(No |Unassigned)/.test(a), nb = /^(No |Unassigned)/.test(b); if (na !== nb) return na ? 1 : -1; return a.localeCompare(b); }); }
+    return keys.map((k) => {
+      const items = groups[k].slice().sort((a,b) => ((a.status === 'Done') - (b.status === 'Done')) || a.name.localeCompare(b.name));
+      const isCol = !!P.collapsed[k];
+      return `<div class="proj-group ${isCol ? 'collapsed' : ''}" data-group-key="${esc(k)}">
+        <div class="proj-group-head"><span class="caret">▾</span><h3>${esc(k)}</h3><span class="cnt">${items.length}</span></div>
+        <div class="proj-group-body">${items.map(rowHTML).join('')}</div></div>`;
+    }).join('');
+  }
+
+  function render(){
+    const body = document.getElementById('projects-body');
+    if (!body || !P.data) return;
+    body.innerHTML = statsHTML() + controlsHTML() + timelineHTML() + listHTML();
+    wire();
+  }
+
+  function wire(){
+    const body = document.getElementById('projects-body'); if (!body) return;
+    body.querySelectorAll('.proj-stat').forEach((el) => el.addEventListener('click', () => {
+      const s = el.dataset.status || null;
+      P.statusFilter = (s === null) ? null : (P.statusFilter === s ? null : s);
+      render();
+    }));
+    body.querySelectorAll('.proj-seg button').forEach((b) => b.addEventListener('click', () => { P.groupBy = b.dataset.group; render(); }));
+    body.querySelectorAll('.proj-chip').forEach((b) => b.addEventListener('click', () => {
+      const a = b.dataset.area;
+      P.areaFilter = (a === '') ? null : (P.areaFilter === a ? null : a);
+      render();
+    }));
+    const tlHead = body.querySelector('#proj-tl-head');
+    if (tlHead) tlHead.addEventListener('click', () => {
+      const panel = body.querySelector('#proj-tl'); const now = panel.classList.toggle('collapsed');
+      localStorage.setItem(TL_KEY, now ? '1' : '0');
+    });
+    body.querySelectorAll('.proj-group-head').forEach((h) => h.addEventListener('click', () => {
+      const g = h.closest('.proj-group'); const k = g.dataset.groupKey;
+      const now = g.classList.toggle('collapsed'); P.collapsed[k] = now;
+    }));
+    body.querySelectorAll('[data-url]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); openUrl(el.dataset.url); }));
+  }
+
+  function maybeLoadProjects(){ if (_loaded) return; _loaded = true; load(); }
+  window.maybeLoadProjects = maybeLoadProjects;
+  window.addEventListener('lrl-refresh', () => { if (_loaded) load(true); });
+})();
 </script>
 
 <!-- =========================== MARKETING PUBLISHING =========================== -->
