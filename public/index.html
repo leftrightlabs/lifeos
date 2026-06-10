@@ -1214,6 +1214,11 @@
     font-family: var(--font-b);
   }
   .autofocus-app .wrap {max-width:1060px;margin:0 auto;padding:0 18px 90px}
+  /* The Focus list renders the same .quest-item rows as the Today tab.
+     Make it a "questpanel" container so those rows inherit the exact same
+     wrap behavior (badges drop to a second line) whenever this column is
+     narrow — e.g. a split-screen window — matching the Today tab. */
+  .autofocus-app #list { container: questpanel / inline-size; }
   .autofocus-app header.top {background:var(--navy);color:#fff;border-radius:0 0 14px 14px;padding:22px 24px 18px;margin-bottom:14px;position:relative;overflow:hidden}
   .autofocus-app .kicker {font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--lime);font-weight:600;margin:0 0 6px}
   .autofocus-app h1.title {font-family:var(--font-d);font-weight:700;margin:0;font-size:38px;line-height:.9}
