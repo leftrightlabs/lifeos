@@ -2168,6 +2168,10 @@
   .proj-av.more { background: rgba(var(--edge-rgb), 0.18); color: var(--navy); }
   .av-lime { background: #a7c140; } .av-blue { background: #5d9cec; } .av-coral { background: #ff9d8f; }
   .av-purple { background: #c084fc; } .av-gold { background: #d4a854; } .av-teal { background: #3fa776; }
+  /* Pinned team colors (darker → light initials) */
+  .av-gretchen { background: #1f6bd0; color: #fff; } /* medium-dark azure */
+  .av-trina { background: #0f766e; color: #fff; }    /* medium-dark teal */
+  .av-natasha { background: #6d28d9; color: #fff; }  /* deep purple */
   /* Timeline group sub-headers */
   .proj-tl-group { min-width: 480px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; padding: 10px 0 3px; border-top: 1px solid rgba(var(--edge-rgb), 0.06); margin-top: 4px; }
   .proj-tl-group:first-child { border-top: none; margin-top: 0; padding-top: 2px; }
@@ -6978,7 +6982,13 @@ document.addEventListener('visibilitychange', async () => {
   // Owner avatars (initials, deterministic color)
   const initials = (name) => { const parts = String(name || '').trim().split(/\s+/); return ((parts[0] || '')[0] || '') + (parts.length > 1 ? (parts[parts.length - 1][0] || '') : ''); };
   const AV_COLORS = ['av-lime','av-blue','av-coral','av-purple','av-gold','av-teal'];
-  const avatarColor = (name) => { let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return AV_COLORS[h % AV_COLORS.length]; };
+  const avatarColor = (name) => {
+    const n = String(name).toLowerCase();
+    if (n.includes('gretchen')) return 'av-gretchen'; // medium-dark azure
+    if (n.includes('trina')) return 'av-trina';       // medium-dark teal
+    if (n.includes('natasha')) return 'av-natasha';   // deep purple
+    let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return AV_COLORS[h % AV_COLORS.length];
+  };
   function ownerAvatars(owners){
     if (!owners || !owners.length) return '';
     const max = 3, shown = owners.slice(0, max);
