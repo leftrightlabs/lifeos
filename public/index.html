@@ -43,6 +43,7 @@
     --navy-light: #1a3060;
     --navy-dim: rgba(245, 245, 247, 0.6);
     --navy-faint: rgba(255, 255, 255, 0.08);
+    --bg: #0a0f1e;
     --white: #131a30;
     --cream: #0a0f1e;
     --cream-2: #1a2240;
@@ -63,15 +64,15 @@
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html {
-    background: #0a0f1e !important;
-    background-color: #0a0f1e !important;
+    background: var(--bg) !important;
+    background-color: var(--bg) !important;
     color-scheme: dark only;
   }
   body {
     font-family: var(--font-body);
     color: var(--navy);
-    background: #0a0f1e !important;
-    background-color: #0a0f1e !important;
+    background: var(--bg) !important;
+    background-color: var(--bg) !important;
     line-height: 1.5;
     min-height: 100vh;
     font-size: 15px;
@@ -1924,6 +1925,11 @@
     --lime: #5d9cec;
     --lime-light: #93c5fd;
     --lime-faint: rgba(93,156,236,0.18);
+    /* neutral cool charcoal — true "minimal", desaturated */
+    --bg: #0d0f14; --cream: #0d0f14; --white: #16181f;
+    --cream-2: #1d2029; --gray-100: #1d2029;
+    --surface-3: #282b35; --gray-200: #282b35;
+    --navy-light: #20242e; --navy-accent: #13151b;
   }
   html.theme-minimal .mode-btn[data-mode="all"].active { background: #5d9cec; }
   /* personal pill is already #a7c0e8 which fits minimal perfectly — no override needed */
@@ -1934,6 +1940,11 @@
     --lime: #8fb6d6;
     --lime-light: #b6d2ea;
     --lime-faint: rgba(143,182,214,0.18);
+    /* icy slate-blue, a touch lighter & cooler than navy */
+    --bg: #0e1320; --cream: #0e1320; --white: #18202f;
+    --cream-2: #222b3c; --gray-100: #222b3c;
+    --surface-3: #2d3749; --gray-200: #2d3749;
+    --navy-light: #28354e; --navy-accent: #142231;
   }
   html.theme-frosted .mode-btn[data-mode="all"].active { background: #8fb6d6; }
   html.theme-frosted .autofocus-app { --personal: #9aa0e0; }
@@ -1943,6 +1954,11 @@
     --lime: #b486e8;
     --lime-light: #cfb1f4;
     --lime-faint: rgba(180,134,232,0.2);
+    /* purple-tinted dark */
+    --bg: #130e20; --cream: #130e20; --white: #1d1633;
+    --cream-2: #281e44; --gray-100: #281e44;
+    --surface-3: #342755; --gray-200: #342755;
+    --navy-light: #2c2256; --navy-accent: #1b1232;
   }
   html.theme-amethyst .mode-btn[data-mode="all"].active { background: #b486e8; }
   html.theme-amethyst .autofocus-app { --personal: #e879c9; }
@@ -1952,6 +1968,11 @@
     --lime: #6a8cf2;
     --lime-light: #9bb4f7;
     --lime-faint: rgba(106,140,242,0.2);
+    /* deep sapphire blue */
+    --bg: #0a1126; --cream: #0a1126; --white: #121b3a;
+    --cream-2: #1a254a; --gray-100: #1a254a;
+    --surface-3: #243158; --gray-200: #243158;
+    --navy-light: #1c2d62; --navy-accent: #0f1a3c;
   }
   html.theme-sapphire .mode-btn[data-mode="all"].active { background: #6a8cf2; }
   html.theme-sapphire .autofocus-app { --personal: #b693ef; }
@@ -1961,6 +1982,11 @@
     --lime: #6f74e6;
     --lime-light: #9a9ef0;
     --lime-faint: rgba(111,116,230,0.2);
+    /* deep indigo-violet (velvet) */
+    --bg: #0c0d24; --cream: #0c0d24; --white: #161738;
+    --cream-2: #20214a; --gray-100: #20214a;
+    --surface-3: #2b2c58; --gray-200: #2b2c58;
+    --navy-light: #242562; --navy-accent: #131436;
   }
   html.theme-lapis .mode-btn[data-mode="all"].active { background: #6f74e6; }
   html.theme-lapis .autofocus-app { --personal: #c08fd0; }
@@ -5023,12 +5049,12 @@ window.addEventListener('lrl-mode-changed', () => {
 
 // ====== Theme picker (paintbrush icon → dropdown of color themes) ======
 const LRL_THEMES = [
-  { id:'indigo',   name:'Indigo',             swatch:'#818cf8' },
-  { id:'minimal',  name:'Minimal Blue',       swatch:'#5d9cec' },
-  { id:'frosted',  name:'Frosted Twilight',   swatch:'#8fb6d6' },
-  { id:'amethyst', name:'Amethyst Lilac',     swatch:'#b486e8' },
-  { id:'sapphire', name:'Sapphire Nightfall', swatch:'#6a8cf2' },
-  { id:'lapis',    name:'Lapis Velvet',       swatch:'#6f74e6' },
+  { id:'indigo',   name:'Indigo',             swatch:'#818cf8', bg:'#0a0f1e' },
+  { id:'minimal',  name:'Minimal Blue',       swatch:'#5d9cec', bg:'#0d0f14' },
+  { id:'frosted',  name:'Frosted Twilight',   swatch:'#8fb6d6', bg:'#0e1320' },
+  { id:'amethyst', name:'Amethyst Lilac',     swatch:'#b486e8', bg:'#130e20' },
+  { id:'sapphire', name:'Sapphire Nightfall', swatch:'#6a8cf2', bg:'#0a1126' },
+  { id:'lapis',    name:'Lapis Velvet',       swatch:'#6f74e6', bg:'#0c0d24' },
 ];
 const LRL_THEME_IDS = LRL_THEMES.map(t => t.id);
 function applyTheme(theme){
@@ -5045,7 +5071,7 @@ function applyTheme(theme){
   if (!picker || !fab || !menu) return;
   // Build the menu items
   menu.insertAdjacentHTML('beforeend', LRL_THEMES.map(t =>
-    `<button class="theme-item" role="menuitem" data-theme="${t.id}"><span class="theme-swatch" style="background:${t.swatch}"></span><span class="t-name">${t.name}</span><span class="t-check">✓</span></button>`
+    `<button class="theme-item" role="menuitem" data-theme="${t.id}"><span class="theme-swatch" style="background:linear-gradient(135deg, ${t.bg} 0 48%, ${t.swatch} 52% 100%)"></span><span class="t-name">${t.name}</span><span class="t-check">✓</span></button>`
   ).join(''));
   const saved = (function(){ try { return localStorage.getItem('lrl-theme'); } catch(e){ return null; }})() || 'indigo';
   applyTheme(saved);
