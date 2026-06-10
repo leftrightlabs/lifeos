@@ -582,7 +582,12 @@
   .task-row-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   /* Searchable project combobox */
   .task-combo { position: relative; }
-  .task-combo-input { width: 100%; background: rgba(var(--edge-rgb), 0.05); border: 1px solid rgba(var(--edge-rgb), 0.12); color: var(--navy); padding: 9px 12px; border-radius: 8px; font-family: var(--font-body); font-size: 14px; }
+  .task-combo-input { width: 100%; background: rgba(var(--edge-rgb), 0.05); border: 1px solid rgba(var(--edge-rgb), 0.12); color: var(--navy); padding: 9px 32px 9px 12px; border-radius: 8px; font-family: var(--font-body); font-size: 14px; }
+  /* Dropdown caret so the field reads as a picker (like the Status/Priority
+     selects below it), not just an empty search box. pointer-events:none so a
+     tap on the caret passes through to the input and opens the menu. */
+  .task-combo-caret { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; color: rgba(var(--ink-rgb), 0.5); font-size: 11px; transition: transform 0.18s; }
+  .task-combo.open .task-combo-caret { transform: translateY(-50%) rotate(180deg); }
   .task-combo-input:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
   .task-combo-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--cream); border: 1px solid rgba(var(--edge-rgb), 0.14); border-radius: 8px; max-height: 240px; overflow-y: auto; z-index: 5; display: none; box-shadow: 0 14px 36px rgba(0,0,0,0.45); }
   .task-combo.open .task-combo-menu { display: block; }
@@ -3070,7 +3075,8 @@ window.lrl = (function(){
     <div class="task-field" id="task-project-field" style="display:none">
       <label>Project</label>
       <div class="task-combo" id="task-project-combo">
-        <input type="text" class="task-combo-input" id="task-project-search" placeholder="Search projects… (optional)" autocomplete="off" role="combobox" aria-expanded="false">
+        <input type="text" class="task-combo-input" id="task-project-search" placeholder="Choose or search a project… (optional)" autocomplete="off" role="combobox" aria-expanded="false">
+        <span class="task-combo-caret" aria-hidden="true">▾</span>
         <input type="hidden" id="task-project-input">
         <div class="task-combo-menu" id="task-project-menu"></div>
       </div>
@@ -4505,6 +4511,9 @@ function populateTaskProjects(){
   const open = () => combo.classList.add('open');
   const close = () => combo.classList.remove('open');
   search.addEventListener('focus', () => { renderProjectMenu(search.value); open(); });
+  // Also open on click so re-tapping an already-focused field (e.g. after
+  // picking, or after the menu was dismissed) reopens the list.
+  search.addEventListener('click', () => { renderProjectMenu(search.value); open(); });
   search.addEventListener('input', () => { hidden.value = ''; renderProjectMenu(search.value); open(); });
   // mousedown (not click) so we set the value before the input blurs
   combo.addEventListener('mousedown', (e) => {
