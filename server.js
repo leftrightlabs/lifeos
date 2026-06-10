@@ -2748,13 +2748,20 @@ app.get('/api/sales/pulse', async (req, res) => {
         for (const pg of r.results) {
           const ts = pg.properties?.Timestamp?.date?.start;
           const type = pg.properties?.['Touchpoint Type']?.select?.name || '';
-          if (ts) rows.push({ week: weekStartISO(ts.slice(0, 10)), isPulse: PULSE_TOUCHPOINTS.includes(type) });
+          if (ts) { const d = ts.slice(0, 10); rows.push({ date: d, week: weekStartISO(d), isPulse: PULSE_TOUCHPOINTS.includes(type) }); }
         }
         cursor = r.has_more ? r.next_cursor : null;
       } while (cursor);
-      // Tally per week.
+      // Tally per week + month-to-date / quarter-to-date accumulation.
       const wk = {};
-      for (const r of rows) { const w = (wk[r.week] = wk[r.week] || { pulse: 0, sales: 0 }); if (r.isPulse) w.pulse++; else w.sales++; }
+      const q = currentQuarter();
+      const monthStart = today.slice(0, 7) + '-01';
+      const month = { pulse: 0, sales: 0 }, quarter = { pulse: 0, sales: 0 };
+      for (const r of rows) {
+        const w = (wk[r.week] = wk[r.week] || { pulse: 0, sales: 0 }); if (r.isPulse) w.pulse++; else w.sales++;
+        if (r.date >= monthStart && r.date <= today) { if (r.isPulse) month.pulse++; else month.sales++; }
+        if (r.date >= q.start && r.date <= today) { if (r.isPulse) quarter.pulse++; else quarter.sales++; }
+      }
       const cur = wk[curMon] || { pulse: 0, sales: 0 };
       // Streak: count consecutive met weeks ending at the current week. A current
       // week that hasn't hit goal yet doesn't break the streak (it's in progress).
@@ -2772,6 +2779,9 @@ app.get('/api/sales/pulse', async (req, res) => {
         pulse: cur.pulse, pulseGoal: PULSE_GOAL,
         sales: cur.sales, salesGoal: SALES_GOAL,
         streak, weekStart: curMon, weekEnd: addDaysISO(curMon, 6),
+        month: { total: month.pulse + month.sales, pulse: month.pulse, sales: month.sales },
+        quarter: { total: quarter.pulse + quarter.sales, pulse: quarter.pulse, sales: quarter.sales },
+        quarterLabel: q.label,
       };
     });
     res.json(data);

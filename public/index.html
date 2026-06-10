@@ -2306,6 +2306,12 @@
   .pulse-streak b { color: var(--lime); }
   .pulse-logbtn { background: var(--lime); color: var(--navy-accent); border: none; border-radius: 8px; padding: 9px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
   .pulse-logbtn:hover { filter: brightness(1.05); } .pulse-logbtn:active { transform: scale(0.97); }
+  /* Month / quarter touchpoint accumulation */
+  .pulse-accum { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .pulse-accum-item { background: rgba(var(--edge-rgb), 0.03); border: 1px solid var(--navy-faint); border-radius: 10px; padding: 12px 14px; }
+  .pulse-accum-item .n { font-family: var(--font-display); font-size: 24px; font-weight: 800; color: var(--lime); line-height: 1; }
+  .pulse-accum-item .l { font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; margin-top: 6px; }
+  .pulse-accum-item .sub { font-size: 11px; color: var(--navy-dim); margin-top: 3px; }
 
   .pulse-search { margin-bottom: 10px; }
   .pulse-filter { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
@@ -7020,8 +7026,15 @@ document.addEventListener('visibilitychange', async () => {
   function pulseWidgetHtml(){
     const p = S.pulse || { pulse:0, pulseGoal:85, sales:0, salesGoal:15, streak:0 };
     const streakTxt = p.streak>0 ? `🔥 <b>Week ${p.streak}</b> of hitting your sales goal` : `Log ${p.salesGoal} sales touchpoints this week to start a streak`;
+    const m = p.month || { total:0, pulse:0, sales:0 };
+    const q = p.quarter || { total:0, pulse:0, sales:0 };
+    const accum = `<div class="pulse-accum">
+      <div class="pulse-accum-item"><div class="n">${m.total}</div><div class="l">Touchpoints · This Month</div><div class="sub">${m.pulse} pulse · ${m.sales} sales</div></div>
+      <div class="pulse-accum-item"><div class="n">${q.total}</div><div class="l">Touchpoints · ${esc(p.quarterLabel||'This Quarter')}</div><div class="sub">${q.pulse} pulse · ${q.sales} sales</div></div>
+    </div>`;
     return `<div class="pulse-wrap">${pulseCounterCard('Pulse', p.pulse, p.pulseGoal)}${pulseCounterCard('Sales', p.sales, p.salesGoal)}</div>
       <div class="pulse-streak">${streakTxt}</div>
+      ${accum}
       <button class="pulse-logbtn" data-pulse-log style="margin-top:12px">+ Log Touchpoint</button>`;
   }
   function contactColor(daysSince){ if(daysSince==null||daysSince>=14) return 'red'; if(daysSince>=7) return 'amber'; return 'green'; }
