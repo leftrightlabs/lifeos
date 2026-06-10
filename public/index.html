@@ -23,7 +23,7 @@
   (function(){
     var t;
     try { t = localStorage.getItem('lrl-theme'); } catch(e){}
-    if (t !== 'indigo' && t !== 'minimal') t = 'indigo';
+    if (['indigo','minimal','frosted','amethyst','sapphire','lapis'].indexOf(t) < 0) t = 'indigo';
     document.documentElement.classList.add('theme-' + t);
   })();
   // Restore privacy mode pre-paint so sensitive numbers don't flash unblurred.
@@ -1929,12 +1929,60 @@
   /* personal pill is already #a7c0e8 which fits minimal perfectly — no override needed */
   html.theme-minimal .autofocus-app { --personal: #a7c0e8; }
 
-  /* === Theme switcher control === */
-  .theme-switch { display: inline-flex; gap: 0; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; padding: 3px; }
-  .theme-btn { background: transparent; border: none; padding: 6px 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: rgba(245,245,247,0.55); cursor: pointer; border-radius: 999px; font-family: var(--font-body); transition: all 0.15s; text-transform: uppercase; }
-  .theme-btn:hover { color: var(--navy); }
-  .theme-btn.active { background: var(--lime); color: var(--navy-accent); font-weight: 700; }
-  @media (max-width: 720px) { .theme-btn { padding: 5px 8px; font-size: 10px; } }
+  /* FROSTED TWILIGHT: icy steel-blue accent, periwinkle personal */
+  html.theme-frosted {
+    --lime: #8fb6d6;
+    --lime-light: #b6d2ea;
+    --lime-faint: rgba(143,182,214,0.18);
+  }
+  html.theme-frosted .mode-btn[data-mode="all"].active { background: #8fb6d6; }
+  html.theme-frosted .autofocus-app { --personal: #9aa0e0; }
+
+  /* AMETHYST LILAC PROMENADE: lilac-amethyst accent, orchid-pink personal */
+  html.theme-amethyst {
+    --lime: #b486e8;
+    --lime-light: #cfb1f4;
+    --lime-faint: rgba(180,134,232,0.2);
+  }
+  html.theme-amethyst .mode-btn[data-mode="all"].active { background: #b486e8; }
+  html.theme-amethyst .autofocus-app { --personal: #e879c9; }
+
+  /* SAPPHIRE NIGHTFALL WHISPER: sapphire blue accent, lilac personal */
+  html.theme-sapphire {
+    --lime: #6a8cf2;
+    --lime-light: #9bb4f7;
+    --lime-faint: rgba(106,140,242,0.2);
+  }
+  html.theme-sapphire .mode-btn[data-mode="all"].active { background: #6a8cf2; }
+  html.theme-sapphire .autofocus-app { --personal: #b693ef; }
+
+  /* LAPIS VELVET EVENING: lapis indigo-blue accent, velvet mauve personal */
+  html.theme-lapis {
+    --lime: #6f74e6;
+    --lime-light: #9a9ef0;
+    --lime-faint: rgba(111,116,230,0.2);
+  }
+  html.theme-lapis .mode-btn[data-mode="all"].active { background: #6f74e6; }
+  html.theme-lapis .autofocus-app { --personal: #c08fd0; }
+
+  /* === Theme picker (paintbrush icon + dropdown) === */
+  .theme-picker { position: relative; display: inline-flex; }
+  .theme-fab { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 999px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: rgba(245,245,247,0.6); cursor: pointer; transition: all 0.15s; position: relative; }
+  .theme-fab:hover { color: var(--navy); border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.07); }
+  .theme-fab svg { width: 16px; height: 16px; }
+  /* current-theme color dot on the brush */
+  .theme-fab::after { content: ''; position: absolute; right: 4px; bottom: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--lime); border: 1.5px solid var(--bg, #0a0f1e); }
+  .theme-picker.open .theme-fab { color: var(--navy); border-color: var(--lime); }
+  .theme-menu { position: absolute; top: calc(100% + 8px); right: 0; min-width: 210px; background: var(--cream, #14161f); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 6px; box-shadow: 0 18px 48px rgba(0,0,0,0.55); z-index: 120; display: none; animation: lrl-modal-pop 0.18s ease-out; }
+  .theme-picker.open .theme-menu { display: block; }
+  .theme-menu-label { font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; padding: 6px 10px 4px; }
+  .theme-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-family: var(--font-body); font-size: 13px; color: var(--navy); text-align: left; transition: background 0.12s; }
+  .theme-item:hover { background: rgba(255,255,255,0.06); }
+  .theme-swatch { width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15); }
+  .theme-item .t-name { flex: 1; min-width: 0; }
+  .theme-item .t-check { color: var(--lime); font-weight: 700; opacity: 0; }
+  .theme-item.active .t-check { opacity: 1; }
+  .theme-item.active { background: rgba(255,255,255,0.04); }
 
   /* =========================== MARKETING TAB =========================== */
   #mkt-body { container: mktbody / inline-size; }
@@ -2445,9 +2493,13 @@ window.lrl = (function(){
       </div>
     </div>
     <div class="header-meta">
-      <div class="theme-switch" id="theme-switch" title="Color theme">
-        <button class="theme-btn" data-theme="indigo">Indigo</button>
-        <button class="theme-btn" data-theme="minimal">Minimal</button>
+      <div class="theme-picker" id="theme-picker">
+        <button class="theme-fab" id="theme-fab" title="Color theme" aria-label="Color theme" aria-haspopup="true" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.37 2.63 14 7l-1.59-1.59a2 2 0 0 0-2.82 0L8 7l9 9 1.59-1.59a2 2 0 0 0 0-2.82L17 10l4.37-4.37a2.12 2.12 0 1 0-3-3Z"/><path d="M9 8c-2 0-4.5 1-5.5 2.5-1.5 2.5-1 5-3 6.5 2 1 4 1 5.5.5"/><path d="m14 17 .5.5"/></svg>
+        </button>
+        <div class="theme-menu" id="theme-menu" role="menu">
+          <div class="theme-menu-label">Color theme</div>
+        </div>
       </div>
       <button class="refresh-btn" onclick="triggerRefresh()" title="Refresh dashboard from live APIs">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -4969,23 +5021,47 @@ window.addEventListener('lrl-mode-changed', () => {
   }
 });
 
-// ====== Theme switcher (Indigo / Minimal A/B) ======
+// ====== Theme picker (paintbrush icon → dropdown of color themes) ======
+const LRL_THEMES = [
+  { id:'indigo',   name:'Indigo',             swatch:'#818cf8' },
+  { id:'minimal',  name:'Minimal Blue',       swatch:'#5d9cec' },
+  { id:'frosted',  name:'Frosted Twilight',   swatch:'#8fb6d6' },
+  { id:'amethyst', name:'Amethyst Lilac',     swatch:'#b486e8' },
+  { id:'sapphire', name:'Sapphire Nightfall', swatch:'#6a8cf2' },
+  { id:'lapis',    name:'Lapis Velvet',       swatch:'#6f74e6' },
+];
+const LRL_THEME_IDS = LRL_THEMES.map(t => t.id);
 function applyTheme(theme){
-  if (theme !== 'indigo' && theme !== 'minimal') theme = 'indigo';
-  document.documentElement.classList.remove('theme-indigo', 'theme-minimal');
+  if (LRL_THEME_IDS.indexOf(theme) < 0) theme = 'indigo';
+  document.documentElement.classList.remove(...LRL_THEME_IDS.map(id => 'theme-' + id));
   document.documentElement.classList.add('theme-' + theme);
   try { localStorage.setItem('lrl-theme', theme); } catch(e){}
-  document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === theme));
+  document.querySelectorAll('.theme-item').forEach(b => b.classList.toggle('active', b.dataset.theme === theme));
 }
-(function initThemeSwitcher(){
+(function initThemePicker(){
+  const picker = document.getElementById('theme-picker');
+  const fab = document.getElementById('theme-fab');
+  const menu = document.getElementById('theme-menu');
+  if (!picker || !fab || !menu) return;
+  // Build the menu items
+  menu.insertAdjacentHTML('beforeend', LRL_THEMES.map(t =>
+    `<button class="theme-item" role="menuitem" data-theme="${t.id}"><span class="theme-swatch" style="background:${t.swatch}"></span><span class="t-name">${t.name}</span><span class="t-check">✓</span></button>`
+  ).join(''));
   const saved = (function(){ try { return localStorage.getItem('lrl-theme'); } catch(e){ return null; }})() || 'indigo';
   applyTheme(saved);
-  document.querySelectorAll('.theme-btn').forEach(b => {
-    b.addEventListener('click', () => {
-      applyTheme(b.dataset.theme);
-      window.lrl?.haptic('tap');
-    });
+  const close = () => { picker.classList.remove('open'); fab.setAttribute('aria-expanded','false'); };
+  fab.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willOpen = !picker.classList.contains('open');
+    picker.classList.toggle('open', willOpen);
+    fab.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    window.lrl?.haptic('tap');
   });
+  menu.querySelectorAll('.theme-item').forEach(b => {
+    b.addEventListener('click', () => { applyTheme(b.dataset.theme); window.lrl?.haptic('tap'); close(); });
+  });
+  document.addEventListener('click', (e) => { if (picker.classList.contains('open') && !picker.contains(e.target)) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
 })();
 
 function updateHeaderTimestamp(){
