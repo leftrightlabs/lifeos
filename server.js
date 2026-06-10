@@ -495,7 +495,11 @@ app.get('/api/projects', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
     if (req.query.fresh === '1') cache.delete('projects-list');
-    const projects = await cached('projects-list', fetchActiveProjects);
+    const all = await cached('projects-list', fetchActiveProjects);
+    // Only show projects in an active state — drop Done/On Hold/etc. Whitelist
+    // spans both vocabularies: work uses Active/Billing, personal uses Doing.
+    const ACTIVE_PROJECT_STATUSES = ['Planned', 'Active', 'Ongoing', 'Billing', 'Doing'];
+    const projects = all.filter((p) => ACTIVE_PROJECT_STATUSES.includes(p.status));
     res.json({ projects });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1262,9 +1266,10 @@ async function fetchActiveProjects() {
       page_size: 100,
     }).catch(() => ({ results: [] })),
   ]);
+  const map = (p, source) => ({ id: p.id, source, name: p.properties.Name?.title?.[0]?.plain_text || '(untitled)', status: p.properties.Status?.status?.name || null });
   return [
-    ...work.results.map((p) => ({ id: p.id, source: 'work', name: p.properties.Name?.title?.[0]?.plain_text || '(untitled)' })),
-    ...life.results.map((p) => ({ id: p.id, source: 'personal', name: p.properties.Name?.title?.[0]?.plain_text || '(untitled)' })),
+    ...work.results.map((p) => map(p, 'work')),
+    ...life.results.map((p) => map(p, 'personal')),
   ];
 }
 

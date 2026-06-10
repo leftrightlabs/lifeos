@@ -580,6 +580,17 @@
   .task-field input:focus, .task-field select:focus, .task-field textarea:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
   .task-field textarea { resize: vertical; min-height: 60px; font-size: 16px; font-weight: 600; line-height: 1.3; }
   .task-row-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  /* Searchable project combobox */
+  .task-combo { position: relative; }
+  .task-combo-input { width: 100%; background: rgba(var(--edge-rgb), 0.05); border: 1px solid rgba(var(--edge-rgb), 0.12); color: var(--navy); padding: 9px 12px; border-radius: 8px; font-family: var(--font-body); font-size: 14px; }
+  .task-combo-input:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
+  .task-combo-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--cream); border: 1px solid rgba(var(--edge-rgb), 0.14); border-radius: 8px; max-height: 240px; overflow-y: auto; z-index: 5; display: none; box-shadow: 0 14px 36px rgba(0,0,0,0.45); }
+  .task-combo.open .task-combo-menu { display: block; }
+  .task-combo-item { padding: 9px 12px; cursor: pointer; font-size: 13.5px; color: var(--navy); border-bottom: 1px solid rgba(var(--edge-rgb), 0.05); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .task-combo-item:last-child { border-bottom: none; }
+  .task-combo-item:hover { background: rgba(var(--edge-rgb), 0.07); }
+  .task-combo-item.none { color: rgba(var(--ink-rgb), 0.5); font-style: italic; }
+  .task-combo-empty { padding: 10px 12px; color: rgba(var(--ink-rgb), 0.5); font-size: 13px; }
   .task-checkbox-row { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 14px; color: var(--navy); cursor: pointer; }
   .task-checkbox-row input { accent-color: var(--lime); width: 16px; height: 16px; }
   .task-project-line { font-size: 12px; color: rgba(var(--ink-rgb), 0.55); margin-bottom: 14px; padding: 8px 12px; background: rgba(var(--edge-rgb), 0.03); border-radius: 6px; }
@@ -3054,7 +3065,11 @@ window.lrl = (function(){
     </div>
     <div class="task-field" id="task-project-field" style="display:none">
       <label>Project</label>
-      <select id="task-project-input"><option value="">— no project —</option></select>
+      <div class="task-combo" id="task-project-combo">
+        <input type="text" class="task-combo-input" id="task-project-search" placeholder="Search projects… (optional)" autocomplete="off" role="combobox" aria-expanded="false">
+        <input type="hidden" id="task-project-input">
+        <div class="task-combo-menu" id="task-project-menu"></div>
+      </div>
     </div>
     <div class="task-project-line" id="task-project-line" style="display:none"><span class="lab">Project</span><span id="task-project-name"></span></div>
     <label class="task-checkbox-row"><input type="checkbox" id="task-myday-input"/> Pin to My Day</label>
@@ -4455,12 +4470,48 @@ async function loadTaskProjects(force){
   return TASK_PROJECTS;
 }
 function getCreateSource(){ return document.querySelector('#task-source-toggle .task-source-opt.active')?.dataset.source || 'personal'; }
-function populateTaskProjects(source, selectedId){
-  const sel = document.getElementById('task-project-input'); if (!sel) return;
-  const projs = (TASK_PROJECTS || []).filter(p => p.source === source).sort((a,b) => a.name.localeCompare(b.name));
-  const prev = selectedId !== undefined ? selectedId : sel.value;
-  sel.innerHTML = '<option value="">— no project —</option>' + projs.map(p => `<option value="${p.id}" ${prev===p.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('');
+function renderProjectMenu(query){
+  const menu = document.getElementById('task-project-menu'); if (!menu) return;
+  const source = getCreateSource();
+  const q = (query || '').trim().toLowerCase();
+  let list = (TASK_PROJECTS || []).filter(p => p.source === source);
+  if (q) list = list.filter(p => p.name.toLowerCase().includes(q));
+  list.sort((a,b) => a.name.localeCompare(b.name));
+  list = list.slice(0, 60);
+  let html = '<div class="task-combo-item none" data-proj-id="" data-proj-name="">— no project —</div>';
+  html += list.map(p => `<div class="task-combo-item" data-proj-id="${p.id}" data-proj-name="${escapeHtml(p.name)}">${escapeHtml(p.name)}</div>`).join('');
+  if (!list.length && q) html += '<div class="task-combo-empty">No matching projects</div>';
+  menu.innerHTML = html;
 }
+// Reset the project combo to empty for the current source (kept the old name
+// so existing callers in openTaskCreate / the source toggle keep working).
+function populateTaskProjects(){
+  const hidden = document.getElementById('task-project-input');
+  const search = document.getElementById('task-project-search');
+  if (hidden) hidden.value = '';
+  if (search) search.value = '';
+  document.getElementById('task-project-combo')?.classList.remove('open');
+  renderProjectMenu('');
+}
+(function initProjectCombo(){
+  const combo = document.getElementById('task-project-combo');
+  const search = document.getElementById('task-project-search');
+  const hidden = document.getElementById('task-project-input');
+  if (!combo || !search || !hidden) return;
+  const open = () => combo.classList.add('open');
+  const close = () => combo.classList.remove('open');
+  search.addEventListener('focus', () => { renderProjectMenu(search.value); open(); });
+  search.addEventListener('input', () => { hidden.value = ''; renderProjectMenu(search.value); open(); });
+  // mousedown (not click) so we set the value before the input blurs
+  combo.addEventListener('mousedown', (e) => {
+    const item = e.target.closest('.task-combo-item'); if (!item) return;
+    e.preventDefault();
+    hidden.value = item.dataset.projId || '';
+    search.value = item.dataset.projName || '';
+    close();
+  });
+  document.addEventListener('click', (e) => { if (!combo.contains(e.target)) close(); });
+}())
 
 function openTaskCreate() {
   _createMode = true;
@@ -4480,9 +4531,10 @@ function openTaskCreate() {
   document.querySelectorAll('#task-source-toggle .task-source-opt').forEach(b => {
     b.classList.toggle('active', b.dataset.source === defaultSource);
   });
-  // Project selector: fill from cache now, then refresh once the list loads.
-  populateTaskProjects(defaultSource, '');
-  loadTaskProjects().then(() => { if (_createMode) populateTaskProjects(getCreateSource()); });
+  // Project selector: reset now, then re-render once the list loads (without
+  // clobbering anything the user may have already typed).
+  populateTaskProjects();
+  loadTaskProjects().then(() => { if (_createMode) renderProjectMenu(document.getElementById('task-project-search')?.value || ''); });
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
   setTimeout(() => document.getElementById('task-name-input')?.focus(), 60);
