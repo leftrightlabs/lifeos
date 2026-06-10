@@ -2695,12 +2695,17 @@ function serializeContactRow(page) {
 app.get('/api/sales/overdue', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
-    if (req.query.fresh === '1') cache.delete('sales-overdue');
-    const data = await cached('sales-overdue', async () => {
+    // Optional ?rel= filters to a single relationship (else all four).
+    const rel = PULSE_RELATIONSHIPS.includes(req.query.rel) ? req.query.rel : null;
+    const cacheKey = rel ? `sales-overdue-${rel}` : 'sales-overdue';
+    if (req.query.fresh === '1') cache.delete(cacheKey);
+    const data = await cached(cacheKey, async () => {
       // Two bounded, parallel queries instead of paginating the whole (800+)
       // contact list — never-touched, plus oldest-touched (Notion-sorted). This
       // surfaces exactly the most-overdue without the multi-second full sweep.
-      const relFilter = { or: PULSE_RELATIONSHIPS.map((name) => ({ property: 'Relationship', select: { equals: name } })) };
+      const relFilter = rel
+        ? { property: 'Relationship', select: { equals: rel } }
+        : { or: PULSE_RELATIONSHIPS.map((name) => ({ property: 'Relationship', select: { equals: name } })) };
       const baseAnd = (extra) => ({ and: [ { property: 'Archive', checkbox: { equals: false } }, relFilter, extra ] });
       const [neverRes, touchedRes] = await Promise.all([
         notion.dataSources.query({ data_source_id: CONTACTS_DS, filter: baseAnd({ property: 'Last Touched', date: { is_empty: true } }), page_size: 100 }),
@@ -2811,7 +2816,8 @@ app.post('/api/sales/touchpoint', async (req, res) => {
     const page = await notion.pages.create({ parent: { type: 'data_source_id', data_source_id: SALES_ACTIVITY_DS }, properties });
     // Bump Last Touched on the contact to the interaction date.
     try { await notion.pages.update({ page_id: dashifyId(contactId), properties: { 'Last Touched': { date: { start: when } } } }); } catch (e) { console.error('Last Touched update failed:', e.message); }
-    cache.delete('sales-pulse'); cache.delete('sales-overdue');
+    cache.delete('sales-pulse');
+    for (const k of cache.keys()) if (k.startsWith('sales-overdue')) cache.delete(k);
     res.json({ ok: true, id: page.id });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

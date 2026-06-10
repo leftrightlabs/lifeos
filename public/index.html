@@ -2193,6 +2193,11 @@
   .pulse-logbtn { background: var(--lime); color: var(--navy-accent); border: none; border-radius: 8px; padding: 9px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
   .pulse-logbtn:hover { filter: brightness(1.05); } .pulse-logbtn:active { transform: scale(0.97); }
 
+  .pulse-search { margin-bottom: 10px; }
+  .pulse-filter { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .pulse-pill { font-size: 11.5px; font-weight: 600; letter-spacing: 0.02em; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--navy-faint); background: rgba(255,255,255,0.03); color: var(--navy-dim); cursor: pointer; font-family: var(--font-body); transition: all 0.15s; white-space: nowrap; }
+  .pulse-pill:hover { border-color: rgba(255,255,255,0.25); color: var(--navy); }
+  .pulse-pill.on { background: var(--lime); color: var(--navy-accent); border-color: var(--lime); font-weight: 700; }
   .pulse-overdue-list { max-height: 360px; overflow-y: auto; margin: 0 -4px; }
   .pulse-contact { display: flex; align-items: center; gap: 10px; padding: 9px 6px; border-bottom: 1px solid var(--navy-faint); cursor: pointer; border-radius: 6px; }
   .pulse-contact:last-child { border-bottom: none; }
@@ -6822,7 +6827,12 @@ document.addEventListener('visibilitychange', async () => {
 
   async function fetchSales(fresh){ const r=await fetch('/api/sales/pipeline'+(fresh?'?fresh=1':'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.data=d; (d.stages||[]).forEach(st=>st.deals.forEach(x=>S.dealsById[x.id]=x)); (d.recentWins||[]).forEach(x=>S.dealsById[x.id]=x); return d; }
   async function fetchPulse(fresh){ const r=await fetch('/api/sales/pulse'+(fresh?'?fresh=1':'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.pulse=d; return d; }
-  async function fetchOverdue(fresh){ const r=await fetch('/api/sales/overdue'+(fresh?'?fresh=1':'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.overdue=d; return d; }
+  async function fetchOverdue(fresh){ const rel=(S.reachRel&&S.reachRel!=='all')?S.reachRel:''; const qs=[fresh?'fresh=1':'', rel?('rel='+encodeURIComponent(rel)):''].filter(Boolean).join('&'); const r=await fetch('/api/sales/overdue'+(qs?'?'+qs:'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.overdue=d; return d; }
+  async function reachSearch(q){
+    if(!q || q.length<2){ S.reachResults=undefined; renderReachList(); return; }
+    S.reachResults=null; renderReachList(); // "Searching…"
+    try{ const r=await fetch('/api/sales/contacts?q='+encodeURIComponent(q)); const d=await r.json(); if(q===(S.reachSearch||'')){ S.reachResults=d.contacts||[]; renderReachList(); } }catch(_){ S.reachResults=[]; renderReachList(); }
+  }
 
   async function maybeLoadSales(){
     if (S.loaded||S.loading) return; S.loading=true;
@@ -6852,20 +6862,35 @@ document.addEventListener('visibilitychange', async () => {
       <button class="pulse-logbtn" data-pulse-log style="margin-top:12px">+ Log Touchpoint</button>`;
   }
   function contactColor(daysSince){ if(daysSince==null||daysSince>=14) return 'red'; if(daysSince>=7) return 'amber'; return 'green'; }
+  const REACH_RELS = ['all','Lead','Alumni','Network Partner','Active Client'];
+  function contactRow(c){
+    const ds = c.lastTouched ? Math.max(0, Math.round((Date.now() - new Date(c.lastTouched+'T12:00:00')) / 864e5)) : null;
+    const col = contactColor(ds);
+    const days = ds==null?'never':(ds+'d');
+    return `<div class="pulse-contact" data-pulse-contact="${c.id}" data-cname="${esc(c.name)}">
+      <span class="pulse-dot ${col}"></span>
+      <div class="pulse-contact-main"><div class="pulse-contact-name">${esc(c.name)}</div><div class="pulse-contact-rel">${esc(c.relationship||'')}</div></div>
+      <span class="pulse-contact-days pulse-${col}">${days}</span>
+    </div>`;
+  }
+  function reachListInner(){
+    if (S.reachSearch && S.reachSearch.length>=2){
+      const res = S.reachResults;
+      if (res==null) return '<div class="mkt-empty">Searching…</div>';
+      return res.length ? res.map(contactRow).join('') : '<div class="mkt-empty">No matches.</div>';
+    }
+    const o = S.overdue || { contacts:[] };
+    if(!o.contacts || !o.contacts.length) return '<div class="mkt-empty">No contacts here — nice work.</div>';
+    const more = o.more ? '<div class="mkt-empty" style="padding-top:8px">Showing your most overdue — log a touch to clear the top.</div>' : '';
+    return o.contacts.map(contactRow).join('') + more;
+  }
+  function renderReachList(){ const el=document.getElementById('reach-list'); if(el) el.innerHTML=reachListInner(); }
   function overdueHtml(){
-    const o = S.overdue || { contacts:[], total:0 };
-    if(!o.contacts.length) return '<div class="mkt-empty">No contacts to reach out to.</div>';
-    const rows = o.contacts.map(c=>{
-      const col=contactColor(c.daysSince);
-      const days = c.daysSince==null?'never':(c.daysSince+'d');
-      return `<div class="pulse-contact" data-pulse-contact="${c.id}" data-cname="${esc(c.name)}">
-        <span class="pulse-dot ${col}"></span>
-        <div class="pulse-contact-main"><div class="pulse-contact-name">${esc(c.name)}</div><div class="pulse-contact-rel">${esc(c.relationship||'')}</div></div>
-        <span class="pulse-contact-days pulse-${col==='red'?'red':(col==='amber'?'amber':'green')}">${days}</span>
-      </div>`;
-    }).join('');
-    const more = o.more ? `<div class="mkt-empty" style="padding-top:8px">Showing your most overdue — log a touch to clear the top.</div>` : '';
-    return `<div class="pulse-overdue-list">${rows}</div>${more}`;
+    const rel = S.reachRel || 'all';
+    const pills = REACH_RELS.map(p=>`<button class="pulse-pill ${p===rel?'on':''}" data-reach-rel="${esc(p)}">${p==='all'?'All':esc(p)}</button>`).join('');
+    return `<input class="pulse-input pulse-search" data-reach-search placeholder="Search any contact by name…" autocomplete="off" value="${esc(S.reachSearch||'')}">
+      <div class="pulse-filter">${pills}</div>
+      <div class="pulse-overdue-list" id="reach-list">${reachListInner()}</div>`;
   }
 
   function dealCard(d){
@@ -7030,12 +7055,28 @@ document.addEventListener('visibilitychange', async () => {
       const d=await r.json(); if(!r.ok||d.error) throw new Error(d.error||'failed');
       window.lrl?.haptic('success'); window.lrl?.confetti?.({count:32}); window.lrl?.toast('Touchpoint logged ✓','success');
       closeDrawer();
+      S.reachSearch=''; S.reachResults=undefined;
       await Promise.all([fetchPulse(true), fetchOverdue(true)]); renderSales();
     }catch(err){ btn.disabled=false; btn.textContent='Log it'; window.lrl?.toast('Failed: '+err.message,'error'); }
   }
   // Pulse + drawer interactions (separate listener; deal handler ignores these)
-  document.addEventListener('click', (e)=>{
+  let reachTimer=null;
+  document.addEventListener('click', async (e)=>{
     const t=e.target;
+    // Reach Out relationship filter pill
+    const pill=t.closest('[data-reach-rel]');
+    if (pill){
+      const rel=pill.dataset.reachRel;
+      if (rel===(S.reachRel||'all')) return;
+      S.reachRel=rel; S.reachSearch=''; S.reachResults=undefined;
+      document.querySelectorAll('[data-reach-rel]').forEach(b=>b.classList.toggle('on', b===pill));
+      const si=document.querySelector('[data-reach-search]'); if(si) si.value='';
+      const el=document.getElementById('reach-list'); if(el) el.innerHTML='<div class="mkt-empty">Loading…</div>';
+      try{ await fetchOverdue(false); }catch(_){}
+      renderReachList();
+      const badge=document.querySelector('[data-sales-toggle="reach"] .mkt-sec-count'); if(badge && S.overdue) badge.textContent=S.overdue.total;
+      return;
+    }
     if (t.closest('[data-pulse-log]')){ openDrawer(); return; }
     const crow=t.closest('[data-pulse-contact]');
     if (crow){ openDrawer(crow.dataset.pulseContact, crow.dataset.cname); return; }
@@ -7047,7 +7088,12 @@ document.addEventListener('visibilitychange', async () => {
     if (lb){ drawer.loggedBy=lb.dataset.drawerLoggedby; document.querySelectorAll('#pulse-loggedby button').forEach(b=>b.classList.toggle('on', b===lb)); return; }
     if (t.closest('[data-drawer-submit]')){ submitTouchpoint(t.closest('[data-drawer-submit]')); return; }
   });
-  document.addEventListener('input',(e)=>{ const s=e.target.closest&&e.target.closest('[data-drawer-search]'); if(!s) return; clearTimeout(drawer.searchTimer); const q=s.value.trim(); drawer.searchTimer=setTimeout(()=>drawerSearch(q),250); });
+  document.addEventListener('input',(e)=>{
+    const ds=e.target.closest&&e.target.closest('[data-drawer-search]');
+    if (ds){ clearTimeout(drawer.searchTimer); const q=ds.value.trim(); drawer.searchTimer=setTimeout(()=>drawerSearch(q),250); return; }
+    const rs=e.target.closest&&e.target.closest('[data-reach-search]');
+    if (rs){ S.reachSearch=rs.value.trim(); clearTimeout(reachTimer); const q=S.reachSearch; reachTimer=setTimeout(()=>reachSearch(q),260); return; }
+  });
 
   document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ closeSalesModal(); closeDrawer(); } if(e.key==='Enter'&&e.target.closest&&e.target.closest('[data-sales-val]')) e.target.blur(); });
 
