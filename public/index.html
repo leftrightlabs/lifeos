@@ -2525,14 +2525,6 @@ window.lrl = (function(){
         <div class="ritual-status" id="ritual-status">0 of 4 done</div>
       </div>
       <div class="ritual-list" id="ritual-list">
-        <div class="ritual-step" data-step="inboxes">
-          <button class="ritual-check" aria-label="Toggle done"></button>
-          <div class="ritual-step-body">
-            <div class="ritual-step-label">Clear inboxes</div>
-            <div class="ritual-step-meta" id="ritual-inbox-meta">checking…</div>
-          </div>
-          <button class="ritual-step-action" data-action="open-comms">Open ›</button>
-        </div>
         <div class="ritual-step" data-step="birthdays">
           <button class="ritual-check" aria-label="Toggle done"></button>
           <div class="ritual-step-body">
@@ -2541,29 +2533,13 @@ window.lrl = (function(){
           </div>
           <button class="ritual-step-action" data-action="open-fb">Open ↗</button>
         </div>
-        <div class="ritual-step" data-step="checkin">
+        <div class="ritual-step" data-step="inboxes">
           <button class="ritual-check" aria-label="Toggle done"></button>
           <div class="ritual-step-body">
-            <div class="ritual-step-label">Send daily check-in</div>
-            <div class="ritual-step-meta" id="ritual-checkin-meta">Not yet sent</div>
+            <div class="ritual-step-label">Clear inboxes</div>
+            <div class="ritual-step-meta" id="ritual-inbox-meta">checking…</div>
           </div>
-          <button class="ritual-step-action" data-action="jump-checkin">Jump ›</button>
-        </div>
-        <div class="ritual-step" data-step="sequence">
-          <button class="ritual-check" aria-label="Toggle done"></button>
-          <div class="ritual-step-body">
-            <div class="ritual-step-label">Sequence today's tasks</div>
-            <div class="ritual-step-meta" id="ritual-tasks-meta">0 work tasks</div>
-          </div>
-          <button class="ritual-step-action" data-action="jump-tasks">Jump ›</button>
-        </div>
-        <div class="ritual-step" data-step="marketing">
-          <button class="ritual-check" aria-label="Toggle done"></button>
-          <div class="ritual-step-body">
-            <div class="ritual-step-label">Post marketing content for the day</div>
-            <div class="ritual-step-meta">Today's social + content drops</div>
-          </div>
-          <button class="ritual-step-action" data-action="jump-marketing">Jump ›</button>
+          <button class="ritual-step-action" data-action="open-comms">Open ›</button>
         </div>
         <div class="ritual-step" data-step="notionComments">
           <button class="ritual-check" aria-label="Toggle done"></button>
@@ -2596,6 +2572,38 @@ window.lrl = (function(){
             <div class="ritual-step-meta">Capture → Claude triage</div>
           </div>
           <button class="ritual-step-action" data-action="open-triage">Open ›</button>
+        </div>
+        <div class="ritual-step" data-step="sequence">
+          <button class="ritual-check" aria-label="Toggle done"></button>
+          <div class="ritual-step-body">
+            <div class="ritual-step-label">Sequence today's tasks</div>
+            <div class="ritual-step-meta" id="ritual-tasks-meta">0 work tasks</div>
+          </div>
+          <button class="ritual-step-action" data-action="jump-tasks">Jump ›</button>
+        </div>
+        <div class="ritual-step" data-step="checkin">
+          <button class="ritual-check" aria-label="Toggle done"></button>
+          <div class="ritual-step-body">
+            <div class="ritual-step-label">Send daily check-in</div>
+            <div class="ritual-step-meta" id="ritual-checkin-meta">Not yet sent</div>
+          </div>
+          <button class="ritual-step-action" data-action="jump-checkin">Jump ›</button>
+        </div>
+        <div class="ritual-step" data-step="marketing">
+          <button class="ritual-check" aria-label="Toggle done"></button>
+          <div class="ritual-step-body">
+            <div class="ritual-step-label">Post marketing content for the day</div>
+            <div class="ritual-step-meta">Today's social + content drops</div>
+          </div>
+          <button class="ritual-step-action" data-action="jump-marketing">Jump ›</button>
+        </div>
+        <div class="ritual-step" data-step="salesTouchpoints">
+          <button class="ritual-check" aria-label="Toggle done"></button>
+          <div class="ritual-step-body">
+            <div class="ritual-step-label">Sales Touch Points</div>
+            <div class="ritual-step-meta">Reach out + log today's touches</div>
+          </div>
+          <button class="ritual-step-action" data-action="jump-sales">Jump ›</button>
         </div>
       </div>
     </div>
@@ -3403,7 +3411,7 @@ function setChapterCollapsed(collapsed){
 }
 
 // ====== Morning Ritual ======
-const RITUAL_STEPS = ['inboxes', 'birthdays', 'checkin', 'sequence', 'marketing', 'notionComments', 'slackMessages', 'reviewCalendar', 'braindump'];
+const RITUAL_STEPS = ['birthdays', 'inboxes', 'notionComments', 'slackMessages', 'reviewCalendar', 'braindump', 'sequence', 'checkin', 'marketing', 'salesTouchpoints'];
 function ritualKey(){
   return 'lrl-ritual-' + new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
 }
@@ -3679,6 +3687,8 @@ function initRitual(){
         document.getElementById('today-quests')?.scrollIntoView({ behavior:'smooth', block:'center' });
       } else if (action === 'jump-marketing'){
         document.querySelector('.tab[data-tab="marketing"]')?.click();
+      } else if (action === 'jump-sales'){
+        document.querySelector('.tab[data-tab="pipeline"]')?.click();
       } else if (action === 'open-notion-inbox'){
         window.openExternalSafe?.('https://www.notion.so/leftrightlabs');
       } else if (action === 'open-slack'){
@@ -6255,14 +6265,26 @@ document.addEventListener('keydown', (e) => {
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       tabEl.classList.add('active');
       contentEl.classList.add('active');
-      if (saved === 'health') maybeLoadHealth();
-      if (saved === 'finance') maybeLoadFinance();
-      if (saved === 'marketing') maybeLoadMarketing();
-      if (saved === 'pipeline') maybeLoadSales();
+      // Defer the tab's data-load to the next tick: maybeLoadMarketing /
+      // maybeLoadSales are defined in later <script> blocks that haven't run
+      // yet at this point, so calling them now would throw and abort init
+      // (skipping applyMode, the routines, comms, etc.). window-guarded so a
+      // missing one is a harmless no-op.
+      setTimeout(() => {
+        if (saved === 'health') window.maybeLoadHealth?.();
+        if (saved === 'finance') window.maybeLoadFinance?.();
+        if (saved === 'marketing') window.maybeLoadMarketing?.();
+        if (saved === 'pipeline') window.maybeLoadSales?.();
+      }, 0);
     }
   }
   // Apply mode (filters tab visibility + sets active button)
   applyMode();
+  // Init the routines up front — they don't depend on the comms/brief/review
+  // fetches below, so don't gate them behind that (slow) AI daily-brief await.
+  initRitual();
+  initEvening();
+  initCheckin();
   await Promise.all([fetchComms(), fetchTodayQuests(), fetchDailyBrief(), fetchReview()]);
   renderComms();
   renderTodayQuests();
@@ -6282,9 +6304,6 @@ document.addEventListener('keydown', (e) => {
   // Restore collapsed states
   if (localStorage.getItem('lrl-brief-collapsed') === '1') setBriefCollapsed(true);
   if (localStorage.getItem('lrl-chapter-collapsed') === '1') setChapterCollapsed(true);
-  initRitual();
-  initEvening();
-  initCheckin();
   // Re-render calendar every 60s so past/live event states stay accurate
   setInterval(() => { if (TODAY_EVENTS.length) renderTodayQuests(); }, 60000);
 })();
