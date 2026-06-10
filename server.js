@@ -2657,6 +2657,170 @@ app.patch('/api/sales/deal/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// =========================== SALES PULSE TRACKER ===========================
+const CONTACTS_DS = '28d458f0-8cd9-8178-b291-000bdc3fb399';
+const SALES_ACTIVITY_DS = 'b5d8dd3c-303b-49c2-96cf-23b2cfa476ae';
+const TRINA_USER_ID = 'eea4c3fe-668e-4ce7-a8e8-30314ff7f986';
+const PULSE_RELATIONSHIPS = ['Alumni', 'Network Partner', 'Lead', 'Active Client'];
+// Touchpoint types that count as low-lift "pulse" outreach (vs. real sales moves)
+const PULSE_TOUCHPOINTS = ['👋 General Touchpoint', '🙏 Thank You / Nurture'];
+const PULSE_GOAL = 85;
+const SALES_GOAL = 15;
+
+// Plain UTC date math on YYYY-MM-DD strings (all values here are date-only).
+function addDaysISO(iso, n) {
+  const d = new Date(iso + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function weekStartISO(iso) {
+  // Monday of the week containing iso.
+  const d = new Date(iso + 'T00:00:00Z');
+  const back = (d.getUTCDay() + 6) % 7; // Mon=0 … Sun=6
+  return addDaysISO(iso, -back);
+}
+
+function serializeContactRow(page) {
+  const p = page.properties || {};
+  const lt = p['Last Touched']?.date?.start || null;
+  return {
+    id: page.id,
+    name: p['Full Name']?.title?.[0]?.plain_text || '(no name)',
+    relationship: p['Relationship']?.select?.name || null,
+    lastTouched: lt,
+  };
+}
+
+// GET /api/sales/overdue — active-relationship contacts, never/oldest touched first.
+app.get('/api/sales/overdue', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    if (req.query.fresh === '1') cache.delete('sales-overdue');
+    const data = await cached('sales-overdue', async () => {
+      const out = [];
+      let cursor;
+      do {
+        const r = await notion.dataSources.query({
+          data_source_id: CONTACTS_DS,
+          filter: { and: [
+            { property: 'Archive', checkbox: { equals: false } },
+            { or: PULSE_RELATIONSHIPS.map((name) => ({ property: 'Relationship', select: { equals: name } })) },
+          ] },
+          page_size: 100,
+          start_cursor: cursor,
+        });
+        out.push(...r.results.map(serializeContactRow));
+        cursor = r.has_more ? r.next_cursor : null;
+      } while (cursor);
+      const today = chicagoTodayISODate();
+      out.forEach((c) => { c.daysSince = c.lastTouched ? Math.max(0, Math.round((new Date(today) - new Date(c.lastTouched)) / 864e5)) : null; });
+      // Never-touched first, then oldest-touched first.
+      out.sort((a, b) => {
+        if (!a.lastTouched && !b.lastTouched) return a.name.localeCompare(b.name);
+        if (!a.lastTouched) return -1;
+        if (!b.lastTouched) return 1;
+        return a.lastTouched.localeCompare(b.lastTouched);
+      });
+      return { contacts: out.slice(0, 250), total: out.length };
+    });
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/sales/pulse — this-week pulse vs sales counts, goals, and weekly streak.
+app.get('/api/sales/pulse', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    if (req.query.fresh === '1') cache.delete('sales-pulse');
+    const data = await cached('sales-pulse', async () => {
+      const today = chicagoTodayISODate();
+      const curMon = weekStartISO(today);
+      const sinceMon = addDaysISO(curMon, -7 * 26); // ~26 weeks of history for the streak
+      const rows = [];
+      let cursor;
+      do {
+        const r = await notion.dataSources.query({
+          data_source_id: SALES_ACTIVITY_DS,
+          filter: { property: 'Timestamp', date: { on_or_after: sinceMon } },
+          page_size: 100,
+          start_cursor: cursor,
+        });
+        for (const pg of r.results) {
+          const ts = pg.properties?.Timestamp?.date?.start;
+          const type = pg.properties?.['Touchpoint Type']?.select?.name || '';
+          if (ts) rows.push({ week: weekStartISO(ts.slice(0, 10)), isPulse: PULSE_TOUCHPOINTS.includes(type) });
+        }
+        cursor = r.has_more ? r.next_cursor : null;
+      } while (cursor);
+      // Tally per week.
+      const wk = {};
+      for (const r of rows) { const w = (wk[r.week] = wk[r.week] || { pulse: 0, sales: 0 }); if (r.isPulse) w.pulse++; else w.sales++; }
+      const cur = wk[curMon] || { pulse: 0, sales: 0 };
+      // Streak: count consecutive met weeks ending at the current week. A current
+      // week that hasn't hit goal yet doesn't break the streak (it's in progress).
+      let streak = 0, wkCursor = curMon, first = true;
+      for (let i = 0; i < 60; i++) {
+        const c = wk[wkCursor] || { pulse: 0, sales: 0 };
+        const met = c.sales >= SALES_GOAL;
+        if (met) streak++;
+        else if (first) { /* current week not yet met — skip, don't break */ }
+        else break;
+        first = false;
+        wkCursor = addDaysISO(wkCursor, -7);
+      }
+      return {
+        pulse: cur.pulse, pulseGoal: PULSE_GOAL,
+        sales: cur.sales, salesGoal: SALES_GOAL,
+        streak, weekStart: curMon, weekEnd: addDaysISO(curMon, 6),
+      };
+    });
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/sales/contacts?q= — search active contacts for the drawer dropdown.
+app.get('/api/sales/contacts', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    const q = (req.query.q || '').trim();
+    const filter = q
+      ? { and: [ { property: 'Archive', checkbox: { equals: false } }, { property: 'Full Name', title: { contains: q } } ] }
+      : { property: 'Archive', checkbox: { equals: false } };
+    const r = await notion.dataSources.query({
+      data_source_id: CONTACTS_DS,
+      filter,
+      sorts: q ? undefined : [{ timestamp: 'last_edited_time', direction: 'descending' }],
+      page_size: 25,
+    });
+    res.json({ contacts: r.results.map(serializeContactRow) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/sales/touchpoint — log an activity + bump the contact's Last Touched.
+app.post('/api/sales/touchpoint', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  const { contactId, contactName, touchpointType, channel, notes, loggedBy, timestamp } = req.body || {};
+  if (!contactId || !touchpointType) return res.status(400).json({ error: 'contactId and touchpointType are required' });
+  const when = /^\d{4}-\d{2}-\d{2}$/.test(timestamp || '') ? timestamp : chicagoTodayISODate();
+  try {
+    const title = `${(contactName || 'Contact')} — ${touchpointType}`;
+    const properties = {
+      Description: { title: [{ text: { content: title.slice(0, 200) } }] },
+      'Touchpoint Type': { select: { name: touchpointType } },
+      Timestamp: { date: { start: when } },
+      Contact: { relation: [{ id: dashifyId(contactId) }] },
+      'Logged By': { people: [{ id: loggedBy === 'Trina' ? TRINA_USER_ID : GRETCHEN_USER_ID }] },
+    };
+    if (channel) properties.Channel = { select: { name: channel } };
+    if (notes && String(notes).trim()) properties.Notes = { rich_text: [{ text: { content: String(notes).slice(0, 1900) } }] };
+    const page = await notion.pages.create({ parent: { type: 'data_source_id', data_source_id: SALES_ACTIVITY_DS }, properties });
+    // Bump Last Touched on the contact to the interaction date.
+    try { await notion.pages.update({ page_id: dashifyId(contactId), properties: { 'Last Touched': { date: { start: when } } } }); } catch (e) { console.error('Last Touched update failed:', e.message); }
+    cache.delete('sales-pulse'); cache.delete('sales-overdue');
+    res.json({ ok: true, id: page.id });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // =========================== MARKETING PUBLISHING ===========================
 const MARKETING_ASSETS_DS = '4170ff99-ce76-42b5-bcf2-7f672c362ec4';
 const MARKETING_CHANNELS_DS = '87918a28-58ab-43d9-a038-7f0adec3f5d5';
