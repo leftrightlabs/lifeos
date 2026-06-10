@@ -669,6 +669,7 @@
   .chapter-label { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--lime); font-weight: 600; margin-bottom: 4px; }
   .chapter-toggle { background: transparent; border: none; color: var(--lime); font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 4px; }
   .chapter-toggle:hover { opacity: 0.85; }
+  .chapter-time { font-size: 12px; color: rgba(var(--ink-rgb), 0.55); font-weight: 500; margin: 2px 0 14px; }
   #chapter-collapse-caret { display: inline-block; transition: transform 0.18s; }
   .chapter-panel.collapsed { padding: 14px 24px; margin-bottom: 16px; border-left-color: transparent; }
   .chapter-panel.collapsed #chapter-collapse-caret { transform: rotate(-90deg); }
@@ -2626,16 +2627,17 @@ window.lrl = (function(){
           <button class="chapter-toggle" id="chapter-toggle" title="Collapse/expand">
             <span id="chapter-collapse-caret">▾</span> Q2 2026
           </button>
+          <div class="chapter-time" id="chapter-time">Calculating quarter progress…</div>
           <div id="campaigns-container"></div>
           <div id="milestones-container" class="milestones-panel"></div>
         </div>
       </div>
       <div class="chapter-progress">
-        <div class="chapter-progress-bar" id="quarter-progress" style="width: 67%"></div>
+        <div class="chapter-progress-bar" id="rocks-progress" style="width: 0%"></div>
       </div>
       <div class="chapter-meta">
-        <span>67% through Q2 — 25 days remaining</span>
         <span id="rocks-summary">2 of 4 rocks complete</span>
+        <span id="rocks-pct"></span>
       </div>
     </div>
 
@@ -6627,6 +6629,8 @@ function renderCampaigns() {
   // Update the "N of M rocks complete" footer badge — count only the
   // rocks visible in the current mode.
   const rocksSummaryEl = document.getElementById('rocks-summary');
+  const rocksPctEl = document.getElementById('rocks-pct');
+  const rocksBarEl = document.getElementById('rocks-progress');
   if (rocksSummaryEl) {
     const visibleGoals = GOALS_DATA.filter(g => {
       if (g.source === 'work') return showBiz;
@@ -6641,9 +6645,14 @@ function renderCampaigns() {
           ? g.progress.done === g.progress.total
           : g.status === 'Done'
       ).length;
+      const pct = Math.round((complete / total) * 100);
       rocksSummaryEl.textContent = `${complete} of ${total} rock${total === 1 ? '' : 's'} complete`;
+      if (rocksPctEl) rocksPctEl.textContent = `${pct}% complete`;
+      if (rocksBarEl) rocksBarEl.style.width = pct + '%';
     } else {
       rocksSummaryEl.textContent = 'No rocks in view';
+      if (rocksPctEl) rocksPctEl.textContent = '';
+      if (rocksBarEl) rocksBarEl.style.width = '0%';
     }
   }
 }
@@ -6761,7 +6770,24 @@ document.addEventListener('click', (e) => {
   const url = item.dataset.msUrl;
   if (url && !action) openNotion(url);
 });
+// Live "X% through the quarter — N days remaining" status, computed from
+// today's date against the current calendar quarter (no more stale numbers).
+function updateQuarterTime() {
+  const el = document.getElementById('chapter-time');
+  if (!el) return;
+  const now = new Date();
+  const q = Math.floor(now.getMonth() / 3);                 // 0–3
+  const qStart = new Date(now.getFullYear(), q * 3, 1);
+  const qEnd = new Date(now.getFullYear(), q * 3 + 3, 0);   // last day of the quarter
+  const DAY = 86400000;
+  const totalDays = Math.round((qEnd - qStart) / DAY) + 1;
+  const elapsed = Math.min(totalDays, Math.max(0, Math.floor((now - qStart) / DAY)));
+  const pct = Math.round((elapsed / totalDays) * 100);
+  const daysLeft = Math.max(0, Math.ceil((qEnd - now) / DAY));
+  el.textContent = `${pct}% through Q${q + 1} — ${daysLeft} day${daysLeft === 1 ? '' : 's'} remaining`;
+}
 (async () => { await loadMsState(); await fetchGoals(); renderCampaigns(); })();
+updateQuarterTime();
 // Refresh button → pull current Notion state (bypass cache)
 window.addEventListener('lrl-refresh', async () => { await fetchGoals({ fresh: true }); renderCampaigns(); });
 // Auto-resync when returning to the app — e.g. after completing a milestone
