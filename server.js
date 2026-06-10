@@ -478,12 +478,25 @@ app.get('/api/goals', async (req, res) => {
 
 app.post('/api/tasks', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  const { source, name, status, priority, myDay, dueStart } = req.body || {};
+  const { source, name, status, priority, myDay, dueStart, projectId } = req.body || {};
   if (!source || !name) return res.status(400).json({ error: 'source and name are required' });
   try {
-    const result = await createNotionTask({ source, name, status, priority, myDay, dueStart });
+    const result = await createNotionTask({ source, name, status, priority, myDay, dueStart, projectId: projectId || undefined });
     invalidateTaskCaches();
     res.json({ ok: true, id: result.id, url: result.url });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/projects — active (non-archived) work + personal projects for the
+// task project selector. [{ id, source: 'work'|'personal', name }]
+app.get('/api/projects', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    if (req.query.fresh === '1') cache.delete('projects-list');
+    const projects = await cached('projects-list', fetchActiveProjects);
+    res.json({ projects });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -3052,6 +3052,10 @@ window.lrl = (function(){
       <label>Task</label>
       <textarea id="task-name-input" placeholder="Task name" rows="2"></textarea>
     </div>
+    <div class="task-field" id="task-project-field" style="display:none">
+      <label>Project</label>
+      <select id="task-project-input"><option value="">— no project —</option></select>
+    </div>
     <div class="task-project-line" id="task-project-line" style="display:none"><span class="lab">Project</span><span id="task-project-name"></span></div>
     <label class="task-checkbox-row"><input type="checkbox" id="task-myday-input"/> Pin to My Day</label>
     <div class="task-row-2col">
@@ -4438,7 +4442,24 @@ function _setTaskModalMode(mode) { // mode: 'edit' | 'create'
   document.getElementById('task-source-toggle').style.display = isCreate ? '' : 'none';
   document.getElementById('task-open-notion-btn').style.display = isCreate ? 'none' : '';
   document.getElementById('task-save-btn').textContent = isCreate ? 'Create' : 'Save';
+  document.getElementById('task-project-field').style.display = isCreate ? '' : 'none';
   document.getElementById('task-project-line').style.display = 'none';
+}
+
+// Active-project list for the create-mode project selector.
+let TASK_PROJECTS = null; // [{id, source, name}]
+async function loadTaskProjects(force){
+  if (TASK_PROJECTS && !force) return TASK_PROJECTS;
+  try { const r = await fetch('/api/projects'); const d = await r.json(); TASK_PROJECTS = d.projects || []; }
+  catch(e){ TASK_PROJECTS = TASK_PROJECTS || []; }
+  return TASK_PROJECTS;
+}
+function getCreateSource(){ return document.querySelector('#task-source-toggle .task-source-opt.active')?.dataset.source || 'personal'; }
+function populateTaskProjects(source, selectedId){
+  const sel = document.getElementById('task-project-input'); if (!sel) return;
+  const projs = (TASK_PROJECTS || []).filter(p => p.source === source).sort((a,b) => a.name.localeCompare(b.name));
+  const prev = selectedId !== undefined ? selectedId : sel.value;
+  sel.innerHTML = '<option value="">— no project —</option>' + projs.map(p => `<option value="${p.id}" ${prev===p.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('');
 }
 
 function openTaskCreate() {
@@ -4454,10 +4475,14 @@ function openTaskCreate() {
   document.getElementById('task-priority-input').value = '';
   document.getElementById('task-due-input').value = '';
   document.getElementById('task-dueend-input').value = '';
-  // Reset source toggle to Work
+  // Default DB: Personal — unless the dashboard is in Work mode.
+  const defaultSource = (typeof mode !== 'undefined' && mode === 'work') ? 'work' : 'personal';
   document.querySelectorAll('#task-source-toggle .task-source-opt').forEach(b => {
-    b.classList.toggle('active', b.dataset.source === 'work');
+    b.classList.toggle('active', b.dataset.source === defaultSource);
   });
+  // Project selector: fill from cache now, then refresh once the list loads.
+  populateTaskProjects(defaultSource, '');
+  loadTaskProjects().then(() => { if (_createMode) populateTaskProjects(getCreateSource()); });
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
   setTimeout(() => document.getElementById('task-name-input')?.focus(), 60);
@@ -4508,6 +4533,8 @@ document.getElementById('task-source-toggle')?.addEventListener('click', (e) => 
   if (!btn) return;
   document.querySelectorAll('#task-source-toggle .task-source-opt').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  // Project list is source-specific — reset to that DB's projects.
+  populateTaskProjects(btn.dataset.source, '');
 });
 
 // + button on Today's Quest panel
@@ -4536,6 +4563,7 @@ document.getElementById('task-save-btn')?.addEventListener('click', async () => 
       priority: document.getElementById('task-priority-input').value || null,
       myDay: document.getElementById('task-myday-input').checked,
       dueStart: document.getElementById('task-due-input').value || null,
+      projectId: document.getElementById('task-project-input').value || null,
     };
     if (!body.name) { window.lrl.toast('Task name is required', 'error'); return; }
     btn.disabled = true; btn.textContent = 'Creating…';
