@@ -2625,7 +2625,7 @@ window.lrl = (function(){
       <div class="chapter-header">
         <div style="flex:1">
           <button class="chapter-toggle" id="chapter-toggle" title="Collapse/expand">
-            <span id="chapter-collapse-caret">▾</span> Chapter 2 of 4 — Q2 2026
+            <span id="chapter-collapse-caret">▾</span> Q2 2026
           </button>
           <div id="campaigns-container"></div>
           <div id="milestones-container" class="milestones-panel"></div>
@@ -6584,7 +6584,7 @@ function campaignCardHTML(side){
   const activeCls = isActive ? ' active' : '';
   const sideLabel = side === 'business' ? 'Business' : 'Life';
   const sideClass = side === 'business' ? 'business' : 'life cc-life';
-  const hint = isActive ? '▾ hide quests' : '▸ view quests';
+  const hint = isActive ? '▾ hide rocks' : '▸ view rocks';
   if (!goals.length){
     const emptyMsg = side === 'business'
       ? 'No work goals yet. Flag a Work Project as GOAL = true in Notion.'
