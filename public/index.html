@@ -2156,6 +2156,32 @@
   .proj-due { font-size: 11.5px; color: var(--navy-dim); white-space: nowrap; flex-shrink: 0; }
   .proj-due.over { color: #ff7a6b; font-weight: 600; }
   .proj-empty { text-align: center; color: var(--navy-dim); padding: 40px 0; font-size: 14px; }
+  /* Search box */
+  .proj-search { position: relative; flex: 1 1 220px; min-width: 180px; }
+  .proj-search input { width: 100%; box-sizing: border-box; background: rgba(var(--edge-rgb), 0.05); border: 1px solid rgba(var(--edge-rgb), 0.12); color: var(--navy); padding: 8px 12px 8px 32px; border-radius: 999px; font: inherit; font-size: 13px; font-family: var(--font-body); }
+  .proj-search input:focus { outline: none; border-color: var(--lime); }
+  .proj-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; opacity: 0.45; pointer-events: none; }
+  /* Owner avatars */
+  .proj-avatars { display: inline-flex; flex-shrink: 0; align-items: center; }
+  .proj-av { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 9.5px; font-weight: 800; letter-spacing: 0.02em; color: #11151f; margin-left: -7px; border: 2px solid var(--white); }
+  .proj-av:first-child { margin-left: 0; }
+  .proj-av.more { background: rgba(var(--edge-rgb), 0.18); color: var(--navy); }
+  .av-lime { background: #a7c140; } .av-blue { background: #5d9cec; } .av-coral { background: #ff9d8f; }
+  .av-purple { background: #c084fc; } .av-gold { background: #d4a854; } .av-teal { background: #3fa776; }
+  /* Timeline group sub-headers */
+  .proj-tl-group { min-width: 480px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; padding: 10px 0 3px; border-top: 1px solid rgba(var(--edge-rgb), 0.06); margin-top: 4px; }
+  .proj-tl-group:first-child { border-top: none; margin-top: 0; padding-top: 2px; }
+  .proj-tl-group .proj-tl-gcount { opacity: 0.55; margin-left: 6px; }
+  /* Undated expander (under the timeline) */
+  .proj-undated { margin-top: 12px; border-top: 1px solid rgba(var(--edge-rgb), 0.08); padding-top: 10px; }
+  .proj-undated-head { font-size: 12px; color: var(--navy-dim); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; }
+  .proj-undated-head .caret { display: inline-block; font-size: 10px; transition: transform 0.18s; }
+  .proj-undated:not(.open) .caret { transform: rotate(-90deg); }
+  .proj-undated:not(.open) .proj-undated-body { display: none; }
+  .proj-undated-body { margin-top: 8px; display: flex; flex-direction: column; gap: 3px; }
+  .proj-undated-item { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--navy); padding: 5px 6px; border-radius: 6px; cursor: pointer; }
+  .proj-undated-item:hover { background: rgba(var(--edge-rgb), 0.04); }
+  .proj-undated-item .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   @container projbody (max-width: 560px) {
     .proj-row { flex-wrap: wrap; gap: 7px; }
     .proj-due { width: 100%; order: 5; }
@@ -6942,12 +6968,38 @@ document.addEventListener('visibilitychange', async () => {
 <!-- =========================== PROJECTS TAB =========================== -->
 <script>
 (function(){
-  const P = { data: null, statusFilter: null, areaFilter: null, groupBy: 'area', collapsed: {} };
+  const P = { data: null, statusFilter: null, areaFilter: null, groupBy: 'area', search: '', collapsed: {}, undatedOpen: false };
   const TL_KEY = 'lrl-proj-timeline-collapsed';
   let _loaded = false;
   const esc = (s) => (window.escapeHtml ? escapeHtml(String(s ?? '')) : String(s ?? ''));
   const statusClass = (s) => ({ 'Active':'active','Ongoing':'ongoing','Billing':'billing','Planned':'planned','On Hold':'onhold','Done':'done' }[s] || 'none');
   const openUrl = (url) => { if (!url) return; (window.openNotion ? openNotion(url) : window.open(url, '_blank', 'noopener')); };
+
+  // Owner avatars (initials, deterministic color)
+  const initials = (name) => { const parts = String(name || '').trim().split(/\s+/); return ((parts[0] || '')[0] || '') + (parts.length > 1 ? (parts[parts.length - 1][0] || '') : ''); };
+  const AV_COLORS = ['av-lime','av-blue','av-coral','av-purple','av-gold','av-teal'];
+  const avatarColor = (name) => { let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return AV_COLORS[h % AV_COLORS.length]; };
+  function ownerAvatars(owners){
+    if (!owners || !owners.length) return '';
+    const max = 3, shown = owners.slice(0, max);
+    let h = '<div class="proj-avatars">' + shown.map((o) => `<span class="proj-av ${avatarColor(o)}" title="${esc(o)}">${esc(initials(o).toUpperCase())}</span>`).join('');
+    if (owners.length > max) h += `<span class="proj-av more" title="${esc(owners.slice(max).join(', '))}">+${owners.length - max}</span>`;
+    return h + '</div>';
+  }
+
+  // Shared grouping (used by both the list and the timeline)
+  const groupKeyOf = (p) => (({
+    area: () => p.area || 'No Area',
+    system: () => p.system || 'No System',
+    status: () => p.status || 'No Status',
+    owner: () => p.owners[0] || 'Unassigned',
+    none: () => 'All Projects',
+  })[P.groupBy] || (() => p.area || 'No Area'))();
+  function sortGroupKeys(keys){
+    if (P.groupBy === 'status'){ const ord = ['Active','Ongoing','Billing','Planned','On Hold','Done','No Status']; return keys.slice().sort((a,b) => ord.indexOf(a) - ord.indexOf(b)); }
+    return keys.slice().sort((a,b) => { const na = /^(No |Unassigned)/.test(a), nb = /^(No |Unassigned)/.test(b); if (na !== nb) return na ? 1 : -1; return a.localeCompare(b); });
+  }
+  function groupAll(items){ const g = {}; items.forEach((p) => { const k = groupKeyOf(p); (g[k] = g[k] || []).push(p); }); return g; }
 
   async function load(fresh){
     const body = document.getElementById('projects-body');
@@ -6964,7 +7016,9 @@ document.addEventListener('visibilitychange', async () => {
 
   function filtered(){
     const ps = (P.data && P.data.projects) || [];
+    const q = (P.search || '').trim().toLowerCase();
     return ps.filter((p) => {
+      if (q && !p.name.toLowerCase().includes(q)) return false;
       if (P.statusFilter === 'atrisk') { if (!p.atRisk) return false; }
       else if (P.statusFilter) { if (p.status !== P.statusFilter) return false; }
       if (P.areaFilter === '__none__') { if (p.areas.length) return false; }
@@ -7000,7 +7054,18 @@ document.addEventListener('visibilitychange', async () => {
         + (hasNoArea ? `<button class="proj-chip ${P.areaFilter === '__none__' ? 'on' : ''}" data-area="__none__">No area</button>` : '')
         + '</div>';
     }
-    return '<div class="proj-controls"><div class="proj-ctl-group"><span class="proj-ctl-label">Group by</span><div class="proj-seg">' + seg + '</div></div>' + areaChips + '</div>';
+    const search = '<div class="proj-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>'
+      + `<input id="proj-search-input" type="text" placeholder="Search projects…" autocomplete="off" value="${esc(P.search)}"></div>`;
+    return '<div class="proj-controls">' + search + '<div class="proj-ctl-group"><span class="proj-ctl-label">Group by</span><div class="proj-seg">' + seg + '</div></div>' + areaChips + '</div>';
+  }
+
+  function undatedHTML(undatedList){
+    if (!undatedList.length) return '';
+    const items = undatedList.slice().sort((a,b) => a.name.localeCompare(b.name)).map((p) =>
+      `<div class="proj-undated-item" data-url="${esc(p.url)}"><span class="proj-badge st-${statusClass(p.status)}">${esc(p.status || '—')}</span><span class="nm">${p.rock ? '★ ' : ''}${esc(p.name)}</span></div>`).join('');
+    return `<div class="proj-undated ${P.undatedOpen ? 'open' : ''}">
+      <div class="proj-undated-head" id="proj-undated-head"><span class="caret">▾</span>${undatedList.length} project${undatedList.length === 1 ? '' : 's'} with no scheduled dates</div>
+      <div class="proj-undated-body">${items}</div></div>`;
   }
 
   function timelineHTML(){
@@ -7012,11 +7077,11 @@ document.addEventListener('visibilitychange', async () => {
       if (!s || s > e) s = new Date(e.getFullYear(), e.getMonth(), 1);
       return Object.assign({}, p, { _s:s, _e:e });
     });
-    const undated = ps.length - dated.length;
+    const undatedList = ps.filter((p) => !p.end);
     if (!dated.length){
       return `<div class="proj-timeline-panel ${collapsed ? 'collapsed' : ''}" id="proj-tl">
         <div class="proj-tl-head" id="proj-tl-head"><span class="caret">▾</span><h3>Timeline</h3><span class="proj-tl-sub">No scheduled dates in view</span></div>
-        <div class="proj-tl-body"><div class="proj-tl-undated">${undated} project${undated === 1 ? '' : 's'} with no Target Deadline or Due date.</div></div></div>`;
+        <div class="proj-tl-body">${undatedHTML(undatedList) || '<div class="proj-tl-undated">Nothing to show.</div>'}</div></div>`;
     }
     let minS = dated[0]._s, maxE = dated[0]._e;
     dated.forEach((p) => { if (p._s < minS) minS = p._s; if (p._e > maxE) maxE = p._e; });
@@ -7027,7 +7092,7 @@ document.addEventListener('visibilitychange', async () => {
     const N = months.length;
     const idxOf = (d) => { const mi = (d.getFullYear() - startM.getFullYear()) * 12 + (d.getMonth() - startM.getMonth()); return Math.max(0, Math.min(N - 1, mi)); };
     const monthHdr = months.map((m) => `<div class="proj-tl-month">${m.toLocaleString('en-US', { month:'short' })}${m.getMonth() === 0 ? (" ’" + String(m.getFullYear()).slice(2)) : ''}</div>`).join('');
-    const rows = dated.slice().sort((a,b) => a._s - b._s).map((p) => {
+    const barRow = (p) => {
       const sI = idxOf(p._s), eI = idxOf(p._e);
       const left = (sI / N) * 100, width = ((eI - sI + 1) / N) * 100;
       const barCls = p.atRisk ? 'risk' : (p.status === 'Done' ? 'done' : '');
@@ -7035,11 +7100,18 @@ document.addEventListener('visibilitychange', async () => {
       return `<div class="proj-tl-row"><div class="proj-tl-name" data-url="${esc(p.url)}" title="${esc(p.name)}">${esc(p.name)}</div>
         <div class="proj-tl-track"><div class="proj-tl-grid">${months.map(() => '<span></span>').join('')}</div>
         <div class="proj-tl-bar ${barCls}" data-url="${esc(p.url)}" style="left:${left}%;width:${width}%" title="${esc(p.name)} · ends ${endTxt}"></div></div></div>`;
+    };
+    // Group the timeline rows by the same selection as the list
+    const groups = groupAll(dated);
+    const keys = sortGroupKeys(Object.keys(groups));
+    const rows = keys.map((k) => {
+      const gr = groups[k].slice().sort((a,b) => a._s - b._s).map(barRow).join('');
+      const hdr = (P.groupBy === 'none') ? '' : `<div class="proj-tl-group">${esc(k)}<span class="proj-tl-gcount">${groups[k].length}</span></div>`;
+      return hdr + gr;
     }).join('');
-    const undatedNote = undated ? `<div class="proj-tl-undated">+ ${undated} project${undated === 1 ? '' : 's'} with no scheduled dates (not shown above).</div>` : '';
     return `<div class="proj-timeline-panel ${collapsed ? 'collapsed' : ''}" id="proj-tl">
       <div class="proj-tl-head" id="proj-tl-head"><span class="caret">▾</span><h3>Timeline</h3><span class="proj-tl-sub">${dated.length} scheduled</span></div>
-      <div class="proj-tl-body"><div class="proj-tl-months">${monthHdr}</div>${rows}${undatedNote}</div></div>`;
+      <div class="proj-tl-body"><div class="proj-tl-months">${monthHdr}</div>${rows}${undatedHTML(undatedList)}</div></div>`;
   }
 
   function rowHTML(p){
@@ -7047,11 +7119,12 @@ document.addEventListener('visibilitychange', async () => {
     const rowCls = p.atRisk ? 'risk' : ('st-' + sc);
     const sub = [];
     if (p.system && P.groupBy !== 'system') sub.push(esc(p.system));
-    if (p.owners.length) sub.push(esc(p.owners.join(', ')));
+    if (p.area && P.groupBy !== 'area') sub.push(esc(p.area));
     const subHtml = sub.length ? '<div class="proj-row-sub">' + sub.map((s,i) => (i ? '<span class="sep">·</span>' : '') + s).join('') + '</div>' : '';
     const dateStr = p.end ? new Date(p.end).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '';
     return `<div class="proj-row ${rowCls}" data-url="${esc(p.url)}">
       <div class="proj-row-main"><div class="proj-row-name">${p.rock ? '<span class="rock">★</span>' : ''}${esc(p.name)}</div>${subHtml}</div>
+      ${ownerAvatars(p.owners)}
       ${p.atRisk ? '<span class="proj-risk-flag">At risk</span>' : ''}
       <span class="proj-badge st-${sc}">${esc(p.status || '—')}</span>
       ${dateStr ? `<span class="proj-due ${p.atRisk ? 'over' : ''}">${dateStr}</span>` : ''}</div>`;
@@ -7060,18 +7133,8 @@ document.addEventListener('visibilitychange', async () => {
   function listHTML(){
     const ps = filtered();
     if (!ps.length) return '<div class="proj-empty">No projects match these filters.</div>';
-    const keyFn = ({
-      area: (p) => p.area || 'No Area',
-      system: (p) => p.system || 'No System',
-      status: (p) => p.status || 'No Status',
-      owner: (p) => p.owners[0] || 'Unassigned',
-      none: () => 'All Projects',
-    })[P.groupBy] || ((p) => p.area || 'No Area');
-    const groups = {};
-    ps.forEach((p) => { const k = keyFn(p); (groups[k] = groups[k] || []).push(p); });
-    let keys = Object.keys(groups);
-    if (P.groupBy === 'status'){ const ord = ['Active','Ongoing','Billing','Planned','On Hold','Done','No Status']; keys.sort((a,b) => ord.indexOf(a) - ord.indexOf(b)); }
-    else { keys.sort((a,b) => { const na = /^(No |Unassigned)/.test(a), nb = /^(No |Unassigned)/.test(b); if (na !== nb) return na ? 1 : -1; return a.localeCompare(b); }); }
+    const groups = groupAll(ps);
+    const keys = sortGroupKeys(Object.keys(groups));
     return keys.map((k) => {
       const items = groups[k].slice().sort((a,b) => ((a.status === 'Done') - (b.status === 'Done')) || a.name.localeCompare(b.name));
       const isCol = !!P.collapsed[k];
@@ -7084,33 +7147,46 @@ document.addEventListener('visibilitychange', async () => {
   function render(){
     const body = document.getElementById('projects-body');
     if (!body || !P.data) return;
-    body.innerHTML = statsHTML() + controlsHTML() + timelineHTML() + listHTML();
-    wire();
+    // Stats + controls render once; results (timeline + list) live in their own
+    // node so typing in search re-renders only them (keeping the input focused).
+    body.innerHTML = statsHTML() + controlsHTML() + '<div id="proj-results"></div>';
+    wireControls();
+    renderResults();
   }
 
-  function wire(){
+  function renderResults(){
+    const r = document.getElementById('proj-results'); if (!r) return;
+    r.innerHTML = timelineHTML() + listHTML();
+    wireResults();
+  }
+
+  function wireControls(){
     const body = document.getElementById('projects-body'); if (!body) return;
-    body.querySelectorAll('.proj-stat').forEach((el) => el.addEventListener('click', () => {
-      const s = el.dataset.status || null;
-      P.statusFilter = (s === null) ? null : (P.statusFilter === s ? null : s);
-      render();
-    }));
+    body.querySelectorAll('.proj-stat').forEach((el) => {
+      const fire = () => { const s = el.dataset.status || null; P.statusFilter = (s === null) ? null : (P.statusFilter === s ? null : s); render(); };
+      el.addEventListener('click', fire);
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fire(); } });
+    });
     body.querySelectorAll('.proj-seg button').forEach((b) => b.addEventListener('click', () => { P.groupBy = b.dataset.group; render(); }));
     body.querySelectorAll('.proj-chip').forEach((b) => b.addEventListener('click', () => {
       const a = b.dataset.area;
       P.areaFilter = (a === '') ? null : (P.areaFilter === a ? null : a);
       render();
     }));
-    const tlHead = body.querySelector('#proj-tl-head');
-    if (tlHead) tlHead.addEventListener('click', () => {
-      const panel = body.querySelector('#proj-tl'); const now = panel.classList.toggle('collapsed');
-      localStorage.setItem(TL_KEY, now ? '1' : '0');
-    });
-    body.querySelectorAll('.proj-group-head').forEach((h) => h.addEventListener('click', () => {
-      const g = h.closest('.proj-group'); const k = g.dataset.groupKey;
-      const now = g.classList.toggle('collapsed'); P.collapsed[k] = now;
+    const si = body.querySelector('#proj-search-input');
+    if (si) si.addEventListener('input', () => { P.search = si.value; renderResults(); });
+  }
+
+  function wireResults(){
+    const r = document.getElementById('proj-results'); if (!r) return;
+    const tlHead = r.querySelector('#proj-tl-head');
+    if (tlHead) tlHead.addEventListener('click', () => { const panel = r.querySelector('#proj-tl'); const now = panel.classList.toggle('collapsed'); localStorage.setItem(TL_KEY, now ? '1' : '0'); });
+    const unHead = r.querySelector('#proj-undated-head');
+    if (unHead) unHead.addEventListener('click', () => { const u = r.querySelector('.proj-undated'); P.undatedOpen = u.classList.toggle('open'); });
+    r.querySelectorAll('.proj-group-head').forEach((h) => h.addEventListener('click', () => {
+      const g = h.closest('.proj-group'); const now = g.classList.toggle('collapsed'); P.collapsed[g.dataset.groupKey] = now;
     }));
-    body.querySelectorAll('[data-url]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); openUrl(el.dataset.url); }));
+    r.querySelectorAll('[data-url]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); openUrl(el.dataset.url); }));
   }
 
   function maybeLoadProjects(){ if (_loaded) return; _loaded = true; load(); }
