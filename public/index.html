@@ -1188,17 +1188,29 @@
   .source-gmail-work { background: rgba(var(--edge-rgb), 0.08); color: var(--navy); border: 1px solid rgba(var(--edge-rgb), 0.15); }
   .source-gmail-personal { background: rgba(167,193,64,0.18); color: var(--lime); }
 
-  /* === AUTOFOCUS TOOL — scoped to .autofocus-app === */
+  /* === AUTOFOCUS TOOL — scoped to .autofocus-app ===
+     Every color maps onto the GLOBAL theme variables so this tab
+     re-themes exactly like the rest of the app. Never hardcode a local
+     --navy here: it would shadow the themed global one and lock the tab
+     to a fixed palette (that is what used to break theme switching). */
   .autofocus-app {
-    --navy:#112248; --navy-2:#1b315f;
-    /* --lime and --lime-d INHERIT from theme system (html.theme-indigo / theme-minimal) */
+    --card: var(--white);
+    --ink: var(--navy);
+    --muted: rgba(var(--ink-rgb), 0.65);
+    --faint: rgba(var(--ink-rgb), 0.45);
+    --line: rgba(var(--edge-rgb), 0.08);
+    --line-2: rgba(var(--edge-rgb), 0.16);
+    --paper: transparent;
+    --work: #5d9cec;               /* work blue — matches the global work lens */
+    --personal: var(--lime);       /* re-themed per palette below */
     --lime-d: var(--lime);
-    --paper:#f4f3ee; --card:#ffffff; --ink:#16203a; --muted:#6b7488; --faint:#9aa1b2;
-    --line:#e6e4dc; --line-2:#d9d7cd;
-    --work:#112248; --personal: var(--lime);
-    --over:#c0392b; --today:#b8860b; --soon:#2e7d57;
+    --over: #ff7a6b;               /* app-wide alert red */
+    --today: #d4a854;              /* today gold, matches the stat tiles */
+    --soon: #2e7d57;
     --font-d: var(--font-display);
     --font-b: var(--font-body);
+    color: var(--ink);
+    font-family: var(--font-b);
   }
   .autofocus-app .wrap {max-width:1060px;margin:0 auto;padding:0 18px 90px}
   .autofocus-app header.top {background:var(--navy);color:#fff;border-radius:0 0 14px 14px;padding:22px 24px 18px;margin-bottom:14px;position:relative;overflow:hidden}
@@ -1214,8 +1226,8 @@
   .autofocus-app .stat:focus-visible {outline:2px solid var(--lime);outline-offset:2px}
   .autofocus-app .stat.active {background:rgba(var(--edge-rgb), 0.08);box-shadow:inset 0 0 0 1.5px currentColor}
   .autofocus-app .stat.s-open.active {color:rgba(var(--ink-rgb), 0.7)}
-  .autofocus-app .stat.s-work.active {color:#5d9cec}
-  .autofocus-app .stat.s-personal.active {color:#c084fc}
+  .autofocus-app .stat.s-work.active {color:var(--work)}
+  .autofocus-app .stat.s-personal.active {color:var(--personal)}
   .autofocus-app .stat.s-today.active {color:#d4a854}
   .autofocus-app .stat.s-over.active {color:#ff7a6b}
   .autofocus-app .stat.s-myday.active {color:var(--lime)}
@@ -1239,7 +1251,7 @@
   .autofocus-app .syncbar {background:#fff;border:1px solid var(--line);border-left:3px solid var(--lime);border-radius:10px;padding:11px 14px;margin-bottom:12px;font-size:13px}
   .autofocus-app .syncrow {display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   .autofocus-app .btn-ghost {border:1px solid var(--line-2);background:#fff;border-radius:8px;padding:7px 12px;font:inherit;font-size:12px;font-weight:600;color:var(--navy);cursor:pointer}
-  .autofocus-app .btn-ghost.go {background:var(--lime);border-color:var(--lime-d);color:var(--navy)}
+  .autofocus-app .btn-ghost.go {background:var(--lime);border-color:var(--lime-d);color:var(--navy-accent)}
   .autofocus-app .toolbar {display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
   .autofocus-app .search {flex:1 1 230px;min-width:200px;position:relative}
   .autofocus-app .search input {width:100%;padding:10px 12px 10px 34px;border:1px solid var(--line-2);border-radius:9px;background:#fff;font:inherit;font-size:14px;color:var(--ink)}
@@ -1247,12 +1259,12 @@
   .autofocus-app .chips {display:flex;border:1px solid var(--line-2);border-radius:9px;overflow:hidden;background:#fff}
   .autofocus-app .chips button {border:0;background:#fff;padding:9px 13px;font:inherit;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer}
   .autofocus-app .chips button+button {border-left:1px solid var(--line-2)}
-  .autofocus-app .chips button.on {background:var(--navy);color:#fff}
-  .autofocus-app .chips button.on.personal {background:var(--personal);color:#fff}
+  .autofocus-app .chips button.on {background:var(--lime);color:var(--navy-accent)}
+  .autofocus-app .chips button.on.personal {background:var(--personal);color:var(--navy-accent)}
   .autofocus-app select.sel {padding:9px 12px;border:1px solid var(--line-2);border-radius:9px;background:#fff;font:inherit;font-size:13px;color:var(--ink);cursor:pointer}
   .autofocus-app .toggles {display:flex;gap:8px;flex-wrap:wrap;width:100%;margin:8px 0 2px}
   .autofocus-app .tg {display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);background:#fff;border:1px solid var(--line-2);padding:7px 11px;border-radius:9px;cursor:pointer}
-  .autofocus-app .tg input {accent-color:var(--navy);width:15px;height:15px;margin:0}
+  .autofocus-app .tg input {accent-color:var(--lime);width:15px;height:15px;margin:0}
   .autofocus-app .tg.on {color:var(--navy);border-color:var(--navy);font-weight:600}
   .autofocus-app .group {margin-top:18px}
   .autofocus-app .ghead {display:flex;align-items:center;gap:9px;padding:0 2px 8px;border-bottom:2px solid var(--navy);margin-bottom:2px;cursor:pointer}
@@ -1271,8 +1283,8 @@
   .autofocus-app .row.done {opacity:.5}
   .autofocus-app .row.done .nm {text-decoration:line-through}
   .autofocus-app .check {appearance:none;-webkit-appearance:none;min-width:20px;height:20px;margin-top:1px;border:1.6px solid var(--line-2);border-radius:6px;cursor:pointer;position:relative;background:#fff}
-  .autofocus-app .check:checked {background:var(--navy);border-color:var(--navy)}
-  .autofocus-app .check:checked::after {content:"";position:absolute;left:6px;top:2px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+  .autofocus-app .check:checked {background:var(--lime);border-color:var(--lime)}
+  .autofocus-app .check:checked::after {content:"";position:absolute;left:6px;top:2px;width:5px;height:10px;border:solid var(--navy-accent);border-width:0 2px 2px 0;transform:rotate(45deg)}
   .autofocus-app .mid {flex:1;min-width:0;cursor:pointer}
   .autofocus-app .nm {font-size:14.5px;color:var(--ink);font-weight:500;word-break:break-word}
   .autofocus-app .proj {font-size:11.5px;color:var(--faint);margin-top:2px;display:flex;align-items:center;gap:5px}
@@ -1300,38 +1312,25 @@
   .autofocus-app .mini {border:1px solid var(--line-2);background:#fff;border-radius:7px;padding:4px 8px;font:inherit;font-size:11px;font-weight:600;color:var(--navy);cursor:pointer;display:inline-flex;align-items:center;gap:4px}
   .autofocus-app .empty {text-align:center;color:var(--muted);padding:50px 0;font-size:14px}
 
-  /* Autofocus dark mode */
-  .autofocus-app {
-    --paper: transparent;
-    --card: var(--white);
-    --ink: var(--navy);
-    --muted: rgba(var(--ink-rgb), 0.65);
-    --faint: rgba(var(--ink-rgb), 0.45);
-    --line: rgba(var(--edge-rgb), 0.08);
-    --line-2: rgba(var(--edge-rgb), 0.16);
-    --work: #5d9cec;
-    /* --personal inherits from theme system (set above to var(--lime), overridden per theme below) */
-    color: var(--ink);
-    font-family: var(--font-b);
-  }
+  /* Theme-aware accent layers (sit on top of the base rules above) */
   .autofocus-app .stat.s-open { border-top-color: rgba(var(--ink-rgb), 0.45); }
-  .autofocus-app .stat.s-work { border-top-color: #5d9cec; }
+  .autofocus-app .stat.s-work { border-top-color: var(--work); }
   .autofocus-app .stat.s-personal { border-top-color: var(--personal); }
-  .autofocus-app .row { border-left-color: #5d9cec; }
+  .autofocus-app .row { border-left-color: var(--work); }
   .autofocus-app .row.personal { border-left-color: var(--personal); }
   .autofocus-app .tag.src-work { background: rgba(93,156,236,0.15); color: #9cc5f5; }
   .autofocus-app .stat, .autofocus-app .syncbar, .autofocus-app .row, .autofocus-app .note,
   .autofocus-app .chips, .autofocus-app .search input, .autofocus-app select.sel,
   .autofocus-app .tg, .autofocus-app .check, .autofocus-app .mini, .autofocus-app .btn-ghost { background: var(--card); color: var(--ink); }
   .autofocus-app .chips button { background: transparent; }
-  .autofocus-app .chips button.on { background: var(--navy); color: #fff; }
+  .autofocus-app .chips button.on { background: var(--lime); color: var(--navy-accent); }
   .autofocus-app .check { background: rgba(var(--edge-rgb), 0.05); }
   .autofocus-app header.top { background: transparent; padding: 0; margin-bottom: 18px; border-radius: 0; }
   .autofocus-app .nm { color: var(--ink); }
   .autofocus-app .page-title { color: var(--ink); }
   .autofocus-app .page-subtitle { color: rgba(var(--ink-rgb), 0.55); }
   .autofocus-app .stat .statn { color: var(--ink); }
-  .autofocus-app .tag.src-work { background: rgba(74,107,189,0.18); color: #c9d4ee; }
+  .autofocus-app .tag.src-work { background: rgba(var(--edge-rgb), 0.06); color: var(--work); border: 1px solid rgba(var(--edge-rgb), 0.08); }
   .autofocus-app .tag.src-personal { background: rgba(var(--edge-rgb), 0.06); color: var(--personal); border: 1px solid rgba(var(--edge-rgb), 0.08); }
   .autofocus-app .tag.status { background: rgba(var(--edge-rgb), 0.06); color: var(--muted); }
   .autofocus-app .ghead { border-bottom-color: rgba(var(--edge-rgb), 0.18); }
