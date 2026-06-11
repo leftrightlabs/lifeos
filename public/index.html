@@ -670,7 +670,8 @@
 
   .chapter-panel { background: var(--white); border: 1px solid rgba(167,193,64,0.18); border-left: 3px solid var(--lime); border-radius: 8px; padding: 18px 22px; margin-bottom: 24px; position: relative; transition: padding 0.2s ease, margin 0.2s ease; }
   .chapter-panel::before { content: none; }
-  .chapter-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .chapter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; }
+  .chapter-collapsed-meta { display: none; font-size: 12px; color: rgba(var(--ink-rgb), 0.55); font-weight: 500; white-space: nowrap; }
   .chapter-label { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--lime); font-weight: 600; margin-bottom: 4px; }
   .chapter-toggle { background: transparent; border: none; color: var(--lime); font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 4px; }
   .chapter-toggle:hover { opacity: 0.85; }
@@ -678,11 +679,9 @@
   #chapter-collapse-caret { display: inline-block; transition: transform 0.18s; }
   .chapter-panel.collapsed { padding: 14px 24px; margin-bottom: 16px; border-left-color: transparent; }
   .chapter-panel.collapsed #chapter-collapse-caret { transform: rotate(-90deg); }
-  .chapter-panel.collapsed #campaigns-container,
-  .chapter-panel.collapsed #milestones-container,
-  .chapter-panel.collapsed .chapter-progress { display: none; }
+  .chapter-panel.collapsed .chapter-body { display: none; }
   .chapter-panel.collapsed .chapter-header { margin-bottom: 0; }
-  .chapter-panel.collapsed .chapter-meta { margin-top: 8px; font-size: 11px; opacity: 0.9; }
+  .chapter-panel.collapsed .chapter-collapsed-meta { display: inline; }
   .chapter-name { font-family: var(--font-display); font-size: 22px; font-weight: 800; color: var(--navy); line-height: 1.2; letter-spacing: -0.02em; }
   .chapter-name span { display: inline; }
   .xp-display { text-align: right; }
@@ -1076,8 +1075,6 @@
       padding-right: max(16px, env(safe-area-inset-right));
     }
     .quest-row { grid-template-columns: 1fr; }
-    .chapter-header { flex-direction: column; gap: 12px; }
-    .xp-display { text-align: left; }
   }
 
   /* DARK MODE OVERRIDES */
@@ -2815,21 +2812,22 @@ window.lrl = (function(){
 
     <div class="chapter-panel" id="chapter-panel">
       <div class="chapter-header">
-        <div style="flex:1">
-          <button class="chapter-toggle" id="chapter-toggle" title="Collapse/expand">
-            <span id="chapter-collapse-caret">▾</span> Q2 2026
-          </button>
-          <div class="chapter-time" id="chapter-time">Calculating quarter progress…</div>
-          <div id="campaigns-container"></div>
-          <div id="milestones-container" class="milestones-panel"></div>
+        <button class="chapter-toggle" id="chapter-toggle" title="Collapse/expand">
+          <span id="chapter-collapse-caret">▾</span> Q2 2026
+        </button>
+        <span class="chapter-collapsed-meta" id="chapter-collapsed-meta"></span>
+      </div>
+      <div class="chapter-body" id="chapter-body">
+        <div class="chapter-time" id="chapter-time">Calculating quarter progress…</div>
+        <div id="campaigns-container"></div>
+        <div id="milestones-container" class="milestones-panel"></div>
+        <div class="chapter-progress">
+          <div class="chapter-progress-bar" id="rocks-progress" style="width: 0%"></div>
         </div>
-      </div>
-      <div class="chapter-progress">
-        <div class="chapter-progress-bar" id="rocks-progress" style="width: 0%"></div>
-      </div>
-      <div class="chapter-meta">
-        <span id="rocks-summary">2 of 4 rocks complete</span>
-        <span id="rocks-pct"></span>
+        <div class="chapter-meta">
+          <span id="rocks-summary">2 of 4 rocks complete</span>
+          <span id="rocks-pct"></span>
+        </div>
       </div>
     </div>
 
@@ -6908,6 +6906,9 @@ function renderCampaigns() {
       if (rocksPctEl) rocksPctEl.textContent = '';
       if (rocksBarEl) rocksBarEl.style.width = '0%';
     }
+    // Mirror the summary onto the collapsed one-line header
+    const collapsedMeta = document.getElementById('chapter-collapsed-meta');
+    if (collapsedMeta) collapsedMeta.textContent = rocksSummaryEl.textContent;
   }
 }
 
