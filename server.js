@@ -567,11 +567,21 @@ async function fetchProjectsBoard() {
   const todayMs = today.getTime();
   const build = (p, source, status, deadline, due, areas, systems, owners) => {
     const end = deadline || due || null;
+    const pr = p.properties;
+    // Active-task breakdown string, e.g. "Planned: 20 | Agenda: 2 | Waiting: 1".
+    const taskMeta = pr['Task Meta']?.formula?.string || pr['Active Tasks']?.formula?.string || '';
+    // Progress fraction 0..1 (personal projects expose it; work doesn't).
+    const pf = pr.Progress?.formula;
+    let progress = null;
+    if (pf) {
+      if (typeof pf.number === 'number') progress = pf.number;
+      else if (pf.string) { const n = parseFloat(pf.string); if (!Number.isNaN(n)) progress = n; }
+    }
     return {
       id: p.id,
       url: p.url,
       source,
-      name: p.properties.Name?.title?.[0]?.plain_text || '(untitled)',
+      name: pr.Name?.title?.[0]?.plain_text || '(untitled)',
       status,
       area: areas[0] || null,
       areas,
@@ -581,9 +591,11 @@ async function fetchProjectsBoard() {
       due,
       deadline,
       end,
-      created: p.properties.Created?.created_time || null,
-      completed: p.properties.Completed?.date?.start || null,
-      rock: !!p.properties.ROCK?.checkbox,
+      created: pr.Created?.created_time || null,
+      completed: pr.Completed?.date?.start || null,
+      rock: !!pr.ROCK?.checkbox,
+      taskMeta,
+      progress,
       atRisk: !!end && status !== 'Done' && new Date(end).getTime() < todayMs,
     };
   };
@@ -626,6 +638,27 @@ app.get('/api/projects/board', async (req, res) => {
     if (req.query.fresh === '1') cache.delete('projects-board');
     const data = await cached('projects-board', fetchProjectsBoard);
     res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/projects/:id — quick edits from the Projects tab card.
+// Both DBs share the Status + Target Deadline property names.
+app.patch('/api/projects/:id', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  const { id } = req.params;
+  const { status, deadline } = req.body || {};
+  try {
+    const properties = {};
+    if (status !== undefined) properties.Status = { status: { name: status } };
+    if (deadline !== undefined) {
+      properties['Target Deadline'] = deadline ? { date: { start: deadline } } : { date: null };
+    }
+    if (!Object.keys(properties).length) return res.status(400).json({ error: 'No supported fields to update' });
+    await notion.pages.update({ page_id: id, properties });
+    cache.delete('projects-board');
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

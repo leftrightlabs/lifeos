@@ -2131,8 +2131,11 @@
   .proj-group.collapsed .proj-group-body { display: none; }
   .proj-group-head h3 { font-family: var(--font-display); font-size: 15px; font-weight: 800; color: var(--navy); margin: 0; letter-spacing: -0.01em; flex: 1; }
   .proj-group-head .cnt { font-size: 12px; color: var(--navy-dim); font-weight: 600; }
-  .proj-row { display: flex; align-items: center; gap: 12px; background: var(--white); border: 1px solid rgba(var(--edge-rgb), 0.07); border-left: 3px solid rgba(var(--edge-rgb), 0.15); border-radius: 9px; padding: 11px 14px; margin-top: 7px; cursor: pointer; transition: background 0.15s; }
-  .proj-row:hover { background: rgba(var(--edge-rgb), 0.03); }
+  .proj-row { display: block; background: var(--white); border: 1px solid rgba(var(--edge-rgb), 0.07); border-left: 3px solid rgba(var(--edge-rgb), 0.15); border-radius: 9px; margin-top: 7px; overflow: hidden; transition: background 0.15s; }
+  .proj-card-head { display: flex; align-items: center; gap: 12px; padding: 11px 14px; cursor: pointer; }
+  .proj-card-head:hover { background: rgba(var(--edge-rgb), 0.03); }
+  .proj-caret { font-size: 11px; color: var(--navy-dim); transition: transform 0.18s; flex-shrink: 0; display: inline-block; }
+  .proj-row:not(.expanded) .proj-caret { transform: rotate(-90deg); }
   .proj-row.st-active { border-left-color: #5d9cec; }
   .proj-row.st-doing { border-left-color: #2bb0c4; }
   .proj-row.st-ongoing { border-left-color: var(--lime); }
@@ -2158,6 +2161,38 @@
   .proj-risk-flag { font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; color: #ff7a6b; background: rgba(255,122,107,0.14); padding: 2px 7px; border-radius: 4px; flex-shrink: 0; }
   .proj-due { font-size: 11.5px; color: var(--navy-dim); white-space: nowrap; flex-shrink: 0; }
   .proj-due.over { color: #ff7a6b; font-weight: 600; }
+  /* Card dates (start → editable deadline) */
+  .proj-card-dates { display: inline-flex; align-items: center; gap: 6px; }
+  .proj-card-dates .d-arrow { opacity: 0.4; }
+  .proj-date-edit { cursor: pointer; border-bottom: 1px dashed rgba(var(--ink-rgb), 0.3); }
+  .proj-date-edit:hover { color: var(--navy); border-bottom-color: var(--lime); }
+  .proj-date-edit.over { color: #ff7a6b; font-weight: 600; }
+  /* Clickable status badge */
+  .proj-status-badge { font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; padding: 3px 8px; border-radius: 4px; flex-shrink: 0; cursor: pointer; }
+  .proj-status-badge:hover { filter: brightness(1.15); }
+  .proj-inline-select, .proj-inline-date { background: var(--cream); border: 1px solid var(--lime); color: var(--navy); border-radius: 6px; padding: 3px 6px; font: inherit; font-size: 12px; font-family: var(--font-body); }
+  /* Expanded card body */
+  .proj-card-body { padding: 12px 14px 14px; border-top: 1px solid rgba(var(--edge-rgb), 0.06); }
+  .proj-prog { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .proj-prog-track { flex: 1; height: 6px; background: rgba(var(--edge-rgb), 0.08); border-radius: 3px; overflow: hidden; }
+  .proj-prog-fill { height: 100%; background: var(--lime); border-radius: 3px; transition: width 0.4s ease; }
+  .proj-prog-pct { font-size: 12px; font-weight: 700; color: var(--navy); flex-shrink: 0; }
+  .proj-tasks-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; margin-bottom: 7px; }
+  .proj-tasks { display: flex; flex-wrap: wrap; gap: 6px; }
+  .proj-task-chip { font-size: 11.5px; background: rgba(var(--edge-rgb), 0.06); color: var(--navy-dim); padding: 3px 9px; border-radius: 999px; }
+  .proj-task-chip b { color: var(--navy); font-weight: 700; margin-right: 2px; }
+  .proj-task-chip.over { background: rgba(255,122,107,0.15); } .proj-task-chip.over b { color: #ff7a6b; }
+  .proj-task-chip.doing b { color: #2bb0c4; }
+  .proj-task-chip.wait b { color: #d4a854; }
+  .proj-tasks-empty { font-size: 12px; color: var(--navy-dim); }
+  .proj-card-actions { display: flex; align-items: center; gap: 14px; margin-top: 13px; }
+  .proj-edit-btn { background: rgba(var(--edge-rgb), 0.06); border: 1px solid rgba(var(--edge-rgb), 0.12); color: var(--navy); border-radius: 7px; padding: 5px 11px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-body); }
+  .proj-edit-btn:hover { border-color: var(--lime); }
+  .proj-open-link { font-size: 12px; color: var(--navy-dim); cursor: pointer; font-weight: 600; }
+  .proj-open-link:hover { color: var(--lime); }
+  .proj-edit-panel { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; padding: 12px; background: rgba(var(--edge-rgb), 0.03); border-radius: 8px; }
+  .proj-edit-field { display: flex; flex-direction: column; gap: 4px; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; }
+  .proj-edit-field select, .proj-edit-field input { background: rgba(var(--edge-rgb), 0.05); border: 1px solid rgba(var(--edge-rgb), 0.12); color: var(--navy); border-radius: 7px; padding: 7px 10px; font: inherit; font-size: 13px; font-family: var(--font-body); }
   .proj-empty { text-align: center; color: var(--navy-dim); padding: 40px 0; font-size: 14px; }
   /* Search box */
   .proj-search { position: relative; flex: 1 1 220px; min-width: 180px; }
@@ -2737,11 +2772,11 @@ window.lrl = (function(){
     <button class="tab active" data-tab="command" data-modes="all,work,personal">Today</button>
     <button class="tab" data-tab="autofocus" data-modes="all,work,personal">Focus</button>
     <button class="tab" data-tab="comms" data-modes="all,work,personal">Comms</button>
+    <button class="tab" data-tab="projects" data-modes="all,work,personal">Projects</button>
     <button class="tab" data-tab="review" data-modes="all,work,personal">Review</button>
     <button class="tab" data-tab="pipeline" data-modes="work">Sales</button>
     <button class="tab" data-tab="marketing" data-modes="work">Marketing</button>
     <button class="tab" data-tab="finance" data-modes="work">Finance</button>
-    <button class="tab" data-tab="projects" data-modes="all,work,personal">Projects</button>
     <button class="tab" data-tab="team" data-modes="work">Team</button>
     <button class="tab" data-tab="health" data-modes="personal">Health</button>
     <button class="tab" data-tab="finance-personal" data-modes="personal">Finance</button>
@@ -6975,8 +7010,11 @@ document.addEventListener('visibilitychange', async () => {
 <!-- =========================== PROJECTS TAB =========================== -->
 <script>
 (function(){
-  const P = { data: null, statusFilter: null, areaFilter: null, groupBy: 'area', search: '', collapsed: {}, undatedOpen: false };
+  const P = { data: null, statusFilter: null, areaFilter: null, groupBy: 'area', search: '', collapsed: {}, undatedOpen: false, expanded: {} };
   const TL_KEY = 'lrl-proj-timeline-collapsed';
+  // Status options per source, for the inline status editor.
+  const STATUS_OPTS = { work: ['Planned','On Hold','Active','Ongoing','Billing','Done'], personal: ['Planned','On Hold','Doing','Ongoing','Done'] };
+  const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '';
   let _loaded = false;
   const esc = (s) => (window.escapeHtml ? escapeHtml(String(s ?? '')) : String(s ?? ''));
   const statusClass = (s) => ({ 'Active':'active','Doing':'doing','Ongoing':'ongoing','Billing':'billing','Planned':'planned','On Hold':'onhold','Done':'done' }[s] || 'none');
@@ -7144,20 +7182,96 @@ document.addEventListener('visibilitychange', async () => {
       <div class="proj-tl-body"><div class="proj-tl-months">${monthHdr}</div>${rows}${undatedHTML(undatedList)}</div></div>`;
   }
 
+  // Parse "Planned: 20 | Agenda: 2 | Waiting: 1" into colored count chips.
+  function taskBreakdownHTML(meta){
+    if (!meta || /^\s*no tasks\s*$/i.test(meta)) return '<div class="proj-tasks-empty">No active tasks</div>';
+    const parts = meta.split('|').map((s) => s.trim()).map((seg) => { const m = seg.match(/^(.+?):\s*(\d+)$/); return m ? { label: m[1].trim(), n: m[2] } : null; }).filter(Boolean);
+    if (!parts.length) return `<div class="proj-tasks-empty">${esc(meta)}</div>`;
+    const cls = (l) => /overdue/i.test(l) ? 'over' : /doing/i.test(l) ? 'doing' : /waiting|agenda/i.test(l) ? 'wait' : 'plan';
+    return '<div class="proj-tasks">' + parts.map((x) => `<span class="proj-task-chip ${cls(x.label)}"><b>${x.n}</b>${esc(x.label)}</span>`).join('') + '</div>';
+  }
+
+  function expandedBodyHTML(p){
+    const pct = (p.progress != null) ? Math.max(0, Math.min(100, Math.round(p.progress * 100))) : null;
+    const prog = (pct != null)
+      ? `<div class="proj-prog"><div class="proj-prog-track"><div class="proj-prog-fill" style="width:${pct}%"></div></div><span class="proj-prog-pct">${pct}% complete</span></div>`
+      : '';
+    const opts = (STATUS_OPTS[p.source] || STATUS_OPTS.work).map((s) => `<option value="${esc(s)}" ${s === p.status ? 'selected' : ''}>${esc(s)}</option>`).join('');
+    return `<div class="proj-card-body">
+      ${prog}
+      <div class="proj-tasks-label">Tasks</div>
+      ${taskBreakdownHTML(p.taskMeta)}
+      <div class="proj-card-actions">
+        <button class="proj-edit-btn" data-edit-toggle>✎ Edit dates &amp; status</button>
+        <span class="proj-open-link" data-url="${esc(p.url)}">Open in Notion ↗</span>
+      </div>
+      <div class="proj-edit-panel" data-edit-panel hidden>
+        <label class="proj-edit-field">Status <select class="proj-edit-status">${opts}</select></label>
+        <label class="proj-edit-field">Deadline <input type="date" class="proj-edit-deadline" value="${p.deadline || ''}"></label>
+      </div>
+    </div>`;
+  }
+
   function rowHTML(p){
     const sc = statusClass(p.status);
-    const rowCls = p.atRisk ? 'risk' : ('st-' + sc);
-    const sub = [];
-    if (p.system && P.groupBy !== 'system') sub.push(esc(p.system));
-    if (p.area && P.groupBy !== 'area') sub.push(esc(p.area));
-    const subHtml = sub.length ? '<div class="proj-row-sub">' + sub.map((s,i) => (i ? '<span class="sep">·</span>' : '') + s).join('') + '</div>' : '';
-    const dateStr = p.end ? new Date(p.end).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '';
-    return `<div class="proj-row ${rowCls}" data-url="${esc(p.url)}">
-      <div class="proj-row-main"><div class="proj-row-name">${p.rock ? '<span class="rock">★</span>' : ''}${esc(p.name)}</div>${subHtml}</div>
-      ${curMode() === 'personal' ? '' : ownerAvatars(p.owners)}
-      ${p.atRisk ? '<span class="proj-risk-flag">At risk</span>' : ''}
-      <span class="proj-badge st-${sc}">${esc(p.status || '—')}</span>
-      ${dateStr ? `<span class="proj-due ${p.atRisk ? 'over' : ''}">${dateStr}</span>` : ''}</div>`;
+    const expanded = !!P.expanded[p.id];
+    const cardCls = (p.atRisk ? 'risk' : 'st-' + sc) + (expanded ? ' expanded' : '');
+    const start = fmtDate(p.created);
+    const end = p.end ? fmtDate(p.end) : '';
+    const dateLine = '<span class="proj-card-dates">'
+      + (start ? `<span class="d-start">${start}</span>` : '')
+      + '<span class="d-arrow">→</span>'
+      + `<span class="proj-date-edit ${p.atRisk ? 'over' : ''}" data-edit-date title="Change deadline">${end || '+ set deadline'}</span>`
+      + '</span>';
+    return `<div class="proj-row ${cardCls}" data-id="${p.id}" data-url="${esc(p.url)}" data-source="${p.source}">
+      <div class="proj-card-head">
+        <span class="proj-caret">▾</span>
+        <div class="proj-row-main">
+          <div class="proj-row-name">${p.rock ? '<span class="rock">★</span>' : ''}${esc(p.name)}</div>
+          <div class="proj-row-sub">${dateLine}</div>
+        </div>
+        ${curMode() === 'personal' ? '' : ownerAvatars(p.owners)}
+        ${p.atRisk ? '<span class="proj-risk-flag">At risk</span>' : ''}
+        <span class="proj-badge proj-status-badge st-${sc}" data-edit-status title="Change status">${esc(p.status || '—')} ▾</span>
+      </div>
+      ${expanded ? expandedBodyHTML(p) : ''}
+    </div>`;
+  }
+
+  function applyEdit(id, changes){
+    const p = (P.data.projects || []).find((x) => x.id === id); if (!p) return;
+    if ('status' in changes) p.status = changes.status;
+    if ('deadline' in changes){ p.deadline = changes.deadline || null; p.end = p.deadline || p.due || null; }
+    const t = new Date(); t.setHours(0,0,0,0);
+    p.atRisk = !!p.end && p.status !== 'Done' && new Date(p.end).getTime() < t.getTime();
+  }
+  async function patchProject(id, body){
+    try {
+      const r = await fetch('/api/projects/' + id, { method:'PATCH', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok){ const j = await r.json().catch(() => ({})); throw new Error(j.error || 'save failed'); }
+      applyEdit(id, body);
+      renderResults();
+      window.lrl?.haptic?.('success'); window.lrl?.toast?.('Project updated', 'success');
+    } catch (e){ window.lrl?.toast?.('Save failed: ' + e.message, 'error'); renderResults(); }
+  }
+  function startStatusEdit(el){
+    const card = el.closest('.proj-row'); const id = card.dataset.id, source = card.dataset.source;
+    const cur = ((P.data.projects || []).find((x) => x.id === id) || {}).status || '';
+    const sel = document.createElement('select'); sel.className = 'proj-inline-select';
+    (STATUS_OPTS[source] || STATUS_OPTS.work).forEach((s) => { const o = document.createElement('option'); o.value = s; o.textContent = s; if (s === cur) o.selected = true; sel.appendChild(o); });
+    el.replaceWith(sel); sel.focus();
+    let committed = false;
+    sel.addEventListener('change', () => { committed = true; patchProject(id, { status: sel.value }); });
+    sel.addEventListener('blur', () => { if (!committed) renderResults(); });
+  }
+  function startDateEdit(el){
+    const card = el.closest('.proj-row'); const id = card.dataset.id;
+    const p = (P.data.projects || []).find((x) => x.id === id) || {};
+    const inp = document.createElement('input'); inp.type = 'date'; inp.className = 'proj-inline-date'; inp.value = p.deadline || '';
+    el.replaceWith(inp); inp.focus(); try { inp.showPicker && inp.showPicker(); } catch (e) {}
+    let committed = false;
+    inp.addEventListener('change', () => { committed = true; patchProject(id, { deadline: inp.value || null }); });
+    inp.addEventListener('blur', () => { setTimeout(() => { if (!committed && document.body.contains(inp)) renderResults(); }, 120); });
   }
 
   function listHTML(){
@@ -7219,7 +7333,18 @@ document.addEventListener('visibilitychange', async () => {
     r.querySelectorAll('.proj-group-head').forEach((h) => h.addEventListener('click', () => {
       const g = h.closest('.proj-group'); const now = g.classList.toggle('collapsed'); P.collapsed[g.dataset.groupKey] = now;
     }));
-    r.querySelectorAll('[data-url]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); openUrl(el.dataset.url); }));
+    // Open-in-Notion targets — the project card itself does NOT open Notion (it expands).
+    r.querySelectorAll('.proj-tl-name, .proj-tl-bar, .proj-undated-item, .proj-open-link').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); openUrl(el.dataset.url); }));
+    // Project cards: expand/collapse + inline edits
+    r.querySelectorAll('.proj-row > .proj-card-head').forEach((head) => head.addEventListener('click', (e) => {
+      if (e.target.closest('[data-edit-status], [data-edit-date], .proj-avatars, .proj-inline-select, .proj-inline-date')) return;
+      const card = head.closest('.proj-row'); P.expanded[card.dataset.id] = !card.classList.contains('expanded'); renderResults();
+    }));
+    r.querySelectorAll('[data-edit-status]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); startStatusEdit(el); }));
+    r.querySelectorAll('[data-edit-date]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); startDateEdit(el); }));
+    r.querySelectorAll('[data-edit-toggle]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); const panel = b.closest('.proj-card-body').querySelector('[data-edit-panel]'); if (panel) panel.hidden = !panel.hidden; }));
+    r.querySelectorAll('.proj-edit-status').forEach((sel) => sel.addEventListener('change', () => { patchProject(sel.closest('.proj-row').dataset.id, { status: sel.value }); }));
+    r.querySelectorAll('.proj-edit-deadline').forEach((inp) => inp.addEventListener('change', () => { patchProject(inp.closest('.proj-row').dataset.id, { deadline: inp.value || null }); }));
   }
 
   function maybeLoadProjects(){ if (_loaded) return; _loaded = true; load(); }
