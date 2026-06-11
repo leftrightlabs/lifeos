@@ -23,8 +23,9 @@ const WORK_TASKS_DS = '28c458f08cd9818599e7000bc2115872';
 const LIFE_TASKS_DS = '265458f08cd981699efe000b4de14ca4';
 const WORK_PROJECTS_DS = '28c458f08cd98131a475000b81db3c1b';
 const LIFE_PROJECTS_DS = '265458f08cd9814eaf0e000bceaa7f80';
-const PROJECT_AREA_DS = 'd5b03c5c-9322-4345-91ea-f5731bf6d141';   // AREA relation target
-const PROJECT_SYSTEM_DS = 'af61f960-9aa0-46ce-996f-74090f39635f'; // SYSTEM relation target
+const PROJECT_AREA_DS = 'd5b03c5c-9322-4345-91ea-f5731bf6d141';   // work AREA relation target
+const PROJECT_SYSTEM_DS = 'af61f960-9aa0-46ce-996f-74090f39635f'; // work SYSTEM relation target
+const PERSONAL_AREA_DS = '25a458f0-8cd9-8168-873c-000bc5960b8f';  // personal Area relation target
 const JOURNAL_DS = '25a458f08cd9804bb6d1000b78cb4186';
 const JOURNAL_DB_ID = '25a458f08cd980f9991af90b30ec68d8';
 const CACHE_TTL_MS = 60_000;
@@ -528,47 +529,47 @@ async function fetchRelationNameMap(dsId) {
   return map;
 }
 
-// Full board of work projects for the Projects tab: status, AREA + SYSTEM
-// (resolved to names), owners, dates, and a derived at-risk flag.
+// Full board of projects (work + personal) for the Projects tab: status,
+// area/system (resolved to names), owners, dates, derived at-risk. The two
+// DBs differ — work: AREA/SYSTEM/Assigned/Due; personal: Area only, no
+// SYSTEM, no Due, owners come from a relation (and aren't shown anyway).
 async function fetchProjectsBoard() {
   if (!notion) return { projects: [], areas: [], systems: [] };
-  const [areaMap, systemMap] = await Promise.all([
+  const [workAreaMap, systemMap, personalAreaMap] = await Promise.all([
     fetchRelationNameMap(PROJECT_AREA_DS).catch(() => ({})),
     fetchRelationNameMap(PROJECT_SYSTEM_DS).catch(() => ({})),
+    fetchRelationNameMap(PERSONAL_AREA_DS).catch(() => ({})),
   ]);
-  const pages = [];
-  let cursor;
-  do {
-    const r = await notion.dataSources.query({
-      data_source_id: WORK_PROJECTS_DS,
-      filter: { property: 'Archived', checkbox: { equals: false } },
-      page_size: 100,
-      start_cursor: cursor,
-    });
-    pages.push(...r.results);
-    cursor = r.has_more ? r.next_cursor : null;
-  } while (cursor);
+  const queryAll = async (dsId) => {
+    const pages = [];
+    let cursor;
+    do {
+      const r = await notion.dataSources.query({
+        data_source_id: dsId,
+        filter: { property: 'Archived', checkbox: { equals: false } },
+        page_size: 100,
+        start_cursor: cursor,
+      });
+      pages.push(...r.results);
+      cursor = r.has_more ? r.next_cursor : null;
+    } while (cursor);
+    return pages;
+  };
+  const [workPages, personalPages] = await Promise.all([
+    queryAll(WORK_PROJECTS_DS),
+    queryAll(LIFE_PROJECTS_DS),
+  ]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayMs = today.getTime();
-
-  const projects = pages.map((p) => {
-    const pr = p.properties;
-    const status = pr.Status?.status?.name || null;
-    const deadline = pr['Target Deadline']?.date?.start || null;
-    const due = pr.Due?.date?.start || null;
-    const end = deadline || due; // scheduled end for timeline + at-risk
-    const created = pr.Created?.created_time || null;
-    const completed = pr.Completed?.date?.start || null;
-    const areas = (pr.AREA?.relation || []).map((r) => areaMap[r.id]).filter(Boolean);
-    const systems = (pr.SYSTEM?.relation || []).map((r) => systemMap[r.id]).filter(Boolean);
-    const owners = (pr.Assigned?.people || []).map((u) => u.name).filter(Boolean);
-    const atRisk = !!end && status !== 'Done' && new Date(end).getTime() < todayMs;
+  const build = (p, source, status, deadline, due, areas, systems, owners) => {
+    const end = deadline || due || null;
     return {
       id: p.id,
       url: p.url,
-      name: pr.Name?.title?.[0]?.plain_text || '(untitled)',
+      source,
+      name: p.properties.Name?.title?.[0]?.plain_text || '(untitled)',
       status,
       area: areas[0] || null,
       areas,
@@ -578,14 +579,39 @@ async function fetchProjectsBoard() {
       due,
       deadline,
       end,
-      created,
-      completed,
-      rock: !!pr.ROCK?.checkbox,
-      atRisk,
+      created: p.properties.Created?.created_time || null,
+      completed: p.properties.Completed?.date?.start || null,
+      rock: !!p.properties.ROCK?.checkbox,
+      atRisk: !!end && status !== 'Done' && new Date(end).getTime() < todayMs,
     };
+  };
+
+  const workProjects = workPages.map((p) => {
+    const pr = p.properties;
+    return build(
+      p, 'work',
+      pr.Status?.status?.name || null,
+      pr['Target Deadline']?.date?.start || null,
+      pr.Due?.date?.start || null,
+      (pr.AREA?.relation || []).map((r) => workAreaMap[r.id]).filter(Boolean),
+      (pr.SYSTEM?.relation || []).map((r) => systemMap[r.id]).filter(Boolean),
+      (pr.Assigned?.people || []).map((u) => u.name).filter(Boolean),
+    );
+  });
+  const personalProjects = personalPages.map((p) => {
+    const pr = p.properties;
+    return build(
+      p, 'personal',
+      pr.Status?.status?.name || null,
+      pr['Target Deadline']?.date?.start || null,
+      null, // personal DB has no Due property
+      (pr.Area?.relation || []).map((r) => personalAreaMap[r.id]).filter(Boolean),
+      [],   // personal DB has no SYSTEM
+      [],   // personal projects don't surface owner avatars
+    );
   });
 
-  // Distinct area/system names present, for filter chips
+  const projects = [...workProjects, ...personalProjects];
   const areas = [...new Set(projects.flatMap((p) => p.areas))].sort();
   const systems = [...new Set(projects.flatMap((p) => p.systems))].sort();
   return { projects, areas, systems };

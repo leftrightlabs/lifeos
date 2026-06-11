@@ -2083,6 +2083,7 @@
   .proj-stat .l { font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .proj-stat.s-all { border-top-color: rgba(var(--ink-rgb), 0.4); } .proj-stat.s-all.active { color: rgba(var(--ink-rgb), 0.7); }
   .proj-stat.s-active { border-top-color: #5d9cec; } .proj-stat.s-active.active { color: #5d9cec; }
+  .proj-stat.s-doing { border-top-color: #2bb0c4; } .proj-stat.s-doing.active { color: #2bb0c4; }
   .proj-stat.s-ongoing { border-top-color: var(--lime); } .proj-stat.s-ongoing.active { color: var(--lime); }
   .proj-stat.s-billing { border-top-color: #3fa776; } .proj-stat.s-billing.active { color: #3fa776; }
   .proj-stat.s-planned { border-top-color: #d4a854; } .proj-stat.s-planned.active { color: #d4a854; }
@@ -2133,6 +2134,7 @@
   .proj-row { display: flex; align-items: center; gap: 12px; background: var(--white); border: 1px solid rgba(var(--edge-rgb), 0.07); border-left: 3px solid rgba(var(--edge-rgb), 0.15); border-radius: 9px; padding: 11px 14px; margin-top: 7px; cursor: pointer; transition: background 0.15s; }
   .proj-row:hover { background: rgba(var(--edge-rgb), 0.03); }
   .proj-row.st-active { border-left-color: #5d9cec; }
+  .proj-row.st-doing { border-left-color: #2bb0c4; }
   .proj-row.st-ongoing { border-left-color: var(--lime); }
   .proj-row.st-billing { border-left-color: #3fa776; }
   .proj-row.st-planned { border-left-color: #d4a854; }
@@ -2146,6 +2148,7 @@
   .proj-row-sub .sep { opacity: 0.4; }
   .proj-badge { font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; padding: 2px 7px; border-radius: 4px; flex-shrink: 0; }
   .proj-badge.st-active { background: rgba(93,156,236,0.16); color: #9cc5f5; }
+  .proj-badge.st-doing { background: rgba(43,176,196,0.16); color: #6fd2e0; }
   .proj-badge.st-ongoing { background: var(--lime-faint); color: var(--lime); }
   .proj-badge.st-billing { background: rgba(63,167,118,0.16); color: #5fc596; }
   .proj-badge.st-planned { background: rgba(212,168,84,0.16); color: #d4a854; }
@@ -2738,7 +2741,7 @@ window.lrl = (function(){
     <button class="tab" data-tab="pipeline" data-modes="work">Sales</button>
     <button class="tab" data-tab="marketing" data-modes="work">Marketing</button>
     <button class="tab" data-tab="finance" data-modes="work">Finance</button>
-    <button class="tab" data-tab="projects" data-modes="work">Projects</button>
+    <button class="tab" data-tab="projects" data-modes="all,work,personal">Projects</button>
     <button class="tab" data-tab="team" data-modes="work">Team</button>
     <button class="tab" data-tab="health" data-modes="personal">Health</button>
     <button class="tab" data-tab="finance-personal" data-modes="personal">Finance</button>
@@ -6976,7 +6979,16 @@ document.addEventListener('visibilitychange', async () => {
   const TL_KEY = 'lrl-proj-timeline-collapsed';
   let _loaded = false;
   const esc = (s) => (window.escapeHtml ? escapeHtml(String(s ?? '')) : String(s ?? ''));
-  const statusClass = (s) => ({ 'Active':'active','Ongoing':'ongoing','Billing':'billing','Planned':'planned','On Hold':'onhold','Done':'done' }[s] || 'none');
+  const statusClass = (s) => ({ 'Active':'active','Doing':'doing','Ongoing':'ongoing','Billing':'billing','Planned':'planned','On Hold':'onhold','Done':'done' }[s] || 'none');
+  const curMode = () => document.body.dataset.mode || 'all';
+  // Projects visible under the current mode toggle (all = work + personal)
+  function inMode(){
+    const ps = (P.data && P.data.projects) || [];
+    const m = curMode();
+    if (m === 'work') return ps.filter((p) => p.source === 'work');
+    if (m === 'personal') return ps.filter((p) => p.source === 'personal');
+    return ps;
+  }
   const openUrl = (url) => { if (!url) return; (window.openNotion ? openNotion(url) : window.open(url, '_blank', 'noopener')); };
 
   // Owner avatars (initials, deterministic color)
@@ -7025,7 +7037,7 @@ document.addEventListener('visibilitychange', async () => {
   }
 
   function filtered(){
-    const ps = (P.data && P.data.projects) || [];
+    const ps = inMode();
     const q = (P.search || '').trim().toLowerCase();
     return ps.filter((p) => {
       if (q && !p.name.toLowerCase().includes(q)) return false;
@@ -7038,10 +7050,10 @@ document.addEventListener('visibilitychange', async () => {
   }
 
   function statsHTML(){
-    const ps = P.data.projects;
+    const ps = inMode();
     const count = (s) => ps.filter((p) => p.status === s).length;
     const cards = [{ key:null, cls:'all', label:'All Projects', n:ps.length }];
-    ['Active','Ongoing','Billing','Planned','On Hold'].forEach((s) => { const n = count(s); if (n) cards.push({ key:s, cls:statusClass(s), label:s, n }); });
+    ['Active','Doing','Ongoing','Billing','Planned','On Hold'].forEach((s) => { const n = count(s); if (n) cards.push({ key:s, cls:statusClass(s), label:s, n }); });
     cards.push({ key:'atrisk', cls:'risk', label:'At Risk', n:ps.filter((p) => p.atRisk).length });
     const doneN = count('Done'); if (doneN) cards.push({ key:'Done', cls:'done', label:'Done', n:doneN });
     return '<div class="proj-stats">' + cards.map((c) => {
@@ -7054,8 +7066,9 @@ document.addEventListener('visibilitychange', async () => {
   function controlsHTML(){
     const groups = [['area','Area'],['system','System'],['status','Status'],['owner','Owner'],['none','None']];
     const seg = groups.map(([k,l]) => `<button data-group="${k}" class="${P.groupBy === k ? 'on' : ''}">${l}</button>`).join('');
-    const areas = (P.data.areas || []);
-    const hasNoArea = P.data.projects.some((p) => !p.areas.length);
+    const scoped = inMode();
+    const areas = [...new Set(scoped.flatMap((p) => p.areas))].sort();
+    const hasNoArea = scoped.some((p) => !p.areas.length);
     let areaChips = '';
     if (areas.length || hasNoArea){
       areaChips = '<div class="proj-ctl-group"><span class="proj-ctl-label">Area</span>'
@@ -7134,7 +7147,7 @@ document.addEventListener('visibilitychange', async () => {
     const dateStr = p.end ? new Date(p.end).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '';
     return `<div class="proj-row ${rowCls}" data-url="${esc(p.url)}">
       <div class="proj-row-main"><div class="proj-row-name">${p.rock ? '<span class="rock">★</span>' : ''}${esc(p.name)}</div>${subHtml}</div>
-      ${ownerAvatars(p.owners)}
+      ${curMode() === 'personal' ? '' : ownerAvatars(p.owners)}
       ${p.atRisk ? '<span class="proj-risk-flag">At risk</span>' : ''}
       <span class="proj-badge st-${sc}">${esc(p.status || '—')}</span>
       ${dateStr ? `<span class="proj-due ${p.atRisk ? 'over' : ''}">${dateStr}</span>` : ''}</div>`;
@@ -7157,6 +7170,9 @@ document.addEventListener('visibilitychange', async () => {
   function render(){
     const body = document.getElementById('projects-body');
     if (!body || !P.data) return;
+    const m = curMode();
+    const lbl = document.querySelector('.tab-content[data-content="projects"] .section-label');
+    if (lbl) lbl.textContent = (m === 'work') ? 'Client Delivery' : (m === 'personal') ? 'Personal Projects' : 'Work + Personal';
     // Stats + controls render once; results (timeline + list) live in their own
     // node so typing in search re-renders only them (keeping the input focused).
     body.innerHTML = statsHTML() + controlsHTML() + '<div id="proj-results"></div>';
@@ -7202,6 +7218,9 @@ document.addEventListener('visibilitychange', async () => {
   function maybeLoadProjects(){ if (_loaded) return; _loaded = true; load(); }
   window.maybeLoadProjects = maybeLoadProjects;
   window.addEventListener('lrl-refresh', () => { if (_loaded) load(true); });
+  // Combine with the ALL/WORK/PERSONAL toggle: reset the mode-specific filters
+  // (area chips + status differ per mode) and re-render with the new scope.
+  window.addEventListener('lrl-mode-changed', () => { if (_loaded) { P.statusFilter = null; P.areaFilter = null; render(); } });
 })();
 </script>
 
