@@ -162,7 +162,7 @@
   .kpi-change.negative { color: var(--danger); }
 
   .quest-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 28px; }
-  .quest-row.quest-one-col { grid-template-columns: 1fr; }
+  .quest-row.quest-one-col { grid-template-columns: 1fr; margin-bottom: 12px; }
   .panel { background: var(--white); border-radius: 6px; padding: 20px 22px; border: 1px solid var(--navy-faint); }
   /* Make the Today's Quest panel a query container so task rows wrap their
      badges based on the PANEL's width, not the viewport's. This keeps quest +
@@ -181,10 +181,9 @@
   .quest-panel.collapsed { padding: 12px 22px; }
   .quest-panel.collapsed .quest-panel-head { margin-bottom: 0; }
   .quest-panel.collapsed .quest-panel-body { display: none; }
-  .quest-panel-toggle { background: transparent; border: none; color: var(--lime); font-family: var(--font-body); font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .quest-panel-toggle { background: transparent; border: none; color: var(--lime); font-family: var(--font-body); font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 0; white-space: nowrap; }
   .quest-panel-toggle:hover { opacity: 0.85; }
-  .quest-panel-caret { display: inline-block; transition: transform 0.18s; }
-  .quest-panel.collapsed .quest-panel-caret { transform: rotate(-90deg); }
+  .quest-panel-caret { display: none; }
   .quest-panel-meta { font-size: 11px; color: var(--navy-dim); font-family: var(--font-body); font-weight: 500; letter-spacing: 0.06em; white-space: nowrap; }
   .quest-panel.collapsed .panel-add-btn { display: none; }
   /* Source toggle for new-task modal */
@@ -689,8 +688,9 @@
   .chapter-toggle:hover { opacity: 0.85; }
   .chapter-time { font-size: 12px; color: rgba(var(--ink-rgb), 0.55); font-weight: 500; margin: 2px 0 14px; }
   #chapter-collapse-caret { display: inline-block; transition: transform 0.18s; }
-  .chapter-panel.collapsed { padding: 14px 24px; margin-bottom: 16px; border-left-color: transparent; }
-  .chapter-panel.collapsed #chapter-collapse-caret { transform: rotate(-90deg); }
+  .chapter-panel.collapsed { padding: 14px 24px; margin-bottom: 12px; border-left-color: transparent; }
+  #chapter-collapse-caret { display: none; }
+  .chapter-toggle { gap: 0; }
   .chapter-panel.collapsed .chapter-body { display: none; }
   .chapter-panel.collapsed .chapter-header { margin-bottom: 0; }
   .chapter-panel.collapsed .chapter-collapsed-meta { display: inline; }
@@ -707,11 +707,11 @@
   .sidequest-alert { background: var(--lime-faint); border-left: 3px solid var(--lime); padding: 14px 18px; border-radius: 4px; margin-bottom: 24px; font-size: 13px; display: flex; align-items: center; gap: 12px; }
 
   .daily-brief { background: var(--white); border: 1px solid rgba(167,193,64,0.18); border-left: 3px solid var(--lime); border-radius: 8px; padding: 18px 22px; margin-bottom: 24px; position: relative; }
-  .daily-brief.collapsed { padding: 12px 22px; border-left-color: transparent; }
+  .daily-brief.collapsed { padding: 12px 22px; border-left-color: transparent; margin-bottom: 12px; }
   .daily-brief.collapsed #brief-body { display: none; }
   .daily-brief-kicker { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--lime); font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .daily-brief.collapsed .daily-brief-kicker { margin-bottom: 0; }
-  .daily-brief-toggle { background: transparent; border: none; color: var(--lime); font-family: var(--font-body); font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .daily-brief-toggle { background: transparent; border: none; color: var(--lime); font-family: var(--font-body); font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 0; }
   .daily-brief-toggle:hover { opacity: 0.85; }
   .daily-brief-right { display: inline-flex; align-items: center; gap: 12px; }
   /* Weather chip (Euless): icon + temp + condition — always visible in the header */
@@ -719,8 +719,7 @@
   .brief-weather .bw-icon { display: inline-flex; }
   .brief-weather .bw-icon svg { width: 15px; height: 15px; }
   .brief-weather .bw-temp { color: var(--navy); font-weight: 600; }
-  .daily-brief.collapsed #brief-collapse-caret { transform: rotate(-90deg); display: inline-block; }
-  #brief-collapse-caret { display: inline-block; transition: transform 0.15s; }
+  #brief-collapse-caret { display: none; }
   .daily-brief-text { font-family: var(--font-body); font-size: 15px; font-weight: 400; line-height: 1.6; color: var(--navy); }
   @media (max-width: 600px) { .daily-brief-text { font-size: 14.5px; line-height: 1.55; } }
   .daily-brief-loading { color: rgba(var(--ink-rgb), 0.45); font-style: italic; font-size: 14px; }
@@ -731,14 +730,13 @@
 
   /* ===== Morning Ritual card ===== */
   .ritual-card { background: var(--white); border: 1px solid rgba(var(--edge-rgb), 0.06); border-left: 3px solid var(--lime); border-radius: 8px; padding: 16px 22px; margin-bottom: 22px; }
-  .ritual-card.done, .ritual-card.collapsed { padding: 12px 22px; border-left-color: transparent; }
+  .ritual-card.done, .ritual-card.collapsed { padding: 12px 22px; border-left-color: transparent; margin-bottom: 12px; }
   .ritual-card.done .ritual-list, .ritual-card.collapsed .ritual-list { display: none; }
   .ritual-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
   .ritual-card.done .ritual-head, .ritual-card.collapsed .ritual-head { margin-bottom: 0; }
-  .ritual-toggle { background: transparent; border: none; color: var(--lime); font-family: var(--font-body); font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .ritual-toggle { background: transparent; border: none; color: var(--lime); font-family: var(--font-body); font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 0; }
   .ritual-toggle:hover { opacity: 0.85; }
-  #ritual-caret { display: inline-block; transition: transform 0.18s; }
-  .ritual-card.collapsed #ritual-caret, .ritual-card.done #ritual-caret { transform: rotate(-90deg); }
+  #ritual-caret, #evening-caret { display: none; }
   .ritual-card.done .ritual-toggle { color: rgba(167,193,64,0.55); }
   .ritual-status { font-size: 11.5px; color: rgba(var(--ink-rgb), 0.55); font-weight: 500; }
   .ritual-status.done { color: var(--lime); font-weight: 700; }
@@ -763,12 +761,12 @@
   .ritual-card.weekend, body[data-mode="personal"] .ritual-card.morning-only { display: none; }
   .ritual-subhead { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(var(--ink-rgb), 0.4); font-weight: 700; margin: 12px 4px 6px; }
   .ritual-section:first-of-type .ritual-subhead { margin-top: 4px; }
-  .ritual-card.evening { border-left-color: #818cf8; }
-  .ritual-card.evening .ritual-toggle { color: #a5b4fc; }
-  .ritual-card.evening.done .ritual-toggle { color: rgba(165,180,252,0.55); }
-  .ritual-card.evening .ritual-status.done { color: #a5b4fc; }
-  .ritual-card.evening .ritual-step.checked { background: rgba(129,140,248,0.06); border-color: rgba(129,140,248,0.18); }
-  .ritual-card.evening .ritual-step.checked .ritual-check { background: #a5b4fc; border-color: #a5b4fc; }
+  .ritual-card.evening { border-left-color: var(--lime); }
+  .ritual-card.evening.collapsed, .ritual-card.evening.done { border-left-color: transparent; }
+  .ritual-card.evening.done .ritual-toggle { color: rgba(167,193,64,0.55); }
+  .ritual-card.evening .ritual-status.done { color: var(--lime); }
+  .ritual-card.evening .ritual-step.checked { background: rgba(167,193,64,0.05); border-color: rgba(167,193,64,0.18); }
+  .ritual-card.evening .ritual-step.checked .ritual-check { background: var(--lime); border-color: var(--lime); }
   @media (max-width: 600px) {
     .ritual-card { padding: 14px 16px; }
     .ritual-card.done { padding: 12px 16px; }
@@ -791,10 +789,9 @@
   .checkin-card.collapsed .checkin-body { display: none; }
   .checkin-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
   .checkin-card.collapsed .checkin-head { margin-bottom: 0; }
-  .checkin-toggle { background: transparent; border: none; color: #c896d8; font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .checkin-toggle { background: transparent; border: none; color: #c896d8; font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 0; }
   .checkin-toggle:hover { opacity: 0.85; }
-  #checkin-caret { display: inline-block; transition: transform 0.18s; }
-  .checkin-card.collapsed #checkin-caret { transform: rotate(-90deg); }
+  #checkin-caret { display: none; }
   .checkin-status { font-size: 11.5px; color: rgba(var(--ink-rgb), 0.55); font-weight: 500; }
   .checkin-status.sent { color: var(--lime); font-weight: 600; }
   .checkin-status a { color: inherit; text-decoration: underline; text-decoration-color: rgba(var(--edge-rgb), 0.25); margin-left: 6px; }
