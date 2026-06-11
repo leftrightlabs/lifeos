@@ -3099,24 +3099,36 @@ app.get('/api/sales/touchpoints', async (req, res) => {
         const p = pg.properties || {};
         const ts = p.Timestamp?.date?.start?.slice(0, 10);
         if (!ts) continue;
-        const fullTitle = p.Description?.title?.[0]?.plain_text || '';
-        const sepIdx = fullTitle.lastIndexOf(' — ');
-        const contactName = sepIdx > 0 ? fullTitle.slice(0, sepIdx) : fullTitle;
         const contactRel = (p.Contact?.relation || [])[0];
+        const contactId = contactRel?.id?.replace(/-/g, '') || null;
         rows.push({
           id: (pg.id || '').replace(/-/g, ''),
           date: ts,
-          contactId: contactRel?.id?.replace(/-/g, '') || null,
-          contactName,
+          contactId,
+          contactName: null,
           type: p['Touchpoint Type']?.select?.name || '',
           channel: p.Channel?.select?.name || '',
           notes: p.Notes?.rich_text?.[0]?.plain_text || '',
           loggedBy: (p['Logged By']?.people || [])[0]?.name || '',
           url: pg.url || `https://www.notion.so/${(pg.id || '').replace(/-/g, '')}`,
+          contactUrl: contactId ? `https://www.notion.so/${contactId}` : null,
         });
       }
       cursor = r.has_more ? r.next_cursor : null;
     } while (cursor);
+    // Batch-resolve contact names from the Contact relation.
+    const uniqueIds = [...new Set(rows.map(r => r.contactId).filter(Boolean))];
+    const nameMap = {};
+    await Promise.all(uniqueIds.map(async id => {
+      try {
+        const pg = await notion.pages.retrieve({ page_id: dashifyId(id) });
+        const p = pg.properties || {};
+        nameMap[id] = p['Full Name']?.title?.[0]?.plain_text || '(no name)';
+      } catch (_) { nameMap[id] = null; }
+    }));
+    for (const r of rows) {
+      r.contactName = (r.contactId && nameMap[r.contactId]) || '—';
+    }
     res.json({ touchpoints: rows, period, total: rows.length });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

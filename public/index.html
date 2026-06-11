@@ -2533,6 +2533,7 @@
   .tp-main { flex: 1; min-width: 0; }
   .tp-name { font-size: 13px; font-weight: 700; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tp-type { font-size: 11.5px; color: var(--navy-dim); margin-top: 2px; }
+  .tp-notes { font-size: 11.5px; color: var(--navy-dim); margin-top: 3px; font-style: italic; }
   .tp-actions { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
   .tp-btn { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer; border: 1px solid var(--navy-faint); background: transparent; color: var(--navy-dim); font-family: var(--font-body); white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; }
   .tp-btn:hover { border-color: var(--lime); color: var(--lime); }
@@ -8086,13 +8087,14 @@ document.addEventListener('visibilitychange', async () => {
             const dt=new Date(t.date+'T12:00:00');
             const dateStr=dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
             const meta=[t.type, t.channel, t.loggedBy].filter(Boolean).join(' · ');
-            const nurl=window.toNotionLink(t.url);
+            const notesHtml=t.notes?`<div class="tp-notes">${esc(t.notes)}</div>`:'';
+            const contactNurl=window.toNotionLink(t.contactUrl||t.url);
             return `<div class="tp-row">
               <span class="tp-date">${dateStr}</span>
-              <div class="tp-main"><div class="tp-name">${esc(t.contactName||'—')}</div><div class="tp-type">${esc(meta)}</div></div>
+              <div class="tp-main"><div class="tp-name">${esc(t.contactName||'—')}</div><div class="tp-type">${esc(meta)}</div>${notesHtml}</div>
               <div class="tp-actions">
                 <button class="tp-btn" data-tp-edit="${esc(t.id)}" data-tp-cname="${esc(t.contactName)}" data-tp-cid="${esc(t.contactId||'')}" data-tp-type="${esc(t.type)}" data-tp-channel="${esc(t.channel)}" data-tp-notes="${esc(t.notes)}" data-tp-date="${esc(t.date)}" data-tp-loggedby="${esc(t.loggedBy)}">Edit</button>
-                <a class="tp-btn" href="${nurl}" target="_blank" rel="noopener">Notion ↗</a>
+                <a class="tp-btn" href="${contactNurl}" target="_blank" rel="noopener">Contact ↗</a>
               </div>
             </div>`;
           }).join('')
