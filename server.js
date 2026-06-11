@@ -1374,12 +1374,12 @@ app.patch('/api/journal/today', async (req, res) => {
 
 const RITUAL_CONFIGS = {
   morning: {
-    textProp: 'Morning Ritual',
+    textProp: 'Morning Routine',
     doneProp: 'Morning Done',
     steps: ['birthdays', 'inboxes', 'notionComments', 'slackMessages', 'reviewCalendar', 'braindump', 'sequence', 'checkin', 'marketing', 'salesTouchpoints'],
   },
   evening: {
-    textProp: 'Evening Ritual',
+    textProp: 'Evening Routine',
     doneProp: 'Evening Done',
     steps: ['sales', 'projectTime', 'captures', 'meals', 'journal', 'exercise'],
   },
@@ -1423,8 +1423,8 @@ app.get('/api/ritual/today', async (_req, res) => {
       morning: readRitualFromPage(row, 'morning'),
       evening: readRitualFromPage(row, 'evening'),
       dayHasRow: true,
-      hasMorningProperty: !!row.properties?.['Morning Ritual'],
-      hasEveningProperty: !!row.properties?.['Evening Ritual'],
+      hasMorningProperty: !!row.properties?.['Morning Routine'],
+      hasEveningProperty: !!row.properties?.['Evening Routine'],
     });
   } catch (err) {
     console.error('Ritual GET error:', err.message);
@@ -2040,13 +2040,23 @@ async function checkinFetchTasks() {
     const rel = p.properties?.Project?.relation || [];
     const projId = rel[0]?.id;
     const projName = projId ? projectNames.get(projId) || '(no project)' : '(no project)';
-    return { name, status, project: projName };
+    return { id: p.id, name, status, project: projName };
   };
   const all = pages.map(decorate);
   return {
     doing: all.filter((t) => t.status === 'Doing' || t.status === 'Planned'),
     waiting: all.filter((t) => t.status === 'Waiting'),
   };
+}
+
+function applyCheckinOrder(tasks, orderIds) {
+  if (!orderIds || !orderIds.length) return tasks;
+  const indexMap = new Map(orderIds.map((id, i) => [id, i]));
+  return tasks.slice().sort((a, b) => {
+    const ai = indexMap.has(a.id) ? indexMap.get(a.id) : Infinity;
+    const bi = indexMap.has(b.id) ? indexMap.get(b.id) : Infinity;
+    return ai - bi;
+  });
 }
 
 function formatCheckinMessage({ events, doing, waiting }) {
@@ -2077,12 +2087,14 @@ function formatCheckinMessage({ events, doing, waiting }) {
   return lines.join('\n').trim();
 }
 
-app.get('/api/checkin/compose', async (_req, res) => {
+app.get('/api/checkin/compose', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
     // Compose always fetches fresh from Notion — also bust task caches so
     // Today's Quest reflects the same My Day state on next render.
     invalidateTaskCaches();
+    let orderIds = [];
+    try { if (req.query.order) orderIds = JSON.parse(req.query.order); } catch (_) {}
     const [events, tasks] = await Promise.all([
       checkinFetchCalendar().catch((err) => {
         console.error('Checkin calendar error:', err.message);
@@ -2092,8 +2104,8 @@ app.get('/api/checkin/compose', async (_req, res) => {
     ]);
     const message = formatCheckinMessage({
       events,
-      doing: tasks.doing,
-      waiting: tasks.waiting,
+      doing: applyCheckinOrder(tasks.doing, orderIds),
+      waiting: applyCheckinOrder(tasks.waiting, orderIds),
     });
     res.json({
       message,
