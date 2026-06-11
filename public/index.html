@@ -7799,8 +7799,7 @@ document.addEventListener('visibilitychange', async () => {
     try{ await mktPatch(id,{status:newStatus}); if(a)a.status=newStatus; window.lrl?.haptic('tap'); window.lrl?.toast('Status → '+newStatus,'success');
       const inModal=sel.closest('.mkt-modal-content');
       if(inModal && a){ renderMktModalCard(a); }
-      // reflect on the card pill + (if it left the queue) the body
-      if(newStatus==='Published'){ await fetchMktToday(true); }
+      await fetchMktToday(true);
       renderMktBody();
     }catch(err){ window.lrl?.toast('Failed: '+err.message,'error'); if(a)sel.value=a.status||'Idea'; }
   });
