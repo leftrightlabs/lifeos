@@ -565,9 +565,19 @@ async function fetchProjectsBoard() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayMs = today.getTime();
-  const build = (p, source, status, deadline, due, areas, systems, owners) => {
-    const end = deadline || due || null;
+  const build = (p, source, areas, systems, owners) => {
     const pr = p.properties;
+    const status = pr.Status?.status?.name || null;
+    // Dates: a Target Deadline RANGE (start + end, via Notion's end-date toggle)
+    // is the source of truth for the project's start→end. Otherwise fall back
+    // to Created (start) and the single deadline / Due (end).
+    const tdStart = pr['Target Deadline']?.date?.start || null;
+    const tdEnd = pr['Target Deadline']?.date?.end || null;
+    const dueStart = pr.Due?.date?.start || null;
+    const created = pr.Created?.created_time || null;
+    let start, end, rangeStart = null;
+    if (tdEnd) { start = tdStart; end = tdEnd; rangeStart = tdStart; }
+    else { start = created; end = tdStart || dueStart || null; }
     // Active-task breakdown string, e.g. "Planned: 20 | Agenda: 2 | Waiting: 1".
     const taskMeta = pr['Task Meta']?.formula?.string || pr['Active Tasks']?.formula?.string || '';
     // Progress fraction 0..1 (personal projects expose it; work doesn't).
@@ -588,10 +598,12 @@ async function fetchProjectsBoard() {
       system: systems[0] || null,
       systems,
       owners,
-      due,
-      deadline,
+      start,
       end,
-      created: pr.Created?.created_time || null,
+      rangeStart,        // non-null only when Target Deadline is a real range
+      deadline: tdStart,
+      due: dueStart,
+      created,
       completed: pr.Completed?.date?.start || null,
       rock: !!pr.ROCK?.checkbox,
       taskMeta,
@@ -600,30 +612,18 @@ async function fetchProjectsBoard() {
     };
   };
 
-  const workProjects = workPages.map((p) => {
-    const pr = p.properties;
-    return build(
-      p, 'work',
-      pr.Status?.status?.name || null,
-      pr['Target Deadline']?.date?.start || null,
-      pr.Due?.date?.start || null,
-      (pr.AREA?.relation || []).map((r) => workAreaMap[r.id]).filter(Boolean),
-      (pr.SYSTEM?.relation || []).map((r) => systemMap[r.id]).filter(Boolean),
-      (pr.Assigned?.people || []).map((u) => u.name).filter(Boolean),
-    );
-  });
-  const personalProjects = personalPages.map((p) => {
-    const pr = p.properties;
-    return build(
-      p, 'personal',
-      pr.Status?.status?.name || null,
-      pr['Target Deadline']?.date?.start || null,
-      null, // personal DB has no Due property
-      (pr.Area?.relation || []).map((r) => personalAreaMap[r.id]).filter(Boolean),
-      (pr.HUBS?.relation || []).map((r) => personalHubMap[r.id]).filter(Boolean), // personal "System" = Hubs
-      [],   // personal projects don't surface owner avatars
-    );
-  });
+  const workProjects = workPages.map((p) => build(
+    p, 'work',
+    (p.properties.AREA?.relation || []).map((r) => workAreaMap[r.id]).filter(Boolean),
+    (p.properties.SYSTEM?.relation || []).map((r) => systemMap[r.id]).filter(Boolean),
+    (p.properties.Assigned?.people || []).map((u) => u.name).filter(Boolean),
+  ));
+  const personalProjects = personalPages.map((p) => build(
+    p, 'personal',
+    (p.properties.Area?.relation || []).map((r) => personalAreaMap[r.id]).filter(Boolean),
+    (p.properties.HUBS?.relation || []).map((r) => personalHubMap[r.id]).filter(Boolean),
+    [],   // personal projects don't surface owner avatars
+  ));
 
   const projects = [...workProjects, ...personalProjects];
   const areas = [...new Set(projects.flatMap((p) => p.areas))].sort();
@@ -648,12 +648,15 @@ app.get('/api/projects/board', async (req, res) => {
 app.patch('/api/projects/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { id } = req.params;
-  const { status, deadline } = req.body || {};
+  const { status, deadlineStart, deadlineEnd } = req.body || {};
   try {
     const properties = {};
     if (status !== undefined) properties.Status = { status: { name: status } };
-    if (deadline !== undefined) {
-      properties['Target Deadline'] = deadline ? { date: { start: deadline } } : { date: null };
+    // deadlineStart + optional deadlineEnd → Target Deadline (range when both set).
+    if (deadlineStart !== undefined || deadlineEnd !== undefined) {
+      properties['Target Deadline'] = deadlineStart
+        ? { date: { start: deadlineStart, end: deadlineEnd || null } }
+        : { date: null };
     }
     if (!Object.keys(properties).length) return res.status(400).json({ error: 'No supported fields to update' });
     await notion.pages.update({ page_id: id, properties });

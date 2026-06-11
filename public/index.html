@@ -7014,7 +7014,11 @@ document.addEventListener('visibilitychange', async () => {
   const TL_KEY = 'lrl-proj-timeline-collapsed';
   // Status options per source, for the inline status editor.
   const STATUS_OPTS = { work: ['Planned','On Hold','Active','Ongoing','Billing','Done'], personal: ['Planned','On Hold','Doing','Ongoing','Done'] };
-  const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '';
+  // Parse a Notion date. Date-only strings (YYYY-MM-DD) are parsed as LOCAL
+  // dates so they don't shift back a day in our timezone; full ISO timestamps
+  // (e.g. Created) parse normally.
+  const parseDate = (iso) => { if (!iso) return null; const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(iso); };
+  const fmtDate = (iso) => { const d = parseDate(iso); return d ? d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : ''; };
   let _loaded = false;
   const esc = (s) => (window.escapeHtml ? escapeHtml(String(s ?? '')) : String(s ?? ''));
   const statusClass = (s) => ({ 'Active':'active','Doing':'doing','Ongoing':'ongoing','Billing':'billing','Planned':'planned','On Hold':'onhold','Done':'done' }[s] || 'none');
@@ -7140,8 +7144,8 @@ document.addEventListener('visibilitychange', async () => {
     const ps = filtered();
     const collapsed = localStorage.getItem(TL_KEY) === '1';
     const dated = ps.filter((p) => p.end).map((p) => {
-      const e = new Date(p.end);
-      let s = p.created ? new Date(p.created) : null;
+      const e = parseDate(p.end);
+      let s = p.start ? parseDate(p.start) : null;
       if (!s || s > e) s = new Date(e.getFullYear(), e.getMonth(), 1);
       return Object.assign({}, p, { _s:s, _e:e });
     });
@@ -7207,7 +7211,7 @@ document.addEventListener('visibilitychange', async () => {
       </div>
       <div class="proj-edit-panel" data-edit-panel hidden>
         <label class="proj-edit-field">Status <select class="proj-edit-status">${opts}</select></label>
-        <label class="proj-edit-field">Deadline <input type="date" class="proj-edit-deadline" value="${p.deadline || ''}"></label>
+        <label class="proj-edit-field">Deadline <input type="date" class="proj-edit-deadline" value="${(p.end || '').slice(0, 10)}"></label>
       </div>
     </div>`;
   }
@@ -7216,7 +7220,7 @@ document.addEventListener('visibilitychange', async () => {
     const sc = statusClass(p.status);
     const expanded = !!P.expanded[p.id];
     const cardCls = (p.atRisk ? 'risk' : 'st-' + sc) + (expanded ? ' expanded' : '');
-    const start = fmtDate(p.created);
+    const start = fmtDate(p.start);
     const end = p.end ? fmtDate(p.end) : '';
     const dateLine = '<span class="proj-card-dates">'
       + (start ? `<span class="d-start">${start}</span>` : '')
@@ -7241,9 +7245,21 @@ document.addEventListener('visibilitychange', async () => {
   function applyEdit(id, changes){
     const p = (P.data.projects || []).find((x) => x.id === id); if (!p) return;
     if ('status' in changes) p.status = changes.status;
-    if ('deadline' in changes){ p.deadline = changes.deadline || null; p.end = p.deadline || p.due || null; }
+    if ('deadlineStart' in changes || 'deadlineEnd' in changes){
+      const ds = changes.deadlineStart || null, de = changes.deadlineEnd || null;
+      p.deadline = ds;
+      if (de){ p.start = ds; p.end = de; p.rangeStart = ds; }          // range
+      else { p.rangeStart = null; p.start = p.created; p.end = ds || p.due || null; } // single date
+    }
     const t = new Date(); t.setHours(0,0,0,0);
     p.atRisk = !!p.end && p.status !== 'Done' && new Date(p.end).getTime() < t.getTime();
+  }
+  // Editing the card's date changes the END/deadline. A ranged project keeps
+  // its start; a single-date project just moves its one date.
+  function commitDeadline(id, newEnd){
+    const p = (P.data.projects || []).find((x) => x.id === id) || {};
+    if (p.rangeStart) patchProject(id, { deadlineStart: p.rangeStart, deadlineEnd: newEnd || null });
+    else patchProject(id, { deadlineStart: newEnd || null, deadlineEnd: null });
   }
   async function patchProject(id, body){
     try {
@@ -7267,10 +7283,10 @@ document.addEventListener('visibilitychange', async () => {
   function startDateEdit(el){
     const card = el.closest('.proj-row'); const id = card.dataset.id;
     const p = (P.data.projects || []).find((x) => x.id === id) || {};
-    const inp = document.createElement('input'); inp.type = 'date'; inp.className = 'proj-inline-date'; inp.value = p.deadline || '';
+    const inp = document.createElement('input'); inp.type = 'date'; inp.className = 'proj-inline-date'; inp.value = (p.end || '').slice(0, 10);
     el.replaceWith(inp); inp.focus(); try { inp.showPicker && inp.showPicker(); } catch (e) {}
     let committed = false;
-    inp.addEventListener('change', () => { committed = true; patchProject(id, { deadline: inp.value || null }); });
+    inp.addEventListener('change', () => { committed = true; commitDeadline(id, inp.value || null); });
     inp.addEventListener('blur', () => { setTimeout(() => { if (!committed && document.body.contains(inp)) renderResults(); }, 120); });
   }
 
@@ -7344,7 +7360,7 @@ document.addEventListener('visibilitychange', async () => {
     r.querySelectorAll('[data-edit-date]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); startDateEdit(el); }));
     r.querySelectorAll('[data-edit-toggle]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); const panel = b.closest('.proj-card-body').querySelector('[data-edit-panel]'); if (panel) panel.hidden = !panel.hidden; }));
     r.querySelectorAll('.proj-edit-status').forEach((sel) => sel.addEventListener('change', () => { patchProject(sel.closest('.proj-row').dataset.id, { status: sel.value }); }));
-    r.querySelectorAll('.proj-edit-deadline').forEach((inp) => inp.addEventListener('change', () => { patchProject(inp.closest('.proj-row').dataset.id, { deadline: inp.value || null }); }));
+    r.querySelectorAll('.proj-edit-deadline').forEach((inp) => inp.addEventListener('change', () => { commitDeadline(inp.closest('.proj-row').dataset.id, inp.value || null); }));
   }
 
   function maybeLoadProjects(){ if (_loaded) return; _loaded = true; load(); }
