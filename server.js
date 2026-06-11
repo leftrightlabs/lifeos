@@ -1018,6 +1018,7 @@ async function reviewTasksForSource(taskDs, source, peopleProp, activeProjectIds
       myDay: !!props['My Day']?.checkbox,
       hasProject: projectRel.length > 0,
       projectIds: projectRel.map((r) => r.id),
+      projectId: projectRel[0]?.id || null,
       edited: p.last_edited_time || null,
       url: p.url,
       _recurringOrFuture: isRecurringOrFutureScheduled(props),
