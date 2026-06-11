@@ -3074,6 +3074,70 @@ app.post('/api/sales/touchpoint', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// GET /api/sales/touchpoints?period=month|quarter — list activity rows for a period with full detail.
+app.get('/api/sales/touchpoints', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    const period = req.query.period === 'quarter' ? 'quarter' : 'month';
+    const today = chicagoTodayISODate();
+    const q = currentQuarter();
+    const start = period === 'quarter' ? q.start : today.slice(0, 7) + '-01';
+    const rows = [];
+    let cursor;
+    do {
+      const r = await notion.dataSources.query({
+        data_source_id: SALES_ACTIVITY_DS,
+        filter: { and: [
+          { property: 'Timestamp', date: { on_or_after: start } },
+          { property: 'Timestamp', date: { on_or_before: today } },
+        ]},
+        sorts: [{ property: 'Timestamp', direction: 'descending' }],
+        page_size: 100,
+        start_cursor: cursor,
+      });
+      for (const pg of r.results) {
+        const p = pg.properties || {};
+        const ts = p.Timestamp?.date?.start?.slice(0, 10);
+        if (!ts) continue;
+        const fullTitle = p.Description?.title?.[0]?.plain_text || '';
+        const sepIdx = fullTitle.lastIndexOf(' — ');
+        const contactName = sepIdx > 0 ? fullTitle.slice(0, sepIdx) : fullTitle;
+        const contactRel = (p.Contact?.relation || [])[0];
+        rows.push({
+          id: (pg.id || '').replace(/-/g, ''),
+          date: ts,
+          contactId: contactRel?.id?.replace(/-/g, '') || null,
+          contactName,
+          type: p['Touchpoint Type']?.select?.name || '',
+          channel: p.Channel?.select?.name || '',
+          notes: p.Notes?.rich_text?.[0]?.plain_text || '',
+          loggedBy: (p['Logged By']?.people || [])[0]?.name || '',
+          url: pg.url || `https://www.notion.so/${(pg.id || '').replace(/-/g, '')}`,
+        });
+      }
+      cursor = r.has_more ? r.next_cursor : null;
+    } while (cursor);
+    res.json({ touchpoints: rows, period, total: rows.length });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// PATCH /api/sales/touchpoint/:id — update an existing activity row.
+app.patch('/api/sales/touchpoint/:id', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  const { touchpointType, channel, notes, loggedBy, timestamp } = req.body || {};
+  try {
+    const properties = {};
+    if (touchpointType) properties['Touchpoint Type'] = { select: { name: touchpointType } };
+    if (timestamp && /^\d{4}-\d{2}-\d{2}$/.test(timestamp)) properties.Timestamp = { date: { start: timestamp } };
+    if (loggedBy) properties['Logged By'] = { people: [{ id: loggedBy === 'Trina' ? TRINA_USER_ID : GRETCHEN_USER_ID }] };
+    if (notes !== undefined) properties.Notes = String(notes).trim() ? { rich_text: [{ text: { content: String(notes).slice(0, 1900) } }] } : { rich_text: [] };
+    if (channel !== undefined) properties.Channel = channel ? { select: { name: channel } } : { select: null };
+    await notion.pages.update({ page_id: dashifyId(req.params.id), properties });
+    cache.delete('sales-pulse');
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // =========================== MARKETING PUBLISHING ===========================
 const MARKETING_ASSETS_DS = '4170ff99-ce76-42b5-bcf2-7f672c362ec4';
 const MARKETING_CHANNELS_DS = '87918a28-58ab-43d9-a038-7f0adec3f5d5';

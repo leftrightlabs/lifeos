@@ -2513,10 +2513,29 @@
   .pulse-logbtn:hover { filter: brightness(1.05); } .pulse-logbtn:active { transform: scale(0.97); }
   /* Month / quarter touchpoint accumulation */
   .pulse-accum { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-  .pulse-accum-item { background: rgba(var(--edge-rgb), 0.03); border: 1px solid var(--navy-faint); border-radius: 10px; padding: 12px 14px; }
+  .pulse-accum-item { background: rgba(var(--edge-rgb), 0.03); border: 1px solid var(--navy-faint); border-radius: 10px; padding: 12px 14px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+  .pulse-accum-item:hover { border-color: rgba(var(--edge-rgb), 0.22); background: rgba(var(--edge-rgb), 0.06); }
   .pulse-accum-item .n { font-family: var(--font-display); font-size: 24px; font-weight: 800; color: var(--lime); line-height: 1; }
   .pulse-accum-item .l { font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; margin-top: 6px; }
   .pulse-accum-item .sub { font-size: 11px; color: var(--navy-dim); margin-top: 3px; }
+
+  /* Touchpoints list modal */
+  .tp-modal { position: fixed; inset: 0; z-index: 140; display: none; }
+  .tp-modal.open { display: block; }
+  .tp-modal-backdrop { position: absolute; inset: 0; background: rgba(10,15,30,0.62); backdrop-filter: blur(3px); }
+  .tp-modal-sheet { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: calc(100% - 32px); max-width: 560px; background: var(--cream); border: 1px solid var(--navy-faint); border-radius: 16px; padding: 22px; max-height: 88vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,0.5); animation: pulse-sheet-in 0.22s cubic-bezier(0.34,1.4,0.64,1); }
+  .tp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .tp-title { font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--navy); }
+  .tp-x { background: transparent; border: 1px solid rgba(var(--edge-rgb), 0.15); color: var(--navy-dim); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 17px; line-height: 1; }
+  .tp-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--navy-faint); }
+  .tp-row:last-child { border-bottom: none; }
+  .tp-date { font-size: 11px; font-weight: 700; color: var(--navy-dim); white-space: nowrap; min-width: 44px; padding-top: 2px; }
+  .tp-main { flex: 1; min-width: 0; }
+  .tp-name { font-size: 13px; font-weight: 700; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tp-type { font-size: 11.5px; color: var(--navy-dim); margin-top: 2px; }
+  .tp-actions { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+  .tp-btn { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer; border: 1px solid var(--navy-faint); background: transparent; color: var(--navy-dim); font-family: var(--font-body); white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; }
+  .tp-btn:hover { border-color: var(--lime); color: var(--lime); }
 
   .pulse-search { margin-bottom: 10px; }
   .pulse-filter { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
@@ -3109,6 +3128,7 @@ window.lrl = (function(){
   </div>
   <div class="mkt-modal" id="sales-modal"><div class="mkt-modal-content" id="sales-modal-content"></div></div>
   <div class="pulse-drawer" id="pulse-drawer"><div class="pulse-drawer-backdrop" data-drawer-close></div><div class="pulse-drawer-sheet" id="pulse-drawer-sheet"></div></div>
+  <div class="tp-modal" id="tp-modal"><div class="tp-modal-backdrop" id="tp-modal-backdrop"></div><div class="tp-modal-sheet" id="tp-modal-sheet"></div></div>
 
   <!-- PROJECTS TAB -->
   <div class="tab-content" data-content="projects">
@@ -7858,8 +7878,8 @@ document.addEventListener('visibilitychange', async () => {
     const m = p.month || { total:0, pulse:0, sales:0 };
     const q = p.quarter || { total:0, pulse:0, sales:0 };
     const accum = `<div class="pulse-accum">
-      <div class="pulse-accum-item"><div class="n">${m.total}</div><div class="l">Touchpoints · This Month</div><div class="sub">${m.pulse} pulse · ${m.sales} sales</div></div>
-      <div class="pulse-accum-item"><div class="n">${q.total}</div><div class="l">Touchpoints · ${esc(p.quarterLabel||'This Quarter')}</div><div class="sub">${q.pulse} pulse · ${q.sales} sales</div></div>
+      <div class="pulse-accum-item" data-tp-period="month" title="View this month's touchpoints"><div class="n">${m.total}</div><div class="l">Touchpoints · This Month</div><div class="sub">${m.pulse} pulse · ${m.sales} sales</div></div>
+      <div class="pulse-accum-item" data-tp-period="quarter" title="View this quarter's touchpoints"><div class="n">${q.total}</div><div class="l">Touchpoints · ${esc(p.quarterLabel||'This Quarter')}</div><div class="sub">${q.pulse} pulse · ${q.sales} sales</div></div>
     </div>`;
     return `<div class="pulse-wrap">${pulseCounterCard('Pulse', p.pulse, p.pulseGoal)}${pulseCounterCard('Sales', p.sales, p.salesGoal)}</div>
       <div class="pulse-streak">${streakTxt}</div>
@@ -8012,33 +8032,75 @@ document.addEventListener('visibilitychange', async () => {
     try{ await salesPatch(id,{value:v}); if(d)d.value=v; window.lrl?.toast('Value saved','success'); await fetchSales(true); renderSales(); }catch(err){ window.lrl?.toast('Failed: '+err.message,'error'); }
   }, true);
   // ----- Log Touchpoint drawer -----
-  const drawer = { contactId:null, contactName:null, loggedBy:'Gretchen', searchTimer:null };
+  const drawer = { contactId:null, contactName:null, loggedBy:'Gretchen', searchTimer:null, editId:null, prefill:{} };
+  const tpModal = { open:false, period:'month' };
   const chiTodayLocal = ()=> new Date().toLocaleDateString('en-CA',{timeZone:'America/Chicago'});
   function drawerSheetHtml(){
-    const contactBlock = drawer.contactId
-      ? `<div class="pulse-picked"><span class="pulse-dot green"></span><span class="nm">${esc(drawer.contactName)}</span><span class="chg" data-drawer-change>change</span></div>`
-      : `<input class="pulse-input" data-drawer-search placeholder="Search contacts…" autocomplete="off"><div class="pulse-results" id="pulse-results" style="display:none"></div>`;
-    return `<div class="pulse-drawer-head"><span class="pulse-drawer-title">Log Touchpoint</span><button class="pulse-drawer-x" data-drawer-close aria-label="Close">×</button></div>
+    const isEdit = !!drawer.editId;
+    const pf = drawer.prefill || {};
+    const curType = pf.type || TOUCHPOINTS[0];
+    const contactBlock = isEdit
+      ? `<div class="pulse-picked"><span class="pulse-dot green"></span><span class="nm">${esc(drawer.contactName)}</span></div>`
+      : (drawer.contactId
+        ? `<div class="pulse-picked"><span class="pulse-dot green"></span><span class="nm">${esc(drawer.contactName)}</span><span class="chg" data-drawer-change>change</span></div>`
+        : `<input class="pulse-input" data-drawer-search placeholder="Search contacts…" autocomplete="off"><div class="pulse-results" id="pulse-results" style="display:none"></div>`);
+    const typeOpts = TOUCHPOINTS.map(tp=>`<option ${tp===curType?'selected':''}>${esc(tp)}</option>`).join('');
+    const chanOpts = `<option value="" ${!pf.channel?'selected':''}>— none —</option>`+CHANNELS.map(ch=>`<option ${ch===pf.channel?'selected':''}>${esc(ch)}</option>`).join('');
+    return `<div class="pulse-drawer-head"><span class="pulse-drawer-title">${isEdit?'Edit Touchpoint':'Log Touchpoint'}</span><button class="pulse-drawer-x" data-drawer-close aria-label="Close">×</button></div>
       <div class="pulse-field"><label>Contact</label>${contactBlock}</div>
       <div class="pulse-row2">
-        <div class="pulse-field"><label>Touchpoint Type</label><select class="pulse-select" id="pulse-type">${TOUCHPOINTS.map((tp,i)=>`<option ${i===0?'selected':''}>${esc(tp)}</option>`).join('')}</select></div>
-        <div class="pulse-field"><label>Channel</label><select class="pulse-select" id="pulse-channel"><option value="">— none —</option>${CHANNELS.map(ch=>`<option>${esc(ch)}</option>`).join('')}</select></div>
+        <div class="pulse-field"><label>Touchpoint Type</label><select class="pulse-select" id="pulse-type">${typeOpts}</select></div>
+        <div class="pulse-field"><label>Channel</label><select class="pulse-select" id="pulse-channel">${chanOpts}</select></div>
       </div>
-      <div class="pulse-field"><label>Notes</label><input class="pulse-input" id="pulse-notes" placeholder="optional"></div>
+      <div class="pulse-field"><label>Notes</label><input class="pulse-input" id="pulse-notes" placeholder="optional" value="${esc(pf.notes||'')}"></div>
       <div class="pulse-row2">
         <div class="pulse-field"><label>Logged By</label><div class="pulse-toggle" id="pulse-loggedby"><button type="button" data-drawer-loggedby="Gretchen" class="${drawer.loggedBy==='Gretchen'?'on':''}">Gretchen</button><button type="button" data-drawer-loggedby="Trina" class="${drawer.loggedBy==='Trina'?'on':''}">Trina</button></div></div>
-        <div class="pulse-field"><label>Date</label><input class="pulse-input" id="pulse-date" type="date" value="${chiTodayLocal()}"></div>
+        <div class="pulse-field"><label>Date</label><input class="pulse-input" id="pulse-date" type="date" value="${esc(pf.date||chiTodayLocal())}"></div>
       </div>
-      <button class="pulse-submit" data-drawer-submit ${drawer.contactId?'':'disabled'}>Log it</button>`;
+      <button class="pulse-submit" data-drawer-submit ${drawer.contactId?'':'disabled'}>${isEdit?'Update':'Log it'}</button>`;
   }
   function renderDrawer(){ const s=document.getElementById('pulse-drawer-sheet'); if(s) s.innerHTML=drawerSheetHtml(); }
-  function openDrawer(contactId, contactName){
-    drawer.contactId=contactId||null; drawer.contactName=contactName||null; drawer.loggedBy='Gretchen';
+  function openDrawer(contactId, contactName, editData){
+    drawer.editId = editData ? editData.id : null;
+    drawer.prefill = editData ? { type:editData.type, channel:editData.channel, notes:editData.notes, date:editData.date } : {};
+    drawer.contactId=contactId||null; drawer.contactName=contactName||null;
+    drawer.loggedBy = editData?.loggedBy==='Trina' ? 'Trina' : 'Gretchen';
     renderDrawer();
     document.getElementById('pulse-drawer').classList.add('open'); document.body.style.overflow='hidden';
     window.lrl?.haptic('tap');
-    if(!contactId) setTimeout(()=>document.querySelector('[data-drawer-search]')?.focus(),70);
+    if(!contactId && !drawer.editId) setTimeout(()=>document.querySelector('[data-drawer-search]')?.focus(),70);
   }
+  async function openTpModal(period){
+    tpModal.period=period; tpModal.open=true;
+    const sheet=document.getElementById('tp-modal-sheet');
+    document.getElementById('tp-modal').classList.add('open'); document.body.style.overflow='hidden';
+    sheet.innerHTML='<div class="mkt-empty" style="padding:30px 0">Loading…</div>';
+    try{
+      const r=await fetch('/api/sales/touchpoints?period='+period);
+      const d=await r.json(); if(d.error) throw new Error(d.error);
+      const p=S.pulse||{};
+      const label=period==='quarter'?esc(p.quarterLabel||'This Quarter'):'This Month';
+      const items=d.touchpoints||[];
+      const rows=items.length
+        ? items.map(t=>{
+            const dt=new Date(t.date+'T12:00:00');
+            const dateStr=dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+            const meta=[t.type, t.channel, t.loggedBy].filter(Boolean).join(' · ');
+            const nurl=window.toNotionLink(t.url);
+            return `<div class="tp-row">
+              <span class="tp-date">${dateStr}</span>
+              <div class="tp-main"><div class="tp-name">${esc(t.contactName||'—')}</div><div class="tp-type">${esc(meta)}</div></div>
+              <div class="tp-actions">
+                <button class="tp-btn" data-tp-edit="${esc(t.id)}" data-tp-cname="${esc(t.contactName)}" data-tp-cid="${esc(t.contactId||'')}" data-tp-type="${esc(t.type)}" data-tp-channel="${esc(t.channel)}" data-tp-notes="${esc(t.notes)}" data-tp-date="${esc(t.date)}" data-tp-loggedby="${esc(t.loggedBy)}">Edit</button>
+                <a class="tp-btn" href="${nurl}" target="_blank" rel="noopener">Notion ↗</a>
+              </div>
+            </div>`;
+          }).join('')
+        : '<div class="mkt-empty">No touchpoints logged yet.</div>';
+      sheet.innerHTML=`<div class="tp-head"><span class="tp-title">Touchpoints · ${label}</span><button class="tp-x" data-tp-close>×</button></div>${rows}`;
+    }catch(err){ sheet.innerHTML=`<div class="tp-head"><span class="tp-title">Touchpoints</span><button class="tp-x" data-tp-close>×</button></div><div class="mkt-empty">${esc(err.message)}</div>`; }
+  }
+  function closeTpModal(){ document.getElementById('tp-modal').classList.remove('open'); document.body.style.overflow=''; tpModal.open=false; }
   function closeDrawer(){ document.getElementById('pulse-drawer').classList.remove('open'); document.body.style.overflow=''; }
   async function drawerSearch(q){
     const box=document.getElementById('pulse-results'); if(!box) return;
@@ -8054,15 +8116,23 @@ document.addEventListener('visibilitychange', async () => {
     const channel=document.getElementById('pulse-channel')?.value||'';
     const notes=document.getElementById('pulse-notes')?.value||'';
     const date=document.getElementById('pulse-date')?.value||'';
-    btn.disabled=true; btn.textContent='Logging…';
+    const isEdit=!!drawer.editId;
+    btn.disabled=true; btn.textContent=isEdit?'Saving…':'Logging…';
     try{
-      const r=await fetch('/api/sales/touchpoint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contactId:drawer.contactId, contactName:drawer.contactName, touchpointType:type, channel, notes, loggedBy:drawer.loggedBy, timestamp:date})});
+      let r;
+      if(isEdit){
+        r=await fetch('/api/sales/touchpoint/'+drawer.editId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({touchpointType:type,channel,notes,loggedBy:drawer.loggedBy,timestamp:date})});
+      } else {
+        r=await fetch('/api/sales/touchpoint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contactId:drawer.contactId,contactName:drawer.contactName,touchpointType:type,channel,notes,loggedBy:drawer.loggedBy,timestamp:date})});
+      }
       const d=await r.json(); if(!r.ok||d.error) throw new Error(d.error||'failed');
-      window.lrl?.haptic('success'); window.lrl?.confetti?.({count:32}); window.lrl?.toast('Touchpoint logged ✓','success');
+      window.lrl?.haptic('success');
+      if(!isEdit) window.lrl?.confetti?.({count:32});
+      window.lrl?.toast(isEdit?'Updated ✓':'Touchpoint logged ✓','success');
       closeDrawer();
-      S.reachSearch=''; S.reachResults=undefined;
+      if(!isEdit){ S.reachSearch=''; S.reachResults=undefined; }
       await Promise.all([fetchPulse(true), fetchOverdue(true)]); renderSales();
-    }catch(err){ btn.disabled=false; btn.textContent='Log it'; window.lrl?.toast('Failed: '+err.message,'error'); }
+    }catch(err){ btn.disabled=false; btn.textContent=isEdit?'Update':'Log it'; window.lrl?.toast('Failed: '+err.message,'error'); }
   }
   // Pulse + drawer interactions (separate listener; deal handler ignores these)
   let reachTimer=null;
@@ -8082,6 +8152,12 @@ document.addEventListener('visibilitychange', async () => {
       const badge=document.querySelector('[data-sales-toggle="reach"] .mkt-sec-count'); if(badge && S.overdue) badge.textContent=S.overdue.total;
       return;
     }
+    // Touchpoints list modal
+    const tpPeriod=t.closest('[data-tp-period]');
+    if (tpPeriod){ openTpModal(tpPeriod.dataset.tpPeriod); return; }
+    if (t.closest('[data-tp-close]') || t.id==='tp-modal-backdrop'){ closeTpModal(); return; }
+    const tpEdit=t.closest('[data-tp-edit]');
+    if (tpEdit){ const el=tpEdit; closeTpModal(); openDrawer(el.dataset.tpCid||null, el.dataset.tpCname, {id:el.dataset.tpEdit, type:el.dataset.tpType, channel:el.dataset.tpChannel, notes:el.dataset.tpNotes, date:el.dataset.tpDate, loggedBy:el.dataset.tpLoggedby}); return; }
     if (t.closest('[data-pulse-log]')){ openDrawer(); return; }
     const crow=t.closest('[data-pulse-contact]');
     if (crow){ openDrawer(crow.dataset.pulseContact, crow.dataset.cname); return; }
@@ -8100,7 +8176,7 @@ document.addEventListener('visibilitychange', async () => {
     if (rs){ S.reachSearch=rs.value.trim(); clearTimeout(reachTimer); const q=S.reachSearch; reachTimer=setTimeout(()=>reachSearch(q),260); return; }
   });
 
-  document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ closeSalesModal(); closeDrawer(); } if(e.key==='Enter'&&e.target.closest&&e.target.closest('[data-sales-val]')) e.target.blur(); });
+  document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ closeSalesModal(); closeDrawer(); closeTpModal(); } if(e.key==='Enter'&&e.target.closest&&e.target.closest('[data-sales-val]')) e.target.blur(); });
 
   window.addEventListener('lrl-refresh', async ()=>{ if(!S.loaded) return; try{ await Promise.all([fetchSales(true), fetchPulse(true), fetchOverdue(true)]); renderSales(); }catch(_){} });
 })();
