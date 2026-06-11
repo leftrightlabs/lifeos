@@ -1466,7 +1466,11 @@
   .version-tag { position: fixed; bottom: 0.5rem; right: 0.75rem; font-size: 0.6rem; color: rgba(var(--ink-rgb), 0.22); letter-spacing: 0.1em; pointer-events: none; }
 
   /* === Privacy mode (blur sensitive numbers for demos) === */
-  .privacy-fab { position: fixed; bottom: 0.5rem; left: 0.75rem; z-index: 95; background: rgba(var(--edge-rgb), 0.04); border: 1px solid rgba(var(--edge-rgb), 0.1); color: rgba(var(--ink-rgb), 0.5); width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; transition: all 0.18s; }
+  .app-footer { position: fixed; bottom: 0.5rem; left: 0.75rem; z-index: 95; display: inline-flex; align-items: center; gap: 8px; }
+  .privacy-fab { background: rgba(var(--edge-rgb), 0.04); border: 1px solid rgba(var(--edge-rgb), 0.1); color: rgba(var(--ink-rgb), 0.5); width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; transition: all 0.18s; flex-shrink: 0; }
+  /* Theme picker in the footer: 32px to match the privacy fab, menu opens upward */
+  .theme-picker-footer .theme-fab { width: 32px; height: 32px; }
+  .theme-picker-footer .theme-menu { top: auto; bottom: calc(100% + 8px); left: 0; right: auto; }
   .privacy-fab:hover { color: var(--navy); border-color: rgba(var(--edge-rgb), 0.25); background: rgba(var(--edge-rgb), 0.06); }
   .privacy-fab svg { width: 16px; height: 16px; }
   .privacy-on .privacy-fab { background: var(--lime); color: var(--navy-accent); border-color: var(--lime); }
@@ -1475,7 +1479,7 @@
   .privacy-on .privacy-fab .icon-on { display: none; }
   .privacy-on .privacy-fab .icon-off { display: inline-block; }
   /* Mini status pill so she remembers privacy mode is on */
-  .privacy-status { position: fixed; bottom: 0.7rem; left: 50px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--navy-accent); background: var(--lime); padding: 3px 10px; border-radius: 999px; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 95; }
+  .privacy-status { font-size: 9.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--navy-accent); background: var(--lime); padding: 3px 10px; border-radius: 999px; pointer-events: none; opacity: 0; transition: opacity 0.2s; white-space: nowrap; }
   .privacy-on .privacy-status { opacity: 1; }
 
   /* Blur sensitive values when privacy mode is on. We blur the VALUES,
@@ -2746,14 +2750,6 @@ window.lrl = (function(){
       </div>
     </div>
     <div class="header-meta">
-      <div class="theme-picker" id="theme-picker">
-        <button class="theme-fab" id="theme-fab" title="Color theme" aria-label="Color theme" aria-haspopup="true" aria-expanded="false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.37 2.63 14 7l-1.59-1.59a2 2 0 0 0-2.82 0L8 7l9 9 1.59-1.59a2 2 0 0 0 0-2.82L17 10l4.37-4.37a2.12 2.12 0 1 0-3-3Z"/><path d="M9 8c-2 0-4.5 1-5.5 2.5-1.5 2.5-1 5-3 6.5 2 1 4 1 5.5.5"/><path d="m14 17 .5.5"/></svg>
-        </button>
-        <div class="theme-menu" id="theme-menu" role="menu">
-          <div class="theme-menu-label">Color theme</div>
-        </div>
-      </div>
       <button class="refresh-btn" onclick="triggerRefresh()" title="Refresh dashboard from live APIs">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="23 4 23 10 17 10"></polyline>
@@ -3314,17 +3310,27 @@ window.lrl = (function(){
   </div>
 </div>
 
-<button class="privacy-fab" id="privacy-fab" title="Toggle privacy mode (blur sensitive data)" aria-label="Toggle privacy mode">
-  <svg class="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-    <circle cx="12" cy="12" r="3"/>
-  </svg>
-  <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-    <line x1="1" y1="1" x2="23" y2="23"/>
-  </svg>
-</button>
-<div class="privacy-status">Privacy</div>
+<div class="app-footer">
+  <button class="privacy-fab" id="privacy-fab" title="Toggle privacy mode (blur sensitive data)" aria-label="Toggle privacy mode">
+    <svg class="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+    <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+      <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+  </button>
+  <div class="theme-picker theme-picker-footer" id="theme-picker">
+    <button class="theme-fab" id="theme-fab" title="Color theme" aria-label="Color theme" aria-haspopup="true" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.37 2.63 14 7l-1.59-1.59a2 2 0 0 0-2.82 0L8 7l9 9 1.59-1.59a2 2 0 0 0 0-2.82L17 10l4.37-4.37a2.12 2.12 0 1 0-3-3Z"/><path d="M9 8c-2 0-4.5 1-5.5 2.5-1.5 2.5-1 5-3 6.5 2 1 4 1 5.5.5"/><path d="m14 17 .5.5"/></svg>
+    </button>
+    <div class="theme-menu" id="theme-menu" role="menu">
+      <div class="theme-menu-label">Color theme</div>
+    </div>
+  </div>
+  <div class="privacy-status">Privacy</div>
+</div>
 
 <span class="version-tag">v: day-6</span>
 
