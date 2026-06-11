@@ -702,6 +702,12 @@
   .daily-brief.collapsed .daily-brief-kicker { margin-bottom: 0; }
   .daily-brief-toggle { background: transparent; border: none; color: var(--lime); font-family: var(--font-body); font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
   .daily-brief-toggle:hover { opacity: 0.85; }
+  .daily-brief-right { display: inline-flex; align-items: center; gap: 12px; }
+  /* Weather chip (Euless): icon + temp + condition — always visible in the header */
+  .brief-weather { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--navy-dim); white-space: nowrap; }
+  .brief-weather .bw-icon { display: inline-flex; }
+  .brief-weather .bw-icon svg { width: 15px; height: 15px; }
+  .brief-weather .bw-temp { color: var(--navy); font-weight: 600; }
   .daily-brief.collapsed #brief-collapse-caret { transform: rotate(-90deg); display: inline-block; }
   #brief-collapse-caret { display: inline-block; transition: transform 0.15s; }
   .daily-brief-text { font-family: var(--font-body); font-size: 15px; font-weight: 400; line-height: 1.6; color: var(--navy); }
@@ -2819,7 +2825,10 @@ window.lrl = (function(){
     <div class="daily-brief" id="daily-brief">
       <div class="daily-brief-kicker">
         <button class="daily-brief-toggle" id="brief-toggle" title="Collapse/expand"><span id="brief-collapse-caret">▾</span> Daily Focus <span id="brief-bucket" style="opacity:0.6;font-weight:500;text-transform:lowercase;letter-spacing:0.05em"></span></button>
-        <button class="daily-brief-refresh" id="brief-refresh" title="Regenerate based on current time">↻ Refresh</button>
+        <div class="daily-brief-right">
+          <span class="brief-weather" id="brief-weather" title="Euless, TX" style="display:none"></span>
+          <button class="daily-brief-refresh" id="brief-refresh" title="Regenerate based on current time">↻ Refresh</button>
+        </div>
       </div>
       <div id="brief-body">
         <div class="daily-brief-text daily-brief-loading" id="brief-text">Composing your focus…</div>
@@ -3693,6 +3702,44 @@ let DAILY_BRIEF = '';
 let mode = localStorage.getItem('lrl-mode') || 'all';
 // migrate legacy 'combined' → 'all'
 if (mode === 'combined') { mode = 'all'; localStorage.setItem('lrl-mode', 'all'); }
+
+// Map an Open-Meteo WMO weather code to a label, icon, and tint color.
+function weatherInfo(code){
+  const c = Number(code);
+  const I = {
+    sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>',
+    partly: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 2.5v1M3.6 3.9l.7.7M2.5 8h1M12.4 4.3l-.7.7"/><path d="M17 19a3.3 3.3 0 0 0 .2-6.6 5 5 0 0 0-9.5 1.3A3 3 0 0 0 8 19z"/></svg>',
+    cloud: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a4.5 4.5 0 0 0 0-9c-.35 0-.69.04-1 .12A6 6 0 0 0 5 12.5 3.5 3.5 0 0 0 6.5 19z"/></svg>',
+    rain: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 15a4.5 4.5 0 0 0 0-9c-.35 0-.69.04-1 .12A6 6 0 0 0 5 8.5 3.5 3.5 0 0 0 6.5 15z"/><path d="M8 18l-1 2.5M12 18l-1 2.5M16 18l-1 2.5"/></svg>',
+    snow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 15a4.5 4.5 0 0 0 0-9c-.35 0-.69.04-1 .12A6 6 0 0 0 5 8.5 3.5 3.5 0 0 0 6.5 15z"/><path d="M8 19h.01M12 20h.01M16 19h.01M10 18h.01M14 18h.01"/></svg>',
+    storm: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 14a4.5 4.5 0 0 0 0-9c-.35 0-.69.04-1 .12A6 6 0 0 0 5 7.5 3.5 3.5 0 0 0 6.5 14z"/><path d="M12 12l-2.5 4.5H13L10.5 21"/></svg>',
+    fog: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h16M3 12h18M5 16h14M7 20h10"/></svg>',
+  };
+  if (c === 0) return { label: 'Clear', icon: I.sun, tint: '#d4a854' };
+  if (c === 1) return { label: 'Mostly clear', icon: I.sun, tint: '#d4a854' };
+  if (c === 2) return { label: 'Partly cloudy', icon: I.partly, tint: '#d4a854' };
+  if (c === 3) return { label: 'Cloudy', icon: I.cloud, tint: 'rgba(var(--ink-rgb),0.5)' };
+  if (c === 45 || c === 48) return { label: 'Fog', icon: I.fog, tint: 'rgba(var(--ink-rgb),0.5)' };
+  if (c >= 51 && c <= 57) return { label: 'Drizzle', icon: I.rain, tint: '#5d9cec' };
+  if (c >= 61 && c <= 67) return { label: 'Rain', icon: I.rain, tint: '#5d9cec' };
+  if (c >= 71 && c <= 77) return { label: 'Snow', icon: I.snow, tint: '#9cc5f5' };
+  if (c >= 80 && c <= 82) return { label: 'Rain showers', icon: I.rain, tint: '#5d9cec' };
+  if (c >= 85 && c <= 86) return { label: 'Snow showers', icon: I.snow, tint: '#9cc5f5' };
+  if (c >= 95) return { label: 'Thunderstorm', icon: I.storm, tint: '#c084fc' };
+  return { label: '—', icon: I.cloud, tint: 'rgba(var(--ink-rgb),0.5)' };
+}
+async function loadWeather(fresh){
+  const el = document.getElementById('brief-weather');
+  if (!el) return;
+  try {
+    const r = await fetch('/api/weather' + (fresh ? '?fresh=1' : ''));
+    const d = await r.json();
+    if (!r.ok || d.error || d.tempF == null) throw new Error('weather');
+    const w = weatherInfo(d.code);
+    el.innerHTML = `<span class="bw-icon" style="color:${w.tint}">${w.icon}</span><span class="bw-temp">${d.tempF}°</span><span class="bw-cond">${escapeHtml(w.label)}</span>`;
+    el.style.display = '';
+  } catch (e) { el.style.display = 'none'; }
+}
 
 async function fetchDailyBrief(force){
   const el = document.getElementById('brief-text');
@@ -6756,6 +6803,9 @@ document.addEventListener('keydown', (e) => {
     const wrap = document.getElementById('chapter-panel');
     setChapterCollapsed(!wrap.classList.contains('collapsed'));
   });
+  // Weather chip (Euless) in the Daily Focus header
+  loadWeather();
+  window.addEventListener('lrl-refresh', () => loadWeather(true));
   // Restore collapsed states
   if (localStorage.getItem('lrl-brief-collapsed') === '1') setBriefCollapsed(true);
   if (localStorage.getItem('lrl-chapter-collapsed') === '1') setChapterCollapsed(true);

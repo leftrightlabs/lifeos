@@ -31,6 +31,8 @@ const JOURNAL_DS = '25a458f08cd9804bb6d1000b78cb4186';
 const JOURNAL_DB_ID = '25a458f08cd980f9991af90b30ec68d8';
 const CACHE_TTL_MS = 60_000;
 const TZ = 'America/Chicago';
+const WEATHER_LAT = 32.837;  // Euless, TX
+const WEATHER_LON = -97.082;
 const DATA_SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/gmail.readonly',
@@ -74,6 +76,7 @@ const CACHE_TTL_OVERRIDES = {
   'vto-goals': 10 * 60_000,    // goals rarely change
   'active-projects': 5 * 60_000, // project status changes slowly
   'projects-board': 5 * 60_000,  // Projects tab board (area/system maps + paginated projects)
+  'weather': 20 * 60_000,        // current conditions change slowly
 };
 async function cached(key, fn) {
   const ttl = CACHE_TTL_OVERRIDES[key] || CACHE_TTL_MS;
@@ -648,6 +651,26 @@ app.get('/api/projects/board', async (req, res) => {
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Current weather for Euless, TX via Open-Meteo (no API key needed).
+async function fetchWeather() {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${WEATHER_LAT}&longitude=${WEATHER_LON}&current=temperature_2m,weather_code&temperature_unit=fahrenheit&timezone=America%2FChicago`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('weather upstream ' + r.status);
+  const d = await r.json();
+  const cur = d.current || {};
+  if (cur.temperature_2m == null) throw new Error('no current weather');
+  return { tempF: Math.round(cur.temperature_2m), code: cur.weather_code ?? null, at: cur.time || null };
+}
+app.get('/api/weather', async (req, res) => {
+  try {
+    if (req.query.fresh === '1') cache.delete('weather');
+    const w = await cached('weather', fetchWeather);
+    res.json(w);
+  } catch (err) {
+    res.status(502).json({ error: err.message });
   }
 });
 
