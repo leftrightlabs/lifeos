@@ -2083,7 +2083,6 @@
   .proj-stat .l { font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .proj-stat.s-all { border-top-color: rgba(var(--ink-rgb), 0.4); } .proj-stat.s-all.active { color: rgba(var(--ink-rgb), 0.7); }
   .proj-stat.s-active { border-top-color: #5d9cec; } .proj-stat.s-active.active { color: #5d9cec; }
-  .proj-stat.s-doing { border-top-color: #2bb0c4; } .proj-stat.s-doing.active { color: #2bb0c4; }
   .proj-stat.s-ongoing { border-top-color: var(--lime); } .proj-stat.s-ongoing.active { color: var(--lime); }
   .proj-stat.s-billing { border-top-color: #3fa776; } .proj-stat.s-billing.active { color: #3fa776; }
   .proj-stat.s-planned { border-top-color: #d4a854; } .proj-stat.s-planned.active { color: #d4a854; }
@@ -2137,7 +2136,6 @@
   .proj-caret { font-size: 11px; color: var(--navy-dim); transition: transform 0.18s; flex-shrink: 0; display: inline-block; }
   .proj-row:not(.expanded) .proj-caret { transform: rotate(-90deg); }
   .proj-row.st-active { border-left-color: #5d9cec; }
-  .proj-row.st-doing { border-left-color: #2bb0c4; }
   .proj-row.st-ongoing { border-left-color: var(--lime); }
   .proj-row.st-billing { border-left-color: #3fa776; }
   .proj-row.st-planned { border-left-color: #d4a854; }
@@ -2151,7 +2149,6 @@
   .proj-row-sub .sep { opacity: 0.4; }
   .proj-badge { font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; padding: 2px 7px; border-radius: 4px; flex-shrink: 0; }
   .proj-badge.st-active { background: rgba(93,156,236,0.16); color: #9cc5f5; }
-  .proj-badge.st-doing { background: rgba(43,176,196,0.16); color: #6fd2e0; }
   .proj-badge.st-ongoing { background: var(--lime-faint); color: var(--lime); }
   .proj-badge.st-billing { background: rgba(63,167,118,0.16); color: #5fc596; }
   .proj-badge.st-planned { background: rgba(212,168,84,0.16); color: #d4a854; }
@@ -7018,7 +7015,7 @@ document.addEventListener('visibilitychange', async () => {
   const P = { data: null, statusFilter: null, areaFilter: null, groupBy: 'area', search: '', collapsed: {}, undatedOpen: false, expanded: {} };
   const TL_KEY = 'lrl-proj-timeline-collapsed';
   // Status options per source, for the inline status editor.
-  const STATUS_OPTS = { work: ['Planned','On Hold','Active','Ongoing','Billing','Done'], personal: ['Planned','On Hold','Doing','Ongoing','Done'] };
+  const STATUS_OPTS = { work: ['Planned','On Hold','Active','Ongoing','Billing','Done'], personal: ['Planned','On Hold','Active','Ongoing','Done'] };
   // Parse a Notion date. Date-only strings (YYYY-MM-DD) are parsed as LOCAL
   // dates so they don't shift back a day in our timezone; full ISO timestamps
   // (e.g. Created) parse normally.
@@ -7029,7 +7026,7 @@ document.addEventListener('visibilitychange', async () => {
   const systemOptions = (source) => { const o = (P.data && P.data.options) || {}; return source === 'personal' ? (o.hubs || []) : (o.system || []); };
   let _loaded = false;
   const esc = (s) => (window.escapeHtml ? escapeHtml(String(s ?? '')) : String(s ?? ''));
-  const statusClass = (s) => ({ 'Active':'active','Doing':'doing','Ongoing':'ongoing','Billing':'billing','Planned':'planned','On Hold':'onhold','Done':'done' }[s] || 'none');
+  const statusClass = (s) => ({ 'Active':'active','Ongoing':'ongoing','Billing':'billing','Planned':'planned','On Hold':'onhold','Done':'done' }[s] || 'none');
   const curMode = () => document.body.dataset.mode || 'all';
   // Projects visible under the current mode toggle (all = work + personal)
   function inMode(){
@@ -7108,7 +7105,7 @@ document.addEventListener('visibilitychange', async () => {
     const ps = inMode();
     const count = (s) => ps.filter((p) => p.status === s).length;
     const cards = [{ key:null, cls:'all', label:'All Projects', n:ps.length }];
-    ['Active','Doing','Ongoing','Billing','Planned','On Hold'].forEach((s) => { const n = count(s); if (n) cards.push({ key:s, cls:statusClass(s), label:s, n }); });
+    ['Active','Ongoing','Billing','Planned','On Hold'].forEach((s) => { const n = count(s); if (n) cards.push({ key:s, cls:statusClass(s), label:s, n }); });
     cards.push({ key:'atrisk', cls:'risk', label:'At Risk', n:ps.filter((p) => p.atRisk).length });
     const doneN = count('Done'); if (doneN) cards.push({ key:'Done', cls:'done', label:'Done', n:doneN });
     return '<div class="proj-stats">' + cards.map((c) => {
