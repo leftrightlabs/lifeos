@@ -1144,12 +1144,10 @@
   .inv-item-type { color: var(--navy-dim); }
   .xp-num { color: var(--lime); text-shadow: 0 0 24px rgba(167,193,64,0.4); }
 
-  .refresh-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--cream-2); color: var(--lime); border: 1px solid rgba(167,193,64,0.3); border-radius: 999px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
+  .refresh-btn { display: inline-flex; align-items: center; justify-content: center; padding: 7px; background: var(--cream-2); color: var(--lime); border: 1px solid rgba(167,193,64,0.3); border-radius: 999px; cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
   .refresh-btn:hover { background: var(--lime-faint); color: var(--lime); border-color: var(--lime); }
   .refresh-btn.refreshing svg { animation: spin 1s linear infinite; }
   @media (max-width: 600px) {
-    .refresh-btn span { display: none; }
-    .refresh-btn { padding: 6px 8px; }
     #week-of { display: none; }
     .signout-text { display: none !important; }
     .signout-icon { display: inline-block !important; }
@@ -2766,7 +2764,6 @@ window.lrl = (function(){
           <polyline points="1 20 1 14 7 14"></polyline>
           <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
         </svg>
-        <span>Refresh</span>
       </button>
       <span id="week-of">Loading…</span>
       <a href="/auth/logout" class="signout-link" title="Sign out" aria-label="Sign out">
