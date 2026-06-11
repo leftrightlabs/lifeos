@@ -1264,7 +1264,7 @@
   .autofocus-app .stat.s-myday {border-top-color:var(--lime)}
   /* In single-mode views, hide the opposite-side tile entirely — and the
      same-side tile is redundant with Open (which is already filtered), so
-     hide that too. Leaves: Open · Today · Overdue · My Day. */
+     hide that too. Leaves: Open · Today · Overdue · Today's Tasks. */
   body[data-mode="work"] .autofocus-app .stat.s-personal,
   body[data-mode="work"] .autofocus-app .stat.s-work,
   body[data-mode="personal"] .autofocus-app .stat.s-work,
@@ -3083,7 +3083,7 @@ window.lrl = (function(){
           </select>
         </div>
         <div class="toolbar"><div class="toggles">
-          <label class="tg" id="tg-myday"><input type="checkbox" id="myday"/> My Day only</label>
+          <label class="tg" id="tg-myday"><input type="checkbox" id="myday"/> Today's Tasks only</label>
           <label class="tg" id="tg-routines"><input type="checkbox" id="routines"/> Show routines not yet due</label>
           <label class="tg" id="tg-done"><input type="checkbox" id="showdone"/> Show completed</label>
           <button class="btn-ghost" id="expandall">Expand all</button>
@@ -3277,7 +3277,7 @@ window.lrl = (function(){
       </div>
     </div>
     <div class="task-project-line" id="task-project-line" style="display:none"><span class="lab">Project</span><span id="task-project-name"></span></div>
-    <label class="task-checkbox-row"><input type="checkbox" id="task-myday-input"/> Pin to My Day</label>
+    <label class="task-checkbox-row"><input type="checkbox" id="task-myday-input"/> Pin to Today's Tasks</label>
     <div class="task-row-2col">
       <div class="task-field">
         <label>Status</label>
@@ -3488,7 +3488,7 @@ function row(t){
   const dueHtml = dl.txt
     ? '<span class="quest-due-inline '+dl.cls+'" data-act="edit-due">'+dl.txt+'</span>'
     : '<span class="quest-due-inline" data-act="edit-due" style="opacity:0.35">+ date</span>';
-  const starTitle = isMyDay ? 'Remove from My Day' : 'Add to My Day';
+  const starTitle = isMyDay ? "Remove from Today's Tasks" : "Add to Today's Tasks";
   const star = '<button class="quest-star '+(isMyDay?'on':'')+'" data-act="star" title="'+starTitle+'" aria-label="'+starTitle+'"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>';
   const doneCls = t.done ? ' done' : '';
   const checkedCls = t.done ? 'checked' : '';
@@ -3557,7 +3557,7 @@ function updateHeader(){
     const active=ui.statFilter===filter?' active':'';
     return '<div class="stat '+cls+active+'" data-filter="'+filter+'" role="button" tabindex="0" aria-pressed="'+(active?'true':'false')+'" title="Filter to '+label.toLowerCase()+'"><div class="statn">'+n+'</div><div class="statl">'+label+'</div></div>';
   };
-  el('hdrstats').innerHTML=tile(live.length,'Open','s-open','open')+tile(work,'Work','s-work','work')+tile(pers,'Personal','s-personal','personal')+tile(td,'Today','s-today','today')+tile(od,'Overdue','s-over','overdue')+tile(md,'My Day','s-myday','myday');
+  el('hdrstats').innerHTML=tile(live.length,'Open','s-open','open')+tile(work,'Work','s-work','work')+tile(pers,'Personal','s-personal','personal')+tile(td,'Today','s-today','today')+tile(od,'Overdue','s-over','overdue')+tile(md,"Today's Tasks",'s-myday','myday');
   const d=el('hdrdate'); if(d) d.innerHTML='<span class="dot"></span>'+TODAY.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 }
 
@@ -3597,7 +3597,7 @@ el('list').addEventListener('click',e=>{
     window.lrl.haptic('tap');
     afPatch(id,{myDay:nv})
       .then(()=>{
-        const action=nv?'Added to My Day':'Removed from My Day';
+        const action=nv?"Added to Today's Tasks":"Removed from Today's Tasks";
         window.lrl.toast(action,'',{undo:async()=>{
           state.edits[id]=Object.assign({},state.edits[id],{myDay:prevMyDay});
           state.touched[id]=new Date().toISOString();saveState();render();
@@ -4437,7 +4437,7 @@ function renderQuestRow(t){
   const doneCls = t.done ? ' done' : '';
   const isMyDay = t.myDay !== false;
   const starCls = isMyDay ? 'on' : '';
-  const starTitle = isMyDay ? 'Remove from My Day' : 'Add to My Day';
+  const starTitle = isMyDay ? "Remove from Today's Tasks" : "Add to Today's Tasks";
   const star = `<button class="quest-star ${starCls}" data-act="star" title="${starTitle}" aria-label="${starTitle}"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>`;
   const priHtml = t.priority
     ? `<span class="quest-pri ${t.priority.toLowerCase()}">${t.priority}</span>` : '';
@@ -4458,7 +4458,7 @@ function renderTodayQuests(){
   if (taskDiv){
     const filtered = filterBySource(TODAY_TASKS, 'source');
     if (!filtered.length){
-      const msg = mode === 'all' ? 'Nothing on My Day' : `No ${mode} tasks today`;
+      const msg = mode === 'all' ? "Nothing on Today's Tasks" : `No ${mode} tasks today`;
       taskDiv.innerHTML = `<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">${msg}</div>`;
       applyDailyGamification();
     } else {
@@ -4660,14 +4660,14 @@ document.getElementById('today-quests').addEventListener('click', async (e) => {
     const newOn = !wasOn;
     window.lrl.haptic('tap');
     if (!newOn){
-      // Removing from My Day → animate row out, then drop from list
+      // Removing from Today's Tasks → animate row out, then drop from list
       const removedTask = { ...t };
       window.lrl.clearRow(item, async () => {
         TODAY_TASKS = TODAY_TASKS.filter(x => x.id !== id);
         renderTodayQuests();
         try {
           await patchTask(id, { myDay: false });
-          window.lrl.toast(`Removed from My Day: ${t.name}`, '', { undo: async () => {
+          window.lrl.toast(`Removed from Today's Tasks: ${t.name}`, '', { undo: async () => {
             // Re-add the task locally + on the server
             removedTask.myDay = true;
             TODAY_TASKS.push(removedTask);
@@ -4823,7 +4823,7 @@ function openTaskCreate() {
   const modal = document.getElementById('task-modal');
   if (!modal) return;
   _setTaskModalMode('create');
-  // Reset fields — default My Day on, status Planned
+  // Reset fields — default Today's Tasks on, status Planned
   document.getElementById('task-name-input').value = '';
   document.getElementById('task-myday-input').checked = true;
   document.getElementById('task-status-input').value = 'Planned';
@@ -6531,7 +6531,7 @@ function buildEditForm(a, i){
         <option value="HIGH" ${a.priority === 'HIGH' ? 'selected' : ''}>HIGH</option>
         <option value="NORMAL" ${a.priority === 'NORMAL' ? 'selected' : ''}>NORMAL</option>
       </select></div>
-      <div class="checkbox-row"><label><input type="checkbox" data-f="myDay" ${a.myDay ? 'checked' : ''}/> My Day</label></div>
+      <div class="checkbox-row"><label><input type="checkbox" data-f="myDay" ${a.myDay ? 'checked' : ''}/> Today's Tasks</label></div>
       <div class="triage-edit-actions">
         <button class="cancel" data-act="cancel-edit">Cancel</button>
         <button class="save" data-act="save-edit" data-idx="${i}">Save</button>
@@ -6587,7 +6587,7 @@ function renderPlanItemsHTML(plan, msgIdx, editable){
     const errLine = a._error ? `<div class="triage-meta" style="color:#ff7a6b">Error: ${escapeHtml(a._error)}</div>` : '';
     const appliedCls = a._result ? ' applied' : (a._error ? ' failed' : '');
     const editBtn = (editable && !a._result) ? `<button class="triage-edit-btn" data-act="edit" data-idx="${i}">Edit</button>` : '';
-    const myDayBtn = (editable && !a._result && a.type === 'create_task') ? `<button class="triage-myday-btn ${a.myDay ? 'on' : ''}" data-act="toggle-myday" data-idx="${i}" title="Toggle My Day">★ My Day</button>` : '';
+    const myDayBtn = (editable && !a._result && a.type === 'create_task') ? `<button class="triage-myday-btn ${a.myDay ? 'on' : ''}" data-act="toggle-myday" data-idx="${i}" title="Toggle Today's Tasks">★ Today's Tasks</button>` : '';
     const editForm = (editable && triageEditing === i) ? buildEditForm(a, i) : '';
     const checkEl = editable ? `<div class="triage-check ${checked}" data-idx="${i}"></div>` : `<div class="triage-check" style="visibility:hidden"></div>`;
     return `<div class="triage-action ${cls}${appliedCls}">
@@ -6679,7 +6679,7 @@ function attachPlanHandlers(){
         const projName = a.projectId ? (triageProjects.find(p => p.id === a.projectId)?.name || '') : '';
         const bits = [`Task: ${a.name}`, '→', a.source];
         if (a.dueStart) bits.push(`due ${a.dueStart}`);
-        if (a.myDay) bits.push('My Day');
+        if (a.myDay) bits.push("Today's Tasks");
         if (a.priority) bits.push(a.priority);
         if (projName) bits.push(`(${projName})`);
         a.label = bits.join(' ');
