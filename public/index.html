@@ -7010,13 +7010,18 @@ document.addEventListener('visibilitychange', async () => {
   }
 
   // Shared grouping (used by both the list and the timeline)
-  const groupKeyOf = (p) => (({
-    area: () => p.area || 'No Area',
-    system: () => p.system || 'No System',
-    status: () => p.status || 'No Status',
-    owner: () => p.owners[0] || 'Unassigned',
-    none: () => 'All Projects',
-  })[P.groupBy] || (() => p.area || 'No Area'))();
+  // Personal mode renames the two relation dimensions: Area→Focus, System→Hubs.
+  const groupKeyOf = (p) => {
+    const personal = curMode() === 'personal';
+    switch (P.groupBy){
+      case 'system': return p.system || (personal ? 'No Hub' : 'No System');
+      case 'status': return p.status || 'No Status';
+      case 'owner': return p.owners[0] || 'Unassigned';
+      case 'none': return 'All Projects';
+      case 'area':
+      default: return p.area || (personal ? 'No Focus' : 'No Area');
+    }
+  };
   function sortGroupKeys(keys){
     if (P.groupBy === 'status'){ const ord = ['Active','Ongoing','Billing','Planned','On Hold','Done','No Status']; return keys.slice().sort((a,b) => ord.indexOf(a) - ord.indexOf(b)); }
     return keys.slice().sort((a,b) => { const na = /^(No |Unassigned)/.test(a), nb = /^(No |Unassigned)/.test(b); if (na !== nb) return na ? 1 : -1; return a.localeCompare(b); });
@@ -7064,17 +7069,19 @@ document.addEventListener('visibilitychange', async () => {
   }
 
   function controlsHTML(){
-    const groups = [['area','Area'],['system','System'],['status','Status'],['owner','Owner'],['none','None']];
+    const personal = curMode() === 'personal';
+    const areaLabel = personal ? 'Focus' : 'Area';
+    const groups = [['area', areaLabel], ['system', personal ? 'Hubs' : 'System'], ['status','Status'], ['owner','Owner'], ['none','None']];
     const seg = groups.map(([k,l]) => `<button data-group="${k}" class="${P.groupBy === k ? 'on' : ''}">${l}</button>`).join('');
     const scoped = inMode();
     const areas = [...new Set(scoped.flatMap((p) => p.areas))].sort();
     const hasNoArea = scoped.some((p) => !p.areas.length);
     let areaChips = '';
     if (areas.length || hasNoArea){
-      areaChips = '<div class="proj-ctl-group"><span class="proj-ctl-label">Area</span>'
+      areaChips = '<div class="proj-ctl-group"><span class="proj-ctl-label">' + areaLabel + '</span>'
         + `<button class="proj-chip ${!P.areaFilter ? 'on' : ''}" data-area="">All</button>`
         + areas.map((a) => `<button class="proj-chip ${P.areaFilter === a ? 'on' : ''}" data-area="${esc(a)}">${esc(a)}</button>`).join('')
-        + (hasNoArea ? `<button class="proj-chip ${P.areaFilter === '__none__' ? 'on' : ''}" data-area="__none__">No area</button>` : '')
+        + (hasNoArea ? `<button class="proj-chip ${P.areaFilter === '__none__' ? 'on' : ''}" data-area="__none__">No ${personal ? 'focus' : 'area'}</button>` : '')
         + '</div>';
     }
     const search = '<div class="proj-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>'
