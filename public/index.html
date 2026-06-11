@@ -7029,7 +7029,7 @@ document.addEventListener('visibilitychange', async () => {
 <!-- =========================== PROJECTS TAB =========================== -->
 <script>
 (function(){
-  const P = { data: null, statusFilter: null, areaFilter: null, groupBy: 'area', search: '', collapsed: {}, undatedOpen: false, expanded: {} };
+  const P = { data: null, statusFilter: 'Active', areaFilter: null, groupBy: 'area', search: '', collapsed: {}, undatedOpen: false, expanded: {} };
   const TL_KEY = 'lrl-proj-timeline-collapsed';
   // Status options per source, for the inline status editor.
   const STATUS_OPTS = { work: ['Planned','On Hold','Active','Ongoing','Billing','Done'], personal: ['Planned','On Hold','Active','Ongoing','Done'] };
@@ -7121,10 +7121,11 @@ document.addEventListener('visibilitychange', async () => {
   function statsHTML(){
     const ps = inMode();
     const count = (s) => ps.filter((p) => p.status === s).length;
-    const cards = [{ key:null, cls:'all', label:'All Projects', n:ps.length }];
+    const cards = [];
     ['Active','Ongoing','Billing','Planned','On Hold'].forEach((s) => { const n = count(s); if (n) cards.push({ key:s, cls:statusClass(s), label:s, n }); });
     cards.push({ key:'atrisk', cls:'risk', label:'At Risk', n:ps.filter((p) => p.atRisk).length });
     const doneN = count('Done'); if (doneN) cards.push({ key:'Done', cls:'done', label:'Done', n:doneN });
+    cards.push({ key:null, cls:'all', label:'All Projects', n:ps.length });
     return '<div class="proj-stats">' + cards.map((c) => {
       const active = (c.key === null && !P.statusFilter) || (P.statusFilter === c.key);
       return `<div class="proj-stat s-${c.cls} ${active ? 'active' : ''}" data-status="${c.key === null ? '' : esc(c.key)}" tabindex="0" role="button">
@@ -7432,7 +7433,7 @@ document.addEventListener('visibilitychange', async () => {
   window.addEventListener('lrl-refresh', () => { if (_loaded) load(true); });
   // Combine with the ALL/WORK/PERSONAL toggle: reset the mode-specific filters
   // (area chips + status differ per mode) and re-render with the new scope.
-  window.addEventListener('lrl-mode-changed', () => { if (_loaded) { P.statusFilter = null; P.areaFilter = null; render(); } });
+  window.addEventListener('lrl-mode-changed', () => { if (_loaded) { P.statusFilter = 'Active'; P.areaFilter = null; render(); } });
 })();
 </script>
 
