@@ -5045,7 +5045,7 @@ function openExternalSafe(url){
 window.openExternalSafe = openExternalSafe;
 
 // ===== Privacy mode (blur sensitive data) =====
-const BRIEF_PRIVACY_PLACEHOLDER = "Your current focus is being shaped by your calendar, tasks, and priorities for this time of day. Disable privacy mode to see your personalized daily brief.";
+const BRIEF_PRIVACY_PLACEHOLDER = "It's mid-afternoon and you've got about 90 minutes before your 4:30 call. Your content rock is sitting at 40% — that blog post draft you've been circling is the highest-leverage thing you could touch right now. Knock it out while you've got a clear block. After the call, do a quick inbox pass and close the loop on the two client threads from this morning. The proposal review can wait until tomorrow when you're fresh.";
 window.setPrivacy = function(on){
   document.documentElement.classList.toggle('privacy-on', !!on);
   document.body.classList.toggle('privacy-on', !!on);
