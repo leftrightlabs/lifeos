@@ -1079,10 +1079,9 @@
   .tab { color: var(--navy-dim); }
   .tab:hover { color: var(--navy); }
   .tab.active { color: var(--lime); border-bottom-color: var(--lime); }
-  /* Contextual (mode-specific) tabs: tinted in the active mode's accent, set
-     off by a divider + a small mode label, vs the always-on core tabs
-     (Today/Focus/Comms/Projects/Review). --ctx-tint = resting, --ctx-on =
-     hover/active (stronger). */
+  /* Contextual (mode-specific) tabs: tinted in the active mode's accent and set
+     off by a divider, vs the always-on core tabs (Today/Focus/Comms/Projects/
+     Review). --ctx-tint = resting, --ctx-on = hover/active (stronger). */
   body[data-mode="work"] { --ctx-tint: #7fb0ec; --ctx-on: #5d9cec; }
   body[data-mode="personal"] { --ctx-tint: #a7c0e8; --ctx-on: #8fb3e6; }
   .tab.tab-ctx:not(.active) { color: var(--ctx-tint, var(--navy-dim)); }
@@ -1090,13 +1089,6 @@
   .tab.tab-ctx.active { color: var(--ctx-on, var(--lime)); border-bottom-color: var(--ctx-on, var(--lime)); }
   .tab.tab-ctx-first { position: relative; margin-left: 10px; }
   .tab.tab-ctx-first::before { content: ''; position: absolute; left: -6px; top: 50%; transform: translateY(-50%); height: 16px; width: 1px; background: rgba(var(--edge-rgb), 0.2); }
-  /* Mode eyebrow label (Work / Personal) before the contextual group */
-  .tab-ctx-label { display: none; align-self: center; flex: none; position: relative; margin-left: 12px; padding: 3px 9px; border-radius: 999px; font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; color: var(--ctx-on, var(--navy-dim)); background: rgba(var(--edge-rgb), 0.06); }
-  .tab-ctx-label::before { content: ''; position: absolute; left: -7px; top: 50%; transform: translateY(-50%); height: 16px; width: 1px; background: rgba(var(--edge-rgb), 0.2); }
-  body[data-mode="work"] #tab-ctx-label, body[data-mode="personal"] #tab-ctx-label { display: inline-flex; }
-  /* When the label is shown it carries the divider, so drop the first-tab one */
-  body[data-mode="work"] .tab.tab-ctx-first::before, body[data-mode="personal"] .tab.tab-ctx-first::before { display: none; }
-  body[data-mode="work"] .tab.tab-ctx-first, body[data-mode="personal"] .tab.tab-ctx-first { margin-left: 4px; }
   .header { border-bottom-color: rgba(var(--edge-rgb), 0.1); }
   .tabs { border-bottom-color: rgba(var(--edge-rgb), 0.1); }
   .header-meta { color: var(--navy-dim); }
@@ -2790,7 +2782,6 @@ window.lrl = (function(){
     <button class="tab" data-tab="comms" data-modes="all,work,personal">Comms</button>
     <button class="tab" data-tab="projects" data-modes="all,work,personal">Projects</button>
     <button class="tab" data-tab="review" data-modes="all,work,personal">Review</button>
-    <span class="tab-ctx-label" id="tab-ctx-label" aria-hidden="true"></span>
     <button class="tab tab-ctx" data-tab="pipeline" data-modes="work">Sales</button>
     <button class="tab tab-ctx" data-tab="marketing" data-modes="work">Marketing</button>
     <button class="tab tab-ctx" data-tab="finance" data-modes="work">Finance</button>
@@ -5100,9 +5091,6 @@ function applyMode(){
   document.querySelectorAll('.tab.tab-ctx-first').forEach(t => t.classList.remove('tab-ctx-first'));
   const firstCtx = [...document.querySelectorAll('.tab.tab-ctx')].find(t => t.style.display !== 'none');
   if (firstCtx) firstCtx.classList.add('tab-ctx-first');
-  // Mode eyebrow label (Work / Personal); hidden in All mode via CSS
-  const ctxLabel = document.getElementById('tab-ctx-label');
-  if (ctxLabel) ctxLabel.textContent = mode === 'work' ? 'Work' : mode === 'personal' ? 'Personal' : '';
   // If active tab isn't visible, fall back to command
   const activeTab = document.querySelector('.tab.active');
   if (activeTab && activeTab.style.display === 'none'){
