@@ -628,7 +628,15 @@ async function fetchProjectsBoard() {
   const projects = [...workProjects, ...personalProjects];
   const areas = [...new Set(projects.flatMap((p) => p.areas))].sort();
   const systems = [...new Set(projects.flatMap((p) => p.systems))].sort();
-  return { projects, areas, systems };
+  // Assignable relation options (id + name) for the in-card editors / drag-drop.
+  const optList = (map) => Object.entries(map).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  const options = {
+    workArea: optList(workAreaMap),
+    system: optList(systemMap),
+    personalArea: optList(personalAreaMap),
+    hubs: optList(personalHubMap),
+  };
+  return { projects, areas, systems, options };
 }
 
 // GET /api/projects/board — everything the Projects tab needs.
@@ -648,7 +656,7 @@ app.get('/api/projects/board', async (req, res) => {
 app.patch('/api/projects/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { id } = req.params;
-  const { status, deadlineStart, deadlineEnd } = req.body || {};
+  const { status, deadlineStart, deadlineEnd, area, system, source } = req.body || {};
   try {
     const properties = {};
     if (status !== undefined) properties.Status = { status: { name: status } };
@@ -658,6 +666,12 @@ app.patch('/api/projects/:id', async (req, res) => {
         ? { date: { start: deadlineStart, end: deadlineEnd || null } }
         : { date: null };
     }
+    // Relation property names differ by DB: work uses AREA/SYSTEM, personal
+    // uses Area/HUBS (the Focus + Hubs dimensions). A null id clears it.
+    const areaProp = source === 'personal' ? 'Area' : 'AREA';
+    const systemProp = source === 'personal' ? 'HUBS' : 'SYSTEM';
+    if (area !== undefined) properties[areaProp] = { relation: area ? [{ id: area }] : [] };
+    if (system !== undefined) properties[systemProp] = { relation: system ? [{ id: system }] : [] };
     if (!Object.keys(properties).length) return res.status(400).json({ error: 'No supported fields to update' });
     await notion.pages.update({ page_id: id, properties });
     cache.delete('projects-board');

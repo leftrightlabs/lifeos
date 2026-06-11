@@ -2191,8 +2191,13 @@
   .proj-open-link { font-size: 12px; color: var(--navy-dim); cursor: pointer; font-weight: 600; }
   .proj-open-link:hover { color: var(--lime); }
   .proj-edit-panel { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; padding: 12px; background: rgba(var(--edge-rgb), 0.03); border-radius: 8px; }
+  .proj-edit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 12px; padding: 12px; background: rgba(var(--edge-rgb), 0.03); border-radius: 8px; }
   .proj-edit-field { display: flex; flex-direction: column; gap: 4px; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; }
   .proj-edit-field select, .proj-edit-field input { background: rgba(var(--edge-rgb), 0.05); border: 1px solid rgba(var(--edge-rgb), 0.12); color: var(--navy); border-radius: 7px; padding: 7px 10px; font: inherit; font-size: 13px; font-family: var(--font-body); }
+  /* Drag-and-drop between groups */
+  .proj-drag-ghost { opacity: 0.35; }
+  .proj-drag-chosen { box-shadow: 0 0 0 2px var(--lime); }
+  .proj-group-body { min-height: 8px; }
   .proj-empty { text-align: center; color: var(--navy-dim); padding: 40px 0; font-size: 14px; }
   /* Search box */
   .proj-search { position: relative; flex: 1 1 220px; min-width: 180px; }
@@ -7019,6 +7024,9 @@ document.addEventListener('visibilitychange', async () => {
   // (e.g. Created) parse normally.
   const parseDate = (iso) => { if (!iso) return null; const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(iso); };
   const fmtDate = (iso) => { const d = parseDate(iso); return d ? d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : ''; };
+  // Assignable relation options per source. work: AREA / SYSTEM; personal: Area(Focus) / HUBS.
+  const areaOptions = (source) => { const o = (P.data && P.data.options) || {}; return source === 'personal' ? (o.personalArea || []) : (o.workArea || []); };
+  const systemOptions = (source) => { const o = (P.data && P.data.options) || {}; return source === 'personal' ? (o.hubs || []) : (o.system || []); };
   let _loaded = false;
   const esc = (s) => (window.escapeHtml ? escapeHtml(String(s ?? '')) : String(s ?? ''));
   const statusClass = (s) => ({ 'Active':'active','Doing':'doing','Ongoing':'ongoing','Billing':'billing','Planned':'planned','On Hold':'onhold','Done':'done' }[s] || 'none');
@@ -7200,19 +7208,21 @@ document.addEventListener('visibilitychange', async () => {
     const prog = (pct != null)
       ? `<div class="proj-prog"><div class="proj-prog-track"><div class="proj-prog-fill" style="width:${pct}%"></div></div><span class="proj-prog-pct">${pct}% complete</span></div>`
       : '';
-    const opts = (STATUS_OPTS[p.source] || STATUS_OPTS.work).map((s) => `<option value="${esc(s)}" ${s === p.status ? 'selected' : ''}>${esc(s)}</option>`).join('');
+    const personal = p.source === 'personal';
+    const statusOpts = (STATUS_OPTS[p.source] || STATUS_OPTS.work).map((s) => `<option value="${esc(s)}" ${s === p.status ? 'selected' : ''}>${esc(s)}</option>`).join('');
+    const areaOpts = '<option value="">— none —</option>' + areaOptions(p.source).map((o) => `<option value="${esc(o.id)}" ${o.name === p.area ? 'selected' : ''}>${esc(o.name)}</option>`).join('');
+    const sysOpts = '<option value="">— none —</option>' + systemOptions(p.source).map((o) => `<option value="${esc(o.id)}" ${o.name === p.system ? 'selected' : ''}>${esc(o.name)}</option>`).join('');
     return `<div class="proj-card-body">
       ${prog}
       <div class="proj-tasks-label">Tasks</div>
       ${taskBreakdownHTML(p.taskMeta)}
-      <div class="proj-card-actions">
-        <button class="proj-edit-btn" data-edit-toggle>✎ Edit dates &amp; status</button>
-        <span class="proj-open-link" data-url="${esc(p.url)}">Open in Notion ↗</span>
-      </div>
-      <div class="proj-edit-panel" data-edit-panel hidden>
-        <label class="proj-edit-field">Status <select class="proj-edit-status">${opts}</select></label>
+      <div class="proj-edit-grid">
+        <label class="proj-edit-field">Status <select class="proj-edit-status">${statusOpts}</select></label>
         <label class="proj-edit-field">Deadline <input type="date" class="proj-edit-deadline" value="${(p.end || '').slice(0, 10)}"></label>
+        <label class="proj-edit-field">${personal ? 'Focus' : 'Area'} <select class="proj-edit-area">${areaOpts}</select></label>
+        <label class="proj-edit-field">${personal ? 'Hubs' : 'System'} <select class="proj-edit-system">${sysOpts}</select></label>
       </div>
+      <div class="proj-card-actions"><span class="proj-open-link" data-url="${esc(p.url)}">Open in Notion ↗</span></div>
     </div>`;
   }
 
@@ -7251,8 +7261,46 @@ document.addEventListener('visibilitychange', async () => {
       if (de){ p.start = ds; p.end = de; p.rangeStart = ds; }          // range
       else { p.rangeStart = null; p.start = p.created; p.end = ds || p.due || null; } // single date
     }
+    if ('area' in changes){ const o = areaOptions(p.source).find((x) => x.id === changes.area); p.area = o ? o.name : null; p.areas = o ? [o.name] : []; }
+    if ('system' in changes){ const o = systemOptions(p.source).find((x) => x.id === changes.system); p.system = o ? o.name : null; p.systems = o ? [o.name] : []; }
     const t = new Date(); t.setHours(0,0,0,0);
     p.atRisk = !!p.end && p.status !== 'Done' && new Date(p.end).getTime() < t.getTime();
+  }
+  // Drag a card to another group → reassign whatever's being grouped.
+  function applyDrop(id, src, key){
+    if (P.groupBy === 'status'){
+      if (/^No /.test(key)) { renderResults(); return; }
+      patchProject(id, { status: key });
+    } else if (P.groupBy === 'area'){
+      const opt = /^No /.test(key) ? null : areaOptions(src).find((o) => o.name === key);
+      patchProject(id, { area: opt ? opt.id : null, source: src });
+    } else if (P.groupBy === 'system'){
+      const opt = /^No /.test(key) ? null : systemOptions(src).find((o) => o.name === key);
+      patchProject(id, { system: opt ? opt.id : null, source: src });
+    } else { renderResults(); }
+  }
+  // Make each group's body a drop zone (status/area/system, single-source modes
+  // only — in ALL mode a target group's meaning is ambiguous across DBs).
+  function attachGroupSortables(root){
+    if (typeof Sortable === 'undefined') return;
+    const can = curMode() !== 'all' && ['status','area','system'].includes(P.groupBy);
+    if (!can) return;
+    root.querySelectorAll('.proj-group-body').forEach((body) => {
+      if (body._sortable) { try { body._sortable.destroy(); } catch (_) {} body._sortable = null; }
+      body._sortable = Sortable.create(body, {
+        group: 'projcards', draggable: '.proj-row', handle: '.proj-card-head',
+        filter: '[data-edit-status], [data-edit-date], .proj-avatars, select, input, button, a',
+        preventOnFilter: false, delay: 300, delayOnTouchOnly: true, touchStartThreshold: 8,
+        animation: 200, fallbackOnBody: true, ghostClass: 'proj-drag-ghost', chosenClass: 'proj-drag-chosen',
+        onStart: () => window.lrl?.haptic?.('success'),
+        onEnd: (evt) => {
+          if (evt.from === evt.to) return; // reorder within a group → ignore
+          const id = evt.item?.dataset.id, src = evt.item?.dataset.source;
+          const key = evt.to.closest('.proj-group')?.dataset.groupKey;
+          if (id && key) applyDrop(id, src, key);
+        },
+      });
+    });
   }
   // Editing the card's date changes the END/deadline. A ranged project keeps
   // its start; a single-date project just moves its one date.
@@ -7358,9 +7406,11 @@ document.addEventListener('visibilitychange', async () => {
     }));
     r.querySelectorAll('[data-edit-status]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); startStatusEdit(el); }));
     r.querySelectorAll('[data-edit-date]').forEach((el) => el.addEventListener('click', (e) => { e.stopPropagation(); startDateEdit(el); }));
-    r.querySelectorAll('[data-edit-toggle]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); const panel = b.closest('.proj-card-body').querySelector('[data-edit-panel]'); if (panel) panel.hidden = !panel.hidden; }));
     r.querySelectorAll('.proj-edit-status').forEach((sel) => sel.addEventListener('change', () => { patchProject(sel.closest('.proj-row').dataset.id, { status: sel.value }); }));
     r.querySelectorAll('.proj-edit-deadline').forEach((inp) => inp.addEventListener('change', () => { commitDeadline(inp.closest('.proj-row').dataset.id, inp.value || null); }));
+    r.querySelectorAll('.proj-edit-area').forEach((sel) => sel.addEventListener('change', () => { const c = sel.closest('.proj-row'); patchProject(c.dataset.id, { area: sel.value || null, source: c.dataset.source }); }));
+    r.querySelectorAll('.proj-edit-system').forEach((sel) => sel.addEventListener('change', () => { const c = sel.closest('.proj-row'); patchProject(c.dataset.id, { system: sel.value || null, source: c.dataset.source }); }));
+    attachGroupSortables(r);
   }
 
   function maybeLoadProjects(){ if (_loaded) return; _loaded = true; load(); }
