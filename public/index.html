@@ -2264,6 +2264,9 @@
   .mkt-kpi.alert .k-num { color: #ff7a6b; }
   .mkt-kpi.today .k-num { color: var(--lime); }
   .mkt-kpi.okr .k-num { color: var(--lime); }
+  .mkt-kpi[data-mkt-kpi] { cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+  .mkt-kpi[data-mkt-kpi]:hover { border-color: rgba(var(--edge-rgb), 0.22); background: rgba(var(--edge-rgb), 0.06); }
+  .mkt-kpi-list-title { font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--lime); text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 16px; }
   .mkt-kpis-okr { grid-template-columns: repeat(3, 1fr); }
   .mkt-strip-label { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; margin: 4px 2px 8px; }
   @container mktbody (max-width: 560px) { .mkt-kpis { grid-template-columns: repeat(2, 1fr); } .mkt-kpis-okr { grid-template-columns: repeat(3, 1fr); } }
@@ -7735,10 +7738,10 @@ document.addEventListener('visibilitychange', async () => {
 
     const opLabel = `<div class="mkt-strip-label">Right Now</div>`;
     const kpis = `<div class="mkt-kpis">
-      <div class="mkt-kpi ${overdueN?'alert':''}"><div class="k-num">${overdueN}</div><div class="k-lab">Overdue</div></div>
-      <div class="mkt-kpi today"><div class="k-num">${todayN}</div><div class="k-lab">Due Today</div></div>
-      <div class="mkt-kpi"><div class="k-num">${week.length}</div><div class="k-lab">This Week</div></div>
-      <div class="mkt-kpi"><div class="k-num">${pubToday}</div><div class="k-lab">Published Today</div></div>
+      <div class="mkt-kpi ${overdueN?'alert':''}" data-mkt-kpi="overdue"><div class="k-num">${overdueN}</div><div class="k-lab">Overdue</div></div>
+      <div class="mkt-kpi today" data-mkt-kpi="today"><div class="k-num">${todayN}</div><div class="k-lab">Due Today</div></div>
+      <div class="mkt-kpi" data-mkt-kpi="week"><div class="k-num">${week.length}</div><div class="k-lab">This Week</div></div>
+      <div class="mkt-kpi" data-mkt-kpi="published"><div class="k-num">${pubToday}</div><div class="k-lab">Published Today</div></div>
     </div>`;
 
     const queueInner = q.length ? q.map(([b,a])=>cardHtml(a,b)).join('') : '<div class="mkt-empty">Nothing to publish right now — you\'re all caught up. 🎉</div>';
@@ -7770,6 +7773,32 @@ document.addEventListener('visibilitychange', async () => {
   }
   function closeMktModal(){ document.getElementById('mkt-modal').classList.remove('open'); document.body.style.overflow=''; }
 
+  function openMktKpiList(kpi){
+    const d = MKT.data || {};
+    const q = queueAssets();
+    const labels = { overdue:'Overdue', today:'Due Today', week:'This Week', published:'Published Today' };
+    let assets = [];
+    if (kpi==='overdue')   assets = q.filter(([b])=>b==='overdue').map(([,a])=>a);
+    else if (kpi==='today')     assets = q.filter(([b])=>b==='today').map(([,a])=>a);
+    else if (kpi==='week')      assets = d.thisWeek||[];
+    else if (kpi==='published') assets = d.publishedToday||[];
+    const rows = assets.length
+      ? assets.map(a=>`<div class="mkt-row" data-mkt-open="${a.id}" style="cursor:pointer">
+          <span class="mkt-row-date">${dateChip(a.publishDate)}</span>
+          <span class="mkt-row-name">${mEsc(a.name)}</span>
+          <span class="mkt-status ${statusCls(a.status)}">${mEsc(a.status||'—')}</span>
+        </div>`).join('')
+      : '<div class="mkt-empty" style="padding:20px 0">Nothing here right now.</div>';
+    const el = document.getElementById('mkt-modal-content');
+    el.innerHTML = `<button class="mkt-modal-close" data-mkt-close>×</button>
+      <div style="padding:20px 24px 24px">
+        <div class="mkt-kpi-list-title">${mEsc(labels[kpi]||kpi)}</div>
+        ${rows}
+      </div>`;
+    document.getElementById('mkt-modal').classList.add('open');
+    document.body.style.overflow='hidden';
+  }
+
   async function mktPatch(id, payload){
     const r = await fetch('/api/marketing/asset/'+id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
     if (!r.ok){ const j=await r.json().catch(()=>({})); throw new Error(j.error||'save failed'); }
@@ -7779,6 +7808,9 @@ document.addEventListener('visibilitychange', async () => {
   // ---- delegated events (covers body + modal) ----
   document.addEventListener('click', async (e)=>{
     const t = e.target;
+    // KPI filter list
+    const kpiEl = t.closest('[data-mkt-kpi]');
+    if (kpiEl){ openMktKpiList(kpiEl.dataset.mktKpi); return; }
     // section collapse
     const tog = t.closest('[data-mkt-toggle]');
     if (tog){ const k=tog.dataset.mktToggle; MKT.collapsed[k]=!MKT.collapsed[k]; try{localStorage.setItem(COLLAPSE_KEY,JSON.stringify(MKT.collapsed));}catch(_){}; tog.closest('.mkt-section').classList.toggle('collapsed'); return; }
