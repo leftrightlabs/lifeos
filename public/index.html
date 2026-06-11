@@ -383,10 +383,8 @@
   @media (max-width: 760px) {
     .fin-grid-revenue, .fin-grid-cash, .fin-grid-net { grid-template-columns: 1fr; }
   }
-  .fin-capacity { background: linear-gradient(135deg, var(--white), rgba(167,193,64,0.04)); border: 1px solid rgba(167,193,64,0.25); border-left: 3px solid var(--lime); border-radius: 12px; padding: 16px 18px; }
-  .fin-capacity.short { border-color: rgba(255,122,107,0.35); border-left-color: #ff7a6b; background: linear-gradient(135deg, var(--white), rgba(255,122,107,0.05)); }
+  .fin-capacity { background: var(--white); border: none; border-radius: 12px; padding: 16px 18px; }
   .fin-capacity.short .fin-cap-months, .fin-capacity.short .fin-cap-bar-fill { color: #ff7a6b; background: #ff7a6b; }
-  .fin-capacity.warning { border-color: rgba(212,168,84,0.35); border-left-color: #d4a854; background: linear-gradient(135deg, var(--white), rgba(212,168,84,0.04)); }
   .fin-capacity.warning .fin-cap-months, .fin-capacity.warning .fin-cap-bar-fill { color: #d4a854; background: #d4a854; }
   .fin-cap-label { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(var(--ink-rgb), 0.55); font-weight: 800; }
   .fin-cap-row { display: flex; align-items: baseline; gap: 14px; margin: 8px 0 4px; flex-wrap: wrap; }
@@ -403,20 +401,14 @@
   .fin-cap-warn { font-size: 12px; color: #d4a854; margin-top: 8px; }
 
   .fin-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 18px; }
-  .fin-kpi { background: var(--white); border: 1px solid rgba(var(--edge-rgb), 0.06); border-radius: 10px; padding: 14px 16px; border-top: 3px solid var(--lime); }
-  .fin-kpi.cash { border-top-color: var(--lime); }
-  .fin-kpi.runway { border-top-color: #5d9cec; }
-  .fin-kpi.runway.short { border-top-color: #ff7a6b; }
+  .fin-kpi { background: var(--white); border: none; border-radius: 10px; padding: 14px 16px; }
   .fin-kpi.runway.short .fin-kpi-value { color: #ff7a6b; }
-  .fin-kpi.revenue { border-top-color: #818cf8; }
-  .fin-kpi.net { border-top-color: #c084fc; }
-  .fin-kpi.net.negative { border-top-color: #ff7a6b; }
   .fin-kpi.net.negative .fin-kpi-value { color: #ff7a6b; }
   .fin-kpi-label { font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(var(--ink-rgb), 0.55); font-weight: 700; margin-bottom: 8px; }
   .fin-kpi-value { font-family: var(--font-display); font-size: 26px; color: var(--navy); font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
   .fin-kpi-value .unit { font-size: 13px; color: rgba(var(--ink-rgb), 0.5); font-weight: 500; margin-left: 4px; font-family: var(--font-body); letter-spacing: 0; }
   .fin-kpi-meta { font-size: 11.5px; color: rgba(var(--ink-rgb), 0.55); margin-top: 6px; }
-  .fin-card { background: var(--white); border: 1px solid rgba(var(--edge-rgb), 0.06); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
+  .fin-card { background: var(--white); border: none; border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
   .fin-card-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
   .fin-card-title { font-family: var(--font-body); font-size: 11px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(var(--ink-rgb), 0.65); }
   .fin-card-meta { font-size: 11px; color: rgba(var(--ink-rgb), 0.45); }
@@ -466,7 +458,7 @@
   .privacy-on .fin-kpi-bar:active { filter: blur(0); }
 
   /* Accounts group cards (Bank / Credit) */
-  .fin-accounts-group { background: var(--white); border: 1px solid rgba(var(--edge-rgb), 0.06); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+  .fin-accounts-group { background: var(--white); border: none; border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
   .fin-accounts-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; cursor: pointer; gap: 12px; }
   .fin-accounts-head:hover { background: rgba(var(--edge-rgb), 0.02); }
   .fin-accounts-toggle { background: transparent; border: none; color: rgba(var(--ink-rgb), 0.65); font-family: var(--font-body); font-size: 11px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
@@ -2846,7 +2838,7 @@ window.lrl = (function(){
 
     <div class="daily-brief" id="daily-brief">
       <div class="daily-brief-kicker">
-        <button class="daily-brief-toggle" id="brief-toggle" title="Collapse/expand"><span id="brief-collapse-caret">▾</span> Tasks <span id="brief-bucket" style="opacity:0.6;font-weight:500;text-transform:lowercase;letter-spacing:0.05em;font-size:0.75em"></span></button>
+        <button class="daily-brief-toggle" id="brief-toggle" title="Collapse/expand"><span id="brief-collapse-caret">▾</span> Current Focus <span id="brief-bucket" style="opacity:0.6;font-weight:500;text-transform:lowercase;letter-spacing:0.05em;font-size:0.75em"></span></button>
         <div class="daily-brief-right">
           <span class="brief-weather" id="brief-weather" title="Euless, TX" style="display:none"></span>
           <button class="daily-brief-refresh" id="brief-refresh" title="Regenerate based on current time">↻</button>
