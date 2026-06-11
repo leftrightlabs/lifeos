@@ -3782,7 +3782,15 @@ async function fetchDailyBrief(force){
       if (el) { el.textContent = d.error; el.classList.remove('daily-brief-loading'); el.classList.add('daily-brief-err'); }
     } else {
       DAILY_BRIEF = d.brief || '';
-      if (el) { el.textContent = DAILY_BRIEF; el.classList.remove('daily-brief-loading'); }
+      if (el) {
+        el.classList.remove('daily-brief-loading');
+        if (document.documentElement.classList.contains('privacy-on')) {
+          el.dataset.real = DAILY_BRIEF;
+          el.textContent = BRIEF_PRIVACY_PLACEHOLDER;
+        } else {
+          el.textContent = DAILY_BRIEF;
+        }
+      }
       if (bucketEl && d.bucket) bucketEl.textContent = '· ' + d.bucket;
     }
   } catch (e) {
@@ -5037,10 +5045,23 @@ function openExternalSafe(url){
 window.openExternalSafe = openExternalSafe;
 
 // ===== Privacy mode (blur sensitive data) =====
+const BRIEF_PRIVACY_PLACEHOLDER = "Your current focus is being shaped by your calendar, tasks, and priorities for this time of day. Disable privacy mode to see your personalized daily brief.";
 window.setPrivacy = function(on){
   document.documentElement.classList.toggle('privacy-on', !!on);
   document.body.classList.toggle('privacy-on', !!on);
   try { localStorage.setItem('lrl-privacy', on ? '1' : '0'); } catch(e){}
+  const briefEl = document.getElementById('brief-text');
+  if (briefEl) {
+    if (on) {
+      if (!briefEl.dataset.real) briefEl.dataset.real = briefEl.innerHTML;
+      briefEl.textContent = BRIEF_PRIVACY_PLACEHOLDER;
+    } else {
+      if (briefEl.dataset.real) {
+        briefEl.innerHTML = briefEl.dataset.real;
+        delete briefEl.dataset.real;
+      }
+    }
+  }
 };
 window.togglePrivacy = function(){
   const on = !document.documentElement.classList.contains('privacy-on');
