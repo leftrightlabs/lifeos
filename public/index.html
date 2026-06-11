@@ -2801,6 +2801,19 @@ window.lrl = (function(){
     <h1 class="page-title"><span>Today</span></h1>
     <div class="page-subtitle">Your quarterly game board. Where you are, what's next, and whether you're on the right path.</div>
 
+    <div class="daily-brief" id="daily-brief">
+      <div class="daily-brief-kicker">
+        <button class="daily-brief-toggle" id="brief-toggle" title="Collapse/expand"><span id="brief-collapse-caret">▾</span> Daily Focus <span id="brief-bucket" style="opacity:0.6;font-weight:500;text-transform:lowercase;letter-spacing:0.05em"></span></button>
+        <div class="daily-brief-right">
+          <span class="brief-weather" id="brief-weather" title="Euless, TX" style="display:none"></span>
+          <button class="daily-brief-refresh" id="brief-refresh" title="Regenerate based on current time">↻ Refresh</button>
+        </div>
+      </div>
+      <div id="brief-body">
+        <div class="daily-brief-text daily-brief-loading" id="brief-text">Composing your focus…</div>
+      </div>
+    </div>
+
     <div class="chapter-panel" id="chapter-panel">
       <div class="chapter-header">
         <div style="flex:1">
@@ -2818,19 +2831,6 @@ window.lrl = (function(){
       <div class="chapter-meta">
         <span id="rocks-summary">2 of 4 rocks complete</span>
         <span id="rocks-pct"></span>
-      </div>
-    </div>
-
-    <div class="daily-brief" id="daily-brief">
-      <div class="daily-brief-kicker">
-        <button class="daily-brief-toggle" id="brief-toggle" title="Collapse/expand"><span id="brief-collapse-caret">▾</span> Daily Focus <span id="brief-bucket" style="opacity:0.6;font-weight:500;text-transform:lowercase;letter-spacing:0.05em"></span></button>
-        <div class="daily-brief-right">
-          <span class="brief-weather" id="brief-weather" title="Euless, TX" style="display:none"></span>
-          <button class="daily-brief-refresh" id="brief-refresh" title="Regenerate based on current time">↻ Refresh</button>
-        </div>
-      </div>
-      <div id="brief-body">
-        <div class="daily-brief-text daily-brief-loading" id="brief-text">Composing your focus…</div>
       </div>
     </div>
 
