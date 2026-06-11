@@ -26,6 +26,7 @@ const LIFE_PROJECTS_DS = '265458f08cd9814eaf0e000bceaa7f80';
 const PROJECT_AREA_DS = 'd5b03c5c-9322-4345-91ea-f5731bf6d141';   // work AREA relation target
 const PROJECT_SYSTEM_DS = 'af61f960-9aa0-46ce-996f-74090f39635f'; // work SYSTEM relation target
 const PERSONAL_AREA_DS = '25a458f0-8cd9-8168-873c-000bc5960b8f';  // personal Area relation target
+const PERSONAL_HUBS_DS = '265458f0-8cd9-819f-b45b-000b7b361a6b';  // personal HUBS relation target
 const JOURNAL_DS = '25a458f08cd9804bb6d1000b78cb4186';
 const JOURNAL_DB_ID = '25a458f08cd980f9991af90b30ec68d8';
 const CACHE_TTL_MS = 60_000;
@@ -535,10 +536,11 @@ async function fetchRelationNameMap(dsId) {
 // SYSTEM, no Due, owners come from a relation (and aren't shown anyway).
 async function fetchProjectsBoard() {
   if (!notion) return { projects: [], areas: [], systems: [] };
-  const [workAreaMap, systemMap, personalAreaMap] = await Promise.all([
+  const [workAreaMap, systemMap, personalAreaMap, personalHubMap] = await Promise.all([
     fetchRelationNameMap(PROJECT_AREA_DS).catch(() => ({})),
     fetchRelationNameMap(PROJECT_SYSTEM_DS).catch(() => ({})),
     fetchRelationNameMap(PERSONAL_AREA_DS).catch(() => ({})),
+    fetchRelationNameMap(PERSONAL_HUBS_DS).catch(() => ({})),
   ]);
   const queryAll = async (dsId) => {
     const pages = [];
@@ -606,7 +608,7 @@ async function fetchProjectsBoard() {
       pr['Target Deadline']?.date?.start || null,
       null, // personal DB has no Due property
       (pr.Area?.relation || []).map((r) => personalAreaMap[r.id]).filter(Boolean),
-      [],   // personal DB has no SYSTEM
+      (pr.HUBS?.relation || []).map((r) => personalHubMap[r.id]).filter(Boolean), // personal "System" = Hubs
       [],   // personal projects don't surface owner avatars
     );
   });
