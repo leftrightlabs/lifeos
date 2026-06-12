@@ -514,6 +514,27 @@ app.post('/api/tasks', async (req, res) => {
   }
 });
 
+// POST /api/reminders/sync — called by iOS Shortcut to push a single Reminder
+// into the personal Notion tasks database.
+app.post('/api/reminders/sync', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  const { title, notes, dueDate } = req.body || {};
+  if (!title) return res.status(400).json({ error: 'title is required' });
+  try {
+    const result = await createNotionTask({
+      source: 'personal',
+      name: String(title).trim(),
+      body: notes ? String(notes).trim() : undefined,
+      dueStart: dueDate ? String(dueDate).trim() : undefined,
+      status: 'Planned',
+    });
+    invalidateTaskCaches();
+    res.json({ ok: true, id: result.id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/projects — active (non-archived) work + personal projects for the
 // task project selector. [{ id, source: 'work'|'personal', name }]
 app.get('/api/projects', async (req, res) => {
