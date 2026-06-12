@@ -754,6 +754,17 @@ app.patch('/api/tasks/:id', async (req, res) => {
   }
 });
 
+app.delete('/api/tasks/:id', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    await notion.pages.update({ page_id: dashifyId(req.params.id), archived: true });
+    invalidateTaskCaches();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/tasks/all', async (_req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
