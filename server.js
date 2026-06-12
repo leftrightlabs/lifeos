@@ -917,6 +917,50 @@ app.post('/api/comms/reply', async (req, res) => {
   }
 });
 
+// Trash a single message
+app.delete('/api/comms/message/:id', async (req, res) => {
+  const { id } = req.params;
+  const account = req.query.account || 'work';
+  const accounts = configuredAccounts();
+  const target = accounts.includes(account) ? account : accounts[0];
+  if (!target) return res.status(500).json({ error: 'No account configured' });
+  try {
+    const auth = authedClient(target);
+    const gmail = google.gmail({ version: 'v1', auth });
+    await gmail.users.messages.trash({ userId: 'me', id });
+    for (const k of [...cache.keys()].filter(k => k.startsWith('gmail-'))) cache.delete(k);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Trash multiple messages
+app.post('/api/comms/messages/trash-batch', async (req, res) => {
+  const { items } = req.body || {};
+  if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'items required' });
+  try {
+    const accounts = configuredAccounts();
+    const byAccount = {};
+    for (const { id, account } of items) {
+      const target = (account && accounts.includes(account)) ? account : accounts[0];
+      if (!byAccount[target]) byAccount[target] = [];
+      byAccount[target].push(id);
+    }
+    await Promise.all(
+      Object.entries(byAccount).flatMap(([target, ids]) => {
+        const auth = authedClient(target);
+        const gmail = google.gmail({ version: 'v1', auth });
+        return ids.map(id => gmail.users.messages.trash({ userId: 'me', id }));
+      })
+    );
+    for (const k of [...cache.keys()].filter(k => k.startsWith('gmail-'))) cache.delete(k);
+    res.json({ ok: true, trashed: items.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 async function fetchToday(account) {
   const auth = authedClient(account);
   if (!auth) return [];
