@@ -1248,6 +1248,15 @@
   .comms-batch-btn-trash:hover { opacity: 0.85; }
   .comms-batch-btn-cancel { background: transparent; color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.2); }
   .comms-batch-btn-cancel:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+  .comms-batch-btn-archive { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.25); }
+  .comms-batch-btn-archive:hover { background: rgba(255,255,255,0.2); }
+  .msg-panel-archive { background: transparent; border: none; color: var(--navy-dim); font-size: 13px; font-weight: 700; letter-spacing: 0.04em; cursor: pointer; padding: 4px 10px; border: 1px solid var(--navy-faint); border-radius: 6px; transition: color 0.15s, border-color 0.15s; }
+  .msg-panel-archive:hover { color: var(--lime); border-color: var(--lime); }
+  .msg-reply-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+  .msg-reply-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy-dim); margin-bottom: 0; }
+  .msg-reply-generate { background: transparent; border: 1px solid var(--lime); color: var(--lime); border-radius: 6px; padding: 3px 10px; font-size: 11.5px; font-weight: 700; cursor: pointer; letter-spacing: 0.03em; transition: background 0.15s; }
+  .msg-reply-generate:hover { background: rgba(var(--lime-rgb,167,193,64),0.1); }
+  .msg-reply-generate:disabled { opacity: 0.5; cursor: not-allowed; }
   @media (max-width: 600px) { .msg-panel-sheet { max-width: 100%; } }
 
   /* === AUTOFOCUS TOOL — scoped to .autofocus-app ===
@@ -3169,6 +3178,7 @@ window.lrl = (function(){
       <span class="comms-batch-bar-count" id="comms-batch-count">0 selected</span>
       <div class="comms-batch-bar-actions">
         <button class="comms-batch-btn comms-batch-btn-cancel" id="comms-batch-cancel">Cancel</button>
+        <button class="comms-batch-btn comms-batch-btn-archive" id="comms-batch-archive">Archive selected</button>
         <button class="comms-batch-btn comms-batch-btn-trash" id="comms-batch-trash">🗑 Delete selected</button>
       </div>
     </div>
@@ -3206,6 +3216,7 @@ window.lrl = (function(){
         <div class="msg-panel-toolbar">
           <button class="msg-panel-close" id="msg-panel-close" title="Close">×</button>
           <button class="msg-panel-trash" id="msg-panel-trash" title="Move to trash">🗑</button>
+          <button class="msg-panel-archive" id="msg-panel-archive" title="Archive">Archive ↓</button>
           <a class="msg-panel-open-link" id="msg-panel-open-link" href="#" target="_blank" rel="noopener">Open in Gmail ↗</a>
         </div>
         <div class="msg-panel-subject" id="msg-panel-subject"></div>
@@ -3213,7 +3224,10 @@ window.lrl = (function(){
       </div>
       <div class="msg-panel-body" id="msg-panel-body"></div>
       <div class="msg-reply">
-        <div class="msg-reply-label">Reply</div>
+        <div class="msg-reply-header">
+          <div class="msg-reply-label">Reply</div>
+          <button class="msg-reply-generate" id="msg-reply-generate">✦ Generate draft</button>
+        </div>
         <textarea class="msg-reply-textarea" id="msg-reply-textarea" placeholder="Write your reply…"></textarea>
         <div class="msg-reply-actions">
           <button class="msg-reply-btn msg-reply-discard" id="msg-reply-discard">Discard</button>
@@ -5528,6 +5542,82 @@ function closeMsgPanel() {
   _msgPanelData = null;
 }
 
+async function archiveCommsMessage(id, account) {
+  try {
+    const r = await fetch(`/api/comms/message/${encodeURIComponent(id)}/archive`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account: account || 'work' }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Archive failed');
+    COMMS_DATA = COMMS_DATA.filter(x => x.id !== id);
+    window.COMMS_DATA = COMMS_DATA;
+    selectedMsgIds.delete(id);
+    renderComms();
+    window.lrl?.toast('Archived', 'success');
+  } catch(err) {
+    window.lrl?.toast('Could not archive: ' + err.message, 'error');
+  }
+}
+
+async function archiveBatchMessages() {
+  const items = [...selectedMsgIds].map(id => {
+    const c = COMMS_DATA.find(x => x.id === id);
+    return { id, account: c?.account || 'work' };
+  });
+  if (!items.length) return;
+  const btn = document.getElementById('comms-batch-archive');
+  if (btn) { btn.disabled = true; btn.textContent = 'Archiving…'; }
+  try {
+    const r = await fetch('/api/comms/messages/archive-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Archive failed');
+    const archivedIds = new Set(items.map(x => x.id));
+    COMMS_DATA = COMMS_DATA.filter(x => !archivedIds.has(x.id));
+    window.COMMS_DATA = COMMS_DATA;
+    selectedMsgIds.clear();
+    renderComms();
+    window.lrl?.toast(`${d.archived} message${d.archived === 1 ? '' : 's'} archived`, 'success');
+  } catch(err) {
+    window.lrl?.toast('Could not archive: ' + err.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Archive selected'; }
+  }
+}
+
+async function generateCommsReply() {
+  const btn = document.getElementById('msg-reply-generate');
+  const textarea = document.getElementById('msg-reply-textarea');
+  if (!_msgPanelData || !btn || !textarea) return;
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  try {
+    const d = _msgPanelData;
+    const r = await fetch('/api/comms/draft-reply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: d.subject,
+        from: d.from?.name ? `${d.from.name} <${d.from.email}>` : (d.from?.email || d.fromEmail || ''),
+        bodyText: d.bodyText || d.snippet || '',
+      }),
+    });
+    const result = await r.json();
+    if (result.error) throw new Error(result.error);
+    textarea.value = result.draft;
+    textarea.focus();
+  } catch(err) {
+    window.lrl?.toast('Could not generate draft: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✦ Generate draft';
+  }
+}
+
 async function trashCommsMessage(id, account) {
   try {
     const r = await fetch(`/api/comms/message/${encodeURIComponent(id)}?account=${encodeURIComponent(account||'work')}`, { method: 'DELETE' });
@@ -5615,10 +5705,18 @@ document.addEventListener('DOMContentLoaded', () => {
     closeMsgPanel();
     await trashCommsMessage(id, account);
   });
+  document.getElementById('msg-panel-archive')?.addEventListener('click', async () => {
+    if (!_msgPanelData) return;
+    const { id, account } = _msgPanelData;
+    closeMsgPanel();
+    await archiveCommsMessage(id, account);
+  });
+  document.getElementById('msg-reply-generate')?.addEventListener('click', generateCommsReply);
   document.getElementById('comms-batch-cancel')?.addEventListener('click', () => {
     selectedMsgIds.clear();
     updateBatchBar();
   });
+  document.getElementById('comms-batch-archive')?.addEventListener('click', archiveBatchMessages);
   document.getElementById('comms-batch-trash')?.addEventListener('click', trashBatchMessages);
   // Keyboard: Escape closes the panel
   document.addEventListener('keydown', e => {

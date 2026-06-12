@@ -935,6 +935,78 @@ app.delete('/api/comms/message/:id', async (req, res) => {
   }
 });
 
+// Archive a single message (remove INBOX label)
+app.post('/api/comms/message/:id/archive', async (req, res) => {
+  const { id } = req.params;
+  const account = req.body?.account || req.query.account || 'work';
+  const accounts = configuredAccounts();
+  const target = accounts.includes(account) ? account : accounts[0];
+  if (!target) return res.status(500).json({ error: 'No account configured' });
+  try {
+    const auth = authedClient(target);
+    const gmail = google.gmail({ version: 'v1', auth });
+    await gmail.users.messages.modify({ userId: 'me', id, requestBody: { removeLabelIds: ['INBOX'] } });
+    for (const k of [...cache.keys()].filter(k => k.startsWith('gmail-'))) cache.delete(k);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Archive multiple messages
+app.post('/api/comms/messages/archive-batch', async (req, res) => {
+  const { items } = req.body || {};
+  if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'items required' });
+  try {
+    const accounts = configuredAccounts();
+    const byAccount = {};
+    for (const { id, account } of items) {
+      const target = (account && accounts.includes(account)) ? account : accounts[0];
+      if (!byAccount[target]) byAccount[target] = [];
+      byAccount[target].push(id);
+    }
+    await Promise.all(
+      Object.entries(byAccount).flatMap(([target, ids]) => {
+        const auth = authedClient(target);
+        const gmail = google.gmail({ version: 'v1', auth });
+        return ids.map(id => gmail.users.messages.modify({ userId: 'me', id, requestBody: { removeLabelIds: ['INBOX'] } }));
+      })
+    );
+    for (const k of [...cache.keys()].filter(k => k.startsWith('gmail-'))) cache.delete(k);
+    res.json({ ok: true, archived: items.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// AI draft reply
+app.post('/api/comms/draft-reply', async (req, res) => {
+  if (!anthropic) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+  const { subject, from, bodyText } = req.body || {};
+  if (!bodyText && !subject) return res.status(400).json({ error: 'Message content required' });
+  try {
+    const userPrompt = [
+      'Write a reply to this email on behalf of Gretchen Cawthon, Integrator at Left Right Labs.',
+      'Match the tone of the original. Be concise and direct — 2–4 sentences is usually right.',
+      'Return ONLY the reply body. No greeting like "Dear X:", no subject line, no full signature.',
+      '',
+      `From: ${from || '(unknown)'}`,
+      `Subject: ${subject || '(none)'}`,
+      '',
+      (bodyText || '').slice(0, 3000),
+    ].join('\n');
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 400,
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+    const draft = msg.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    res.json({ draft });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Trash multiple messages
 app.post('/api/comms/messages/trash-batch', async (req, res) => {
   const { items } = req.body || {};
