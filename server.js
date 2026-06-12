@@ -503,10 +503,10 @@ app.get('/api/goals', async (req, res) => {
 
 app.post('/api/tasks', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  const { source, name, status, priority, myDay, dueStart, projectId } = req.body || {};
+  const { source, name, status, priority, myDay, dueStart, projectId, taskBody } = req.body || {};
   if (!source || !name) return res.status(400).json({ error: 'source and name are required' });
   try {
-    const result = await createNotionTask({ source, name, status, priority, myDay, dueStart, projectId: projectId || undefined });
+    const result = await createNotionTask({ source, name, status, priority, myDay, dueStart, projectId: projectId || undefined, body: taskBody || undefined });
     invalidateTaskCaches();
     res.json({ ok: true, id: result.id, url: result.url });
   } catch (err) {
@@ -932,6 +932,60 @@ app.delete('/api/comms/message/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// AI-assisted task suggestion from an email
+const TASK_ACTIVE_STATUSES = ['Planned', 'Active', 'Ongoing', 'Billing', 'Doing'];
+app.post('/api/comms/suggest-task', async (req, res) => {
+  const { subject, from, bodyText, account } = req.body || {};
+  const source = account === 'personal' ? 'personal' : 'work';
+  try {
+    const allProjects = await cached('projects-list', fetchActiveProjects);
+    const projects = allProjects.filter(p => p.source === source && TASK_ACTIVE_STATUSES.includes(p.status));
+    const projectList = projects.length
+      ? projects.map(p => `${p.id}\t${p.name}`).join('\n')
+      : '(no active projects)';
+    let taskName = subject ? `Follow up: ${subject}` : 'Email task';
+    let projectId = null, projectName = null;
+    if (anthropic) {
+      const prompt = [
+        `You are building a Notion task from an email for Gretchen Cawthon, Integrator at Left Right Labs.`,
+        ``,
+        `Email:`,
+        `From: ${from || 'unknown'}`,
+        `Subject: ${subject || '(none)'}`,
+        `Preview: ${(bodyText || '').slice(0, 600)}`,
+        ``,
+        `Active ${source} projects (id<TAB>name):`,
+        projectList,
+        ``,
+        `Return JSON only — no explanation:`,
+        `{ "taskName": "verb-first action task (≤80 chars)", "projectId": "uuid or null", "projectName": "matched name or null" }`,
+        ``,
+        `Rules for taskName: start with a verb, be specific. E.g. "Reply to Jeff re: BrickScore launch" not "Email from Jeff".`,
+        `Rules for projectId: pick the UUID of the most relevant project above, or null.`,
+      ].join('\n');
+      const msg = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 200,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      const text = msg.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+      const m = text.match(/\{[\s\S]*?\}/);
+      if (m) {
+        const s = JSON.parse(m[0]);
+        if (s.taskName) taskName = s.taskName;
+        if (s.projectId && projects.find(p => p.id === s.projectId)) {
+          projectId = s.projectId;
+          projectName = s.projectName || projects.find(p => p.id === s.projectId)?.name || null;
+        }
+      }
+    }
+    res.json({ ok: true, taskName, projectId, projectName });
+  } catch (err) {
+    const fallback = subject ? `Follow up: ${subject}` : 'Email task';
+    res.json({ ok: false, taskName: fallback, projectId: null, projectName: null });
   }
 });
 

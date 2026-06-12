@@ -1275,6 +1275,11 @@
   .msg-action-btn:hover { color: var(--lime); background: color-mix(in srgb, var(--lime) 8%, transparent); }
   .msg-action-btn.active { color: var(--lime); }
   .msg-action-btn.danger:hover { color: #ff7a6b; background: rgba(255,122,107,0.09); }
+  .comms-task-btn { opacity: 0; background: transparent; border: none; cursor: pointer; color: var(--navy-dim); padding: 5px 6px; border-radius: 6px; transition: opacity 0.15s, color 0.15s, background 0.15s; flex-shrink: 0; display: flex; align-items: center; }
+  .comms-row:hover .comms-task-btn { opacity: 1; }
+  .comms-task-btn:hover { color: var(--lime); background: color-mix(in srgb, var(--lime) 8%, transparent); }
+  .comms-task-btn svg { width: 16px; height: 16px; display: block; }
+  @media (hover: none) { .comms-task-btn { opacity: 0.7; } }
   .msg-reply-to-row { display: none; margin-bottom: 9px; flex-direction: column; gap: 6px; }
   .msg-reply-to-row.visible { display: flex; }
   .msg-reply-to-field { display: flex; align-items: center; gap: 8px; background: rgba(var(--edge-rgb),0.04); border: 1px solid var(--navy-faint); border-radius: 8px; padding: 7px 12px; }
@@ -3297,6 +3302,9 @@ window.lrl = (function(){
         <button class="msg-action-btn" id="msg-action-compose" title="New message">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         </button>
+        <button class="msg-action-btn" id="msg-action-task" title="Create Notion task">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/></svg>
+        </button>
       </div>
     </div>
   </div>
@@ -5017,6 +5025,69 @@ function openTaskCreate() {
 }
 window.openTaskCreate = openTaskCreate;
 
+// Email → Task context (stored so save handler can attach it as a Notion body)
+let _createFromEmailCtx = null;
+
+async function openCreateTaskFromEmail(c) {
+  _createFromEmailCtx = null;
+  openTaskCreate();
+
+  // Lock source to the email's account
+  const source = (c.account === 'personal') ? 'personal' : 'work';
+  document.querySelectorAll('#task-source-toggle .task-source-opt').forEach(b => {
+    b.classList.toggle('active', b.dataset.source === source);
+  });
+  renderProjectMenu('');
+
+  // Seed task name with a fallback while AI thinks
+  const fallback = c.subject ? `Follow up: ${c.subject}` : 'Email task';
+  const nameInput = document.getElementById('task-name-input');
+  if (nameInput) nameInput.value = fallback;
+
+  // Show a subtle loading hint in the project search box
+  const projSearch = document.getElementById('task-project-search');
+  if (projSearch) projSearch.placeholder = 'Suggesting project…';
+
+  // Store email context for the Notion body
+  _createFromEmailCtx = {
+    sender: c.sender || c.fromEmail || '',
+    subject: c.subject || '',
+    permalink: c.permalink || '',
+    snippet: c.snippet || '',
+  };
+
+  // Ask the server for AI-suggested task name + project
+  try {
+    const r = await fetch('/api/comms/suggest-task', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: c.subject,
+        from: c.sender || c.fromEmail,
+        bodyText: c.bodyText || c.snippet || '',
+        account: c.account || 'work',
+      }),
+    });
+    const d = await r.json();
+    if (!_createMode) return; // modal was closed while waiting
+    // Update name only if user hasn't typed anything
+    if (nameInput && (nameInput.value === fallback || nameInput.value === '')) {
+      nameInput.value = d.taskName || fallback;
+    }
+    // Pre-seed project
+    if (d.projectId) {
+      const hidden = document.getElementById('task-project-input');
+      if (hidden) hidden.value = d.projectId;
+      if (projSearch) projSearch.value = d.projectName || '';
+      renderProjectMenu('');
+    }
+  } catch(_) {}
+
+  // Restore placeholder
+  if (projSearch) projSearch.placeholder = 'Choose or search a project… (optional)';
+}
+window.openCreateTaskFromEmail = openCreateTaskFromEmail;
+
 function openTaskEdit(t, scope){
   if (!t || !t.id) return;
   _createMode = false;
@@ -5073,6 +5144,7 @@ function closeTaskEdit(){
   document.body.style.overflow = '';
   editingTask = null;
   _createMode = false;
+  _createFromEmailCtx = null;
 }
 
 // Source toggle buttons in new-task mode
@@ -5113,6 +5185,15 @@ document.getElementById('task-save-btn')?.addEventListener('click', async () => 
       dueStart: document.getElementById('task-due-input').value || null,
       projectId: document.getElementById('task-project-input').value || null,
     };
+    if (_createFromEmailCtx) {
+      const ec = _createFromEmailCtx;
+      body.taskBody = [
+        ec.sender ? `From: ${ec.sender}` : null,
+        ec.subject ? `Subject: ${ec.subject}` : null,
+        ec.permalink ? `Link: ${ec.permalink}` : null,
+        ec.snippet ? `\n${ec.snippet}` : null,
+      ].filter(Boolean).join('\n');
+    }
     if (!body.name) { window.lrl.toast('Task name is required', 'error'); return; }
     btn.disabled = true; btn.textContent = 'Creating…';
     try {
@@ -5503,6 +5584,9 @@ function renderComms() {
     const checkboxHtml = isGmail
       ? `<input type="checkbox" class="comms-row-checkbox" data-cb-id="${c.id}" data-cb-account="${c.account||'work'}">`
       : '';
+    const taskBtnHtml = isGmail
+      ? `<button class="comms-task-btn" data-task-id="${c.id}" title="Create Notion task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/></svg></button>`
+      : '';
     html += `
       <div class="comms-row ${c.source} ${c.unread ? '' : 'is-read'}" ${rowClick}>
         ${checkboxHtml}
@@ -5515,6 +5599,7 @@ function renderComms() {
           <div class="comms-snippet">${escapeHtml(c.snippet)}</div>
         </div>
         <span class="comms-time">${timeAgo(c.time)}</span>
+        ${taskBtnHtml}
       </div>`;
   });
   list.innerHTML = html;
@@ -5844,6 +5929,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (replyEl) replyEl.classList.add('open');
     document.getElementById('msg-reply-textarea')?.focus();
   });
+  document.getElementById('msg-action-task')?.addEventListener('click', () => {
+    if (!_msgPanelData) return;
+    openCreateTaskFromEmail(_msgPanelData);
+  });
   document.getElementById('msg-action-compose')?.addEventListener('click', () => {
     const replyEl = document.getElementById('msg-reply');
     if (replyEl?.classList.contains('open') && _msgComposeMode) { closeReplyBox(); return; }
@@ -5878,7 +5967,7 @@ document.addEventListener('DOMContentLoaded', () => {
     else closeMsgPanel();
   });
 
-  // Event delegation for Gmail rows and checkboxes
+  // Event delegation for Gmail rows, checkboxes, and task buttons
   document.getElementById('comms-list')?.addEventListener('click', e => {
     const cb = e.target.closest('.comms-row-checkbox');
     if (cb) {
@@ -5886,6 +5975,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (selectedMsgIds.has(id)) selectedMsgIds.delete(id);
       else selectedMsgIds.add(id);
       updateBatchBar();
+      return;
+    }
+    const taskBtn = e.target.closest('.comms-task-btn');
+    if (taskBtn) {
+      const row = taskBtn.closest('[data-msg-id]');
+      if (!row) return;
+      const c = COMMS_DATA.find(x => x.id === row.dataset.msgId);
+      if (c) openCreateTaskFromEmail(c);
       return;
     }
     const row = e.target.closest('[data-msg-id]');
