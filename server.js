@@ -6,6 +6,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { initDb } from './db.js';
 
 if (process.env.NODE_ENV !== 'production') {
   const { default: dotenv } = await import('dotenv');
@@ -3764,6 +3765,18 @@ app.get('/api/marketing/media', async (req, res) => {
 
 const server = app.listen(PORT, () => {
   console.log(`LRL OS listening on port ${PORT}`);
+  // Phase 0 (multi-user foundation): bring up the per-user store if DATABASE_URL
+  // is configured. No-ops in single-user mode, so this never blocks serving.
+  initDb({
+    email: ALLOWED_EMAIL,
+    name: 'Gretchen Cawthon',
+    notionUserId: GRETCHEN_USER_ID,
+    timezone: TZ,
+    weatherLat: WEATHER_LAT,
+    weatherLon: WEATHER_LON,
+    refreshTokenWork: process.env.GOOGLE_REFRESH_TOKEN || null,
+    refreshTokenPersonal: process.env.GOOGLE_REFRESH_TOKEN_PERSONAL || null,
+  }).catch((e) => console.error('[db] init failed:', e.message));
 });
 
 // Graceful shutdown: stop accepting new connections, let in-flight requests
