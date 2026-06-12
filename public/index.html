@@ -199,10 +199,8 @@
   .tqf-btn[data-tqf="personal"].active { background: #5d9cec; color: var(--navy-accent); }
   .quest-item { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--cream-2); cursor: pointer; font-size: 15px; }
   .quest-item:last-child { border-bottom: none; }
-  /* The drag-hint div is always the real last child (even when hidden on
-     desktop), so :last-child never matches the visually-last task. Drop the
-     border on the task that sits just before the hint or the waiting divider. */
-  .quest-item:has(+ .quest-drag-hint),
+  /* Drop the border on the last actionable task that sits just before the
+     waiting divider. */
   .quest-item:has(+ .quest-waiting-divider) { border-bottom: none; }
   .quest-check { width: 18px; height: 18px; border: 1.5px solid var(--navy-dim); border-radius: 4px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
   .quest-check:hover { border-color: var(--navy); }
@@ -316,8 +314,6 @@
   /* Drag-to-reorder visuals */
   .quest-drag-chosen { background: rgba(167,193,64,0.08); border-radius: 8px; box-shadow: 0 12px 30px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(167,193,64,0.4); transform: scale(1.02); cursor: grabbing; transition: transform 0.18s ease, box-shadow 0.18s ease; }
   .quest-drag-ghost { opacity: 0.25; }
-  .quest-drag-hint { font-size: 10.5px; color: rgba(var(--ink-rgb), 0.4); margin-top: 8px; padding-left: 4px; letter-spacing: 0.04em; }
-  @media (hover: hover) { .quest-drag-hint { display: none; } }
 
   /* Waiting-on divider in Today's Quest */
   .quest-waiting-divider { display: flex; align-items: center; gap: 10px; padding: 14px 0 8px; margin-top: 10px; border-top: 1px dashed rgba(var(--edge-rgb), 0.06); }
@@ -4658,7 +4654,6 @@ function renderTodayQuests(){
         html += `<div class="quest-waiting-divider" data-no-drag><span>WAITING ON · ${waiting.length}</span></div>`;
         html += waiting.map(renderQuestRow).join('');
       }
-      html += `<div class="quest-drag-hint" data-no-drag>Tip · long-press a task to drag and reorder</div>`;
       taskDiv.innerHTML = html;
       attachQuestSortable(taskDiv);
       applyDailyGamification();
