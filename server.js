@@ -36,6 +36,8 @@ const WEATHER_LON = -97.082;
 const DATA_SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/gmail.send',
+  'https://www.googleapis.com/auth/gmail.modify',
 ];
 const LOGIN_SCOPES = ['openid', 'email', 'profile'];
 
@@ -176,6 +178,20 @@ function parseFromHeader(value) {
   const m = value.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
   if (m) return { name: m[1].trim(), email: m[2].trim() };
   return { name: '', email: value.trim() };
+}
+
+function findMimePart(payload, mimeType) {
+  if (!payload) return null;
+  if (payload.mimeType === mimeType && payload.body?.data) return payload;
+  for (const part of payload.parts || []) {
+    const found = findMimePart(part, mimeType);
+    if (found) return found;
+  }
+  return null;
+}
+
+function base64UrlDecode(str) {
+  return Buffer.from(str.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
 }
 
 function authedClient(account = 'work') {
@@ -830,6 +846,72 @@ app.get('/api/comms/gmail', async (req, res) => {
       return results.flat().sort((a, b) => (b.internalDate || 0) - (a.internalDate || 0));
     });
     res.json({ threads, status, days });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Fetch full message body and mark as read
+app.get('/api/comms/message/:id', async (req, res) => {
+  const { id } = req.params;
+  const account = req.query.account || 'work';
+  const accounts = configuredAccounts();
+  const target = accounts.includes(account) ? account : accounts[0];
+  if (!target) return res.status(500).json({ error: 'No account configured' });
+  try {
+    const auth = authedClient(target);
+    const gmail = google.gmail({ version: 'v1', auth });
+    const msg = await gmail.users.messages.get({ userId: 'me', id, format: 'full' });
+    const data = msg.data;
+    const hdrs = Object.fromEntries((data.payload?.headers || []).map(h => [h.name.toLowerCase(), h.value]));
+    const htmlPart = findMimePart(data.payload, 'text/html');
+    const textPart = findMimePart(data.payload, 'text/plain');
+    const bodyHtml = htmlPart?.body?.data ? base64UrlDecode(htmlPart.body.data) : null;
+    const bodyText = textPart?.body?.data ? base64UrlDecode(textPart.body.data) : null;
+    const from = parseFromHeader(hdrs.from || '');
+    // Mark as read — best-effort, scope may not exist yet
+    gmail.users.messages.modify({ userId: 'me', id, requestBody: { removeLabelIds: ['UNREAD'] } }).catch(() => {});
+    res.json({
+      id, threadId: data.threadId, account: target,
+      subject: hdrs.subject || '(no subject)',
+      from: { name: from.name, email: from.email },
+      to: hdrs.to || '',
+      date: hdrs.date || '',
+      messageId: hdrs['message-id'] || '',
+      references: hdrs.references || '',
+      bodyHtml, bodyText,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Send a reply
+app.post('/api/comms/reply', async (req, res) => {
+  const { threadId, to, subject, body, messageId, references, account } = req.body || {};
+  if (!body?.trim()) return res.status(400).json({ error: 'Reply body required' });
+  const accounts = configuredAccounts();
+  const target = (account && accounts.includes(account)) ? account : accounts[0];
+  if (!target) return res.status(500).json({ error: 'No account configured' });
+  try {
+    const auth = authedClient(target);
+    const gmail = google.gmail({ version: 'v1', auth });
+    const replySubject = subject?.startsWith('Re:') ? subject : `Re: ${subject || ''}`;
+    const refs = [references, messageId].filter(Boolean).join(' ').trim();
+    const mime = [
+      `To: ${to}`,
+      `Subject: ${replySubject}`,
+      'MIME-Version: 1.0',
+      'Content-Type: text/plain; charset=utf-8',
+      messageId ? `In-Reply-To: ${messageId}` : null,
+      refs ? `References: ${refs}` : null,
+      '',
+      body.trim(),
+    ].filter(l => l !== null).join('\r\n');
+    const raw = Buffer.from(mime).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    await gmail.users.messages.send({ userId: 'me', requestBody: { raw, threadId } });
+    for (const k of [...cache.keys()].filter(k => k.startsWith('gmail-'))) cache.delete(k);
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

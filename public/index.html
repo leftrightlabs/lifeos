@@ -1206,6 +1206,38 @@
   .source-gmail-work { background: rgba(var(--edge-rgb), 0.08); color: var(--navy); border: 1px solid rgba(var(--edge-rgb), 0.15); }
   .source-gmail-personal { background: rgba(167,193,64,0.18); color: var(--lime); }
 
+  /* Message preview panel */
+  .msg-panel { position: fixed; inset: 0; z-index: 150; display: flex; align-items: stretch; justify-content: flex-end; pointer-events: none; }
+  .msg-panel.open { pointer-events: all; }
+  .msg-panel-backdrop { position: absolute; inset: 0; background: rgba(10,15,30,0.55); backdrop-filter: blur(2px); opacity: 0; transition: opacity 0.22s; }
+  .msg-panel.open .msg-panel-backdrop { opacity: 1; }
+  .msg-panel-sheet { position: relative; width: 100%; max-width: 660px; background: var(--cream); display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.32,0.72,0,1); box-shadow: -20px 0 60px rgba(0,0,0,0.45); }
+  .msg-panel.open .msg-panel-sheet { transform: translateX(0); }
+  .msg-panel-head { padding: 16px 18px 14px; border-bottom: 1px solid var(--navy-faint); flex-shrink: 0; }
+  .msg-panel-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .msg-panel-close { background: transparent; border: none; color: var(--navy-dim); font-size: 22px; cursor: pointer; padding: 0 2px; line-height: 1; }
+  .msg-panel-close:hover { color: var(--navy); }
+  .msg-panel-open-link { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--navy-dim); text-decoration: none; padding: 4px 10px; border: 1px solid var(--navy-faint); border-radius: 6px; }
+  .msg-panel-open-link:hover { border-color: var(--lime); color: var(--lime); }
+  .msg-panel-subject { font-family: var(--font-display); font-size: 16px; font-weight: 800; color: var(--navy); line-height: 1.3; margin-bottom: 8px; }
+  .msg-panel-meta { font-size: 12px; color: var(--navy-dim); line-height: 1.7; }
+  .msg-panel-meta b { color: var(--navy); }
+  .msg-panel-body { flex: 1; overflow-y: auto; min-height: 0; }
+  .msg-panel-iframe { width: 100%; height: 100%; border: none; display: block; min-height: 320px; }
+  .msg-panel-text { padding: 18px 20px; font-size: 13.5px; line-height: 1.65; color: var(--navy); white-space: pre-wrap; word-break: break-word; }
+  .msg-reply { flex-shrink: 0; border-top: 1px solid var(--navy-faint); padding: 12px 16px 16px; }
+  .msg-reply-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy-dim); margin-bottom: 7px; }
+  .msg-reply-textarea { width: 100%; box-sizing: border-box; background: rgba(var(--edge-rgb), 0.04); border: 1px solid var(--navy-faint); border-radius: 8px; padding: 10px 12px; font-family: var(--font-body); font-size: 13.5px; color: var(--navy); resize: vertical; min-height: 80px; outline: none; }
+  .msg-reply-textarea:focus { border-color: var(--lime); }
+  .msg-reply-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+  .msg-reply-btn { border-radius: 8px; padding: 8px 18px; font-family: var(--font-body); font-size: 13px; font-weight: 700; cursor: pointer; }
+  .msg-reply-send { background: var(--lime); color: var(--navy-accent); border: none; }
+  .msg-reply-send:hover { opacity: 0.88; }
+  .msg-reply-send:disabled { opacity: 0.4; cursor: not-allowed; }
+  .msg-reply-discard { background: transparent; color: var(--navy-dim); border: 1px solid var(--navy-faint); }
+  .msg-reply-discard:hover { border-color: rgba(var(--edge-rgb), 0.3); }
+  @media (max-width: 600px) { .msg-panel-sheet { max-width: 100%; } }
+
   /* === AUTOFOCUS TOOL — scoped to .autofocus-app ===
      Every color maps onto the GLOBAL theme variables so this tab
      re-themes exactly like the rest of the app. Never hardcode a local
@@ -3147,6 +3179,30 @@ window.lrl = (function(){
   <div class="pulse-drawer" id="pulse-drawer"><div class="pulse-drawer-backdrop" data-drawer-close></div><div class="pulse-drawer-sheet" id="pulse-drawer-sheet"></div></div>
   <div class="tp-modal" id="tp-modal"><div class="tp-modal-backdrop" id="tp-modal-backdrop"></div><div class="tp-modal-sheet" id="tp-modal-sheet"></div></div>
 
+  <!-- MESSAGE PREVIEW PANEL -->
+  <div class="msg-panel" id="msg-panel">
+    <div class="msg-panel-backdrop" id="msg-panel-backdrop"></div>
+    <div class="msg-panel-sheet" id="msg-panel-sheet">
+      <div class="msg-panel-head">
+        <div class="msg-panel-toolbar">
+          <button class="msg-panel-close" id="msg-panel-close" title="Close">×</button>
+          <a class="msg-panel-open-link" id="msg-panel-open-link" href="#" target="_blank" rel="noopener">Open in Gmail ↗</a>
+        </div>
+        <div class="msg-panel-subject" id="msg-panel-subject"></div>
+        <div class="msg-panel-meta" id="msg-panel-meta"></div>
+      </div>
+      <div class="msg-panel-body" id="msg-panel-body"></div>
+      <div class="msg-reply">
+        <div class="msg-reply-label">Reply</div>
+        <textarea class="msg-reply-textarea" id="msg-reply-textarea" placeholder="Write your reply…"></textarea>
+        <div class="msg-reply-actions">
+          <button class="msg-reply-btn msg-reply-discard" id="msg-reply-discard">Discard</button>
+          <button class="msg-reply-btn msg-reply-send" id="msg-reply-send-btn">Send Reply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- PROJECTS TAB -->
   <div class="tab-content" data-content="projects">
     <div class="section-label">Client Delivery</div>
@@ -4332,8 +4388,11 @@ async function fetchComms(){
     const d = await r.json();
     COMMS_DATA = (d.threads||[]).map(t => ({
       id: t.id,
+      account: t.account,
+      threadId: t.threadId,
       source: 'gmail-' + t.account,
       sender: t.fromName || t.fromEmail,
+      fromEmail: t.fromEmail,
       subject: t.subject,
       channel: 'INBOX',
       snippet: t.snippet,
@@ -5321,8 +5380,12 @@ function renderComms() {
     const senderLine = c.subject
       ? `<span class="comms-sender">${escapeHtml(c.sender)}</span> <span class="comms-subject">· ${escapeHtml(c.subject)}</span>`
       : `<span class="comms-sender">${escapeHtml(c.sender)}</span>`;
+    const isGmail = c.source.startsWith('gmail-');
+    const rowClick = isGmail
+      ? `data-msg-id="${c.id}" data-msg-account="${c.account||'work'}"`
+      : `onclick="window.openExternalSafe('${c.permalink||'#'}')"`;
     html += `
-      <div class="comms-row ${c.source} ${c.unread ? '' : 'is-read'}" onclick="window.openExternalSafe('${c.permalink||'#'}')">
+      <div class="comms-row ${c.source} ${c.unread ? '' : 'is-read'}" ${rowClick}>
         <div class="comms-unread-dot ${c.unread ? '' : 'read'}"></div>
         <div class="comms-content">
           <div class="comms-row-top">
@@ -5362,6 +5425,119 @@ document.querySelectorAll('[data-comms-status]').forEach(btn => {
     if (listEl) listEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--navy-dim);">loading…</div>';
     await fetchComms();
     renderComms();
+  });
+});
+
+// ===== Message preview panel =====
+let _msgPanelData = null;
+
+async function openCommsMessage(c) {
+  const panel = document.getElementById('msg-panel');
+  if (!panel) return;
+  _msgPanelData = c;
+  panel.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('msg-panel-subject').textContent = c.subject || '(no subject)';
+  document.getElementById('msg-panel-meta').innerHTML = `<b>From:</b> ${escapeHtml(c.sender)}`;
+  document.getElementById('msg-panel-open-link').href = c.permalink || '#';
+  document.getElementById('msg-panel-body').innerHTML = '<div style="padding:32px;text-align:center;color:var(--navy-dim)">Loading…</div>';
+  document.getElementById('msg-reply-textarea').value = '';
+  try {
+    const r = await fetch(`/api/comms/message/${c.id}?account=${encodeURIComponent(c.account||'work')}`);
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    _msgPanelData = Object.assign({}, c, d);
+    document.getElementById('msg-panel-subject').textContent = d.subject || c.subject || '(no subject)';
+    document.getElementById('msg-panel-meta').innerHTML =
+      `<b>From:</b> ${escapeHtml(d.from.name ? d.from.name + ' <' + d.from.email + '>' : d.from.email)}<br>` +
+      `<b>To:</b> ${escapeHtml(d.to)}<br>` +
+      `<b>Date:</b> ${escapeHtml(d.date)}`;
+    const bodyEl = document.getElementById('msg-panel-body');
+    if (d.bodyHtml) {
+      const iframe = document.createElement('iframe');
+      iframe.className = 'msg-panel-iframe';
+      iframe.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox');
+      const styledHtml = `<!DOCTYPE html><html><head><style>*{box-sizing:border-box;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.6;color:#1a2340;padding:16px 20px;margin:0;word-break:break-word;}a{color:#5d9cec;}img{max-width:100%;height:auto;}pre,code{font-size:12px;background:#f4f4f4;padding:2px 4px;border-radius:3px;}</style></head><body>${d.bodyHtml}</body></html>`;
+      bodyEl.innerHTML = '';
+      bodyEl.appendChild(iframe);
+      iframe.srcdoc = styledHtml;
+      // Auto-resize iframe to content height after load
+      iframe.addEventListener('load', () => {
+        try { iframe.style.height = iframe.contentDocument.body.scrollHeight + 32 + 'px'; } catch(_) {}
+      });
+    } else if (d.bodyText) {
+      bodyEl.innerHTML = `<div class="msg-panel-text">${escapeHtml(d.bodyText)}</div>`;
+    } else {
+      bodyEl.innerHTML = '<div style="padding:32px;text-align:center;color:var(--navy-dim)">No message body.</div>';
+    }
+    // Mark as read locally
+    const item = COMMS_DATA.find(x => x.id === c.id);
+    if (item) { item.unread = false; renderComms(); }
+  } catch(err) {
+    document.getElementById('msg-panel-body').innerHTML =
+      `<div style="padding:32px;text-align:center;color:#ff7a6b">Could not load message: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function closeMsgPanel() {
+  const panel = document.getElementById('msg-panel');
+  if (panel) panel.classList.remove('open');
+  document.body.style.overflow = '';
+  _msgPanelData = null;
+}
+
+async function sendCommsReply() {
+  const textarea = document.getElementById('msg-reply-textarea');
+  const sendBtn = document.getElementById('msg-reply-send-btn');
+  const body = textarea?.value?.trim();
+  if (!body || !_msgPanelData) return;
+  sendBtn.disabled = true;
+  sendBtn.textContent = 'Sending…';
+  try {
+    const d = _msgPanelData;
+    const r = await fetch('/api/comms/reply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        threadId: d.threadId,
+        to: d.from?.email || d.fromEmail,
+        subject: d.subject,
+        body,
+        messageId: d.messageId,
+        references: d.references,
+        account: d.account || 'work',
+      }),
+    });
+    const result = await r.json();
+    if (!result.ok) throw new Error(result.error || 'Send failed');
+    window.lrl?.toast('Reply sent', 'success');
+    closeMsgPanel();
+  } catch(err) {
+    window.lrl?.toast('Failed to send: ' + err.message, 'error');
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'Send Reply';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('msg-panel-close')?.addEventListener('click', closeMsgPanel);
+  document.getElementById('msg-panel-backdrop')?.addEventListener('click', closeMsgPanel);
+  document.getElementById('msg-reply-discard')?.addEventListener('click', () => {
+    document.getElementById('msg-reply-textarea').value = '';
+  });
+  document.getElementById('msg-reply-send-btn')?.addEventListener('click', sendCommsReply);
+  // Keyboard: Escape closes the panel
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('msg-panel')?.classList.contains('open')) closeMsgPanel();
+  });
+  // Event delegation for Gmail message rows
+  document.getElementById('comms-list')?.addEventListener('click', e => {
+    const row = e.target.closest('[data-msg-id]');
+    if (!row) return;
+    const id = row.dataset.msgId;
+    const account = row.dataset.msgAccount || 'work';
+    const c = COMMS_DATA.find(x => x.id === id);
+    if (c) openCommsMessage(c);
   });
 });
 
