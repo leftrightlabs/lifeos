@@ -1225,7 +1225,8 @@
   .msg-panel-body { flex: 1; overflow-y: auto; min-height: 0; }
   .msg-panel-iframe { width: 100%; height: 100%; border: none; display: block; min-height: 320px; }
   .msg-panel-text { padding: 18px 20px; font-size: 13.5px; line-height: 1.65; color: var(--navy); white-space: pre-wrap; word-break: break-word; }
-  .msg-reply { flex-shrink: 0; border-top: 1px solid var(--navy-faint); padding: 12px 16px 16px; }
+  .msg-reply { flex-shrink: 0; border-top: 1px solid var(--navy-faint); padding: 12px 16px 16px; display: none; }
+  .msg-reply.open { display: block; }
   .msg-reply-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy-dim); margin-bottom: 7px; }
   .msg-reply-textarea { width: 100%; box-sizing: border-box; background: rgba(var(--edge-rgb), 0.04); border: 1px solid var(--navy-faint); border-radius: 8px; padding: 10px 12px; font-family: var(--font-body); font-size: 13.5px; color: var(--navy); resize: vertical; min-height: 80px; outline: none; }
   .msg-reply-textarea:focus { border-color: var(--lime); }
@@ -1257,7 +1258,29 @@
   .msg-reply-generate { background: transparent; border: 1px solid var(--lime); color: var(--lime); border-radius: 6px; padding: 3px 10px; font-size: 11.5px; font-weight: 700; cursor: pointer; letter-spacing: 0.03em; transition: background 0.15s; }
   .msg-reply-generate:hover { background: rgba(var(--lime-rgb,167,193,64),0.1); }
   .msg-reply-generate:disabled { opacity: 0.5; cursor: not-allowed; }
-  @media (max-width: 600px) { .msg-panel-sheet { max-width: 100%; } }
+  /* iPhone Mail-style nav bar + bottom action bar */
+  .msg-nav-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--navy-faint); flex-shrink: 0; min-height: 46px; }
+  .msg-nav-back { display: flex; align-items: center; gap: 5px; background: transparent; border: none; cursor: pointer; color: var(--lime); padding: 5px 7px 5px 4px; border-radius: 8px; transition: background 0.15s; }
+  .msg-nav-back:hover { background: color-mix(in srgb, var(--lime) 10%, transparent); }
+  .msg-nav-back svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .msg-nav-count { font-size: 13px; font-weight: 700; background: var(--navy-dim); color: var(--cream); border-radius: 10px; padding: 1px 8px; }
+  .msg-nav-pager { display: flex; gap: 1px; }
+  .msg-nav-pager-btn { background: transparent; border: none; cursor: pointer; color: var(--lime); padding: 5px 10px; border-radius: 8px; display: flex; align-items: center; transition: background 0.15s; }
+  .msg-nav-pager-btn svg { width: 18px; height: 18px; display: block; }
+  .msg-nav-pager-btn:hover { background: color-mix(in srgb, var(--lime) 10%, transparent); }
+  .msg-nav-pager-btn:disabled { opacity: 0.28; cursor: not-allowed; background: transparent; }
+  .msg-actions-bar { flex-shrink: 0; border-top: 1px solid var(--navy-faint); display: flex; justify-content: space-around; align-items: center; padding: 6px 4px calc(8px + env(safe-area-inset-bottom,0px)); background: var(--cream); }
+  .msg-action-btn { background: transparent; border: none; cursor: pointer; color: var(--navy-dim); padding: 10px 20px; border-radius: 10px; display: flex; align-items: center; justify-content: center; transition: color 0.15s, background 0.15s; }
+  .msg-action-btn svg { width: 23px; height: 23px; display: block; }
+  .msg-action-btn:hover { color: var(--lime); background: color-mix(in srgb, var(--lime) 8%, transparent); }
+  .msg-action-btn.active { color: var(--lime); }
+  .msg-action-btn.danger:hover { color: #ff7a6b; background: rgba(255,122,107,0.09); }
+  .msg-reply-to-row { display: none; margin-bottom: 9px; flex-direction: column; gap: 6px; }
+  .msg-reply-to-row.visible { display: flex; }
+  .msg-reply-to-field { display: flex; align-items: center; gap: 8px; background: rgba(var(--edge-rgb),0.04); border: 1px solid var(--navy-faint); border-radius: 8px; padding: 7px 12px; }
+  .msg-reply-to-field label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--navy-dim); flex-shrink: 0; width: 44px; }
+  .msg-reply-to-field input { flex: 1; background: transparent; border: none; outline: none; font-family: var(--font-body); font-size: 13.5px; color: var(--navy); }
+  @media (max-width: 600px) { .msg-panel-sheet { max-width: 100%; } .msg-action-btn { padding: 10px 14px; } }
 
   /* === AUTOFOCUS TOOL — scoped to .autofocus-app ===
      Every color maps onto the GLOBAL theme variables so this tab
@@ -3212,27 +3235,65 @@ window.lrl = (function(){
   <div class="msg-panel" id="msg-panel">
     <div class="msg-panel-backdrop" id="msg-panel-backdrop"></div>
     <div class="msg-panel-sheet" id="msg-panel-sheet">
-      <div class="msg-panel-head">
-        <div class="msg-panel-toolbar">
-          <button class="msg-panel-close" id="msg-panel-close" title="Close">×</button>
-          <button class="msg-panel-trash" id="msg-panel-trash" title="Move to trash">🗑</button>
-          <button class="msg-panel-archive" id="msg-panel-archive" title="Archive">Archive ↓</button>
-          <a class="msg-panel-open-link" id="msg-panel-open-link" href="#" target="_blank" rel="noopener">Open in Gmail ↗</a>
+      <!-- Nav bar: back+count | prev/next -->
+      <div class="msg-nav-bar">
+        <button class="msg-nav-back" id="msg-panel-close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          <span class="msg-nav-count" id="msg-nav-count">0</span>
+        </button>
+        <div class="msg-nav-pager">
+          <button class="msg-nav-pager-btn" id="msg-nav-prev" title="Previous message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+          </button>
+          <button class="msg-nav-pager-btn" id="msg-nav-next" title="Next message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
         </div>
+      </div>
+      <!-- Subject + meta -->
+      <div class="msg-panel-head">
         <div class="msg-panel-subject" id="msg-panel-subject"></div>
         <div class="msg-panel-meta" id="msg-panel-meta"></div>
+        <a class="msg-panel-open-link" id="msg-panel-open-link" href="#" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px">Open in Gmail ↗</a>
       </div>
+      <!-- Body -->
       <div class="msg-panel-body" id="msg-panel-body"></div>
-      <div class="msg-reply">
+      <!-- Reply / compose (hidden by default) -->
+      <div class="msg-reply" id="msg-reply">
+        <div class="msg-reply-to-row" id="msg-reply-to-row">
+          <div class="msg-reply-to-field">
+            <label>To</label>
+            <input type="email" id="msg-reply-to-input" placeholder="recipient@email.com">
+          </div>
+          <div class="msg-reply-to-field">
+            <label>Subject</label>
+            <input type="text" id="msg-reply-subj-input" placeholder="Subject">
+          </div>
+        </div>
         <div class="msg-reply-header">
-          <div class="msg-reply-label">Reply</div>
+          <div class="msg-reply-label" id="msg-reply-label">Reply</div>
           <button class="msg-reply-generate" id="msg-reply-generate">✦ Generate draft</button>
         </div>
         <textarea class="msg-reply-textarea" id="msg-reply-textarea" placeholder="Write your reply…"></textarea>
         <div class="msg-reply-actions">
-          <button class="msg-reply-btn msg-reply-discard" id="msg-reply-discard">Discard</button>
-          <button class="msg-reply-btn msg-reply-send" id="msg-reply-send-btn">Send Reply</button>
+          <button class="msg-reply-btn msg-reply-discard" id="msg-reply-discard">Cancel</button>
+          <button class="msg-reply-btn msg-reply-send" id="msg-reply-send-btn">Send</button>
         </div>
+      </div>
+      <!-- Bottom action bar -->
+      <div class="msg-actions-bar">
+        <button class="msg-action-btn danger" id="msg-action-trash" title="Trash">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+        </button>
+        <button class="msg-action-btn" id="msg-action-archive" title="Archive">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+        </button>
+        <button class="msg-action-btn" id="msg-action-reply" title="Reply">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 00-4-4H4"/></svg>
+        </button>
+        <button class="msg-action-btn" id="msg-action-compose" title="New message">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </button>
       </div>
     </div>
   </div>
@@ -5414,6 +5475,7 @@ function renderComms() {
   // Local comms filter (still works within mode)
   if (commsFilter !== 'all') items = items.filter(c => c.source === commsFilter);
   items.sort((a, b) => new Date(b.time) - new Date(a.time));
+  _visibleCommsItems = items;
   const status = window.commsStatus || 'unread';
   const emptyMsg = status === 'read'
     ? 'No read messages in this window.'
@@ -5486,13 +5548,46 @@ document.querySelectorAll('[data-comms-status]').forEach(btn => {
 
 // ===== Message preview panel =====
 let _msgPanelData = null;
+let _msgPanelIndex = -1;
+let _msgComposeMode = false;
+let _visibleCommsItems = [];
+
+function updateNavState() {
+  const count = _visibleCommsItems.length;
+  const countEl = document.getElementById('msg-nav-count');
+  if (countEl) countEl.textContent = count;
+  const prevBtn = document.getElementById('msg-nav-prev');
+  const nextBtn = document.getElementById('msg-nav-next');
+  if (prevBtn) prevBtn.disabled = _msgPanelIndex <= 0;
+  if (nextBtn) nextBtn.disabled = _msgPanelIndex >= count - 1;
+}
+
+function closeReplyBox() {
+  const el = document.getElementById('msg-reply');
+  if (el) el.classList.remove('open');
+  const textarea = document.getElementById('msg-reply-textarea');
+  if (textarea) textarea.value = '';
+  _msgComposeMode = false;
+  document.getElementById('msg-reply-to-row')?.classList.remove('visible');
+  document.getElementById('msg-reply-to-input') && (document.getElementById('msg-reply-to-input').value = '');
+  document.getElementById('msg-reply-subj-input') && (document.getElementById('msg-reply-subj-input').value = '');
+  const labelEl = document.getElementById('msg-reply-label');
+  if (labelEl) labelEl.textContent = 'Reply';
+  const genBtn = document.getElementById('msg-reply-generate');
+  if (genBtn) genBtn.style.display = '';
+  document.getElementById('msg-action-reply')?.classList.remove('active');
+  document.getElementById('msg-action-compose')?.classList.remove('active');
+}
 
 async function openCommsMessage(c) {
   const panel = document.getElementById('msg-panel');
   if (!panel) return;
   _msgPanelData = c;
+  _msgPanelIndex = _visibleCommsItems.findIndex(x => x.id === c.id);
+  closeReplyBox();
   panel.classList.add('open');
   document.body.style.overflow = 'hidden';
+  updateNavState();
   document.getElementById('msg-panel-subject').textContent = c.subject || '(no subject)';
   document.getElementById('msg-panel-meta').innerHTML = `<b>From:</b> ${escapeHtml(c.sender)}`;
   document.getElementById('msg-panel-open-link').href = c.permalink || '#';
@@ -5540,6 +5635,7 @@ function closeMsgPanel() {
   if (panel) panel.classList.remove('open');
   document.body.style.overflow = '';
   _msgPanelData = null;
+  closeReplyBox();
 }
 
 async function archiveCommsMessage(id, account) {
@@ -5590,6 +5686,7 @@ async function archiveBatchMessages() {
 }
 
 async function generateCommsReply() {
+  if (_msgComposeMode) return;
   const btn = document.getElementById('msg-reply-generate');
   const textarea = document.getElementById('msg-reply-textarea');
   if (!_msgPanelData || !btn || !textarea) return;
@@ -5665,64 +5762,118 @@ async function sendCommsReply() {
   const textarea = document.getElementById('msg-reply-textarea');
   const sendBtn = document.getElementById('msg-reply-send-btn');
   const body = textarea?.value?.trim();
-  if (!body || !_msgPanelData) return;
+  if (!body) return;
   sendBtn.disabled = true;
   sendBtn.textContent = 'Sending…';
   try {
-    const d = _msgPanelData;
-    const r = await fetch('/api/comms/reply', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        threadId: d.threadId,
-        to: d.from?.email || d.fromEmail,
-        subject: d.subject,
-        body,
-        messageId: d.messageId,
-        references: d.references,
-        account: d.account || 'work',
-      }),
-    });
+    let payload;
+    if (_msgComposeMode) {
+      const to = document.getElementById('msg-reply-to-input')?.value?.trim();
+      const subject = document.getElementById('msg-reply-subj-input')?.value?.trim();
+      if (!to) {
+        window.lrl?.toast('Please enter a recipient', 'error');
+        sendBtn.disabled = false; sendBtn.textContent = 'Send'; return;
+      }
+      payload = { to, subject, body, account: _msgPanelData?.account || 'work' };
+    } else {
+      if (!_msgPanelData) return;
+      const d = _msgPanelData;
+      payload = { threadId: d.threadId, to: d.from?.email || d.fromEmail, subject: d.subject, body, messageId: d.messageId, references: d.references, account: d.account || 'work' };
+    }
+    const r = await fetch('/api/comms/reply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const result = await r.json();
     if (!result.ok) throw new Error(result.error || 'Send failed');
-    window.lrl?.toast('Reply sent', 'success');
-    closeMsgPanel();
+    window.lrl?.toast(_msgComposeMode ? 'Message sent' : 'Reply sent', 'success');
+    closeReplyBox();
   } catch(err) {
     window.lrl?.toast('Failed to send: ' + err.message, 'error');
     sendBtn.disabled = false;
-    sendBtn.textContent = 'Send Reply';
+    sendBtn.textContent = 'Send';
   }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Back button closes panel
   document.getElementById('msg-panel-close')?.addEventListener('click', closeMsgPanel);
   document.getElementById('msg-panel-backdrop')?.addEventListener('click', closeMsgPanel);
-  document.getElementById('msg-reply-discard')?.addEventListener('click', closeMsgPanel);
+
+  // Reply box: cancel + send + generate
+  document.getElementById('msg-reply-discard')?.addEventListener('click', closeReplyBox);
   document.getElementById('msg-reply-send-btn')?.addEventListener('click', sendCommsReply);
-  document.getElementById('msg-panel-trash')?.addEventListener('click', async () => {
+  document.getElementById('msg-reply-generate')?.addEventListener('click', generateCommsReply);
+
+  // Prev / next navigation
+  document.getElementById('msg-nav-prev')?.addEventListener('click', () => {
+    const idx = _msgPanelIndex - 1;
+    if (idx >= 0) openCommsMessage(_visibleCommsItems[idx]);
+  });
+  document.getElementById('msg-nav-next')?.addEventListener('click', () => {
+    const idx = _msgPanelIndex + 1;
+    if (idx < _visibleCommsItems.length) openCommsMessage(_visibleCommsItems[idx]);
+  });
+
+  // Bottom action bar
+  document.getElementById('msg-action-trash')?.addEventListener('click', async () => {
     if (!_msgPanelData) return;
     const { id, account } = _msgPanelData;
     closeMsgPanel();
     await trashCommsMessage(id, account);
   });
-  document.getElementById('msg-panel-archive')?.addEventListener('click', async () => {
+  document.getElementById('msg-action-archive')?.addEventListener('click', async () => {
     if (!_msgPanelData) return;
     const { id, account } = _msgPanelData;
     closeMsgPanel();
     await archiveCommsMessage(id, account);
   });
-  document.getElementById('msg-reply-generate')?.addEventListener('click', generateCommsReply);
+  document.getElementById('msg-action-reply')?.addEventListener('click', () => {
+    const replyEl = document.getElementById('msg-reply');
+    if (replyEl?.classList.contains('open') && !_msgComposeMode) { closeReplyBox(); return; }
+    _msgComposeMode = false;
+    document.getElementById('msg-reply-to-row')?.classList.remove('visible');
+    const labelEl = document.getElementById('msg-reply-label');
+    if (labelEl) labelEl.textContent = 'Reply';
+    const genBtn = document.getElementById('msg-reply-generate');
+    if (genBtn) genBtn.style.display = '';
+    document.getElementById('msg-action-reply')?.classList.add('active');
+    document.getElementById('msg-action-compose')?.classList.remove('active');
+    if (replyEl) replyEl.classList.add('open');
+    document.getElementById('msg-reply-textarea')?.focus();
+  });
+  document.getElementById('msg-action-compose')?.addEventListener('click', () => {
+    const replyEl = document.getElementById('msg-reply');
+    if (replyEl?.classList.contains('open') && _msgComposeMode) { closeReplyBox(); return; }
+    _msgComposeMode = true;
+    document.getElementById('msg-reply-to-row')?.classList.add('visible');
+    const labelEl = document.getElementById('msg-reply-label');
+    if (labelEl) labelEl.textContent = 'New Message';
+    const genBtn = document.getElementById('msg-reply-generate');
+    if (genBtn) genBtn.style.display = 'none';
+    document.getElementById('msg-action-compose')?.classList.add('active');
+    document.getElementById('msg-action-reply')?.classList.remove('active');
+    const textarea = document.getElementById('msg-reply-textarea');
+    if (textarea) textarea.value = '';
+    if (replyEl) replyEl.classList.add('open');
+    document.getElementById('msg-reply-to-input')?.focus();
+  });
+
+  // Batch bar
   document.getElementById('comms-batch-cancel')?.addEventListener('click', () => {
     selectedMsgIds.clear();
     updateBatchBar();
   });
   document.getElementById('comms-batch-archive')?.addEventListener('click', archiveBatchMessages);
   document.getElementById('comms-batch-trash')?.addEventListener('click', trashBatchMessages);
-  // Keyboard: Escape closes the panel
+
+  // Escape: close reply box first, then panel
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && document.getElementById('msg-panel')?.classList.contains('open')) closeMsgPanel();
+    if (e.key !== 'Escape') return;
+    const panel = document.getElementById('msg-panel');
+    if (!panel?.classList.contains('open')) return;
+    if (document.getElementById('msg-reply')?.classList.contains('open')) closeReplyBox();
+    else closeMsgPanel();
   });
-  // Event delegation for Gmail message rows and checkboxes
+
+  // Event delegation for Gmail rows and checkboxes
   document.getElementById('comms-list')?.addEventListener('click', e => {
     const cb = e.target.closest('.comms-row-checkbox');
     if (cb) {
@@ -5734,8 +5885,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const row = e.target.closest('[data-msg-id]');
     if (!row) return;
-    const id = row.dataset.msgId;
-    const c = COMMS_DATA.find(x => x.id === id);
+    const c = COMMS_DATA.find(x => x.id === row.dataset.msgId);
     if (c) openCommsMessage(c);
   });
 });
