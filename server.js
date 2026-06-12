@@ -249,12 +249,12 @@ app.get('/api/health', (_req, res) => {
 app.get('/login', (req, res) => {
   if (req.session?.userEmail === ALLOWED_EMAIL) return res.redirect('/');
   const errMsg = req.query.error === 'denied'
-    ? '<p style="color:#ff6b6b;margin-top:1rem;font-size:0.85rem">Access denied. This LifeOS is private.</p>'
+    ? '<p style="color:#ff6b6b;margin-top:1rem;font-size:0.85rem">Access denied. This LRL OS is private.</p>'
     : '';
   res.type('html').send(`<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>LifeOS — Sign in</title>
+<title>LRL OS — Sign in</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
 <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
 <meta name="theme-color" content="#0a0f1e"/>
@@ -272,7 +272,7 @@ app.get('/login', (req, res) => {
 </style>
 </head><body>
   <div class="card">
-    <h1>LifeOS</h1>
+    <h1>LRL OS</h1>
     <div class="sub">Private command center</div>
     <a class="signin" href="/auth/login">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.35 11.1H12v3.2h5.35c-.5 2.4-2.55 4.1-5.35 4.1a6 6 0 1 1 0-12c1.5 0 2.85.55 3.9 1.45l2.4-2.4A9.4 9.4 0 0 0 12 2.4 9.6 9.6 0 1 0 21.35 14a8.7 8.7 0 0 0 0-2.9z"/></svg>
@@ -366,7 +366,7 @@ app.get('/auth/google/callback', async (req, res) => {
     const { tokens } = await oauth.getToken(code);
     const refresh = tokens.refresh_token || '(none — revoke prior consent and try again)';
     res.type('html').send(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"/><title>LifeOS — auth (${account})</title></head>
+<html><head><meta charset="utf-8"/><title>LRL OS — auth (${account})</title></head>
 <body style="background:#0a0f1e;color:#f5f5f7;font-family:ui-monospace,Menlo,monospace;padding:2rem;line-height:1.5">
   <h1 style="color:#a7c140;font-family:Georgia,serif">Refresh token captured — ${account}</h1>
   <p>Copy this and add to Railway as <code style="background:#131a30;padding:0.1rem 0.4rem;border-radius:4px">${envName}</code>:</p>
@@ -2594,7 +2594,7 @@ a{color:#5d9cec}</style></head><body>
 <h2>Add to Railway</h2>
 <pre>XERO_REFRESH_TOKEN=${tokens.refresh_token}
 XERO_TENANT_ID=${conn.tenantId}</pre>
-<p>Then redeploy. <a href="/">Back to LifeOS →</a></p>
+<p>Then redeploy. <a href="/">Back to LRL OS →</a></p>
 </body></html>`);
   } catch (err) {
     res.status(500).type('html').send(`<pre>OAuth error: ${err.message}</pre>`);
@@ -2974,7 +2974,7 @@ a{color:#818cf8;text-decoration:none}a:hover{text-decoration:underline}</style><
 <p>Cash-basis Revenue + Profit pulled from Xero for each month and written to the VTO Weekly Actuals DB in Notion.</p>
 ${created.length ? `<h2>Created (${created.length})</h2><table><tr><th>Metric</th><th>Month</th><th style="text-align:right">Value</th><th>Date</th></tr>${rows}</table>` : ''}
 ${skipped.length ? `<h2>Skipped (${skipped.length})</h2><table><tr><th>Metric</th><th>Month</th><th colspan="2">Reason</th></tr>${skipRows}</table>` : ''}
-<p style="margin-top:24px"><a href="/">← Back to LifeOS</a></p>
+<p style="margin-top:24px"><a href="/">← Back to LRL OS</a></p>
 </body></html>`);
   } catch (err) {
     console.error('VTO sync error:', err.message);
@@ -3763,7 +3763,7 @@ app.get('/api/marketing/media', async (req, res) => {
 });
 
 const server = app.listen(PORT, () => {
-  console.log(`LifeOS listening on port ${PORT}`);
+  console.log(`LRL OS listening on port ${PORT}`);
 });
 
 // Graceful shutdown: stop accepting new connections, let in-flight requests
