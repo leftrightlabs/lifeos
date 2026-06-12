@@ -119,6 +119,8 @@ async function queryTasks(dataSourceId, { peopleProp, myDayOnly } = {}) {
 function simplifyTask(page, source) {
   const props = page.properties || {};
   const due = props.Due?.date || {};
+  const assignees = (props.Assigned?.people || []).map((u) => u.id);
+  const following = (props.Following?.people || []).map((u) => u.id);
   return {
     id: page.id,
     name: props.Name?.title?.[0]?.plain_text || '(untitled)',
@@ -134,12 +136,15 @@ function simplifyTask(page, source) {
     priority: props['Priority 2']?.select?.name || props.Priority?.status?.name || null,
     project: null,
     projectId: (props.Project?.relation || [])[0]?.id || null,
+    assigneeNames: (props.Assigned?.people || []).map((u) => u.name).filter(Boolean),
+    assignedToMe: source === 'personal' ? true : assignees.includes(GRETCHEN_USER_ID),
+    followingMe: following.includes(GRETCHEN_USER_ID),
     url: page.url,
   };
 }
 
-async function workTasks({ myDayOnly }) {
-  const data = await queryTasks(WORK_TASKS_DS, { peopleProp: 'Assigned', myDayOnly });
+async function workTasks({ myDayOnly, allAssignees }) {
+  const data = await queryTasks(WORK_TASKS_DS, { peopleProp: allAssignees ? undefined : 'Assigned', myDayOnly });
   return data.results.map((p) => simplifyTask(p, 'work'));
 }
 async function lifeTasks({ myDayOnly }) {
@@ -420,7 +425,7 @@ app.get('/api/tasks/life-all', async (_req, res) => {
 });
 
 function invalidateTaskCaches() {
-  ['work-myday', 'life-myday', 'work-all', 'life-all', 'tasks-all', 'goals', 'review', 'xero-finance', 'journal-rings', 'calendar-today'].forEach(k => cache.delete(k));
+  ['work-myday', 'life-myday', 'work-all', 'life-all', 'tasks-all', 'tasks-all-board', 'goals', 'review', 'xero-finance', 'journal-rings', 'calendar-today'].forEach(k => cache.delete(k));
 }
 
 async function fetchGoalsForSource(projectsDs, tasksDs, source, projectPropName) {
@@ -787,12 +792,35 @@ app.delete('/api/tasks/:id', async (req, res) => {
   }
 });
 
+// Add/remove the current user from a task's "Following" people property.
+// Body: { follow: boolean } (defaults to follow). Returns the resulting state.
+app.post('/api/tasks/:id/follow', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  const follow = req.body?.follow !== false;
+  const pageId = dashifyId(req.params.id);
+  try {
+    const page = await notion.pages.retrieve({ page_id: pageId });
+    const current = (page.properties?.Following?.people || []).map((p) => p.id);
+    const has = current.includes(GRETCHEN_USER_ID);
+    let next = current;
+    if (follow && !has) next = [...current, GRETCHEN_USER_ID];
+    else if (!follow && has) next = current.filter((id) => id !== GRETCHEN_USER_ID);
+    if (next !== current) {
+      await notion.pages.update({ page_id: pageId, properties: { Following: { people: next.map((id) => ({ id })) } } });
+      invalidateTaskCaches();
+    }
+    res.json({ ok: true, following: next.includes(GRETCHEN_USER_ID) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/tasks/all', async (_req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
-    const tasks = await cached('tasks-all', async () => {
+    const tasks = await cached('tasks-all-board', async () => {
       const [w, l] = await Promise.all([
-        workTasks({ myDayOnly: false }),
+        workTasks({ myDayOnly: false, allAssignees: true }),
         lifeTasks({ myDayOnly: false }),
       ]);
       return [...w, ...l];

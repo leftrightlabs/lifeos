@@ -218,6 +218,7 @@
   @container questpanel (max-width: 520px) {
     .quest-item { flex-wrap: wrap; row-gap: 4px; column-gap: 8px; }
     .quest-text { flex: 1; min-width: 0; order: 3; }
+    .quest-follow { order: 3; margin-left: 2px; }
     .quest-star { order: 4; margin-left: 4px; }
     /* padding-left lines the badges up with the title's left edge:
        check(18) + gap(8) + dot(7) − margin(2) + gap(8) ≈ 39px → title start.
@@ -243,6 +244,12 @@
   .quest-star .fillp { fill: none; stroke: rgba(var(--ink-rgb), 0.4); stroke-width: 1.6; transition: all 0.2s; }
   .quest-star.on .fillp { fill: var(--lime); stroke: var(--lime); }
   .quest-star.on { animation: lrl-check-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .quest-follow { appearance: none; -webkit-appearance: none; border: 0; background: none; cursor: pointer; padding: 3px; line-height: 0; flex-shrink: 0; border-radius: 6px; transition: background 0.15s; }
+  .quest-follow:hover { background: rgba(var(--edge-rgb), 0.06); }
+  .quest-follow svg { width: 17px; height: 17px; fill: none; stroke: rgba(var(--ink-rgb), 0.38); stroke-width: 1.8; transition: stroke 0.2s; }
+  .quest-follow.on svg { stroke: var(--lime); }
+  .quest-follow.on { animation: lrl-check-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .quest-sub-assignee { color: rgba(var(--ink-rgb), 0.5); }
   .quest-pri { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; font-weight: 700; flex-shrink: 0; }
   .quest-pri.urgent { background: rgba(255,122,107,0.18); color: #ff7a6b; border: 1px solid rgba(255,122,107,0.35); }
   .quest-pri.high { background: rgba(212,168,84,0.18); color: #d4a854; border: 1px solid rgba(212,168,84,0.35); }
@@ -3153,6 +3160,13 @@ window.lrl = (function(){
         <h1 class="page-title"><span>Tasks</span></h1>
         <p class="page-subtitle" id="hdrdate"></p>
         <div class="statgrid" id="hdrstats"></div>
+        <div class="toolbar" id="af-scope-wrap">
+          <div class="filter-group">
+            <button class="filter-btn active" data-af-scope="all">All</button>
+            <button class="filter-btn" data-af-scope="me">Me</button>
+            <button class="filter-btn" data-af-scope="following">Following</button>
+          </div>
+        </div>
         <div class="toolbar">
           <div class="search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
@@ -3586,14 +3600,19 @@ function bucketOf(t){const e=effDate(t);if(!e)return{key:'none',label:'No Due Da
 function notYetDue(t){if(t.recurring){const nd=nextDue(t);return nd&&nd>today;}const s=parseD(t.dueStart),e=parseD(t.dueEnd);if(s&&e&&s>today)return true;return false;}
 
 const el=id=>document.getElementById(id);
-const ui={src:'all',sort:'due',group:'bucket',q:'',myday:false,routines:false,showdone:false,statFilter:null};
+const ui={src:'all',sort:'due',group:'bucket',q:'',myday:false,routines:false,showdone:false,statFilter:null,owner:'all'};
 try { const sf = localStorage.getItem('lrl-stat-filter'); if (sf) ui.statFilter = sf; } catch(e){}
+try { const sc = localStorage.getItem('lrl-task-scope'); if (sc) ui.owner = sc; } catch(e){}
 
 function visible(){
   const sf=ui.statFilter;
   return allTasks().filter(t=>{
     if(t.done&&!ui.showdone)return false;
     if(ui.src!=='all'&&t.source!==ui.src)return false;
+    if(ui.src!=='personal'){
+      if(ui.owner==='me'&&!t.assignedToMe)return false;
+      if(ui.owner==='following'&&!t.followingMe)return false;
+    }
     if(ui.myday&&!t.myDay)return false;
     if(!ui.routines&&notYetDue(t)&&!t.done)return false;
     if(ui.q){const q=ui.q.toLowerCase();if(!(t.name.toLowerCase().includes(q)||(t.project||'').toLowerCase().includes(q)))return false;}
@@ -3647,6 +3666,7 @@ function row(t){
     subParts.push('<span class="quest-sub-status">'+t.status+'</span>');
   }
   if(t.recurring) subParts.push('<span class="quest-sub-touched">↻ recurring</span>');
+  if(t.source==='work' && !t.assignedToMe && t.assigneeNames && t.assigneeNames.length) subParts.push('<span class="quest-sub-assignee">'+escapeHtml(t.assigneeNames.join(', '))+'</span>');
   if(ui.sort==='touched' && lt){
     subParts.push('<span class="quest-sub-touched">touched '+relTime(lt)+'</span>');
   }
@@ -3663,6 +3683,9 @@ function row(t){
     : '<span class="quest-due-inline" data-act="edit-due" style="opacity:0.35">+ date</span>';
   const starTitle = isMyDay ? "Remove from Today's Tasks" : "Add to Today's Tasks";
   const star = '<button class="quest-star '+(isMyDay?'on':'')+'" data-act="star" title="'+starTitle+'" aria-label="'+starTitle+'"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>';
+  const followBtn = (t.source==='work' && !t.assignedToMe)
+    ? '<button class="quest-follow '+(t.followingMe?'on':'')+'" data-act="follow" title="'+(t.followingMe?'Following — tap to unfollow':'Follow this task')+'" aria-label="Follow task"><svg viewBox="0 0 24 24"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/></svg></button>'
+    : '';
   const doneCls = t.done ? ' done' : '';
   const checkedCls = t.done ? 'checked' : '';
   const statusKey = (t.status || 'Planned').toLowerCase().replace(/\s+/g,'-');
@@ -3672,6 +3695,7 @@ function row(t){
     +statusDot
     +'<div class="quest-text" data-act="open">'+escapeHtml(t.name)+sub+'</div>'
     +'<div class="quest-meta-tags">'+priHtml+dueHtml+sourceTag+'</div>'
+    +followBtn
     +star
     +'</div>';
 }
@@ -3781,6 +3805,17 @@ el('list').addEventListener('click',e=>{
       .catch(err=>{state.edits[id].myDay=prevMyDay;saveState();render();window.lrl.toast('Sync failed: '+err.message,'error');});
     return;
   }
+  if(act==='follow'){
+    e.stopPropagation();
+    if(!BASE[id])return;
+    const t=task(id);const nv=!t.followingMe;const prev=!!BASE[id].followingMe;
+    BASE[id].followingMe=nv;render();window.lrl.haptic('tap');
+    fetch(`/api/tasks/${id}/follow`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({follow:nv})})
+      .then(r=>{if(!r.ok)throw new Error('sync failed');return r.json();})
+      .then(d=>{BASE[id].followingMe=!!d.following;render();window.lrl.toast(nv?'Following task':'Unfollowed','');})
+      .catch(err=>{BASE[id].followingMe=prev;render();window.lrl.toast('Follow failed: '+err.message,'error');});
+    return;
+  }
   if(act==='edit-due'){
     e.stopPropagation();
     const t=task(id);
@@ -3880,11 +3915,20 @@ function syncAutofocusToMode(){
       }
     }
   }
+  applyScopeUI();
   render();
 }
 window.addEventListener('lrl-mode-changed', syncAutofocusToMode);
 function bindTog(id,key,wrap){el(id).addEventListener('change',e=>{ui[key]=e.target.checked;el(wrap).classList.toggle('on',e.target.checked);render();});}
 bindTog('myday','myday','tg-myday');bindTog('routines','routines','tg-routines');bindTog('showdone','showdone','tg-done');
+function applyScopeUI(){
+  document.querySelectorAll('[data-af-scope]').forEach(b=>b.classList.toggle('active', b.dataset.afScope===ui.owner));
+  const wrap=el('af-scope-wrap'); if(wrap) wrap.style.display=(ui.src==='personal')?'none':'';
+}
+document.querySelectorAll('[data-af-scope]').forEach(b=>b.addEventListener('click',()=>{
+  ui.owner=b.dataset.afScope; try{localStorage.setItem('lrl-task-scope',ui.owner);}catch(e){}
+  applyScopeUI();render();
+}));
 el('expandall').addEventListener('click',()=>{state.collapsed[ui.group]={};saveState();render();});
 el('collapseall').addEventListener('click',()=>{document.querySelectorAll('.ghead').forEach(h=>setCollapsed(h.dataset.gkey,true));render();});
 
