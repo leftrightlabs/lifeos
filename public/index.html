@@ -1241,7 +1241,7 @@
   .msg-panel.open { pointer-events: all; }
   .msg-panel-backdrop { position: absolute; inset: 0; background: rgba(10,15,30,0.55); backdrop-filter: blur(2px); opacity: 0; transition: opacity 0.22s; }
   .msg-panel.open .msg-panel-backdrop { opacity: 1; }
-  .msg-panel-sheet { position: relative; width: 100%; max-width: 660px; background: var(--cream); display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.32,0.72,0,1); box-shadow: -20px 0 60px rgba(0,0,0,0.45); }
+  .msg-panel-sheet { position: relative; width: 100%; max-width: 660px; background: var(--cream); display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.32,0.72,0,1); box-shadow: -20px 0 60px rgba(0,0,0,0.45); padding-top: env(safe-area-inset-top); }
   .msg-panel.open .msg-panel-sheet { transform: translateX(0); }
   .msg-panel-head { padding: 16px 18px 14px; border-bottom: 1px solid var(--navy-faint); flex-shrink: 0; }
   .msg-panel-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
