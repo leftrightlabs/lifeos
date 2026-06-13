@@ -6,7 +6,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { initDb, isEnabled as dbEnabled } from './db.js';
+import { initDb, isEnabled as dbEnabled, users as dbUsers } from './db.js';
 
 if (process.env.NODE_ENV !== 'production') {
   const { default: dotenv } = await import('dotenv');
@@ -20,6 +20,15 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 
 const GRETCHEN_USER_ID = 'cfe628e1-e7b8-4aed-8151-009b8bee5c9d';
 const ALLOWED_EMAIL = 'gretchen@leftrightlabs.com';
+const ALLOWED_DOMAIN = (process.env.ALLOWED_EMAIL_DOMAIN || 'leftrightlabs.com').toLowerCase();
+// Owner is always allowed. Once the multi-user store is live, anyone on the
+// allowed domain may sign in; with the store dormant we stay single-user (owner only).
+function isAllowedEmail(email) {
+  const e = String(email || '').toLowerCase();
+  if (!e) return false;
+  if (e === ALLOWED_EMAIL) return true;
+  return dbEnabled() && e.endsWith('@' + ALLOWED_DOMAIN);
+}
 const WORK_TASKS_DS = '28c458f08cd9818599e7000bc2115872';
 const LIFE_TASKS_DS = '265458f08cd981699efe000b4de14ca4';
 const WORK_PROJECTS_DS = '28c458f08cd98131a475000b81db3c1b';
@@ -316,11 +325,22 @@ app.get('/auth/login/callback', async (req, res) => {
     oauth.setCredentials(tokens);
     const oauth2 = google.oauth2({ version: 'v2', auth: oauth });
     const { data } = await oauth2.userinfo.get();
-    if (data.email !== ALLOWED_EMAIL) {
+    const email = (data.email || '').toLowerCase();
+    if (!isAllowedEmail(email)) {
       return res.redirect('/login?error=denied');
     }
-    req.session.userEmail = data.email;
-    req.session.userName = data.name || data.email;
+    req.session.userEmail = email;
+    req.session.userName = data.name || email;
+    // Multi-user: create/refresh the user row and remember the id for scoping.
+    if (dbEnabled()) {
+      try {
+        const u = await dbUsers.upsertByEmail({ email, name: data.name || null });
+        req.session.userId = u.id;
+        req.session.role = u.role;
+      } catch (e) {
+        console.error('[auth] user upsert failed:', e.message); // non-fatal — let them in
+      }
+    }
     res.redirect('/');
   } catch (err) {
     res.status(500).send('Login error: ' + err.message);
@@ -335,7 +355,7 @@ app.get('/auth/logout', (req, res) => {
 // ----- AUTH GATE -----
 
 function requireAuth(req, res, next) {
-  if (req.session?.userEmail === ALLOWED_EMAIL) return next();
+  if (isAllowedEmail(req.session?.userEmail)) return next();
   if (req.path.startsWith('/api/')) {
     return res.status(401).json({ error: 'auth required' });
   }
@@ -343,6 +363,34 @@ function requireAuth(req, res, next) {
 }
 
 app.use(requireAuth);
+
+// Current user's profile — drives the client bootstrap (name, theme, role, and
+// which tabs/modes are available). Falls back to the single-user owner when the
+// store is dormant or the row is missing.
+app.get('/api/me', async (req, res) => {
+  if (!IS_PROD && req.query.as === 'member') {
+    return res.json({ id: 'dev-member', email: 'member@' + ALLOWED_DOMAIN, name: 'Dev Member', role: 'member', personalEnabled: false, theme: 'indigo', timezone: TZ });
+  }
+  if (dbEnabled() && req.session?.userId) {
+    try {
+      const u = await dbUsers.getById(req.session.userId);
+      if (u) return res.json({
+        id: u.id, email: u.email, name: u.name, role: u.role,
+        personalEnabled: u.personal_enabled, theme: u.theme, timezone: u.timezone,
+      });
+    } catch (e) { /* fall through to owner fallback */ }
+  }
+  const isOwner = (req.session?.userEmail || '').toLowerCase() === ALLOWED_EMAIL;
+  res.json({
+    id: null,
+    email: req.session?.userEmail || ALLOWED_EMAIL,
+    name: req.session?.userName || 'Gretchen',
+    role: isOwner ? 'owner' : 'member',
+    personalEnabled: isOwner,
+    theme: 'indigo',
+    timezone: TZ,
+  });
+});
 
 // ----- PROTECTED ROUTES (below this point require login) -----
 
