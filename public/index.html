@@ -631,6 +631,9 @@
     .task-modal { padding: 40px 12px 20px; }
     .task-modal-content { padding: 18px; }
     .task-row-2col { grid-template-columns: 1fr 1fr; }
+    /* Native date inputs won't shrink below their intrinsic width, so the
+       Due/End date pair overlaps in two columns on a phone. Stack them. */
+    .task-row-dates { grid-template-columns: 1fr; }
     .task-btn { padding: 9px 12px; font-size: 11px; flex: 1; min-width: 0; }
   }
 
@@ -3575,7 +3578,7 @@ window.lrl = (function(){
         </select>
       </div>
     </div>
-    <div class="task-row-2col">
+    <div class="task-row-2col task-row-dates">
       <div class="task-field">
         <label>Due date</label>
         <input type="date" id="task-due-input"/>
