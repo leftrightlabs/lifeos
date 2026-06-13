@@ -101,7 +101,7 @@
   html.capacitor-native a, html.capacitor-native button { -webkit-touch-callout: none; }
 
   /* HEADER */
-  .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; border-bottom: 1px solid var(--navy-faint); margin-bottom: 12px; }
+  .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; border-bottom: 1px solid var(--navy-faint); margin-bottom: 0; }
   .brand { display: flex; align-items: center; gap: 14px; }
   .brand-burst { width: 22px; height: 22px; }
   .brand-name { font-family: var(--font-body); font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; font-size: 12px; color: var(--navy); }
@@ -724,7 +724,10 @@
   .brief-weather .bw-icon { display: inline-flex; }
   .brief-weather .bw-icon svg { width: 15px; height: 15px; }
   .brief-weather .bw-temp { color: var(--navy); font-weight: 600; }
-  .topinfo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px; margin: 0 0 12px; font-size: 12px; }
+  /* Date/weather strip: a subtle band that butts flush against the header's
+     bottom border (square top corners) and softly contains the nav space above
+     the tabs (rounded bottom corners). */
+  .topinfo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 18px; margin: 0 0 16px; font-size: 12px; background: var(--white); border-radius: 0 0 10px 10px; }
   .topinfo-date { color: var(--navy-dim); font-weight: 500; letter-spacing: 0.01em; }
   #brief-collapse-caret { display: none; }
   .daily-brief-text { font-family: var(--font-body); font-size: 15px; font-weight: 400; line-height: 1.6; color: var(--navy); }
