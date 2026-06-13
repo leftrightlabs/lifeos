@@ -87,11 +87,18 @@ export async function initDb(ownerSeed) {
     ssl: noSsl ? false : { rejectUnauthorized: false },
     max: 5,
   });
-  try {
-    await ensureSchema();
-  } catch (e) {
-    pool = null;
-    throw e; // surfaced to caller's .catch — app stays in single-user mode
+  // Railway's private network can take a few seconds to come up at boot, so the
+  // first connect may time out — retry with backoff before giving up.
+  const attempts = 6;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      await ensureSchema();
+      break;
+    } catch (e) {
+      if (i === attempts) { pool = null; throw e; } // surfaced to caller's .catch — stays single-user
+      console.warn(`[db] connect attempt ${i}/${attempts} failed (${e.code || e.message}); retrying in ${i * 2}s`);
+      await new Promise((r) => setTimeout(r, i * 2000));
+    }
   }
   enabled = true;
   if (!secretsConfigured()) {
