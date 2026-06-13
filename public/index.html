@@ -114,6 +114,9 @@
   .mode-btn[data-mode="work"].active { background: #5d9cec; color: var(--navy-accent); }
   .mode-btn[data-mode="personal"].active { background: #a7c0e8; color: var(--navy-accent); }
   @media (max-width: 720px) { .mode-btn { padding: 6px 10px; font-size: 11px; } }
+  /* Multi-user: members are work-only — hide the mode switcher + personal task source */
+  body.role-member #mode-lens { display: none; }
+  body.role-member .task-source-opt[data-source="personal"] { display: none; }
 
   /* TABS */
   .tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--navy-faint); margin-bottom: 32px; padding-bottom: 0; }
@@ -5559,6 +5562,22 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
     applyMode();
   });
 });
+
+// ── Multi-user bootstrap: gate the UI to the signed-in user's role ──
+// Members (no personal section) are locked to Work mode with the mode switcher
+// hidden. Owner keeps the full experience. Falls back to full UI on any error.
+(async () => {
+  try {
+    const asParam = new URLSearchParams(location.search).get('as');
+    const me = await fetch('/api/me' + (asParam ? '?as=' + encodeURIComponent(asParam) : '')).then(r => r.json());
+    window.LRL_ME = me;
+    if (me && me.personalEnabled === false) {
+      document.body.classList.add('role-member');
+      if (mode !== 'work') { mode = 'work'; try { localStorage.setItem('lrl-mode', 'work'); } catch (e) {} }
+      applyMode();
+    }
+  } catch (e) { /* network/auth issue — leave the full (owner) UI */ }
+})();
 
 // Tab switching
 document.querySelectorAll('.tab').forEach(tab => {
