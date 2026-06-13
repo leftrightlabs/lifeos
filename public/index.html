@@ -1393,6 +1393,9 @@
   .autofocus-app .tg {display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);background:#fff;border:1px solid var(--line-2);padding:7px 11px;border-radius:9px;cursor:pointer}
   .autofocus-app .tg input {accent-color:var(--lime);width:15px;height:15px;margin:0}
   .autofocus-app .tg.on {color:var(--navy);border-color:var(--navy);font-weight:600}
+  .autofocus-app .af-list-controls {display:flex;justify-content:flex-end;gap:6px;margin:2px 0 8px}
+  .autofocus-app .af-icon-btn {padding:0;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center}
+  .autofocus-app .af-icon-btn svg {width:16px;height:16px}
   .autofocus-app .group {margin-top:18px}
   .autofocus-app .ghead {display:flex;align-items:center;gap:9px;padding:0 2px 8px;border-bottom:2px solid var(--navy);margin-bottom:2px;cursor:pointer}
   .autofocus-app .ghead .car {width:16px;height:16px;flex:none;transition:transform .15s;color:var(--navy)}
@@ -3193,12 +3196,14 @@ window.lrl = (function(){
           </select>
         </div>
         <div class="toolbar"><div class="toggles">
-          <label class="tg" id="tg-mine"><input type="checkbox" id="mine"/> Me</label>
-          <label class="tg" id="tg-routines"><input type="checkbox" id="routines"/> Show routines not yet due</label>
-          <label class="tg" id="tg-done"><input type="checkbox" id="showdone"/> Show completed</label>
-          <button class="btn-ghost" id="expandall">Expand all</button>
-          <button class="btn-ghost" id="collapseall">Collapse all</button>
+          <button type="button" class="tg" id="tg-mine">Me</button>
+          <button type="button" class="tg" id="tg-routines">Show routines not yet due</button>
+          <button type="button" class="tg" id="tg-done">Show completed</button>
         </div></div>
+        <div class="af-list-controls">
+          <button type="button" class="btn-ghost af-icon-btn" id="collapseall" title="Collapse all" aria-label="Collapse all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
+          <button type="button" class="btn-ghost af-icon-btn" id="expandall" title="Expand all" aria-label="Expand all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+        </div>
         <div id="list"></div>
       </div>
     </div>
@@ -3940,8 +3945,8 @@ function syncAutofocusToMode(){
   render();
 }
 window.addEventListener('lrl-mode-changed', syncAutofocusToMode);
-function bindTog(id,key,wrap){el(id).addEventListener('change',e=>{ui[key]=e.target.checked;el(wrap).classList.toggle('on',e.target.checked);render();});}
-bindTog('routines','routines','tg-routines');bindTog('showdone','showdone','tg-done');
+function bindTog(id,key){el(id).addEventListener('click',()=>{ui[key]=!ui[key];el(id).classList.toggle('on',ui[key]);render();});}
+bindTog('tg-routines','routines');bindTog('tg-done','showdone');
 function setOwner(val){
   ui.owner = val;
   try { localStorage.setItem('lrl-task-scope', val); } catch(e){}
@@ -3949,13 +3954,11 @@ function setOwner(val){
   render();
 }
 function applyScopeUI(){
-  const mine = el('mine');
-  if (mine) mine.checked = (ui.owner === 'me');
   el('tg-mine')?.classList.toggle('on', ui.owner === 'me');
   // The "Following" stat card's active state is re-rendered by updateHeader (via render()).
 }
 // "Me" toggle: on → my tasks only, off → everything.
-el('mine')?.addEventListener('change', e => setOwner(e.target.checked ? 'me' : 'all'));
+el('tg-mine')?.addEventListener('click', () => setOwner(ui.owner === 'me' ? 'all' : 'me'));
 el('expandall').addEventListener('click',()=>{state.collapsed[ui.group]={};saveState();render();});
 el('collapseall').addEventListener('click',()=>{document.querySelectorAll('.ghead').forEach(h=>setCollapsed(h.dataset.gkey,true));render();});
 
