@@ -215,6 +215,7 @@
   .quest-text.done, .quest-item.done .quest-text { text-decoration: line-through; color: var(--navy-dim); }
   .quest-item.done { opacity: 0.6; }
   .quest-meta-tags { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; flex-shrink: 0; }
+  .quest-repeat { color: rgba(var(--ink-rgb), 0.42); font-size: 14px; line-height: 1; flex-shrink: 0; }
   /* Keep [check][dot][title][star] on row 1, wrap badges to row 2 — fires
      whenever the quest panel is narrow (true mobile OR a narrow split-screen
      window), regardless of the overall viewport width. */
@@ -3197,7 +3198,7 @@ window.lrl = (function(){
         </div>
         <div class="toolbar"><div class="toggles">
           <button type="button" class="tg" id="tg-mine">Me</button>
-          <button type="button" class="tg" id="tg-routines">Show routines not yet due</button>
+          <button type="button" class="tg" id="tg-routines">Show Routines</button>
           <button type="button" class="tg" id="tg-done">Show completed</button>
         </div></div>
         <div class="af-list-controls">
@@ -3681,7 +3682,6 @@ function row(t){
   if(t.status && t.status!=='Planned' && t.status!=='Doing'){
     subParts.push('<span class="quest-sub-status">'+t.status+'</span>');
   }
-  if(t.recurring) subParts.push('<span class="quest-sub-touched">↻ recurring</span>');
   if(t.source==='work' && !t.assignedToMe && t.assigneeNames && t.assigneeNames.length) subParts.push('<span class="quest-sub-assignee">'+escapeHtml(t.assigneeNames.join(', '))+'</span>');
   if(ui.sort==='touched' && lt){
     subParts.push('<span class="quest-sub-touched">touched '+relTime(lt)+'</span>');
@@ -3708,11 +3708,12 @@ function row(t){
   const checkedCls = t.done ? 'checked' : '';
   const statusKey = (t.status || 'Planned').toLowerCase().replace(/\s+/g,'-');
   const statusDot = '<span class="quest-status-dot status-'+statusKey+'" title="'+(t.status||'Planned')+'"></span>';
+  const repeatIcon = t.recurring ? '<span class="quest-repeat" title="Recurring task" aria-label="Recurring task">↻</span>' : '';
   return '<div class="quest-item'+doneCls+'" data-task-id="'+t.id+'" data-task-url="'+escapeHtml(t.url||'')+'">'
     +'<div class="quest-check '+checkedCls+'" data-act="check"></div>'
     +statusDot
     +'<div class="quest-text" data-act="open">'+escapeHtml(t.name)+sub+'</div>'
-    +'<div class="quest-meta-tags">'+priHtml+dueHtml+sourceTag+'</div>'
+    +'<div class="quest-meta-tags">'+priHtml+dueHtml+sourceTag+repeatIcon+'</div>'
     +followBtn
     +star
     +'</div>';
