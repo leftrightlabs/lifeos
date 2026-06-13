@@ -7745,19 +7745,26 @@ function renderCampaigns() {
     });
     const total = visibleGoals.length;
     if (total > 0) {
-      // A rock is "complete" if all its milestones are done (or it has no
-      // milestones but status = Done).
-      const complete = visibleGoals.filter(g =>
-        g.progress.total > 0
-          ? g.progress.done === g.progress.total
-          : g.status === 'Done'
+      // Progress is milestone-based: rocks rarely "complete" until quarter-end,
+      // so milestone completion is what actually shows movement week to week.
+      const prog = aggregateProgress(visibleGoals); // { done, total, pct } across all milestones
+      const completeRocks = visibleGoals.filter(g =>
+        g.progress.total > 0 ? g.progress.done === g.progress.total : g.status === 'Done'
       ).length;
-      const pct = Math.round((complete / total) * 100);
-      rocksSummaryEl.textContent = `${complete} of ${total} rock${total === 1 ? '' : 's'} complete`;
-      if (rocksPctEl) rocksPctEl.textContent = `${pct}% complete`;
-      if (rocksBarEl) rocksBarEl.style.width = pct + '%';
       const collapsedMeta = document.getElementById('chapter-collapsed-meta');
-      if (collapsedMeta) collapsedMeta.textContent = `${pct}% complete`;
+      if (prog.total > 0) {
+        rocksSummaryEl.textContent = `${prog.done} of ${prog.total} milestones${completeRocks ? ` · ${completeRocks}/${total} rocks done` : ''}`;
+        if (rocksPctEl) rocksPctEl.textContent = `${prog.pct}% complete`;
+        if (rocksBarEl) rocksBarEl.style.width = prog.pct + '%';
+        if (collapsedMeta) collapsedMeta.textContent = `${prog.pct}% complete`;
+      } else {
+        // No milestones defined anywhere — fall back to rocks-complete count.
+        const pct = Math.round((completeRocks / total) * 100);
+        rocksSummaryEl.textContent = `${completeRocks} of ${total} rock${total === 1 ? '' : 's'} complete`;
+        if (rocksPctEl) rocksPctEl.textContent = `${pct}% complete`;
+        if (rocksBarEl) rocksBarEl.style.width = pct + '%';
+        if (collapsedMeta) collapsedMeta.textContent = `${pct}% complete`;
+      }
     } else {
       rocksSummaryEl.textContent = 'No rocks in view';
       if (rocksPctEl) rocksPctEl.textContent = '';
