@@ -651,10 +651,14 @@
   .event-field input[type="text"],
   .event-field input[type="date"],
   .event-field input[type="time"] {
-    width: 100%; background: rgba(var(--edge-rgb), 0.05); border: 1px solid rgba(var(--edge-rgb), 0.12); color: var(--navy); padding: 9px 12px; border-radius: 8px; font-family: var(--font-body); font-size: 14px; color-scheme: dark;
+    width: 100%; min-width: 0; background: rgba(var(--edge-rgb), 0.05); border: 1px solid rgba(var(--edge-rgb), 0.12); color: var(--navy); padding: 9px 12px; border-radius: 8px; font-family: var(--font-body); font-size: 14px; color-scheme: dark;
   }
   .event-field input:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
   .event-time-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px; }
+  /* Grid items default to min-width:auto and won't shrink below the intrinsic
+     width of a native time input, which makes the Start/End fields overflow and
+     overlap on narrow screens. Allow them to shrink to their column. */
+  .event-time-grid > .event-field { min-width: 0; }
   .event-time-grid.allday { grid-template-columns: 1fr 1fr; }
   .event-allday-row { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 13px; color: var(--navy); cursor: pointer; }
   .event-allday-row input { accent-color: var(--lime); width: 16px; height: 16px; }
