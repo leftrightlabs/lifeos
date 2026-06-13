@@ -1256,6 +1256,9 @@
   .comms-batch-bar.visible { display: flex; }
   .comms-batch-bar-count { font-size: 13px; font-weight: 600; }
   .comms-batch-bar-actions { display: flex; gap: 8px; align-items: center; }
+  .connect-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: color-mix(in srgb, var(--lime) 12%, transparent); border: 1px solid var(--lime); border-radius: 12px; padding: 12px 16px; margin: 0 0 14px; font-size: 14px; color: var(--navy); }
+  .connect-banner-btn { background: var(--lime); color: var(--navy-accent); font-weight: 700; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; padding: 8px 14px; border-radius: 999px; text-decoration: none; white-space: nowrap; }
+  .connect-banner-btn:hover { background: var(--lime-light); }
   .comms-batch-btn { padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; }
   .comms-batch-btn-trash { background: #ff7a6b; color: #fff; }
   .comms-batch-btn-trash:hover { opacity: 0.85; }
@@ -3204,6 +3207,11 @@ window.lrl = (function(){
     <div class="section-label">Messages</div>
     <h1 class="page-title"><span>Messages</span></h1>
     <div class="page-subtitle">Every message in one place. Live Gmail (work + personal). Slack arrives in a later day.</div>
+
+    <div class="connect-banner" id="connect-banner" style="display:none">
+      <span>Connect your Google account to see your email and calendar here.</span>
+      <a class="connect-banner-btn" href="/auth/google?account=work">Connect Google ↗</a>
+    </div>
 
     <div class="comms-controls">
       <span class="control-label comms-source-label">Source:</span>
@@ -5571,6 +5579,10 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
     const asParam = new URLSearchParams(location.search).get('as');
     const me = await fetch('/api/me' + (asParam ? '?as=' + encodeURIComponent(asParam) : '')).then(r => r.json());
     window.LRL_ME = me;
+    if (me && me.gmailConnected === false) {
+      const b = document.getElementById('connect-banner');
+      if (b) b.style.display = '';
+    }
     if (me && me.personalEnabled === false) {
       document.body.classList.add('role-member');
       if (mode !== 'work') { mode = 'work'; try { localStorage.setItem('lrl-mode', 'work'); } catch (e) {} }

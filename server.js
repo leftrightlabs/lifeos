@@ -450,14 +450,15 @@ app.use(async (req, res, next) => {
 // store is dormant or the row is missing.
 app.get('/api/me', async (req, res) => {
   if (!IS_PROD && req.query.as === 'member') {
-    return res.json({ id: 'dev-member', email: 'member@' + ALLOWED_DOMAIN, name: 'Dev Member', role: 'member', personalEnabled: false, theme: 'indigo', timezone: TZ });
+    return res.json({ id: 'dev-member', email: 'member@' + ALLOWED_DOMAIN, name: 'Dev Member', role: 'member', personalEnabled: false, gmailConnected: false, theme: 'indigo', timezone: TZ });
   }
   if (dbEnabled() && req.session?.userId) {
     try {
       const u = await dbUsers.getById(req.session.userId);
       if (u) return res.json({
         id: u.id, email: u.email, name: u.name, role: u.role,
-        personalEnabled: u.personal_enabled, theme: u.theme, timezone: u.timezone,
+        personalEnabled: u.personal_enabled, gmailConnected: !!u.google_refresh_token,
+        theme: u.theme, timezone: u.timezone,
       });
     } catch (e) { /* fall through to owner fallback */ }
   }
@@ -468,6 +469,7 @@ app.get('/api/me', async (req, res) => {
     name: req.session?.userName || 'Gretchen',
     role: isOwner ? 'owner' : 'member',
     personalEnabled: isOwner,
+    gmailConnected: isOwner,
     theme: 'indigo',
     timezone: TZ,
   });
