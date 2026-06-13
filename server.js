@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { initDb, isEnabled as dbEnabled, users as dbUsers } from './db.js';
-import { decrypt } from './secrets.js';
+import { decrypt, encrypt, isConfigured as secretsConfigured } from './secrets.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 if (process.env.NODE_ENV !== 'production') {
@@ -94,6 +94,25 @@ function currentNotionUserId() {
   return u.notion_user_id || null;    // member without a resolved Notion id → none
 }
 
+// Resolve a user's Notion person id by matching their email to a workspace user.
+let _notionUsersCache = null;
+async function resolveNotionUserId(email) {
+  if (!notion || !email) return null;
+  try {
+    if (!_notionUsersCache) {
+      const out = []; let cursor;
+      do {
+        const r = await notion.users.list({ start_cursor: cursor, page_size: 100 });
+        out.push(...r.results);
+        cursor = r.has_more ? r.next_cursor : null;
+      } while (cursor);
+      _notionUsersCache = out;
+    }
+    const e = String(email).toLowerCase();
+    return _notionUsersCache.find((u) => u.type === 'person' && (u.person?.email || '').toLowerCase() === e)?.id || null;
+  } catch (err) { console.error('[notion] user resolve failed:', err.message); return null; }
+}
+
 const cache = new Map();
 const CACHE_TTL_OVERRIDES = {
   'journal-rings': 5 * 60_000, // heavier query (per-row body-text check); cache longer
@@ -113,6 +132,12 @@ async function cached(key, fn) {
   const value = await fn();
   cache.set(nsKey, { v: value, t: Date.now() });
   return value;
+}
+
+// Drop all cache entries for one user (used after they connect an account).
+function clearUserCache(userKey) {
+  if (!userKey) return;
+  for (const key of [...cache.keys()]) if (key.endsWith('::' + userKey)) cache.delete(key);
 }
 
 function originFromReq(req) {
@@ -411,6 +436,10 @@ app.use(async (req, res, next) => {
       personal_enabled: isOwner };
   } else if (user.role === 'owner' && !user.notion_user_id) {
     user.notion_user_id = GRETCHEN_USER_ID;
+  } else if (user.role !== 'owner' && !user.notion_user_id) {
+    // Member: resolve their Notion identity once (by email), then persist it.
+    const nid = await resolveNotionUserId(user.email);
+    if (nid) { user.notion_user_id = nid; try { await dbUsers.setNotionUserId(user.id, nid); } catch (e) {} }
   }
   req.user = user;
   userContext.run({ user }, next);
@@ -472,16 +501,29 @@ app.get('/auth/google/callback', async (req, res) => {
     const { code, state } = req.query;
     if (!code) return res.status(400).send('Missing code');
     const account = state === 'personal' ? 'personal' : 'work';
-    const envName = ACCOUNT_ENVS[account];
     const oauth = makeOAuthClient(req);
     const { tokens } = await oauth.getToken(code);
-    const refresh = tokens.refresh_token || '(none — revoke prior consent and try again)';
+    const refresh = tokens.refresh_token;
+    // Multi-user: store the refresh token in the signed-in user's row (encrypted)
+    // and return them to the app — no manual env paste.
+    if (dbEnabled() && req.session?.userId && refresh && secretsConfigured()) {
+      try {
+        await dbUsers.setGoogleToken(req.session.userId, account, encrypt(refresh));
+        clearUserCache(req.session.userId);
+        return res.redirect('/?connected=' + account);
+      } catch (e) {
+        console.error('[auth] store google token failed:', e.message);
+      }
+    }
+    // Fallback (single-user / owner env-token setup): show the token to paste.
+    const envName = ACCOUNT_ENVS[account];
+    const shown = refresh || '(none — revoke prior consent and try again)';
     res.type('html').send(`<!DOCTYPE html>
 <html><head><meta charset="utf-8"/><title>LRL OS — auth (${account})</title></head>
 <body style="background:#0a0f1e;color:#f5f5f7;font-family:ui-monospace,Menlo,monospace;padding:2rem;line-height:1.5">
   <h1 style="color:#a7c140;font-family:Georgia,serif">Refresh token captured — ${account}</h1>
   <p>Copy this and add to Railway as <code style="background:#131a30;padding:0.1rem 0.4rem;border-radius:4px">${envName}</code>:</p>
-  <pre style="background:#131a30;padding:1rem;border-radius:8px;overflow-x:auto;user-select:all">${refresh}</pre>
+  <pre style="background:#131a30;padding:1rem;border-radius:8px;overflow-x:auto;user-select:all">${shown}</pre>
   <p style="opacity:0.6;font-size:0.85rem">Then redeploy. Do not share this token.</p>
 </body></html>`);
   } catch (err) {
