@@ -1399,6 +1399,18 @@
   .autofocus-app .af-list-controls {display:flex;justify-content:flex-end;gap:6px;margin:2px 0 8px}
   .autofocus-app .af-icon-btn {padding:0;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center}
   .autofocus-app .af-icon-btn svg {width:16px;height:16px}
+  .autofocus-app .af-icon-row {display:flex;align-items:center;gap:4px;margin-bottom:8px}
+  .autofocus-app .af-icon-group {position:relative}
+  .autofocus-app .af-tbar-btn {padding:0;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line-2);background:var(--card);border-radius:8px;cursor:pointer;color:var(--muted);flex:none}
+  .autofocus-app .af-tbar-btn svg {width:16px;height:16px;flex:none}
+  .autofocus-app .af-tbar-btn:hover {color:var(--ink);border-color:color-mix(in srgb,var(--ink) 30%,transparent)}
+  .autofocus-app .af-tbar-btn.on {color:var(--navy);border-color:var(--navy);background:color-mix(in srgb,var(--lime) 15%,transparent)}
+  .autofocus-app .af-icon-sep {width:1px;height:20px;background:var(--line-2);margin:0 2px;flex:none;align-self:center}
+  .autofocus-app .af-popover {position:absolute;top:calc(100% + 6px);left:0;background:var(--card);border:1px solid var(--line-2);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.15);padding:4px;z-index:300;min-width:155px;display:none}
+  .autofocus-app .af-popover.open {display:block}
+  .autofocus-app .af-pop-opt {display:block;width:100%;text-align:left;padding:8px 12px;border:0;background:none;font:inherit;font-size:13px;color:var(--ink);cursor:pointer;border-radius:7px;white-space:nowrap}
+  .autofocus-app .af-pop-opt:hover {background:color-mix(in srgb,var(--lime) 10%,transparent)}
+  .autofocus-app .af-pop-opt.on {font-weight:600;color:var(--navy)}
   .autofocus-app .group {margin-top:18px}
   .autofocus-app .ghead {display:flex;align-items:center;gap:9px;padding:0 2px 8px;border-bottom:2px solid var(--navy);margin-bottom:2px;cursor:pointer}
   .autofocus-app .ghead .car {width:16px;height:16px;flex:none;transition:transform .15s;color:var(--navy)}
@@ -1469,6 +1481,8 @@
   .autofocus-app .ghead { border-bottom-color: rgba(var(--edge-rgb), 0.18); }
   .autofocus-app .ghead h2, .autofocus-app .ghead .car { color: var(--ink); }
   .autofocus-app .tg.on { color: var(--lime); border-color: var(--lime); }
+  .autofocus-app .af-tbar-btn.on { color: var(--lime); border-color: var(--lime); background: color-mix(in srgb,var(--lime) 12%,transparent); }
+  .autofocus-app .af-pop-opt.on { color: var(--lime); }
   .autofocus-app .stat .statn { color: var(--ink) !important; }
   .autofocus-app .stat.s-personal .statn { color: var(--personal) !important; }
   .autofocus-app .stat.s-myday .statn { color: var(--lime) !important; }
@@ -3188,27 +3202,43 @@ window.lrl = (function(){
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
             <input id="q" placeholder="Search tasks or projects…"/>
           </div>
-          <select class="sel" id="sortsel">
-            <option value="due">Sort: Due date</option>
-            <option value="touched">Sort: Last touched</option>
-            <option value="source">Sort: Source</option>
-            <option value="name">Sort: Name</option>
-          </select>
-          <select class="sel" id="groupsel">
-            <option value="bucket">Group: When it's due</option>
-            <option value="project">Group: Project</option>
-            <option value="source">Group: Work / Personal</option>
-            <option value="none">Group: None</option>
-          </select>
         </div>
-        <div class="toolbar"><div class="toggles">
-          <button type="button" class="tg" id="tg-mine">Me</button>
-          <button type="button" class="tg" id="tg-routines">Show Routines</button>
-          <button type="button" class="tg" id="tg-done">Show completed</button>
-        </div></div>
-        <div class="af-list-controls">
-          <button type="button" class="btn-ghost af-icon-btn" id="collapseall" title="Collapse all" aria-label="Collapse all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
-          <button type="button" class="btn-ghost af-icon-btn" id="expandall" title="Expand all" aria-label="Expand all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="af-icon-row">
+          <div class="af-icon-group">
+            <button type="button" class="af-tbar-btn" id="sort-btn" title="Sort">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
+            </button>
+            <div class="af-popover" id="sort-pop">
+              <button class="af-pop-opt" data-val="due">Due date</button>
+              <button class="af-pop-opt" data-val="touched">Last touched</button>
+              <button class="af-pop-opt" data-val="source">Source</button>
+              <button class="af-pop-opt" data-val="name">Name</button>
+            </div>
+          </div>
+          <div class="af-icon-group">
+            <button type="button" class="af-tbar-btn" id="group-btn" title="Group by">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="2"/><rect x="3" y="11" width="18" height="4" rx="2"/><rect x="3" y="17" width="18" height="3" rx="1.5"/></svg>
+            </button>
+            <div class="af-popover" id="group-pop">
+              <button class="af-pop-opt" data-val="bucket">When it's due</button>
+              <button class="af-pop-opt" data-val="project">Project</button>
+              <button class="af-pop-opt" data-val="source">Work / Personal</button>
+              <button class="af-pop-opt" data-val="none">None</button>
+            </div>
+          </div>
+          <div class="af-icon-sep"></div>
+          <button type="button" class="af-tbar-btn" id="tg-mine" title="My tasks only">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          </button>
+          <button type="button" class="af-tbar-btn" id="tg-routines" title="Show routines">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+          </button>
+          <button type="button" class="af-tbar-btn" id="tg-done" title="Show completed">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
+          </button>
+          <div class="af-icon-sep"></div>
+          <button type="button" class="af-tbar-btn" id="collapseall" title="Collapse all" aria-label="Collapse all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
+          <button type="button" class="af-tbar-btn" id="expandall" title="Expand all" aria-label="Expand all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
         </div>
         <div id="list"></div>
       </div>
@@ -3894,8 +3924,45 @@ window.addEventListener('lrl-refresh-focus', async () => {
   try { await fetchTasks(); render(); } catch(e){}
 });
 el('q').addEventListener('input',e=>{ui.q=e.target.value;render();});
-el('sortsel').addEventListener('change',e=>{ui.sort=e.target.value;render();});
-el('groupsel').addEventListener('change',e=>{ui.group=e.target.value;render();});
+function updateSortBtn(){
+  const btn=el('sort-btn'),pop=el('sort-pop');
+  if(btn) btn.classList.toggle('on',ui.sort!=='due');
+  if(pop) pop.querySelectorAll('.af-pop-opt').forEach(b=>b.classList.toggle('on',b.dataset.val===ui.sort));
+}
+function updateGroupBtn(){
+  const btn=el('group-btn'),pop=el('group-pop');
+  if(btn) btn.classList.toggle('on',ui.group!=='bucket');
+  if(pop) pop.querySelectorAll('.af-pop-opt').forEach(b=>b.classList.toggle('on',b.dataset.val===ui.group));
+}
+el('sort-btn')?.addEventListener('click',e=>{
+  e.stopPropagation();
+  el('group-pop')?.classList.remove('open');
+  el('sort-pop')?.classList.toggle('open');
+  updateSortBtn();
+});
+el('group-btn')?.addEventListener('click',e=>{
+  e.stopPropagation();
+  el('sort-pop')?.classList.remove('open');
+  el('group-pop')?.classList.toggle('open');
+  updateGroupBtn();
+});
+el('sort-pop')?.addEventListener('click',e=>{
+  const opt=e.target.closest('.af-pop-opt');
+  if(!opt)return;
+  ui.sort=opt.dataset.val;
+  el('sort-pop').classList.remove('open');
+  updateSortBtn();
+  render();
+});
+el('group-pop')?.addEventListener('click',e=>{
+  const opt=e.target.closest('.af-pop-opt');
+  if(!opt)return;
+  ui.group=opt.dataset.val;
+  el('group-pop').classList.remove('open');
+  updateGroupBtn();
+  render();
+});
+document.addEventListener('click',()=>{el('sort-pop')?.classList.remove('open');el('group-pop')?.classList.remove('open');});
 
 // Click stat tiles to filter task list. Clicking active tile (or "Open") clears the filter.
 (function wireStatTileFilters(){
@@ -3931,23 +3998,11 @@ el('groupsel').addEventListener('change',e=>{ui.group=e.target.value;render();})
 function syncAutofocusToMode(){
   const m = localStorage.getItem('lrl-mode') || 'all';
   ui.src = (m === 'all' || m === 'combined') ? 'all' : m;
-  // Group: "Work / Personal" is meaningless in single-mode views — hide the
-  // option, and if the user happens to be on that grouping when entering a
-  // single mode, snap them back to bucket grouping.
-  const grpSel = document.getElementById('groupsel');
-  if (grpSel) {
-    const srcOpt = grpSel.querySelector('option[value="source"]');
-    if (srcOpt) {
-      const inSingleMode = ui.src !== 'all';
-      srcOpt.hidden = inSingleMode;
-      srcOpt.disabled = inSingleMode;
-      if (inSingleMode && ui.group === 'source') {
-        ui.group = 'bucket';
-        saveState();
-        grpSel.value = 'bucket';
-      }
-    }
-  }
+  const inSingleMode = ui.src !== 'all';
+  if (inSingleMode && ui.group === 'source') { ui.group = 'bucket'; saveState(); }
+  const srcOpt = el('group-pop')?.querySelector('.af-pop-opt[data-val="source"]');
+  if (srcOpt) srcOpt.style.display = inSingleMode ? 'none' : '';
+  updateGroupBtn();
   applyScopeUI();
   render();
 }
@@ -3973,7 +4028,7 @@ el('tg-mine')?.addEventListener('click', () => setOwner(ui.owner === 'me' ? 'all
 el('expandall').addEventListener('click',()=>{state.collapsed[ui.group]={};saveState();render();});
 el('collapseall').addEventListener('click',()=>{document.querySelectorAll('.ghead').forEach(h=>setCollapsed(h.dataset.gkey,true));render();});
 
-(async()=>{await loadState();await fetchTasks();syncAutofocusToMode();})();
+(async()=>{await loadState();updateSortBtn();updateGroupBtn();await fetchTasks();syncAutofocusToMode();})();
 })();
 </script>
 
