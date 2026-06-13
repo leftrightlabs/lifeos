@@ -7,6 +7,8 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { initDb, isEnabled as dbEnabled, users as dbUsers } from './db.js';
+import { decrypt } from './secrets.js';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 if (process.env.NODE_ENV !== 'production') {
   const { default: dotenv } = await import('dotenv');
@@ -82,6 +84,16 @@ const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   : null;
 
+// Per-request user context (set by middleware) so authedClient() and Notion
+// scoping resolve to the signed-in user without threading through every call.
+const userContext = new AsyncLocalStorage();
+function currentUser() { return userContext.getStore()?.user || null; }
+function currentNotionUserId() {
+  const u = currentUser();
+  if (!u) return GRETCHEN_USER_ID;   // no request context (e.g. background) → owner
+  return u.notion_user_id || null;    // member without a resolved Notion id → none
+}
+
 const cache = new Map();
 const CACHE_TTL_OVERRIDES = {
   'journal-rings': 5 * 60_000, // heavier query (per-row body-text check); cache longer
@@ -91,11 +103,15 @@ const CACHE_TTL_OVERRIDES = {
   'weather': 20 * 60_000,        // current conditions change slowly
 };
 async function cached(key, fn) {
+  // Namespace per signed-in user so one person's cached data is never served to
+  // another. Keys with no user context (background tasks) stay global.
+  const u = userContext.getStore()?.user;
+  const nsKey = u ? `${key}::${u.id || u.email}` : key;
   const ttl = CACHE_TTL_OVERRIDES[key] || CACHE_TTL_MS;
-  const hit = cache.get(key);
+  const hit = cache.get(nsKey);
   if (hit && Date.now() - hit.t < ttl) return hit.v;
   const value = await fn();
-  cache.set(key, { v: value, t: Date.now() });
+  cache.set(nsKey, { v: value, t: Date.now() });
   return value;
 }
 
@@ -116,7 +132,11 @@ function makeOAuthClient(req, callbackPath = '/auth/google/callback') {
 async function queryTasks(dataSourceId, { peopleProp, myDayOnly } = {}) {
   const and = [{ property: 'Status', status: { does_not_equal: 'Done' } }];
   if (myDayOnly) and.push({ property: 'My Day', checkbox: { equals: true } });
-  if (peopleProp) and.push({ property: peopleProp, people: { contains: GRETCHEN_USER_ID } });
+  if (peopleProp) {
+    const nid = currentNotionUserId();
+    // Member without a resolved Notion id → match nothing (never the owner's tasks).
+    and.push({ property: peopleProp, people: { contains: nid || '00000000-0000-0000-0000-000000000000' } });
+  }
   return notion.dataSources.query({
     data_source_id: dataSourceId,
     filter: { and },
@@ -146,8 +166,8 @@ function simplifyTask(page, source) {
     project: null,
     projectId: (props.Project?.relation || [])[0]?.id || null,
     assigneeNames: (props.Assigned?.people || []).map((u) => u.name).filter(Boolean),
-    assignedToMe: source === 'personal' ? true : assignees.includes(GRETCHEN_USER_ID),
-    followingMe: following.includes(GRETCHEN_USER_ID),
+    assignedToMe: source === 'personal' ? (currentNotionUserId() === GRETCHEN_USER_ID) : assignees.includes(currentNotionUserId()),
+    followingMe: following.includes(currentNotionUserId()),
     url: page.url,
   };
 }
@@ -210,7 +230,17 @@ function base64UrlDecode(str) {
 }
 
 function authedClient(account = 'work') {
-  const token = process.env[ACCOUNT_ENVS[account]];
+  const u = currentUser();
+  let token = null;
+  if (u) {
+    const enc = account === 'personal' ? u.google_refresh_token_personal : u.google_refresh_token;
+    if (enc) { try { token = decrypt(enc); } catch (e) { token = null; } }
+  }
+  // Owner / single-user / no-context fallback to env tokens. A member without a
+  // stored token gets NO client (empty data) — never the owner's mailbox.
+  if (!token && (!u || u.role === 'owner')) {
+    token = process.env[ACCOUNT_ENVS[account]] || null;
+  }
   if (!token) return null;
   const oauth = makeOAuthClient();
   oauth.setCredentials({ refresh_token: token });
@@ -364,6 +394,28 @@ function requireAuth(req, res, next) {
 
 app.use(requireAuth);
 
+// Load the signed-in user (with tokens + Notion id) and bind it to an async
+// context so authedClient() and Notion scoping resolve per-user without threading.
+app.use(async (req, res, next) => {
+  if (!req.path.startsWith('/api/')) return next();
+  let user = null;
+  try {
+    if (dbEnabled() && req.session?.userId) user = await dbUsers.getById(req.session.userId);
+  } catch (e) { /* fall through to owner fallback */ }
+  if (!user) {
+    const email = (req.session?.userEmail || ALLOWED_EMAIL).toLowerCase();
+    const isOwner = email === ALLOWED_EMAIL;
+    user = { id: null, email, name: req.session?.userName || 'Gretchen',
+      role: isOwner ? 'owner' : 'member',
+      notion_user_id: isOwner ? GRETCHEN_USER_ID : null,
+      personal_enabled: isOwner };
+  } else if (user.role === 'owner' && !user.notion_user_id) {
+    user.notion_user_id = GRETCHEN_USER_ID;
+  }
+  req.user = user;
+  userContext.run({ user }, next);
+});
+
 // Current user's profile — drives the client bootstrap (name, theme, role, and
 // which tabs/modes are available). Falls back to the single-user owner when the
 // store is dormant or the row is missing.
@@ -478,7 +530,10 @@ app.get('/api/tasks/life-all', async (_req, res) => {
 });
 
 function invalidateTaskCaches() {
-  ['work-myday', 'life-myday', 'work-all', 'life-all', 'tasks-all', 'tasks-all-board', 'goals', 'review', 'xero-finance', 'journal-rings', 'calendar-today'].forEach(k => cache.delete(k));
+  const bases = ['work-myday', 'life-myday', 'work-all', 'life-all', 'tasks-all', 'tasks-all-board', 'goals', 'review', 'xero-finance', 'journal-rings', 'calendar-today'];
+  for (const key of [...cache.keys()]) {
+    if (bases.includes(key.split('::')[0])) cache.delete(key); // clears every per-user variant
+  }
 }
 
 async function fetchGoalsForSource(projectsDs, tasksDs, source, projectPropName) {
@@ -854,15 +909,17 @@ app.post('/api/tasks/:id/follow', async (req, res) => {
   try {
     const page = await notion.pages.retrieve({ page_id: pageId });
     const current = (page.properties?.Following?.people || []).map((p) => p.id);
-    const has = current.includes(GRETCHEN_USER_ID);
+    const me = currentNotionUserId();
+    if (!me) return res.status(400).json({ error: 'no Notion identity for this user yet' });
+    const has = current.includes(me);
     let next = current;
-    if (follow && !has) next = [...current, GRETCHEN_USER_ID];
-    else if (!follow && has) next = current.filter((id) => id !== GRETCHEN_USER_ID);
+    if (follow && !has) next = [...current, me];
+    else if (!follow && has) next = current.filter((id) => id !== me);
     if (next !== current) {
       await notion.pages.update({ page_id: pageId, properties: { Following: { people: next.map((id) => ({ id })) } } });
       invalidateTaskCaches();
     }
-    res.json({ ok: true, following: next.includes(GRETCHEN_USER_ID) });
+    res.json({ ok: true, following: next.includes(me) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2203,7 +2260,8 @@ async function createNotionTask({ source, name, dueStart, myDay, priority, proje
   if (priority) properties['Priority 2'] = { select: { name: priority } };
   if (projectId) properties.Project = { relation: [{ id: projectId }] };
   if (source === 'work') {
-    properties.Assigned = { people: [{ id: GRETCHEN_USER_ID }] };
+    const nid = currentNotionUserId();
+    if (nid) properties.Assigned = { people: [{ id: nid }] };
   }
   const createArgs = {
     parent: { type: 'data_source_id', data_source_id: dsId },
