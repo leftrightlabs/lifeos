@@ -2757,6 +2757,32 @@
   } catch(e){ console.warn('[capacitor bootstrap]', e); }
 })();
 
+// Durable key/value storage. On native iOS, back window.storage with Capacitor
+// Preferences so values (e.g. collapsed-panel state) survive WKWebView localStorage
+// eviction between app launches. We mirror every write into localStorage too so the
+// synchronous reads scattered through the app stay fast; on a cold launch where the
+// WebView has dropped localStorage, the async Preferences read repopulates it.
+(function bootstrapStorage(){
+  const cap = window.Capacitor;
+  if (!cap || typeof cap.isNativePlatform !== 'function' || !cap.isNativePlatform()) return;
+  const P = cap.Plugins && cap.Plugins.Preferences;
+  if (!P) return;
+  window.storage = {
+    get: async (k) => {
+      try {
+        const r = await P.get({ key: k });
+        // Repopulate localStorage so later synchronous reads see the value.
+        if (r && r.value != null) { try { localStorage.setItem(k, r.value); } catch(e){} }
+        return r;
+      } catch(e){ return { value: localStorage.getItem(k) }; }
+    },
+    set: async (k, v) => {
+      try { localStorage.setItem(k, v); } catch(e){}
+      try { await P.set({ key: k, value: String(v) }); } catch(e){}
+    }
+  };
+})();
+
 // Runtime shims — replace Claude artifact APIs with browser equivalents
 window.storage = window.storage || {
   get: async (k) => ({ value: localStorage.getItem(k) }),
