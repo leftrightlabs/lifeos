@@ -6,7 +6,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { initDb } from './db.js';
+import { initDb, isEnabled as dbEnabled } from './db.js';
 
 if (process.env.NODE_ENV !== 'production') {
   const { default: dotenv } = await import('dotenv');
@@ -246,6 +246,11 @@ const publicStatic = express.static(join(__dirname, 'public'), staticOpts);
 app.use((req, res, next) => {
   if (PUBLIC_FILES.has(req.path)) return publicStatic(req, res, next);
   next();
+});
+
+// Public health check — reports whether the multi-user store is connected.
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true, db: dbEnabled() });
 });
 
 app.get('/api/health', (_req, res) => {
