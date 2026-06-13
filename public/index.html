@@ -674,8 +674,10 @@
   @media (max-width: 600px) {
     .event-modal { padding: 40px 12px 20px; }
     .event-modal-content { padding: 18px; }
-    .event-time-grid { grid-template-columns: 1fr 1fr; }
-    .event-time-grid > :first-child { grid-column: 1 / -1; }
+    /* Native iOS time inputs have a hard minimum width that won't shrink to fit
+       two side-by-side columns on a phone, causing them to overlap. Stack the
+       date/start/end fields full-width so each one has room. */
+    .event-time-grid { grid-template-columns: 1fr; }
     .event-modal-actions { gap: 6px; }
     .event-btn { padding: 9px 12px; font-size: 11px; flex: 1; min-width: 0; }
     .event-btn.delete { order: 99; flex-basis: 100%; }
