@@ -724,6 +724,8 @@
   .brief-weather .bw-icon { display: inline-flex; }
   .brief-weather .bw-icon svg { width: 15px; height: 15px; }
   .brief-weather .bw-temp { color: var(--navy); font-weight: 600; }
+  .topinfo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 16px; font-size: 12px; border-bottom: 1px solid var(--navy-faint); }
+  .topinfo-date { color: var(--navy-dim); font-weight: 500; letter-spacing: 0.01em; }
   #brief-collapse-caret { display: none; }
   .daily-brief-text { font-family: var(--font-body); font-size: 15px; font-weight: 400; line-height: 1.6; color: var(--navy); }
   @media (max-width: 600px) { .daily-brief-text { font-size: 14.5px; line-height: 1.55; } }
@@ -2945,6 +2947,11 @@ window.lrl = (function(){
     <button class="tab tab-ctx" data-tab="relationships" data-modes="personal">Relationships</button>
   </div>
 
+  <div class="topinfo" id="topinfo">
+    <span class="topinfo-date" id="topinfo-date"></span>
+    <span class="brief-weather" id="brief-weather" title="Euless, TX" style="display:none"></span>
+  </div>
+
   <!-- COMMAND TAB -->
   <div class="tab-content active" data-content="command">
     <div class="section-label">Today's Overview</div>
@@ -2954,7 +2961,6 @@ window.lrl = (function(){
       <div class="daily-brief-kicker">
         <button class="daily-brief-toggle" id="brief-toggle" title="Collapse/expand"><span id="brief-collapse-caret">▾</span> Current Focus <span id="brief-bucket" style="opacity:0.6;font-weight:500;text-transform:lowercase;letter-spacing:0.05em;font-size:0.75em"></span></button>
         <div class="daily-brief-right">
-          <span class="brief-weather" id="brief-weather" title="Euless, TX" style="display:none"></span>
           <button class="daily-brief-refresh" id="brief-refresh" title="Regenerate based on current time">↻</button>
         </div>
       </div>
@@ -3176,7 +3182,6 @@ window.lrl = (function(){
       <div class="wrap">
         <div class="section-label">Unified Focus · Work + Life</div>
         <h1 class="page-title"><span>Tasks</span></h1>
-        <p class="page-subtitle" id="hdrdate"></p>
         <div class="statgrid" id="hdrstats"></div>
         <div class="toolbar">
           <div class="search">
@@ -3778,7 +3783,6 @@ function updateHeader(){
   const followActive=ui.owner==='following'?' active':'';
   const followTile='<div class="stat s-following'+followActive+'" data-scope="following" role="button" tabindex="0" aria-pressed="'+(followActive?'true':'false')+'" title="Show tasks I follow"><div class="statn">'+followCount+'</div><div class="statl">Following</div></div>';
   el('hdrstats').innerHTML=tile(live.length,'Open','s-open','open')+tile(work,'Work','s-work','work')+tile(pers,'Personal','s-personal','personal')+tile(td,'Today','s-today','today')+tile(od,'Overdue','s-over','overdue')+tile(md,"My Day",'s-myday','myday')+followTile;
-  const d=el('hdrdate'); if(d) d.innerHTML='<span class="dot"></span>'+TODAY.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 }
 
 function afPatch(id, body){
@@ -7656,7 +7660,9 @@ document.addEventListener('keydown', (e) => {
     const wrap = document.getElementById('chapter-panel');
     setChapterCollapsed(!wrap.classList.contains('collapsed'));
   });
-  // Weather chip (Euless) in the Daily Focus header
+  // Persistent date + weather strip under the nav (visible on every tab)
+  const tid = document.getElementById('topinfo-date');
+  if (tid) tid.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   loadWeather();
   window.addEventListener('lrl-refresh', () => loadWeather(true));
   // Restore collapsed states
