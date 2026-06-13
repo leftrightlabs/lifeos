@@ -3186,7 +3186,6 @@ window.lrl = (function(){
           </select>
         </div>
         <div class="toolbar"><div class="toggles">
-          <label class="tg" id="tg-myday"><input type="checkbox" id="myday"/> Today's Tasks only</label>
           <label class="tg" id="tg-routines"><input type="checkbox" id="routines"/> Show routines not yet due</label>
           <label class="tg" id="tg-done"><input type="checkbox" id="showdone"/> Show completed</label>
           <button class="btn-ghost" id="expandall">Expand all</button>
@@ -3600,7 +3599,7 @@ function bucketOf(t){const e=effDate(t);if(!e)return{key:'none',label:'No Due Da
 function notYetDue(t){if(t.recurring){const nd=nextDue(t);return nd&&nd>today;}const s=parseD(t.dueStart),e=parseD(t.dueEnd);if(s&&e&&s>today)return true;return false;}
 
 const el=id=>document.getElementById(id);
-const ui={src:'all',sort:'due',group:'bucket',q:'',myday:false,routines:false,showdone:false,statFilter:null,owner:'all'};
+const ui={src:'all',sort:'due',group:'bucket',q:'',routines:false,showdone:false,statFilter:null,owner:'all'};
 try { const sf = localStorage.getItem('lrl-stat-filter'); if (sf) ui.statFilter = sf; } catch(e){}
 try { const sc = localStorage.getItem('lrl-task-scope'); if (sc) ui.owner = sc; } catch(e){}
 
@@ -3613,7 +3612,6 @@ function visible(){
       if(ui.owner==='me'&&!t.assignedToMe)return false;
       if(ui.owner==='following'&&!t.followingMe)return false;
     }
-    if(ui.myday&&!t.myDay)return false;
     if(!ui.routines&&notYetDue(t)&&!t.done)return false;
     if(ui.q){const q=ui.q.toLowerCase();if(!(t.name.toLowerCase().includes(q)||(t.project||'').toLowerCase().includes(q)))return false;}
     if(sf){
@@ -3920,7 +3918,7 @@ function syncAutofocusToMode(){
 }
 window.addEventListener('lrl-mode-changed', syncAutofocusToMode);
 function bindTog(id,key,wrap){el(id).addEventListener('change',e=>{ui[key]=e.target.checked;el(wrap).classList.toggle('on',e.target.checked);render();});}
-bindTog('myday','myday','tg-myday');bindTog('routines','routines','tg-routines');bindTog('showdone','showdone','tg-done');
+bindTog('routines','routines','tg-routines');bindTog('showdone','showdone','tg-done');
 function applyScopeUI(){
   document.querySelectorAll('[data-af-scope]').forEach(b=>b.classList.toggle('active', b.dataset.afScope===ui.owner));
   const wrap=el('af-scope-wrap'); if(wrap) wrap.style.display=(ui.src==='personal')?'none':'';
