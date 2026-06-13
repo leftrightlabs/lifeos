@@ -616,6 +616,10 @@
   .task-combo-empty { padding: 10px 12px; color: rgba(var(--ink-rgb), 0.5); font-size: 13px; }
   .task-checkbox-row { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 14px; color: var(--navy); cursor: pointer; }
   .task-checkbox-row input { accent-color: var(--lime); width: 16px; height: 16px; }
+  /* The native iOS date picker's "Reset" reverts to the original date and can't
+     clear it, so this app-level Clear actually empties the field. */
+  .task-date-clear { float: right; background: none; border: none; color: var(--navy-dim); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; cursor: pointer; padding: 0; }
+  .task-date-clear:hover { color: var(--lime); }
   .task-project-line { font-size: 12px; color: rgba(var(--ink-rgb), 0.55); margin-bottom: 14px; padding: 8px 12px; background: rgba(var(--edge-rgb), 0.03); border-radius: 6px; }
   .task-project-line .lab { color: rgba(var(--ink-rgb), 0.4); letter-spacing: 0.08em; text-transform: uppercase; font-size: 10px; font-weight: 700; margin-right: 8px; }
   .task-modal-actions { display: flex; gap: 8px; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(var(--edge-rgb), 0.06); flex-wrap: wrap; }
@@ -3576,12 +3580,12 @@ window.lrl = (function(){
       </div>
     </div>
     <div class="task-field">
-      <label>Due date</label>
+      <label>Due date <button type="button" class="task-date-clear" id="task-due-clear">Clear</button></label>
       <input type="date" id="task-due-input"/>
     </div>
     <label class="task-checkbox-row" id="task-dueend-toggle-row"><input type="checkbox" id="task-dueend-toggle"/> End date</label>
     <div class="task-field" id="task-dueend-wrap" style="display:none">
-      <label>End date</label>
+      <label>End date <button type="button" class="task-date-clear" id="task-dueend-clear">Clear</button></label>
       <input type="date" id="task-dueend-input"/>
     </div>
     <div class="task-modal-actions">
@@ -5365,6 +5369,16 @@ function setTaskEndDateVisible(on){
 }
 document.getElementById('task-dueend-toggle')?.addEventListener('change', (e) => {
   setTaskEndDateVisible(e.target.checked);
+});
+// Clear the start date (and with it the end date — an end with no start is
+// meaningless). Saving then sends dueStart:null, which clears the Notion date.
+document.getElementById('task-due-clear')?.addEventListener('click', () => {
+  const di = document.getElementById('task-due-input');
+  if (di) di.value = '';
+  setTaskEndDateVisible(false);
+});
+document.getElementById('task-dueend-clear')?.addEventListener('click', () => {
+  setTaskEndDateVisible(false);
 });
 document.getElementById('task-open-notion-btn')?.addEventListener('click', () => {
   const url = editingTask?.url;
