@@ -4042,7 +4042,11 @@ function setChapterCollapsed(collapsed){
   const wrap = document.getElementById('chapter-panel');
   if (!wrap) return;
   wrap.classList.toggle('collapsed', collapsed);
-  localStorage.setItem('lrl-chapter-collapsed', collapsed ? '1' : '0');
+  const v = collapsed ? '1' : '0';
+  try { localStorage.setItem('lrl-chapter-collapsed', v); } catch(e){}
+  // Also persist to the durable store (Capacitor Preferences on the phone) so the
+  // state survives iOS WebView localStorage eviction between app launches.
+  try { window.storage.set('lrl-chapter-collapsed', v); } catch(e){}
 }
 
 // ====== Morning Ritual ======
@@ -7635,6 +7639,7 @@ document.addEventListener('keydown', (e) => {
   // Restore collapsed states
   if (localStorage.getItem('lrl-brief-collapsed') === '1') setBriefCollapsed(true);
   if (localStorage.getItem('lrl-chapter-collapsed') === '1') setChapterCollapsed(true);
+  else window.storage.get('lrl-chapter-collapsed').then(r => { if (r && r.value === '1') setChapterCollapsed(true); }).catch(()=>{});
   // Re-render calendar every 60s so past/live event states stay accurate
   setInterval(() => { if (TODAY_EVENTS.length) renderTodayQuests(); }, 60000);
 })();
