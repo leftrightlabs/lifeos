@@ -1363,6 +1363,9 @@
   .autofocus-app .stat.s-today {border-top-color:var(--today)}
   .autofocus-app .stat.s-over {border-top-color:var(--over)}
   .autofocus-app .stat.s-myday {border-top-color:var(--lime)}
+  .autofocus-app .stat.s-following {border-top-color:var(--lime)}
+  .autofocus-app .stat.s-following.active {color:var(--lime)}
+  body[data-mode="personal"] .autofocus-app .stat.s-following { display:none; }
   /* In single-mode views, hide the opposite-side tile entirely — and the
      same-side tile is redundant with Open (which is already filtered), so
      hide that too. Leaves: Open · Today · Overdue · Today's Tasks. */
@@ -3171,13 +3174,6 @@ window.lrl = (function(){
         <h1 class="page-title"><span>Tasks</span></h1>
         <p class="page-subtitle" id="hdrdate"></p>
         <div class="statgrid" id="hdrstats"></div>
-        <div class="toolbar" id="af-scope-wrap">
-          <div class="filter-group">
-            <button class="filter-btn active" data-af-scope="all">All</button>
-            <button class="filter-btn" data-af-scope="me">Me</button>
-            <button class="filter-btn" data-af-scope="following">Following</button>
-          </div>
-        </div>
         <div class="toolbar">
           <div class="search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
@@ -3197,6 +3193,7 @@ window.lrl = (function(){
           </select>
         </div>
         <div class="toolbar"><div class="toggles">
+          <label class="tg" id="tg-mine"><input type="checkbox" id="mine"/> Me</label>
           <label class="tg" id="tg-routines"><input type="checkbox" id="routines"/> Show routines not yet due</label>
           <label class="tg" id="tg-done"><input type="checkbox" id="showdone"/> Show completed</label>
           <button class="btn-ghost" id="expandall">Expand all</button>
@@ -3696,7 +3693,9 @@ function row(t){
     ? '<span class="quest-due-inline '+dl.cls+'" data-act="edit-due">'+dl.txt+'</span>'
     : '<span class="quest-due-inline" data-act="edit-due" style="opacity:0.35">+ date</span>';
   const starTitle = isMyDay ? "Remove from Today's Tasks" : "Add to Today's Tasks";
-  const star = '<button class="quest-star '+(isMyDay?'on':'')+'" data-act="star" title="'+starTitle+'" aria-label="'+starTitle+'"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>';
+  // In the Following view these are other people's tasks — hide the My Day star
+  // so you can't accidentally toggle someone else's "My Day".
+  const star = (ui.owner==='following') ? '' : '<button class="quest-star '+(isMyDay?'on':'')+'" data-act="star" title="'+starTitle+'" aria-label="'+starTitle+'"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>';
   const followBtn = (t.source==='work' && !t.assignedToMe)
     ? '<button class="quest-follow '+(t.followingMe?'on':'')+'" data-act="follow" title="'+(t.followingMe?'Following — tap to unfollow':'Follow this task')+'" aria-label="Follow task"><svg viewBox="0 0 24 24"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/></svg></button>'
     : '';
@@ -3768,7 +3767,11 @@ function updateHeader(){
     const active=ui.statFilter===filter?' active':'';
     return '<div class="stat '+cls+active+'" data-filter="'+filter+'" role="button" tabindex="0" aria-pressed="'+(active?'true':'false')+'" title="Filter to '+label.toLowerCase()+'"><div class="statn">'+n+'</div><div class="statl">'+label+'</div></div>';
   };
-  el('hdrstats').innerHTML=tile(live.length,'Open','s-open','open')+tile(work,'Work','s-work','work')+tile(pers,'Personal','s-personal','personal')+tile(td,'Today','s-today','today')+tile(od,'Overdue','s-over','overdue')+tile(md,"Today's Tasks",'s-myday','myday');
+  // "Following" card: count of tasks I follow; clicking toggles the Following view.
+  const followCount=live.filter(t=>t.followingMe).length;
+  const followActive=ui.owner==='following'?' active':'';
+  const followTile='<div class="stat s-following'+followActive+'" data-scope="following" role="button" tabindex="0" aria-pressed="'+(followActive?'true':'false')+'" title="Show tasks I follow"><div class="statn">'+followCount+'</div><div class="statl">Following</div></div>';
+  el('hdrstats').innerHTML=tile(live.length,'Open','s-open','open')+tile(work,'Work','s-work','work')+tile(pers,'Personal','s-personal','personal')+tile(td,'Today','s-today','today')+tile(od,'Overdue','s-over','overdue')+tile(md,"Today's Tasks",'s-myday','myday')+followTile;
   const d=el('hdrdate'); if(d) d.innerHTML='<span class="dot"></span>'+TODAY.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 }
 
@@ -3896,12 +3899,16 @@ el('groupsel').addEventListener('change',e=>{ui.group=e.target.value;render();})
     render();
   };
   host.addEventListener('click', (e) => {
+    const scopeTile = e.target.closest('.stat[data-scope="following"]');
+    if (scopeTile) { setOwner(ui.owner === 'following' ? 'all' : 'following'); return; }
     const tile = e.target.closest('.stat[data-filter]');
     if (!tile) return;
     apply(tile.dataset.filter);
   });
   host.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
+    const scopeTile = e.target.closest('.stat[data-scope="following"]');
+    if (scopeTile) { e.preventDefault(); setOwner(ui.owner === 'following' ? 'all' : 'following'); return; }
     const tile = e.target.closest('.stat[data-filter]');
     if (!tile) return;
     e.preventDefault();
@@ -3935,14 +3942,20 @@ function syncAutofocusToMode(){
 window.addEventListener('lrl-mode-changed', syncAutofocusToMode);
 function bindTog(id,key,wrap){el(id).addEventListener('change',e=>{ui[key]=e.target.checked;el(wrap).classList.toggle('on',e.target.checked);render();});}
 bindTog('routines','routines','tg-routines');bindTog('showdone','showdone','tg-done');
-function applyScopeUI(){
-  document.querySelectorAll('[data-af-scope]').forEach(b=>b.classList.toggle('active', b.dataset.afScope===ui.owner));
-  const wrap=el('af-scope-wrap'); if(wrap) wrap.style.display=(ui.src==='personal')?'none':'';
+function setOwner(val){
+  ui.owner = val;
+  try { localStorage.setItem('lrl-task-scope', val); } catch(e){}
+  applyScopeUI();
+  render();
 }
-document.querySelectorAll('[data-af-scope]').forEach(b=>b.addEventListener('click',()=>{
-  ui.owner=b.dataset.afScope; try{localStorage.setItem('lrl-task-scope',ui.owner);}catch(e){}
-  applyScopeUI();render();
-}));
+function applyScopeUI(){
+  const mine = el('mine');
+  if (mine) mine.checked = (ui.owner === 'me');
+  el('tg-mine')?.classList.toggle('on', ui.owner === 'me');
+  // The "Following" stat card's active state is re-rendered by updateHeader (via render()).
+}
+// "Me" toggle: on → my tasks only, off → everything.
+el('mine')?.addEventListener('change', e => setOwner(e.target.checked ? 'me' : 'all'));
 el('expandall').addEventListener('click',()=>{state.collapsed[ui.group]={};saveState();render();});
 el('collapseall').addEventListener('click',()=>{document.querySelectorAll('.ghead').forEach(h=>setCollapsed(h.dataset.gkey,true));render();});
 
