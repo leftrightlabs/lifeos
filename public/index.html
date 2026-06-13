@@ -631,9 +631,6 @@
     .task-modal { padding: 40px 12px 20px; }
     .task-modal-content { padding: 18px; }
     .task-row-2col { grid-template-columns: 1fr 1fr; }
-    /* Native date inputs won't shrink below their intrinsic width, so the
-       Due/End date pair overlaps in two columns on a phone. Stack them. */
-    .task-row-dates { grid-template-columns: 1fr; }
     .task-btn { padding: 9px 12px; font-size: 11px; flex: 1; min-width: 0; }
   }
 
@@ -3578,15 +3575,14 @@ window.lrl = (function(){
         </select>
       </div>
     </div>
-    <div class="task-row-2col task-row-dates">
-      <div class="task-field">
-        <label>Due date</label>
-        <input type="date" id="task-due-input"/>
-      </div>
-      <div class="task-field">
-        <label>End date (optional)</label>
-        <input type="date" id="task-dueend-input"/>
-      </div>
+    <div class="task-field">
+      <label>Due date</label>
+      <input type="date" id="task-due-input"/>
+    </div>
+    <label class="task-checkbox-row" id="task-dueend-toggle-row"><input type="checkbox" id="task-dueend-toggle"/> End date</label>
+    <div class="task-field" id="task-dueend-wrap" style="display:none">
+      <label>End date</label>
+      <input type="date" id="task-dueend-input"/>
     </div>
     <div class="task-modal-actions">
       <button class="task-btn-trash" id="task-delete-btn" style="display:none" title="Delete task">
@@ -5201,6 +5197,7 @@ function openTaskCreate() {
   document.getElementById('task-priority-input').value = '';
   document.getElementById('task-due-input').value = '';
   document.getElementById('task-dueend-input').value = '';
+  setTaskEndDateVisible(false);
   // Default DB: Personal — unless the dashboard is in Work mode.
   const defaultSource = (typeof mode !== 'undefined' && mode === 'work') ? 'work' : 'personal';
   document.querySelectorAll('#task-source-toggle .task-source-opt').forEach(b => {
@@ -5297,6 +5294,7 @@ function openTaskEdit(t, scope){
   document.getElementById('task-priority-input').value = t.priority || '';
   document.getElementById('task-due-input').value = (t.dueStart || '').slice(0,10);
   document.getElementById('task-dueend-input').value = (t.dueEnd || '').slice(0,10);
+  setTaskEndDateVisible(!!t.dueEnd);
   // Project: when this surface knows the task's project state (projectId is
   // defined — even if null), show the editable selector pre-seeded with the
   // current project. Otherwise fall back to the read-only line.
@@ -5356,6 +5354,18 @@ document.getElementById('task-modal-close')?.addEventListener('click', closeTask
 document.getElementById('task-modal')?.addEventListener('click', (e) => {
   if (e.target.id === 'task-modal') closeTaskEdit();
 });
+// Notion-style date range: the "End date" toggle reveals the end field. Turning
+// it off hides and clears it so the task saves with no end (a single-day due).
+function setTaskEndDateVisible(on){
+  const tog = document.getElementById('task-dueend-toggle');
+  const wrap = document.getElementById('task-dueend-wrap');
+  if (tog) tog.checked = on;
+  if (wrap) wrap.style.display = on ? '' : 'none';
+  if (!on) { const ei = document.getElementById('task-dueend-input'); if (ei) ei.value = ''; }
+}
+document.getElementById('task-dueend-toggle')?.addEventListener('change', (e) => {
+  setTaskEndDateVisible(e.target.checked);
+});
 document.getElementById('task-open-notion-btn')?.addEventListener('click', () => {
   const url = editingTask?.url;
   if (!url) { window.lrl?.toast('No Notion link for this task', 'error'); return; }
@@ -5396,6 +5406,7 @@ document.getElementById('task-save-btn')?.addEventListener('click', async () => 
       priority: document.getElementById('task-priority-input').value || null,
       myDay: document.getElementById('task-myday-input').checked,
       dueStart: document.getElementById('task-due-input').value || null,
+      dueEnd: document.getElementById('task-dueend-input').value || null,
       projectId: document.getElementById('task-project-input').value || null,
     };
     if (_createFromEmailCtx) {

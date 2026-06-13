@@ -661,10 +661,10 @@ app.get('/api/goals', async (req, res) => {
 
 app.post('/api/tasks', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  const { source, name, status, priority, myDay, dueStart, projectId, taskBody } = req.body || {};
+  const { source, name, status, priority, myDay, dueStart, dueEnd, projectId, taskBody } = req.body || {};
   if (!source || !name) return res.status(400).json({ error: 'source and name are required' });
   try {
-    const result = await createNotionTask({ source, name, status, priority, myDay, dueStart, projectId: projectId || undefined, body: taskBody || undefined });
+    const result = await createNotionTask({ source, name, status, priority, myDay, dueStart, dueEnd, projectId: projectId || undefined, body: taskBody || undefined });
     invalidateTaskCaches();
     res.json({ ok: true, id: result.id, url: result.url });
   } catch (err) {
@@ -2292,7 +2292,7 @@ async function createNotionProject({ source, name }) {
   return { id: page.id, name, url: page.url };
 }
 
-async function createNotionTask({ source, name, dueStart, myDay, priority, projectId, body, status }) {
+async function createNotionTask({ source, name, dueStart, dueEnd, myDay, priority, projectId, body, status }) {
   const dsId = TASK_DS_BY_SOURCE[source];
   if (!dsId) throw new Error(`unknown source: ${source}`);
   const properties = {
@@ -2300,7 +2300,7 @@ async function createNotionTask({ source, name, dueStart, myDay, priority, proje
     Status: { status: { name: status || 'Planned' } },
   };
   if (myDay) properties['My Day'] = { checkbox: true };
-  if (dueStart) properties.Due = { date: { start: dueStart, end: null } };
+  if (dueStart) properties.Due = { date: { start: dueStart, end: dueEnd || null } };
   if (priority) properties['Priority 2'] = { select: { name: priority } };
   if (projectId) properties.Project = { relation: [{ id: projectId }] };
   if (source === 'work') {
