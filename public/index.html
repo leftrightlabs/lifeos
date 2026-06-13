@@ -3900,6 +3900,8 @@ el('groupsel').addEventListener('change',e=>{ui.group=e.target.value;render();})
     const next = (ui.statFilter === filter || filter === 'open') ? null : filter;
     ui.statFilter = next;
     try { localStorage.setItem('lrl-stat-filter', next || ''); } catch(_){}
+    // A stat card is its own standalone view — drop the Following scope if it was on.
+    if (ui.owner === 'following') { ui.owner = 'all'; try { localStorage.setItem('lrl-task-scope','all'); } catch(_){} applyScopeUI(); }
     window.lrl?.haptic('tap');
     render();
   };
@@ -3949,12 +3951,16 @@ function bindTog(id,key){el(id).addEventListener('click',()=>{ui[key]=!ui[key];e
 bindTog('tg-routines','routines');bindTog('tg-done','showdone');
 function setOwner(val){
   ui.owner = val;
+  // Following is a standalone view — clear any stat-card filter so it isn't double-filtered.
+  if (val === 'following') { ui.statFilter = null; try { localStorage.setItem('lrl-stat-filter',''); } catch(e){} }
   try { localStorage.setItem('lrl-task-scope', val); } catch(e){}
   applyScopeUI();
   render();
 }
 function applyScopeUI(){
   el('tg-mine')?.classList.toggle('on', ui.owner === 'me');
+  // "Me" is redundant in Personal mode (all personal tasks are yours) — hide it there.
+  const mineBtn = el('tg-mine'); if (mineBtn) mineBtn.style.display = (ui.src === 'personal') ? 'none' : '';
   // The "Following" stat card's active state is re-rendered by updateHeader (via render()).
 }
 // "Me" toggle: on → my tasks only, off → everything.
