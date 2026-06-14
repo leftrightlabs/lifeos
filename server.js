@@ -2386,6 +2386,18 @@ async function deleteCalendarEvent({ account, id }) {
   return { id, deleted: true };
 }
 
+app.post('/api/calendar/events/:account', async (req, res) => {
+  const { account } = req.params;
+  try {
+    const r = await createCalendarEvent({ ...req.body, account });
+    cache.delete('calendar-today');
+    res.json(r);
+  } catch (err) {
+    console.error('Calendar create error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.patch('/api/calendar/events/:account/:id', async (req, res) => {
   const { account, id } = req.params;
   try {

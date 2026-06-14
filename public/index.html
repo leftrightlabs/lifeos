@@ -650,6 +650,9 @@
   .event-acct-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; margin-bottom: 14px; }
   .event-acct-pill.work { background: rgba(93,156,236,0.15); color: #9cc5f5; border: 1px solid rgba(93,156,236,0.3); }
   .event-acct-pill.personal { background: rgba(167,193,64,0.15); color: var(--lime); border: 1px solid rgba(167,193,64,0.3); }
+  /* In create mode the pill toggles the account on tap. */
+  .event-acct-pill.clickable { cursor: pointer; }
+  .event-acct-pill.clickable::after { content: '⇄'; margin-left: 4px; opacity: 0.7; }
   .event-acct-pill .dot { width: 6px; height: 6px; border-radius: 50%; }
   .event-acct-pill.work .dot { background: #5d9cec; }
   .event-acct-pill.personal .dot { background: var(--lime); }
@@ -3156,9 +3159,12 @@ window.lrl = (function(){
       <div class="panel quest-panel" id="calendar-panel">
         <div class="quest-panel-head">
           <button class="quest-panel-toggle" id="cal-panel-toggle" title="Collapse/expand">
-            <span class="quest-panel-caret" id="cal-panel-caret">▾</span> Today's Calendar
+            <span class="quest-panel-caret" id="cal-panel-caret">▾</span> Schedule
           </button>
-          <span class="quest-panel-meta" id="cal-panel-meta"></span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="quest-panel-meta" id="cal-panel-meta"></span>
+            <button class="panel-add-btn" id="cal-add-btn" title="Add event" aria-label="Add event">+</button>
+          </div>
         </div>
         <div id="today-calendar" class="quest-panel-body"><div style="color:var(--navy-dim);font-size:13px;padding:8px 0">loading…</div></div>
       </div>
@@ -5504,6 +5510,8 @@ document.getElementById('task-save-btn')?.addEventListener('click', async () => 
 
 // ====== Calendar event edit modal ======
 let editingEvent = null;
+let _eventCreateMode = false;
+let _eventCreateAccount = 'work';
 
 document.getElementById('today-calendar')?.addEventListener('click', (e) => {
   const item = e.target.closest('[data-event-id]');
@@ -5586,8 +5594,12 @@ function chicagoHM(iso){
 
 function openEventEdit(ev){
   editingEvent = ev;
+  _eventCreateMode = false;
   const modal = document.getElementById('event-modal');
   if (!modal) return;
+  document.querySelector('.event-modal-title span').textContent = 'Edit Event';
+  document.getElementById('event-delete-btn').style.display = '';
+  document.getElementById('event-open-google-btn').style.display = '';
   // Populate fields
   const acct = document.getElementById('event-acct');
   acct.className = 'event-acct-pill ' + ev.account;
@@ -5613,16 +5625,60 @@ function toggleAllDayFields(allDay){
   document.getElementById('event-end-wrap').style.display = allDay ? 'none' : '';
 }
 
+// Reflect the chosen account on the pill (work vs personal styling + label).
+function setEventAcct(account){
+  _eventCreateAccount = account;
+  const acct = document.getElementById('event-acct');
+  if (!acct) return;
+  acct.className = 'event-acct-pill ' + account + (_eventCreateMode ? ' clickable' : '');
+  acct.querySelector('.label').textContent = account;
+}
+
+function openEventCreate(){
+  _eventCreateMode = true;
+  editingEvent = null;
+  const modal = document.getElementById('event-modal');
+  if (!modal) return;
+  document.querySelector('.event-modal-title span').textContent = 'New Event';
+  // Default the account to the current dashboard lens (personal-only when in
+  // personal mode, otherwise work). Tap the pill to switch.
+  const m = document.body.dataset.mode || 'all';
+  setEventAcct(m === 'personal' ? 'personal' : 'work');
+  document.getElementById('event-title-input').value = '';
+  document.getElementById('event-allday-input').checked = false;
+  // Prefill today + the next top-of-hour for a sensible 1-hour slot.
+  const now = new Date();
+  document.getElementById('event-date-input').value = chicagoYMD(now);
+  const startH = parseInt(chicagoHM(now).slice(0,2), 10);
+  document.getElementById('event-start-input').value = `${pad2(startH)}:00`;
+  // +1 hour, but clamp at end-of-day so a late start can't wrap before the start.
+  document.getElementById('event-end-input').value = startH >= 23 ? '23:59' : `${pad2(startH+1)}:00`;
+  toggleAllDayFields(false);
+  // No event yet — hide Delete + Open in Google.
+  document.getElementById('event-delete-btn').style.display = 'none';
+  document.getElementById('event-open-google-btn').style.display = 'none';
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  window.lrl.haptic('tap');
+}
+
 function closeEventEdit(){
   document.getElementById('event-modal')?.classList.remove('open');
   document.body.style.overflow = '';
   editingEvent = null;
+  _eventCreateMode = false;
 }
 
 document.getElementById('event-modal-close')?.addEventListener('click', closeEventEdit);
 document.getElementById('event-modal')?.addEventListener('click', (e) => {
   if (e.target.id === 'event-modal') closeEventEdit();
 });
+// In create mode the account pill toggles between work and personal.
+document.getElementById('event-acct')?.addEventListener('click', () => {
+  if (!_eventCreateMode) return;
+  setEventAcct(_eventCreateAccount === 'work' ? 'personal' : 'work');
+});
+document.getElementById('cal-add-btn')?.addEventListener('click', openEventCreate);
 document.getElementById('event-allday-input')?.addEventListener('change', (e) => {
   toggleAllDayFields(e.target.checked);
 });
@@ -5631,7 +5687,7 @@ document.getElementById('event-open-google-btn')?.addEventListener('click', () =
 });
 
 document.getElementById('event-save-btn')?.addEventListener('click', async () => {
-  if (!editingEvent) return;
+  if (!editingEvent && !_eventCreateMode) return;
   const btn = document.getElementById('event-save-btn');
   const title = document.getElementById('event-title-input').value.trim();
   if (!title) { window.lrl.toast('Title is required', 'error'); return; }
@@ -5655,14 +5711,20 @@ document.getElementById('event-save-btn')?.addEventListener('click', async () =>
   }
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
-    const r = await fetch(`/api/calendar/events/${editingEvent.account}/${editingEvent.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, start, end, allDay }),
-    });
+    const r = _eventCreateMode
+      ? await fetch(`/api/calendar/events/${_eventCreateAccount}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, start, end, allDay }),
+        })
+      : await fetch(`/api/calendar/events/${editingEvent.account}/${editingEvent.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, start, end, allDay }),
+        });
     if (!r.ok) { const j = await r.json().catch(()=>({})); throw new Error(j.error || 'save failed'); }
     window.lrl.haptic('success');
-    window.lrl.toast('Event updated', 'success');
+    window.lrl.toast(_eventCreateMode ? 'Event created' : 'Event updated', 'success');
     closeEventEdit();
     await fetchTodayQuests();
     renderTodayQuests();
