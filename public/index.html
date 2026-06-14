@@ -839,6 +839,8 @@
   .checkin-meta { font-size: 11px; color: rgba(var(--ink-rgb), 0.45); margin-right: auto; }
   /* Hide check-in card when in personal mode (work-only feature) */
   body[data-mode="personal"] .checkin-card { display: none; }
+  /* Weekday-only: hide the check-in card on weekends */
+  .checkin-card.weekend { display: none; }
   @media (max-width: 600px) {
     .checkin-card { padding: 14px 16px; }
     .checkin-text { min-height: 180px; font-size: 12.5px; }
@@ -4326,9 +4328,9 @@ function applyDailyGamification(){
   const ritualDoneCount = RITUAL_STEPS.filter(k => state[k]).length;
   const ritualDone = ritualDoneCount === RITUAL_STEPS.length;
 
-  // Hide the Daily Check-in card once the ritual step is checked
+  // Hide the Daily Check-in card once the ritual step is checked (or on weekends)
   const checkinCard = document.getElementById('checkin-card');
-  if (checkinCard) checkinCard.style.display = state.checkin ? 'none' : '';
+  if (checkinCard) checkinCard.style.display = (state.checkin || isChicagoWeekend()) ? 'none' : '';
 
   // Day-cleared banner
   const taskDiv = document.getElementById('today-quests');
@@ -6387,6 +6389,9 @@ async function sendCheckin(){
 function initCheckin(){
   const card = document.getElementById('checkin-card');
   if (!card) return;
+  // Weekday-only: skip the daily check-in on weekends.
+  if (isChicagoWeekend()){ card.classList.add('weekend'); return; }
+  card.classList.remove('weekend');
   updateCheckinStatus();
   // Restore collapsed state (default: expanded)
   if (localStorage.getItem(CHECKIN_COLLAPSED_KEY) === '1') setCheckinCollapsed(true);
