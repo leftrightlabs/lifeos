@@ -3031,7 +3031,7 @@ window.lrl = (function(){
       </div>
     </div>
 
-    <div class="chapter-panel" id="chapter-panel">
+    <div class="chapter-panel collapsed" id="chapter-panel">
       <div class="chapter-header">
         <button class="chapter-toggle" id="chapter-toggle" title="Collapse/expand">
           <span id="chapter-collapse-caret">▾</span> Q2 2026
@@ -7856,8 +7856,12 @@ document.addEventListener('keydown', (e) => {
   window.addEventListener('lrl-refresh', () => loadWeather(true));
   // Restore collapsed states
   if (localStorage.getItem('lrl-brief-collapsed') === '1') setBriefCollapsed(true);
-  if (localStorage.getItem('lrl-chapter-collapsed') === '1') setChapterCollapsed(true);
-  else window.storage.get('lrl-chapter-collapsed').then(r => { if (r && r.value === '1') setChapterCollapsed(true); }).catch(()=>{});
+  // The chapter (rocks) card defaults to collapsed in the HTML so it never
+  // flash-opens on a cold mobile launch (localStorage may be evicted and the
+  // durable read is async). Only expand it when storage says it was left open.
+  const chapStored = localStorage.getItem('lrl-chapter-collapsed');
+  if (chapStored === '0') setChapterCollapsed(false);
+  else if (chapStored === null) window.storage.get('lrl-chapter-collapsed').then(r => { if (r && r.value === '0') setChapterCollapsed(false); }).catch(()=>{});
   // Re-render calendar every 60s so past/live event states stay accurate
   setInterval(() => { if (TODAY_EVENTS.length) renderTodayQuests(); }, 60000);
 })();
