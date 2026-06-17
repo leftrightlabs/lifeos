@@ -973,11 +973,19 @@ app.get('/api/tasks/all', async (_req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
     const tasks = await cached('tasks-all-board', async () => {
-      const [w, l] = await Promise.all([
+      const [w, l, projects] = await Promise.all([
         workTasks({ myDayOnly: false, allAssignees: true }),
         lifeTasks({ myDayOnly: false }),
+        cached('projects-list', fetchActiveProjects),
       ]);
-      return [...w, ...l];
+      // Resolve each task's project name from its relation id so the Tasks tab
+      // can group/label by project (simplifyTask only captures projectId).
+      const nameById = new Map(projects.map((p) => [p.id, p.name]));
+      const all = [...w, ...l];
+      for (const t of all) {
+        if (t.projectId) t.project = nameById.get(t.projectId) || null;
+      }
+      return all;
     });
     res.json({ tasks });
   } catch (err) {
