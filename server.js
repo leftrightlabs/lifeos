@@ -952,6 +952,64 @@ app.get('/api/projects/board', async (req, res) => {
   }
 });
 
+// GET /api/projects/diag — pinpoints why a project's Area/System isn't resolving.
+// Reports what the integration's relation-name maps contain, and for each work
+// project that has Area/System relations but resolves to no name, probes the
+// relation ids: are they in the map, does the query even return them, and can
+// the page be retrieved directly (vs. a permission error).
+app.get('/api/projects/diag', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    const areaMap = await fetchRelationNameMap(PROJECT_AREA_DS).catch((e) => ({ __error: e.message }));
+    const sysMap = await fetchRelationNameMap(PROJECT_SYSTEM_DS).catch((e) => ({ __error: e.message }));
+    const pages = [];
+    let cursor;
+    do {
+      const r = await notion.dataSources.query({
+        data_source_id: WORK_PROJECTS_DS,
+        filter: { property: 'Archived', checkbox: { equals: false } },
+        page_size: 100, start_cursor: cursor,
+      });
+      pages.push(...r.results);
+      cursor = r.has_more ? r.next_cursor : null;
+    } while (cursor);
+    const unresolved = [];
+    for (const p of pages) {
+      const aRel = p.properties.AREA?.relation || [];
+      const sRel = p.properties.SYSTEM?.relation || [];
+      const aNames = aRel.map((r) => areaMap[r.id]).filter(Boolean);
+      const sNames = sRel.map((r) => sysMap[r.id]).filter(Boolean);
+      if ((aRel.length && !aNames.length) || (sRel.length && !sNames.length)) {
+        const probes = [];
+        for (const r of [...aRel, ...sRel]) {
+          const probe = { id: r.id, inAreaMap: !!areaMap[r.id], inSysMap: !!sysMap[r.id] };
+          try {
+            const pg = await notion.pages.retrieve({ page_id: r.id });
+            const tp = Object.values(pg.properties || {}).find((x) => x.type === 'title');
+            probe.retrieveTitle = tp?.title?.[0]?.plain_text || null;
+          } catch (e) { probe.retrieveError = e.code || e.message; }
+          probes.push(probe);
+        }
+        unresolved.push({
+          name: p.properties.Name?.title?.[0]?.plain_text || '(untitled)',
+          areaRelCount: aRel.length, areaHasMore: !!p.properties.AREA?.has_more,
+          systemRelCount: sRel.length, systemHasMore: !!p.properties.SYSTEM?.has_more,
+          probes,
+        });
+      }
+    }
+    res.json({
+      areaMap: areaMap.__error ? areaMap : { count: Object.keys(areaMap).length, titles: Object.values(areaMap) },
+      systemMap: sysMap.__error ? sysMap : { count: Object.keys(sysMap).length, titles: Object.values(sysMap) },
+      workProjectCount: pages.length,
+      unresolvedCount: unresolved.length,
+      unresolved: unresolved.slice(0, 25),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Current weather for Euless, TX via Open-Meteo (no API key needed).
 async function fetchWeather() {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${WEATHER_LAT}&longitude=${WEATHER_LON}&current=temperature_2m,weather_code&temperature_unit=fahrenheit&timezone=America%2FChicago`;
