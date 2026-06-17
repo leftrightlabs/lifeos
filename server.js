@@ -798,6 +798,23 @@ async function fetchRelationNameMap(dsId) {
   return map;
 }
 
+// Resolve a single page's title directly (cached). Fallback for relation ids the
+// prefetched name maps don't cover — e.g. Area/System pages a data-source query
+// didn't surface — so every relation defined in Notion still resolves to a name.
+const _relTitleCache = new Map();
+async function resolvePageTitle(id) {
+  if (!notion || !id) return null;
+  if (_relTitleCache.has(id)) return _relTitleCache.get(id);
+  let title = null;
+  try {
+    const pg = await notion.pages.retrieve({ page_id: id });
+    const tp = Object.values(pg.properties || {}).find((x) => x.type === 'title');
+    title = tp?.title?.[0]?.plain_text || null;
+  } catch (e) { /* unreadable — leave null */ }
+  _relTitleCache.set(id, title);
+  return title;
+}
+
 // Full board of projects (work + personal) for the Projects tab: status,
 // area/system (resolved to names), owners, dates, derived at-risk. The two
 // DBs differ — work: AREA/SYSTEM/Assigned/Due; personal: Area only, no
@@ -829,6 +846,22 @@ async function fetchProjectsBoard() {
     queryAll(WORK_PROJECTS_DS),
     queryAll(LIFE_PROJECTS_DS),
   ]);
+
+  // Backfill any Area/System relation ids the prefetched maps don't cover (some
+  // relation targets aren't surfaced by a single data-source query), so projects
+  // like the Q2 Rocks still show their TRACTION/EOS area + system.
+  const extra = {};
+  const missing = new Set();
+  const collectMissing = (rel, map) => (rel || []).forEach((r) => { if (r.id && !map[r.id]) missing.add(r.id); });
+  for (const p of workPages) {
+    collectMissing(p.properties.AREA?.relation, workAreaMap);
+    collectMissing(p.properties.SYSTEM?.relation, systemMap);
+  }
+  for (const p of personalPages) {
+    collectMissing(p.properties.Area?.relation, personalAreaMap);
+    collectMissing(p.properties.HUBS?.relation, personalHubMap);
+  }
+  await Promise.all([...missing].map(async (id) => { const t = await resolvePageTitle(id); if (t) extra[id] = t; }));
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -882,14 +915,14 @@ async function fetchProjectsBoard() {
 
   const workProjects = workPages.map((p) => build(
     p, 'work',
-    (p.properties.AREA?.relation || []).map((r) => workAreaMap[r.id]).filter(Boolean),
-    (p.properties.SYSTEM?.relation || []).map((r) => systemMap[r.id]).filter(Boolean),
+    (p.properties.AREA?.relation || []).map((r) => workAreaMap[r.id] || extra[r.id]).filter(Boolean),
+    (p.properties.SYSTEM?.relation || []).map((r) => systemMap[r.id] || extra[r.id]).filter(Boolean),
     (p.properties.Assigned?.people || []).map((u) => u.name).filter(Boolean),
   ));
   const personalProjects = personalPages.map((p) => build(
     p, 'personal',
-    (p.properties.Area?.relation || []).map((r) => personalAreaMap[r.id]).filter(Boolean),
-    (p.properties.HUBS?.relation || []).map((r) => personalHubMap[r.id]).filter(Boolean),
+    (p.properties.Area?.relation || []).map((r) => personalAreaMap[r.id] || extra[r.id]).filter(Boolean),
+    (p.properties.HUBS?.relation || []).map((r) => personalHubMap[r.id] || extra[r.id]).filter(Boolean),
     [],   // personal projects don't surface owner avatars
   ));
 
