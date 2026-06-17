@@ -1362,17 +1362,17 @@ app.get('/api/calendar/today', async (_req, res) => {
 
 // ----- AI: Daily Brief -----
 
-const BRIEF_SYSTEM = `You write a live Daily Focus briefing for Gretchen Cawthon — integrator and systems architect at Left Right Labs.
+const BRIEF_SYSTEM = (name) => `You write a live Daily Focus briefing for ${name || 'the signed-in user'}, addressed directly to them.
 
 CRITICAL: This is a LIVE check based on the current time, NOT a recap of the whole day. Focus only on:
-- What's UPCOMING on her calendar (events starting after now)
-- Tasks still open on her My Day list
+- What's UPCOMING on your calendar (events starting after now)
+- Tasks still open on your My Day list
 - Anything time-sensitive that's slipping (overdue, deadline approaching)
 - One forward-looking observation: what to prioritize next, what to skip, what's worth pausing for
 
-DO NOT recap events or work she's already completed. DO NOT mention things in the past. Look forward.
+DO NOT recap events or work already completed. DO NOT mention things in the past. Look forward.
 
-Voice: direct, warm, casual. Like a friend who knows her day. Uses ellipses sometimes; never em-dashes. No corporate tone. No "let's" or "looks like you've got a busy afternoon!" Skip preambles.
+Voice: direct, warm, casual. Like a friend who knows your day. Uses ellipses sometimes; never em-dashes. No corporate tone. No "let's" or "looks like you've got a busy afternoon!" Skip preambles.
 
 Format: 3-4 sentences. Plain text — no markdown, no bullets, no headers.
 
@@ -1961,10 +1961,15 @@ async function fetchActiveProjects() {
 }
 
 async function gatherTodayContext() {
+  // Only the owner (personal enabled) gets personal/life context. Members see
+  // work only, so the owner's personal tasks/goals never bleed into their brief.
+  // No request context (background jobs) → treat as owner/full.
+  const u = currentUser();
+  const personalOn = u ? !!u.personal_enabled : true;
   const [calEvents, workMyDay, lifeMyDay, goals] = await Promise.all([
     Promise.all(configuredAccounts().map((a) => fetchToday(a).catch(() => []))).then((r) => r.flat()),
     workTasks({ myDayOnly: true }).catch(() => []),
-    lifeTasks({ myDayOnly: true }).catch(() => []),
+    personalOn ? lifeTasks({ myDayOnly: true }).catch(() => []) : Promise.resolve([]),
     cached('goals', async () => {
       const [w, l] = await Promise.all([
         fetchGoalsForSource(WORK_PROJECTS_DS, WORK_TASKS_DS, 'work', 'Project'),
@@ -1973,7 +1978,8 @@ async function gatherTodayContext() {
       return [...w, ...l];
     }).catch(() => []),
   ]);
-  return { calEvents, workMyDay, lifeMyDay, goals };
+  const scopedGoals = personalOn ? goals : goals.filter((g) => g.source === 'work');
+  return { calEvents, workMyDay, lifeMyDay, goals: scopedGoals };
 }
 
 function buildBriefUserPrompt({ calEvents, workMyDay, lifeMyDay, goals }) {
@@ -2038,7 +2044,11 @@ async function dailyFocusHandler(req, res) {
   const today = chicagoTodayISODate();
   const { bucket } = chicagoNowParts();
   const force = req.query.force === '1' || req.query.force === 'true';
-  const cacheKey = `focus-${today}-${bucket}`;
+  // Scope the cache per signed-in user so one person's focus (and their calendar/
+  // tasks) is never served to another.
+  const u = currentUser();
+  const userKey = u ? (u.id || u.email) : 'anon';
+  const cacheKey = `focus-${today}-${bucket}-${userKey}`;
   if (!force) {
     const hit = briefCache.get(cacheKey);
     if (hit && Date.now() - hit.t < BRIEF_TTL_MS) {
@@ -2053,7 +2063,7 @@ async function dailyFocusHandler(req, res) {
       max_tokens: 600,
       thinking: { type: 'adaptive' },
       output_config: { effort: 'low' },
-      system: BRIEF_SYSTEM,
+      system: BRIEF_SYSTEM(u?.name),
       messages: [{ role: 'user', content: userPrompt }],
     });
     const text = msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
