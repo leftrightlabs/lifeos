@@ -5825,6 +5825,16 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
   } catch (e) { /* network/auth issue — leave the full (owner) UI */ }
 })();
 
+// Confirm a returning OAuth connection (e.g. Slack) and clean the URL.
+(() => {
+  const connected = new URLSearchParams(location.search).get('connected');
+  if (!connected) return;
+  const label = connected === 'slack' ? 'Slack connected — you can post as yourself now' : 'Connected';
+  setTimeout(() => window.lrl?.toast(label, 'success'), 400);
+  const url = new URL(location.href); url.searchParams.delete('connected');
+  history.replaceState(null, '', url.toString());
+})();
+
 // Tab switching
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -6442,6 +6452,13 @@ async function sendCheckin(){
       body: JSON.stringify({ text: text.value }),
     });
     const d = await r.json();
+    // Member hasn't connected their own Slack yet — send them through OAuth so
+    // the check-in posts as them, not the owner.
+    if (r.status === 409 && d.error === 'slack_not_connected') {
+      window.lrl?.toast('Connect your Slack to post as yourself…', '');
+      window.location.href = d.connectUrl || '/auth/slack';
+      return;
+    }
     if (!r.ok || d.error) throw new Error(d.error || 'send failed');
     const data = { date: chicagoTodayString(), ts: Date.now(), permalink: d.permalink || null };
     try { localStorage.setItem(CHECKIN_SENT_KEY, JSON.stringify(data)); } catch(e){}

@@ -276,6 +276,19 @@ function configuredAccounts() {
   return ACCOUNTS.filter((a) => !!process.env[ACCOUNT_ENVS[a]]);
 }
 
+// Resolve the Slack user token to post as. The signed-in user's own connected
+// token wins; the owner (and single-user / background) falls back to the env
+// token. A member who hasn't connected Slack gets none — never the owner's, so
+// a check-in is never posted under someone else's identity.
+function currentSlackToken() {
+  const u = currentUser();
+  if (u && u.slack_user_token) {
+    try { return decrypt(u.slack_user_token); } catch (e) { /* fall through */ }
+  }
+  if (!u || u.role === 'owner') return process.env.SLACK_USER_TOKEN || null;
+  return null;
+}
+
 // Dev-only: auto-authenticate so localhost preview doesn't need Google sign-in.
 if (!IS_PROD) {
   app.use((req, _res, next) => {
@@ -458,6 +471,7 @@ app.get('/api/me', async (req, res) => {
       if (u) return res.json({
         id: u.id, email: u.email, name: u.name, role: u.role,
         personalEnabled: u.personal_enabled, gmailConnected: !!u.google_refresh_token,
+        slackConnected: !!u.slack_user_token || (u.role === 'owner' && !!process.env.SLACK_USER_TOKEN),
         theme: u.theme, timezone: u.timezone,
       });
     } catch (e) { /* fall through to owner fallback */ }
@@ -470,6 +484,7 @@ app.get('/api/me', async (req, res) => {
     role: isOwner ? 'owner' : 'member',
     personalEnabled: isOwner,
     gmailConnected: isOwner,
+    slackConnected: isOwner && !!process.env.SLACK_USER_TOKEN,
     theme: 'indigo',
     timezone: TZ,
   });
@@ -530,6 +545,61 @@ app.get('/auth/google/callback', async (req, res) => {
 </body></html>`);
   } catch (err) {
     res.status(500).send('OAuth error: ' + err.message);
+  }
+});
+
+// ----- SLACK OAuth (per-user, so check-ins post as the signed-in user) -----
+// Requires a Slack app with user scope `chat:write`, its OAuth redirect set to
+// `${origin}/auth/slack/callback`, and SLACK_CLIENT_ID / SLACK_CLIENT_SECRET.
+app.get('/auth/slack', (req, res) => {
+  if (!process.env.SLACK_CLIENT_ID || !process.env.SLACK_CLIENT_SECRET) {
+    return res.status(500).send('SLACK_CLIENT_ID / SLACK_CLIENT_SECRET not configured');
+  }
+  const redirectUri = `${originFromReq(req)}/auth/slack/callback`;
+  const url = 'https://slack.com/oauth/v2/authorize?' + new URLSearchParams({
+    client_id: process.env.SLACK_CLIENT_ID,
+    user_scope: 'chat:write',
+    redirect_uri: redirectUri,
+  }).toString();
+  res.redirect(url);
+});
+
+app.get('/auth/slack/callback', async (req, res) => {
+  try {
+    const { code } = req.query;
+    if (!code) return res.status(400).send('Missing code');
+    const redirectUri = `${originFromReq(req)}/auth/slack/callback`;
+    const tokenRes = await fetch('https://slack.com/api/oauth.v2.access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: process.env.SLACK_CLIENT_ID,
+        client_secret: process.env.SLACK_CLIENT_SECRET,
+        code,
+        redirect_uri: redirectUri,
+      }).toString(),
+    });
+    const data = await tokenRes.json();
+    if (!data.ok) throw new Error(data.error || 'oauth failed');
+    // The user token (xoxp-…) lives under authed_user.access_token.
+    const userToken = data.authed_user?.access_token;
+    if (!userToken) throw new Error('no user token returned (check the user_scope)');
+    if (dbEnabled() && req.session?.userId && secretsConfigured()) {
+      await dbUsers.setSlackToken(req.session.userId, encrypt(userToken));
+      clearUserCache(req.session.userId);
+      return res.redirect('/?connected=slack');
+    }
+    // Single-user / no-store fallback: show the token to paste as SLACK_USER_TOKEN.
+    res.type('html').send(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"/><title>LRL OS — Slack auth</title></head>
+<body style="background:#0a0f1e;color:#f5f5f7;font-family:ui-monospace,Menlo,monospace;padding:2rem;line-height:1.5">
+  <h1 style="color:#a7c140;font-family:Georgia,serif">Slack user token captured</h1>
+  <p>Copy this and add to Railway as <code style="background:#131a30;padding:0.1rem 0.4rem;border-radius:4px">SLACK_USER_TOKEN</code>:</p>
+  <pre style="background:#131a30;padding:1rem;border-radius:8px;overflow-x:auto;user-select:all">${userToken}</pre>
+  <p style="opacity:0.6;font-size:0.85rem">Then redeploy. Do not share this token.</p>
+</body></html>`);
+  } catch (err) {
+    res.status(500).send('Slack OAuth error: ' + err.message);
   }
 });
 
@@ -2630,13 +2700,17 @@ app.get('/api/checkin/diag', (_req, res) => {
 });
 
 app.post('/api/checkin/send', async (req, res) => {
-  // Prefer the user token (post as the actual user) when configured,
-  // otherwise fall back to the bot token (posts as the LifeOS app).
-  const userToken = process.env.SLACK_USER_TOKEN;
+  // Post as the signed-in user's own Slack account when connected; the owner
+  // falls back to the env user token. A member who hasn't connected Slack is
+  // asked to connect rather than posting under the owner's identity.
+  const userToken = currentSlackToken();
   const botToken = process.env.SLACK_BOT_TOKEN;
-  console.log('[checkin] tokens — user:', userToken ? userToken.slice(0,5) : 'MISSING', 'bot:', botToken ? botToken.slice(0,5) : 'MISSING');
+  const u = currentUser();
+  if (!userToken && u && u.role !== 'owner') {
+    return res.status(409).json({ error: 'slack_not_connected', connectUrl: '/auth/slack' });
+  }
   const token = userToken || botToken;
-  if (!token) return res.status(500).json({ error: 'Slack token not configured (set SLACK_USER_TOKEN or SLACK_BOT_TOKEN)' });
+  if (!token) return res.status(500).json({ error: 'Slack token not configured (connect Slack or set SLACK_USER_TOKEN / SLACK_BOT_TOKEN)' });
   const { text } = req.body || {};
   if (!text || !text.trim()) return res.status(400).json({ error: 'text required' });
   try {
