@@ -960,6 +960,11 @@ app.get('/api/projects/board', async (req, res) => {
 app.get('/api/projects/diag', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
+    // Which integration is the server actually using? Match this name against the
+    // database's Connections list to confirm the right integration is connected.
+    let botUser = null;
+    try { const me = await notion.users.me(); botUser = { name: me.name, id: me.id, type: me.type }; }
+    catch (e) { botUser = { error: e.code || e.message }; }
     const areaMap = await fetchRelationNameMap(PROJECT_AREA_DS).catch((e) => ({ __error: e.message }));
     const sysMap = await fetchRelationNameMap(PROJECT_SYSTEM_DS).catch((e) => ({ __error: e.message }));
     const pages = [];
@@ -999,6 +1004,7 @@ app.get('/api/projects/diag', async (req, res) => {
       }
     }
     res.json({
+      botUser,
       areaMap: areaMap.__error ? areaMap : { count: Object.keys(areaMap).length, titles: Object.values(areaMap) },
       systemMap: sysMap.__error ? sysMap : { count: Object.keys(sysMap).length, titles: Object.values(sysMap) },
       workProjectCount: pages.length,
