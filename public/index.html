@@ -219,7 +219,7 @@
   .quest-text.done, .quest-item.done .quest-text { text-decoration: line-through; color: var(--navy-dim); }
   .quest-item.done { opacity: 0.6; }
   .quest-meta-tags { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; flex-shrink: 0; }
-  .quest-repeat { color: rgba(var(--ink-rgb), 0.42); font-size: 14px; line-height: 1; flex-shrink: 0; }
+  .quest-repeat { display: inline-block; color: rgba(var(--ink-rgb), 0.42); font-size: 13px; line-height: 1; margin-left: 5px; vertical-align: baseline; flex-shrink: 0; }
   /* Keep [check][dot][title][star] on row 1, wrap badges to row 2 — fires
      whenever the quest panel is narrow (true mobile OR a narrow split-screen
      window), regardless of the overall viewport width. */
@@ -3701,6 +3701,15 @@ function relTime(d){if(!d)return '—';const days=Math.floor((TODAY-d)/86400000)
 function dueLabel(t){const e=effDate(t);if(!e)return{txt:'No date',cls:'none'};const n=daysFrom(e);const fmt=e.toLocaleDateString('en-US',{month:'short',day:'numeric'});if(n<0)return{txt:(n===-1?'Yesterday':Math.abs(n)+'d overdue')+' · '+fmt,cls:'over'};if(n===0)return{txt:'Today · '+fmt,cls:'today'};if(n===1)return{txt:'Tomorrow · '+fmt,cls:'soon'};if(n<=7)return{txt:'In '+n+'d · '+fmt,cls:'soon'};return{txt:fmt,cls:''};}
 function bucketOf(t){const e=effDate(t);if(!e)return{key:'none',label:'No Due Date',rank:5};const n=daysFrom(e);if(n<0)return{key:'over',label:'Overdue',rank:0};if(n===0)return{key:'today',label:'Today',rank:1};if(n<=7)return{key:'week',label:'This Week',rank:2};return{key:'later',label:'Later',rank:3};}
 function notYetDue(t){if(t.recurring){const nd=nextDue(t);return nd&&nd>today;}const s=parseD(t.dueStart),e=parseD(t.dueEnd);if(s&&e&&s>today)return true;return false;}
+// Human-readable recurrence cadence, e.g. "Weekly" or "Every 2 months".
+function recurLabel(t){
+  if(!t.recurring)return '';
+  const n=t.recurInterval||1;
+  const u=(t.recurUnit||'').toLowerCase();
+  const unit=/week/.test(u)?'week':/month/.test(u)?'month':/year/.test(u)?'year':'day';
+  if(n===1)return {day:'Daily',week:'Weekly',month:'Monthly',year:'Yearly'}[unit];
+  return 'Every '+n+' '+unit+'s';
+}
 
 const el=id=>document.getElementById(id);
 const ui={src:'all',sort:'due',group:'bucket',q:'',routines:false,showdone:false,statFilter:null,owner:'all'};
@@ -3793,12 +3802,13 @@ function row(t){
   const checkedCls = t.done ? 'checked' : '';
   const statusKey = (t.status || 'Planned').toLowerCase().replace(/\s+/g,'-');
   const statusDot = '<span class="quest-status-dot status-'+statusKey+'" title="'+(t.status||'Planned')+'"></span>';
-  const repeatIcon = t.recurring ? '<span class="quest-repeat" title="Recurring task" aria-label="Recurring task">↻</span>' : '';
+  const repeatLab = recurLabel(t);
+  const repeatIcon = repeatLab ? '<span class="quest-repeat" title="Repeats '+escapeHtml(repeatLab.toLowerCase())+'" aria-label="Repeats '+escapeHtml(repeatLab.toLowerCase())+'">↻</span>' : '';
   return '<div class="quest-item'+doneCls+'" data-task-id="'+t.id+'" data-task-url="'+escapeHtml(t.url||'')+'">'
     +'<div class="quest-check '+checkedCls+'" data-act="check"></div>'
     +statusDot
-    +'<div class="quest-text" data-act="open">'+escapeHtml(t.name)+sub+'</div>'
-    +'<div class="quest-meta-tags">'+priHtml+dueHtml+sourceTag+repeatIcon+'</div>'
+    +'<div class="quest-text" data-act="open">'+escapeHtml(t.name)+repeatIcon+sub+'</div>'
+    +'<div class="quest-meta-tags">'+priHtml+dueHtml+sourceTag+'</div>'
     +followBtn
     +star
     +'</div>';
