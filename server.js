@@ -1011,8 +1011,24 @@ app.get('/api/projects/diag', async (req, res) => {
         });
       }
     }
+    // Direct read probe of known TRACTION-bucket pages: does the integration have
+    // page-level access at all, and what error does Notion return if not?
+    const knownIds = {
+      'TRACTION (area)': '290458f0-8cd9-80ea-acd8-de8f210cb22f',
+      'GROWTH (area)': '290458f0-8cd9-8062-9fe6-df6c6d9a9267',
+      'EOS (system)': '25b34cc1-0f2f-4699-9792-c2ff3aa202c9',
+    };
+    const knownProbes = {};
+    for (const [label, id] of Object.entries(knownIds)) {
+      try {
+        const pg = await notion.pages.retrieve({ page_id: id });
+        const tp = Object.values(pg.properties || {}).find((x) => x.type === 'title');
+        knownProbes[label] = { ok: true, title: tp?.title?.[0]?.plain_text || null };
+      } catch (e) { knownProbes[label] = { ok: false, error: e.code || e.message }; }
+    }
     res.json({
       botUser,
+      knownProbes,
       areaMap: areaMap.__error ? areaMap : { count: Object.keys(areaMap).length, titles: Object.values(areaMap) },
       systemMap: sysMap.__error ? sysMap : { count: Object.keys(sysMap).length, titles: Object.values(sysMap) },
       workProjectCount: pages.length,
