@@ -959,6 +959,7 @@ app.get('/api/projects/board', async (req, res) => {
 // the page be retrieved directly (vs. a permission error).
 app.get('/api/projects/diag', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  if (currentUser()?.role !== 'owner') return res.status(403).json({ error: 'owner only' });
   try {
     // Which integration is the server actually using? Match this name against the
     // database's Connections list to confirm the right integration is connected.
