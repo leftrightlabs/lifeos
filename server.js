@@ -140,6 +140,13 @@ function clearUserCache(userKey) {
   for (const key of [...cache.keys()]) if (key.endsWith('::' + userKey)) cache.delete(key);
 }
 
+// Invalidate a cached() base key across all per-user namespaced variants. cached()
+// stores under `${key}::${userKey}`, so deleting the bare key alone is a no-op for
+// signed-in requests — this clears the bare key and every `key::*` variant.
+function clearCached(base) {
+  for (const k of [...cache.keys()]) if (k === base || k.startsWith(base + '::')) cache.delete(k);
+}
+
 function originFromReq(req) {
   if (req) return `${req.protocol}://${req.get('host')}`;
   if (process.env.RAILWAY_PUBLIC_DOMAIN) return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
@@ -715,7 +722,7 @@ app.get('/api/goals', async (req, res) => {
     // ?fresh=1 bypasses the 60s cache so milestone completion state reflects
     // the current Notion truth immediately (used by the app's Refresh button
     // and the auto-resync when the tab regains focus).
-    if (req.query.fresh === '1' || req.query.fresh === 'true') cache.delete('goals');
+    if (req.query.fresh === '1' || req.query.fresh === 'true') clearCached('goals');
     const goals = await cached('goals', async () => {
       const [work, life] = await Promise.all([
         fetchGoalsForSource(WORK_PROJECTS_DS, WORK_TASKS_DS, 'work', 'Project'),
@@ -768,7 +775,7 @@ app.post('/api/reminders/sync', async (req, res) => {
 app.get('/api/projects', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
-    if (req.query.fresh === '1') cache.delete('projects-list');
+    if (req.query.fresh === '1') clearCached('projects-list');
     const all = await cached('projects-list', fetchActiveProjects);
     // Return every non-archived project (each carrying its status). The client
     // shows only active statuses in the picker menu, but needs the full set to
@@ -944,7 +951,7 @@ async function fetchProjectsBoard() {
 app.get('/api/projects/board', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
-    if (req.query.fresh === '1') cache.delete('projects-board');
+    if (req.query.fresh === '1') clearCached('projects-board');
     const data = await cached('projects-board', fetchProjectsBoard);
     res.json(data);
   } catch (err) {
@@ -1060,7 +1067,7 @@ app.patch('/api/projects/:id', async (req, res) => {
     if (system !== undefined) properties[systemProp] = { relation: system ? [{ id: system }] : [] };
     if (!Object.keys(properties).length) return res.status(400).json({ error: 'No supported fields to update' });
     await notion.pages.update({ page_id: id, properties });
-    cache.delete('projects-board');
+    clearCached('projects-board');
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
