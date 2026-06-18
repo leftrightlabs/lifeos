@@ -2285,6 +2285,10 @@
   .proj-seg button.on { background: var(--lime); color: var(--navy-accent); }
   .proj-chip { border: 1px solid rgba(var(--edge-rgb), 0.12); background: transparent; color: rgba(var(--ink-rgb), 0.6); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
   .proj-chip.on { border-color: var(--lime); color: var(--navy); background: var(--lime-faint); }
+  .proj-me-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(var(--edge-rgb), 0.12); background: transparent; color: rgba(var(--ink-rgb), 0.6); border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-body); transition: all 0.15s; white-space: nowrap; }
+  .proj-me-btn svg { width: 14px; height: 14px; }
+  .proj-me-btn:hover { color: var(--navy); border-color: rgba(var(--edge-rgb), 0.3); }
+  .proj-me-btn.on { border-color: var(--lime); color: var(--navy); background: var(--lime-faint); }
 
   /* Collapsible timeline */
   .proj-timeline-panel { background: var(--white); border: 1px solid rgba(var(--edge-rgb), 0.07); border-radius: 12px; margin-bottom: 18px; overflow: hidden; }
@@ -8172,7 +8176,8 @@ document.addEventListener('visibilitychange', async () => {
 <!-- =========================== PROJECTS TAB =========================== -->
 <script>
 (function(){
-  const P = { data: null, statusFilter: 'Active', areaFilter: null, groupBy: 'area', search: '', collapsed: {}, undatedOpen: false, expanded: {} };
+  const P = { data: null, statusFilter: 'Active', areaFilter: null, groupBy: 'area', search: '', collapsed: {}, undatedOpen: false, expanded: {}, meOnly: false };
+  try { P.meOnly = localStorage.getItem('lrl-proj-me') === '1'; } catch(e){}
   const TL_KEY = 'lrl-proj-timeline-collapsed';
   // Status options per source, for the inline status editor.
   const STATUS_OPTS = { work: ['Planned','On Hold','Active','Ongoing','Billing','Done'], personal: ['Planned','On Hold','Active','Ongoing','Done'] };
@@ -8190,10 +8195,11 @@ document.addEventListener('visibilitychange', async () => {
   const curMode = () => document.body.dataset.mode || 'all';
   // Projects visible under the current mode toggle (all = work + personal)
   function inMode(){
-    const ps = (P.data && P.data.projects) || [];
+    let ps = (P.data && P.data.projects) || [];
     const m = curMode();
-    if (m === 'work') return ps.filter((p) => p.source === 'work');
-    if (m === 'personal') return ps.filter((p) => p.source === 'personal');
+    if (m === 'work') ps = ps.filter((p) => p.source === 'work');
+    else if (m === 'personal') ps = ps.filter((p) => p.source === 'personal');
+    if (P.meOnly) ps = ps.filter((p) => p.assignedToMe);
     return ps;
   }
   const openUrl = (url) => { if (!url) return; (window.openNotion ? openNotion(url) : window.open(url, '_blank', 'noopener')); };
@@ -8294,7 +8300,10 @@ document.addEventListener('visibilitychange', async () => {
     }
     const search = '<div class="proj-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>'
       + `<input id="proj-search-input" type="text" placeholder="Search projects…" autocomplete="off" value="${esc(P.search)}"></div>`;
-    return '<div class="proj-controls">' + search + '<div class="proj-ctl-group"><span class="proj-ctl-label">Group by</span><div class="proj-seg">' + seg + '</div></div>' + areaChips + '</div>';
+    const meBtn = `<button class="proj-me-btn ${P.meOnly ? 'on' : ''}" id="proj-me-btn" title="Show only projects assigned to me" aria-pressed="${P.meOnly ? 'true' : 'false'}">`
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
+      + 'My Projects</button>';
+    return '<div class="proj-controls">' + search + meBtn + '<div class="proj-ctl-group"><span class="proj-ctl-label">Group by</span><div class="proj-seg">' + seg + '</div></div>' + areaChips + '</div>';
   }
 
   function undatedHTML(undatedList){
@@ -8537,6 +8546,12 @@ document.addEventListener('visibilitychange', async () => {
       el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fire(); } });
     });
     body.querySelectorAll('.proj-seg button').forEach((b) => b.addEventListener('click', () => { P.groupBy = b.dataset.group; render(); }));
+    const meBtn = body.querySelector('#proj-me-btn');
+    if (meBtn) meBtn.addEventListener('click', () => {
+      P.meOnly = !P.meOnly;
+      try { localStorage.setItem('lrl-proj-me', P.meOnly ? '1' : '0'); } catch(e){}
+      render();
+    });
     body.querySelectorAll('.proj-chip').forEach((b) => b.addEventListener('click', () => {
       const a = b.dataset.area;
       P.areaFilter = (a === '') ? null : (P.areaFilter === a ? null : a);

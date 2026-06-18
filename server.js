@@ -906,6 +906,11 @@ async function fetchProjectsBoard() {
       system: systems[0] || null,
       systems,
       owners,
+      // Personal projects are inherently the user's; work projects are "mine" when
+      // the signed-in user is one of the Notion assignees. Drives the "Me" filter.
+      assignedToMe: source === 'personal'
+        ? true
+        : (pr.Assigned?.people || []).some((u) => u.id === currentNotionUserId()),
       start,
       end,
       rangeStart,        // non-null only when Target Deadline is a real range
