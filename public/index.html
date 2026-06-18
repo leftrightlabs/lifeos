@@ -3751,6 +3751,7 @@ try { const sc = localStorage.getItem('lrl-task-scope'); if (sc) ui.owner = sc; 
 
 function visible(){
   const sf=ui.statFilter;
+  const q = (ui.q || '').trim().toLowerCase();
   return allTasks().filter(t=>{
     if(t.done&&!ui.showdone)return false;
     if(ui.src!=='all'&&t.source!==ui.src)return false;
@@ -3758,8 +3759,11 @@ function visible(){
       if(ui.owner==='me'&&!t.assignedToMe)return false;
       if(ui.owner==='following'&&!t.followingMe)return false;
     }
+    // A search is a global find within the current work/personal + owner scope:
+    // match by name/project and ignore the date-bucket view filters (routines,
+    // not-yet-due, stat card) so any matching task surfaces.
+    if(q) return t.name.toLowerCase().includes(q)||(t.project||'').toLowerCase().includes(q);
     if(!ui.routines&&notYetDue(t)&&!t.done)return false;
-    if(ui.q){const q=ui.q.toLowerCase();if(!(t.name.toLowerCase().includes(q)||(t.project||'').toLowerCase().includes(q)))return false;}
     if(sf){
       if(sf==='work'&&t.source!=='work')return false;
       if(sf==='personal'&&t.source!=='personal')return false;
