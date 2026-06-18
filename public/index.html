@@ -6516,6 +6516,12 @@ async function sendCheckin(){
     if (!r.ok || d.error) throw new Error(d.error || 'send failed');
     const data = { date: chicagoTodayString(), ts: Date.now(), permalink: d.permalink || null };
     try { localStorage.setItem(CHECKIN_SENT_KEY, JSON.stringify(data)); } catch(e){}
+    // Persist the "Send daily check-in" step into the synced ritual state so it
+    // shows complete on every device, not just the one it was sent from.
+    try {
+      const rs = loadRitual();
+      if (!rs.checkin){ rs.checkin = true; saveRitual(rs); window._lastRitualEdit = Date.now(); syncRitualToServer(rs); }
+    } catch(e){}
     updateCheckinStatus();
     window.lrl?.haptic('celebrate');
     window.lrl?.confetti({ count: 50 });
