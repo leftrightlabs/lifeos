@@ -2785,6 +2785,14 @@
   } catch(e){ console.warn('[capacitor bootstrap]', e); }
 })();
 
+// Stale-while-revalidate cache for tab data: paint last-known data instantly on
+// load, then refresh in the background. Keeps heavier tabs from flashing a
+// "loading…" placeholder on every page reload. Stored in localStorage.
+window.lrlCache = {
+  save(key, data){ try { if (data && !data.error) localStorage.setItem('lrl-swr-' + key, JSON.stringify(data)); } catch(e){} },
+  read(key){ try { const c = localStorage.getItem('lrl-swr-' + key); return c ? JSON.parse(c) : null; } catch(e){ return null; } },
+};
+
 // Durable key/value storage. On native iOS, back window.storage with Capacitor
 // Preferences so values (e.g. collapsed-panel state) survive WKWebView localStorage
 // eviction between app launches. We mirror every write into localStorage too so the
@@ -3683,12 +3691,17 @@ async function loadState(){try{const r=await window.storage.get(SKEY);if(r&&r.va
 let saveT=null;
 function saveState(){clearTimeout(saveT);saveT=setTimeout(async()=>{try{await window.storage.set(SKEY,JSON.stringify(state));}catch(e){}},150);}
 async function fetchTasks(){
+  if (!SEED_TASKS.length) {
+    const c = window.lrlCache.read('tasks');
+    if (c && c.length) { try { SEED_TASKS = c; BASE = {}; c.forEach(t => BASE[t.id] = t); render(); } catch(e){} }
+  }
   try {
     const r = await fetch('/api/tasks/all');
     const d = await r.json();
     SEED_TASKS = d.tasks || [];
     BASE = {};
     SEED_TASKS.forEach(t => BASE[t.id] = t);
+    window.lrlCache.save('tasks', SEED_TASKS);
   } catch(e) { console.error('fetchTasks failed', e); }
 }
 
@@ -4703,6 +4716,10 @@ window.addEventListener('lrl-mode-changed', renderEvening);
 })();
 
 async function fetchComms(){
+  if (!COMMS_DATA || !COMMS_DATA.length) {
+    const c = window.lrlCache.read('comms');
+    if (c) { try { COMMS_DATA = c; window.COMMS_DATA = c; renderComms(); } catch(e){} }
+  }
   try {
     const status = window.commsStatus || 'unread';
     const r = await fetch('/api/comms/gmail?status=' + encodeURIComponent(status));
@@ -4722,11 +4739,16 @@ async function fetchComms(){
       permalink: t.url,
     }));
     window.COMMS_DATA = COMMS_DATA;
+    window.lrlCache.save('comms', COMMS_DATA);
     window.dispatchEvent(new CustomEvent('lrl-comms-updated'));
   } catch (e) { console.error('fetchComms', e); }
 }
 
 async function fetchTodayQuests(){
+  if ((!TODAY_EVENTS || !TODAY_EVENTS.length) && (!TODAY_TASKS || !TODAY_TASKS.length)) {
+    const c = window.lrlCache.read('quests');
+    if (c) { try { TODAY_EVENTS = c.events || []; TODAY_TASKS = c.tasks || []; window.TODAY_TASKS = TODAY_TASKS; renderTodayQuests(); } catch(e){} }
+  }
   try {
     const [calRes, workRes, lifeRes] = await Promise.all([
       fetch('/api/calendar/today').then(r=>r.json()),
@@ -4736,6 +4758,7 @@ async function fetchTodayQuests(){
     TODAY_EVENTS = calRes.events || [];
     TODAY_TASKS = [...(workRes.tasks||[]), ...(lifeRes.tasks||[])];
     window.TODAY_TASKS = TODAY_TASKS;
+    window.lrlCache.save('quests', { events: TODAY_EVENTS, tasks: TODAY_TASKS });
     window.dispatchEvent(new CustomEvent('lrl-tasks-updated'));
   } catch (e) { console.error('fetchTodayQuests', e); }
 }
@@ -6969,6 +6992,10 @@ function clearReviewRow(controlEl, id){
 }
 
 async function fetchReview(){
+  if (!REVIEW_DATA) {
+    const c = window.lrlCache.read('review');
+    if (c) { try { REVIEW_DATA = c; renderReview(); } catch(e){} }
+  }
   try {
     const [reviewRes, projRes] = await Promise.all([
       fetch('/api/review').then(r => r.json()),
@@ -6977,6 +7004,7 @@ async function fetchReview(){
     ]);
     if (reviewRes.error) { document.getElementById('review-body').innerHTML = `<div style="color:#ff7a6b;padding:20px">${reviewRes.error}</div>`; return; }
     REVIEW_DATA = reviewRes;
+    window.lrlCache.save('review', reviewRes);
     if (projRes && projRes.projects) REVIEW_PROJECTS = projRes.projects;
     renderReview();
   } catch(e){
@@ -7286,6 +7314,7 @@ async function fetchHealth(){
       return;
     }
     HEALTH_DATA = d;
+    window.lrlCache.save('health', d);
   } catch(e){
     const body = document.getElementById('health-body');
     if (body) body.innerHTML = `<div style="color:#ff7a6b;padding:20px">${e.message}</div>`;
@@ -7297,6 +7326,7 @@ let _healthLoaded = false;
 function maybeLoadHealth(){
   if (_healthLoaded) return;
   _healthLoaded = true;
+  const c = window.lrlCache.read('health'); if (c) { try { HEALTH_DATA = c; renderHealth(); } catch(e){} }
   fetchHealth().then(renderHealth);
 }
 
@@ -7335,6 +7365,7 @@ async function fetchFinance(){
       }
       return;
     }
+    window.lrlCache.save('finance', d);
     renderFinance(d);
   } catch (e){
     body.innerHTML = `<div style="color:#ff7a6b;padding:20px">${e.message}</div>`;
@@ -7502,6 +7533,7 @@ function attachFinanceHandlers(){
 function maybeLoadFinance(){
   if (_financeLoaded) return;
   _financeLoaded = true;
+  const c = window.lrlCache.read('finance'); if (c) { try { renderFinance(c); } catch(e){} }
   fetchFinance();
 }
 
