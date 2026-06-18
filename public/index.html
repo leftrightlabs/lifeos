@@ -4331,6 +4331,7 @@ function toggleRitualStep(step){
   const state = loadRitual();
   state[step] = !state[step];
   saveRitual(state);
+  window._lastRitualEdit = Date.now();
   syncRitualToServer(state);
   window.lrl?.haptic(state[step] ? 'success' : 'tap');
   const nowAllDone = RITUAL_STEPS.every(k => state[k]);
@@ -4458,6 +4459,9 @@ function initRitual(){
   let _ritualResyncBusy = false;
   const ritualResync = async () => {
     if (document.visibilityState === 'hidden' || _ritualResyncBusy) return;
+    // Don't clobber a change made here in the last few seconds before its
+    // own server sync has landed.
+    if (Date.now() - (window._lastRitualEdit || 0) < 4000) return;
     _ritualResyncBusy = true;
     try {
       const m = await pullRitualFromServer(); if (m) renderRitual();
@@ -4467,6 +4471,9 @@ function initRitual(){
   document.addEventListener('visibilitychange', ritualResync);
   window.addEventListener('focus', ritualResync);
   window.addEventListener('lrl-refresh', ritualResync);
+  // Poll while visible so two devices open at once converge without a manual
+  // refresh (focus/visibility alone won't fire if the window never blurred).
+  setInterval(() => { if (document.visibilityState === 'visible') ritualResync(); }, 30000);
   // Toggle button collapses/expands explicitly
   document.getElementById('ritual-toggle')?.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -4659,6 +4666,7 @@ function toggleEveningStep(step){
   const state = loadEvening();
   state[step] = !state[step];
   saveEvening(state);
+  window._lastRitualEdit = Date.now();
   syncEveningToServer(state);
   window.lrl?.haptic(state[step] ? 'success' : 'tap');
   const nowAllDone = visibleEveningSteps().every(k => state[k]);
