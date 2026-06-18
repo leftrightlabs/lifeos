@@ -8247,16 +8247,23 @@ document.addEventListener('visibilitychange', async () => {
   };
   function groupAll(items){ const g = {}; items.forEach((p) => { groupKeysOf(p).forEach((k) => { (g[k] = g[k] || []).push(p); }); }); return g; }
 
+  const BOARD_CACHE_KEY = 'lrl-proj-board-cache';
   async function load(fresh){
     const body = document.getElementById('projects-body');
+    // Stale-while-revalidate: the board is heavier than other tabs, so paint the
+    // last-known data instantly (no "loading…" flash) and refresh in the background.
+    if (!P.data && !fresh){
+      try { const c = localStorage.getItem(BOARD_CACHE_KEY); if (c){ P.data = JSON.parse(c); render(); } } catch(e){}
+    }
     try {
       const r = await fetch('/api/projects/board' + (fresh ? '?fresh=1' : ''));
       const d = await r.json();
       if (d.error) throw new Error(d.error);
       P.data = d;
+      try { localStorage.setItem(BOARD_CACHE_KEY, JSON.stringify(d)); } catch(e){}
       render();
     } catch(e){
-      if (body) body.innerHTML = '<div class="proj-empty">Couldn’t load projects: ' + esc(e.message) + '</div>';
+      if (!P.data && body) body.innerHTML = '<div class="proj-empty">Couldn’t load projects: ' + esc(e.message) + '</div>';
     }
   }
 
