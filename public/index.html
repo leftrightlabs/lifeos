@@ -7971,6 +7971,9 @@ async function fetchGoals(opts){
     const r = await fetch('/api/goals' + (opts.fresh ? '?fresh=1' : ''));
     const d = await r.json();
     GOALS_DATA = d.goals || [];
+    // Show milestones alphabetically by name (consistent across the list + the
+    // campaign card's "Next:" hint).
+    GOALS_DATA.forEach(g => { if (Array.isArray(g.milestones)) g.milestones.sort((a, b) => (a.name || '').localeCompare(b.name || '')); });
     _lastGoalsFetch = Date.now();
   } catch(e) { console.error('fetchGoals', e); GOALS_DATA = []; }
 }
