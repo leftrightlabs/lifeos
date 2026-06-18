@@ -2285,7 +2285,7 @@
   .proj-seg button.on { background: var(--lime); color: var(--navy-accent); }
   .proj-chip { border: 1px solid rgba(var(--edge-rgb), 0.12); background: transparent; color: rgba(var(--ink-rgb), 0.6); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
   .proj-chip.on { border-color: var(--lime); color: var(--navy); background: var(--lime-faint); }
-  .proj-me-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(var(--edge-rgb), 0.12); background: transparent; color: rgba(var(--ink-rgb), 0.6); border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-body); transition: all 0.15s; white-space: nowrap; }
+  .proj-me-btn { display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(var(--edge-rgb), 0.12); background: transparent; color: rgba(var(--ink-rgb), 0.6); border-radius: 999px; padding: 8px; cursor: pointer; transition: all 0.15s; }
   .proj-me-btn svg { width: 14px; height: 14px; }
   .proj-me-btn:hover { color: var(--navy); border-color: rgba(var(--edge-rgb), 0.3); }
   .proj-me-btn.on { border-color: var(--lime); color: var(--navy); background: var(--lime-faint); }
@@ -8300,9 +8300,9 @@ document.addEventListener('visibilitychange', async () => {
     }
     const search = '<div class="proj-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>'
       + `<input id="proj-search-input" type="text" placeholder="Search projects…" autocomplete="off" value="${esc(P.search)}"></div>`;
-    const meBtn = `<button class="proj-me-btn ${P.meOnly ? 'on' : ''}" id="proj-me-btn" title="Show only projects assigned to me" aria-pressed="${P.meOnly ? 'true' : 'false'}">`
+    const meBtn = `<button class="proj-me-btn ${P.meOnly ? 'on' : ''}" id="proj-me-btn" title="Show only projects assigned to me" aria-label="Show only projects assigned to me" aria-pressed="${P.meOnly ? 'true' : 'false'}">`
       + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
-      + 'My Projects</button>';
+      + '</button>';
     return '<div class="proj-controls">' + search + meBtn + '<div class="proj-ctl-group"><span class="proj-ctl-label">Group by</span><div class="proj-seg">' + seg + '</div></div>' + areaChips + '</div>';
   }
 
