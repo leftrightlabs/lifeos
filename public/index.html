@@ -1054,6 +1054,10 @@
     .triage-modal { padding: 0; align-items: stretch; overflow: hidden; }
     .triage-modal-content {
       padding: 16px;
+      /* Keep the header (× close) below the status bar and the input above the
+         home indicator on phones, so the modal is always dismissable. */
+      padding-top: max(16px, env(safe-area-inset-top));
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
       border-radius: 0;
       border: none;
       box-shadow: none;
