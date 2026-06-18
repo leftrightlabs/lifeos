@@ -169,12 +169,23 @@ async function queryTasks(dataSourceId, { peopleProp, myDayOnly } = {}) {
     // Member without a resolved Notion id → match nothing (never the owner's tasks).
     and.push({ property: peopleProp, people: { contains: nid || '00000000-0000-0000-0000-000000000000' } });
   }
-  return notion.dataSources.query({
-    data_source_id: dataSourceId,
-    filter: { and },
-    sorts: [{ property: 'Due', direction: 'ascending' }],
-    page_size: 100,
-  });
+  // Page through every match — a single 100-row page silently dropped tasks once
+  // a database had more than 100 non-done tasks (they just never appeared in any
+  // list or search).
+  const results = [];
+  let cursor;
+  do {
+    const r = await notion.dataSources.query({
+      data_source_id: dataSourceId,
+      filter: { and },
+      sorts: [{ property: 'Due', direction: 'ascending' }],
+      page_size: 100,
+      start_cursor: cursor,
+    });
+    results.push(...(r.results || []));
+    cursor = r.has_more ? r.next_cursor : null;
+  } while (cursor);
+  return { results };
 }
 
 function simplifyTask(page, source) {
