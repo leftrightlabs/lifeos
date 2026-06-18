@@ -3142,6 +3142,14 @@ window.lrl = (function(){
           </div>
           <button class="ritual-step-action" data-action="jump-checkin">Jump ›</button>
         </div>
+        <div class="ritual-step" data-step="linkedinComments">
+          <button class="ritual-check" aria-label="Toggle done"></button>
+          <div class="ritual-step-body">
+            <div class="ritual-step-label">Submit at least 10 LinkedIn comments</div>
+            <div class="ritual-step-meta">Engage on the feed</div>
+          </div>
+          <button class="ritual-step-action" data-action="open-linkedin">Open ↗</button>
+        </div>
         <div class="ritual-step" data-step="marketing">
           <button class="ritual-check" aria-label="Toggle done"></button>
           <div class="ritual-step-body">
@@ -4215,7 +4223,7 @@ function setChapterCollapsed(collapsed){
 }
 
 // ====== Morning Ritual ======
-const RITUAL_STEPS = ['birthdays', 'inboxes', 'notionComments', 'slackMessages', 'reviewCalendar', 'braindump', 'sequence', 'checkin', 'marketing', 'salesTouchpoints'];
+const RITUAL_STEPS = ['birthdays', 'inboxes', 'notionComments', 'slackMessages', 'reviewCalendar', 'braindump', 'sequence', 'checkin', 'linkedinComments', 'marketing', 'salesTouchpoints'];
 function ritualKey(){
   return 'lrl-ritual-' + new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
 }
@@ -4511,6 +4519,8 @@ function initRitual(){
         document.getElementById('checkin-card')?.scrollIntoView({ behavior:'smooth', block:'center' });
       } else if (action === 'jump-tasks'){
         document.getElementById('today-quests')?.scrollIntoView({ behavior:'smooth', block:'center' });
+      } else if (action === 'open-linkedin'){
+        window.openExternalSafe?.('https://www.linkedin.com/feed/');
       } else if (action === 'jump-marketing'){
         document.querySelector('.tab[data-tab="marketing"]')?.click();
       } else if (action === 'jump-sales'){
