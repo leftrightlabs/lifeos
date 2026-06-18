@@ -399,8 +399,10 @@
     .fin-grid-revenue, .fin-grid-cash, .fin-grid-net { grid-template-columns: 1fr; }
   }
   .fin-capacity { background: var(--white); border: none; border-radius: 12px; padding: 16px 18px; }
-  .fin-capacity.short .fin-cap-months, .fin-capacity.short .fin-cap-bar-fill { color: #ff7a6b; background: #ff7a6b; }
-  .fin-capacity.warning .fin-cap-months, .fin-capacity.warning .fin-cap-bar-fill { color: #d4a854; background: #d4a854; }
+  .fin-capacity.short .fin-cap-months { color: #ff7a6b; }
+  .fin-capacity.short .fin-cap-bar-fill { background: #ff7a6b; }
+  .fin-capacity.warning .fin-cap-months { color: #d4a854; }
+  .fin-capacity.warning .fin-cap-bar-fill { background: #d4a854; }
   .fin-cap-label { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(var(--ink-rgb), 0.55); font-weight: 800; }
   .fin-cap-row { display: flex; align-items: baseline; gap: 14px; margin: 8px 0 4px; flex-wrap: wrap; }
   .fin-cap-months { font-family: var(--font-display); font-size: 52px; font-weight: 800; color: var(--lime); line-height: 1; letter-spacing: -0.03em; }
