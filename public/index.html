@@ -8686,12 +8686,20 @@ document.addEventListener('visibilitychange', async () => {
     if (MKT.loaded || MKT.loading) return;
     MKT.loading = true;
     const body = document.getElementById('mkt-body');
+    // Stale-while-revalidate: paint last-known marketing data instantly, then refresh.
+    const cached = window.lrlCache.read('marketing');
+    if (cached) { try {
+      MKT.data = cached.data; MKT.cal = cached.cal; MKT.calMonth = cached.calMonth; MKT.stats = cached.stats;
+      if (cached.data) [].concat(cached.data.overdue||[], cached.data.dueToday||[], cached.data.thisWeek||[], cached.data.publishedToday||[]).forEach(a=>{ MKT.assetsById[a.id]=a; });
+      renderMktBody();
+    } catch(e){} }
     try {
       await Promise.all([ fetchMktToday(true), fetchMktCalendar(chiMonth(), true), fetchMktStats(true) ]);
       MKT.loaded = true;
+      window.lrlCache.save('marketing', { data: MKT.data, cal: MKT.cal, calMonth: MKT.calMonth, stats: MKT.stats });
       renderMktBody();
     } catch(err){
-      if (body) body.innerHTML = `<div class="mkt-empty">Couldn't load marketing: ${mEsc(err.message)}</div>`;
+      if (body && !cached) body.innerHTML = `<div class="mkt-empty">Couldn't load marketing: ${mEsc(err.message)}</div>`;
     } finally { MKT.loading = false; }
   }
   window.maybeLoadMarketing = maybeLoadMarketing;
@@ -8977,8 +8985,15 @@ document.addEventListener('visibilitychange', async () => {
   async function maybeLoadSales(){
     if (S.loaded||S.loading) return; S.loading=true;
     const body=document.getElementById('sales-body');
-    try { await Promise.all([fetchSales(true), fetchPulse(true), fetchOverdue(true)]); S.loaded=true; renderSales(); }
-    catch(err){ if(body) body.innerHTML=`<div class="mkt-empty">Couldn't load sales: ${esc(err.message)}</div>`; }
+    // Stale-while-revalidate: paint last-known sales data instantly, then refresh.
+    const cached = window.lrlCache.read('sales');
+    if (cached) { try {
+      S.data = cached.data; S.pulse = cached.pulse; S.overdue = cached.overdue;
+      if (cached.data) { (cached.data.stages||[]).forEach(st=>st.deals.forEach(x=>S.dealsById[x.id]=x)); (cached.data.recentWins||[]).forEach(x=>S.dealsById[x.id]=x); }
+      renderSales();
+    } catch(e){} }
+    try { await Promise.all([fetchSales(true), fetchPulse(true), fetchOverdue(true)]); S.loaded=true; window.lrlCache.save('sales', { data:S.data, pulse:S.pulse, overdue:S.overdue }); renderSales(); }
+    catch(err){ if(body && !cached) body.innerHTML=`<div class="mkt-empty">Couldn't load sales: ${esc(err.message)}</div>`; }
     finally { S.loading=false; }
   }
   window.maybeLoadSales = maybeLoadSales;
