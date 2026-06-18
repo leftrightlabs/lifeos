@@ -8239,7 +8239,13 @@ document.addEventListener('visibilitychange', async () => {
     if (P.groupBy === 'status'){ const ord = ['Active','Ongoing','Billing','Planned','On Hold','Done','No Status']; return keys.slice().sort((a,b) => ord.indexOf(a) - ord.indexOf(b)); }
     return keys.slice().sort((a,b) => { const na = /^(No |Unassigned)/.test(a), nb = /^(No |Unassigned)/.test(b); if (na !== nb) return na ? 1 : -1; return a.localeCompare(b); });
   }
-  function groupAll(items){ const g = {}; items.forEach((p) => { const k = groupKeyOf(p); (g[k] = g[k] || []).push(p); }); return g; }
+  // Owner grouping is multi-key: a project with several assignees appears under
+  // each of them. Every other grouping has a single key.
+  const groupKeysOf = (p) => {
+    if (P.groupBy === 'owner') return (p.owners && p.owners.length) ? p.owners.slice() : ['Unassigned'];
+    return [groupKeyOf(p)];
+  };
+  function groupAll(items){ const g = {}; items.forEach((p) => { groupKeysOf(p).forEach((k) => { (g[k] = g[k] || []).push(p); }); }); return g; }
 
   async function load(fresh){
     const body = document.getElementById('projects-body');
