@@ -4452,6 +4452,21 @@ function initRitual(){
   if (localStorage.getItem('lrl-ritual-collapsed') === '1') card.classList.add('collapsed');
   // Pull server state asynchronously and re-render once it lands
   pullRitualFromServer().then(serverState => { if (serverState) renderRitual(); });
+  // Cross-device freshness: when this device regains focus/visibility (e.g. you
+  // switch back from your phone), re-pull the latest ritual state so it doesn't
+  // stay stale while another device updated it. Covers morning + evening.
+  let _ritualResyncBusy = false;
+  const ritualResync = async () => {
+    if (document.visibilityState === 'hidden' || _ritualResyncBusy) return;
+    _ritualResyncBusy = true;
+    try {
+      const m = await pullRitualFromServer(); if (m) renderRitual();
+      if (typeof pullEveningFromServer === 'function'){ const e = await pullEveningFromServer(); if (e && typeof renderEvening === 'function') renderEvening(); }
+    } catch(e){} finally { _ritualResyncBusy = false; }
+  };
+  document.addEventListener('visibilitychange', ritualResync);
+  window.addEventListener('focus', ritualResync);
+  window.addEventListener('lrl-refresh', ritualResync);
   // Toggle button collapses/expands explicitly
   document.getElementById('ritual-toggle')?.addEventListener('click', (e) => {
     e.stopPropagation();
