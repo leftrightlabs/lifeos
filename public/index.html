@@ -1400,6 +1400,9 @@
   .autofocus-app .stat.s-following {border-top-color:var(--lime)}
   .autofocus-app .stat.s-following.active {color:var(--lime)}
   body[data-mode="personal"] .autofocus-app .stat.s-following { display:none; }
+  .autofocus-app .stat.s-recurring {border-top-color:#5d9cec}
+  .autofocus-app .stat.s-recurring.active {color:#5d9cec}
+  .autofocus-app .stat.s-recurring .statn { color:#5d9cec !important; }
   /* In single-mode views, hide the opposite-side tile entirely — and the
      same-side tile is redundant with Open (which is already filtered), so
      hide that too. Leaves: Open · Today · Overdue · My Day. */
@@ -3693,7 +3696,7 @@ window.lrl = (function(){
   <div class="privacy-status">Privacy</div>
 </div>
 
-<span class="version-tag">v: day-10</span>
+<span class="version-tag">v: day-11</span>
 
 <!-- =========================== AUTOFOCUS IIFE =========================== -->
 <script>
@@ -3774,6 +3777,9 @@ function visible(){
     // match by name/project and ignore the date-bucket view filters (routines,
     // not-yet-due, stat card) so any matching task surfaces.
     if(q) return t.name.toLowerCase().includes(q)||(t.project||'').toLowerCase().includes(q);
+    // The Recurring stat card is a standalone view: show ONLY recurring tasks
+    // and bypass the routines gate (otherwise they'd all be hidden by it).
+    if(sf==='recurring') return t.recurring;
     // Recurring tasks live behind the routines toggle: hidden by default, shown
     // only when "Show routines" (the ↻ icon) is on. Non-recurring tasks with a
     // future date range stay hidden until due, as before.
@@ -3923,6 +3929,15 @@ function updateHeader(){
   const od=live.filter(t=>{const e=effDate(t);return e&&daysFrom(e)<0;}).length;
   const td=live.filter(t=>{const e=effDate(t);return e&&daysFrom(e)===0;}).length;
   const md=live.filter(t=>t.myDay).length;
+  // Recurring tasks are excluded from `base`/`live` (they're behind the routines
+  // gate), so count them independently within the same mode + owner scope.
+  let recurBase=allTasks().filter(t=>!t.done&&t.recurring);
+  if (ui.src!=='all') recurBase=recurBase.filter(t=>t.source===ui.src);
+  if (ui.src!=='personal'){
+    if (ui.owner==='me') recurBase=recurBase.filter(t=>t.assignedToMe);
+    else if (ui.owner==='following') recurBase=recurBase.filter(t=>t.followingMe);
+  }
+  const rc=recurBase.length;
   const tile=(n,label,cls,filter)=>{
     const active=ui.statFilter===filter?' active':'';
     return '<div class="stat '+cls+active+'" data-filter="'+filter+'" role="button" tabindex="0" aria-pressed="'+(active?'true':'false')+'" title="Filter to '+label.toLowerCase()+'"><div class="statn">'+n+'</div><div class="statl">'+label+'</div></div>';
@@ -3932,7 +3947,7 @@ function updateHeader(){
   const followCount=base.filter(t=>t.followingMe).length;
   const followActive=ui.owner==='following'?' active':'';
   const followTile='<div class="stat s-following'+followActive+'" data-scope="following" role="button" tabindex="0" aria-pressed="'+(followActive?'true':'false')+'" title="Show tasks I follow"><div class="statn">'+followCount+'</div><div class="statl">Following</div></div>';
-  el('hdrstats').innerHTML=tile(live.length,'Open','s-open','open')+tile(work,'Work','s-work','work')+tile(pers,'Personal','s-personal','personal')+tile(td,'Today','s-today','today')+tile(od,'Overdue','s-over','overdue')+tile(md,"My Day",'s-myday','myday')+followTile;
+  el('hdrstats').innerHTML=tile(live.length,'Open','s-open','open')+tile(work,'Work','s-work','work')+tile(pers,'Personal','s-personal','personal')+tile(td,'Today','s-today','today')+tile(od,'Overdue','s-over','overdue')+tile(md,"My Day",'s-myday','myday')+followTile+tile(rc,'Recurring','s-recurring','recurring');
 }
 
 function afPatch(id, body){
