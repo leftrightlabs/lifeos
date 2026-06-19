@@ -3893,10 +3893,16 @@ function render(){
 }
 function updateHeader(){
   // Stat tiles count from the same base as visible(): open tasks, mode-filtered,
-  // and excluding future recurrences (unless "show routines" toggle is on).
-  // This keeps the Open count consistent with what's actually rendered below.
-  let live = allTasks().filter(t => !t.done && !(notYetDue(t) && !ui.routines));
-  if (ui.src !== 'all') live = live.filter(t => t.source === ui.src);
+  // excluding future recurrences (unless "show routines" is on), AND scoped to the
+  // same owner filter the list uses — otherwise the counts wouldn't match what
+  // actually renders (e.g. "13 overdue" but none assigned to me).
+  let base = allTasks().filter(t => !t.done && !(notYetDue(t) && !ui.routines));
+  if (ui.src !== 'all') base = base.filter(t => t.source === ui.src);
+  let live = base;
+  if (ui.src !== 'personal'){
+    if (ui.owner === 'me') live = base.filter(t => t.assignedToMe);
+    else if (ui.owner === 'following') live = base.filter(t => t.followingMe);
+  }
   const work=live.filter(t=>t.source==='work').length, pers=live.filter(t=>t.source==='personal').length;
   const od=live.filter(t=>{const e=effDate(t);return e&&daysFrom(e)<0;}).length;
   const td=live.filter(t=>{const e=effDate(t);return e&&daysFrom(e)===0;}).length;
@@ -3905,8 +3911,9 @@ function updateHeader(){
     const active=ui.statFilter===filter?' active':'';
     return '<div class="stat '+cls+active+'" data-filter="'+filter+'" role="button" tabindex="0" aria-pressed="'+(active?'true':'false')+'" title="Filter to '+label.toLowerCase()+'"><div class="statn">'+n+'</div><div class="statl">'+label+'</div></div>';
   };
-  // "Following" card: count of tasks I follow; clicking toggles the Following view.
-  const followCount=live.filter(t=>t.followingMe).length;
+  // "Following" card counts the tasks I follow within the current mode, regardless
+  // of the me/following owner scope, so it always shows how many I'm following.
+  const followCount=base.filter(t=>t.followingMe).length;
   const followActive=ui.owner==='following'?' active':'';
   const followTile='<div class="stat s-following'+followActive+'" data-scope="following" role="button" tabindex="0" aria-pressed="'+(followActive?'true':'false')+'" title="Show tasks I follow"><div class="statn">'+followCount+'</div><div class="statl">Following</div></div>';
   el('hdrstats').innerHTML=tile(live.length,'Open','s-open','open')+tile(work,'Work','s-work','work')+tile(pers,'Personal','s-personal','personal')+tile(td,'Today','s-today','today')+tile(od,'Overdue','s-over','overdue')+tile(md,"My Day",'s-myday','myday')+followTile;
