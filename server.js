@@ -754,10 +754,10 @@ app.get('/api/goals', async (req, res) => {
 
 app.post('/api/tasks', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  const { source, name, status, priority, myDay, dueStart, dueEnd, projectId, taskBody } = req.body || {};
+  const { source, name, status, priority, myDay, dueStart, dueEnd, projectId, taskBody, estHours } = req.body || {};
   if (!source || !name) return res.status(400).json({ error: 'source and name are required' });
   try {
-    const result = await createNotionTask({ source, name, status, priority, myDay, dueStart, dueEnd, projectId: projectId || undefined, body: taskBody || undefined });
+    const result = await createNotionTask({ source, name, status, priority, myDay, dueStart, dueEnd, projectId: projectId || undefined, body: taskBody || undefined, estHours });
     invalidateTaskCaches();
     res.json({ ok: true, id: result.id, url: result.url });
   } catch (err) {
@@ -1114,13 +1114,19 @@ app.patch('/api/projects/:id', async (req, res) => {
 app.patch('/api/tasks/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { id } = req.params;
-  const { name, status, dueStart, dueEnd, myDay, priority, projectId } = req.body || {};
+  const { name, status, dueStart, dueEnd, myDay, priority, projectId, estHours } = req.body || {};
   try {
     const properties = {};
     if (name !== undefined && name !== null) {
       properties.Name = { title: [{ text: { content: String(name) } }] };
     }
     if (status !== undefined) properties.Status = { status: { name: status } };
+    // Est Hours is a number property that only exists on the work DB. A null
+    // clears it; a finite number sets it. (Personal tasks never send this.)
+    if (estHours !== undefined) {
+      const n = estHours === null || estHours === '' ? null : Number(estHours);
+      properties['Est Hours'] = { number: Number.isFinite(n) ? n : null };
+    }
     if (dueStart !== undefined || dueEnd !== undefined) {
       properties.Due = dueStart
         ? { date: { start: dueStart, end: dueEnd || null } }
@@ -2522,7 +2528,7 @@ async function createNotionProject({ source, name }) {
   return { id: page.id, name, url: page.url };
 }
 
-async function createNotionTask({ source, name, dueStart, dueEnd, myDay, priority, projectId, body, status }) {
+async function createNotionTask({ source, name, dueStart, dueEnd, myDay, priority, projectId, body, status, estHours }) {
   const dsId = TASK_DS_BY_SOURCE[source];
   if (!dsId) throw new Error(`unknown source: ${source}`);
   const properties = {
@@ -2532,6 +2538,11 @@ async function createNotionTask({ source, name, dueStart, dueEnd, myDay, priorit
   if (myDay) properties['My Day'] = { checkbox: true };
   if (dueStart) properties.Due = { date: { start: dueStart, end: dueEnd || null } };
   if (priority) properties['Priority 2'] = { select: { name: priority } };
+  // Est Hours only exists on the work DB — guard so a personal create can't 400.
+  if (source === 'work' && estHours !== undefined && estHours !== null && estHours !== '') {
+    const n = Number(estHours);
+    if (Number.isFinite(n)) properties['Est Hours'] = { number: n };
+  }
   if (projectId) properties.Project = { relation: [{ id: projectId }] };
   if (source === 'work') {
     const nid = currentNotionUserId();
