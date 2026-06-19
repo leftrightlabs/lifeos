@@ -128,6 +128,9 @@
 
   .section-label { display: none; }
 
+  /* The active tab label already names the page, so the per-page title + blurb
+     are redundant. Hidden across every tab to reclaim that vertical space. */
+  .page-title, .page-subtitle { display: none; }
   .page-title { font-family: var(--font-body); font-weight: 800; font-size: 18px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--navy); margin-bottom: 8px; line-height: 1.2; }
   .page-title span { display: inline; transform: none; }
   .page-subtitle { color: var(--navy-dim); font-size: 14px; margin-bottom: 22px; line-height: 1.5; }
@@ -180,6 +183,7 @@
   .panel-add-btn:hover { background: rgba(167,193,64,0.22); border-color: var(--lime); }
   .panel-add-btn:active { transform: scale(0.9); }
   /* Collapsible quest panels (tasks + calendar) */
+  .quest-panel { border: none; }
   .quest-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
   .quest-panel.collapsed { padding: 12px 22px; border-color: transparent; }
   .quest-panel.collapsed .quest-panel-head { margin-bottom: 0; }
@@ -215,7 +219,7 @@
   .quest-text.done, .quest-item.done .quest-text { text-decoration: line-through; color: var(--navy-dim); }
   .quest-item.done { opacity: 0.6; }
   .quest-meta-tags { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; flex-shrink: 0; }
-  .quest-repeat { color: rgba(var(--ink-rgb), 0.42); font-size: 14px; line-height: 1; flex-shrink: 0; }
+  .quest-repeat { display: inline-block; color: rgba(var(--ink-rgb), 0.42); font-size: 13px; line-height: 1; margin-left: 5px; vertical-align: baseline; flex-shrink: 0; }
   /* Keep [check][dot][title][star] on row 1, wrap badges to row 2 — fires
      whenever the quest panel is narrow (true mobile OR a narrow split-screen
      window), regardless of the overall viewport width. */
@@ -395,8 +399,10 @@
     .fin-grid-revenue, .fin-grid-cash, .fin-grid-net { grid-template-columns: 1fr; }
   }
   .fin-capacity { background: var(--white); border: none; border-radius: 12px; padding: 16px 18px; }
-  .fin-capacity.short .fin-cap-months, .fin-capacity.short .fin-cap-bar-fill { color: #ff7a6b; background: #ff7a6b; }
-  .fin-capacity.warning .fin-cap-months, .fin-capacity.warning .fin-cap-bar-fill { color: #d4a854; background: #d4a854; }
+  .fin-capacity.short .fin-cap-months { color: #ff7a6b; }
+  .fin-capacity.short .fin-cap-bar-fill { background: #ff7a6b; }
+  .fin-capacity.warning .fin-cap-months { color: #d4a854; }
+  .fin-capacity.warning .fin-cap-bar-fill { background: #d4a854; }
   .fin-cap-label { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(var(--ink-rgb), 0.55); font-weight: 800; }
   .fin-cap-row { display: flex; align-items: baseline; gap: 14px; margin: 8px 0 4px; flex-wrap: wrap; }
   .fin-cap-months { font-family: var(--font-display); font-size: 52px; font-weight: 800; color: var(--lime); line-height: 1; letter-spacing: -0.03em; }
@@ -589,7 +595,7 @@
   .task-field { display: block; margin-bottom: 12px; }
   .task-field label { display: block; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(var(--ink-rgb), 0.5); font-weight: 700; margin-bottom: 6px; }
   .task-field input[type="text"], .task-field input[type="date"], .task-field select, .task-field textarea {
-    width: 100%; background: rgba(var(--edge-rgb), 0.05); border: 1px solid rgba(var(--edge-rgb), 0.12); color: var(--navy); padding: 9px 12px; border-radius: 8px; font-family: var(--font-body); font-size: 14px; color-scheme: dark;
+    width: 100%; min-width: 0; background: rgba(var(--edge-rgb), 0.05); border: 1px solid rgba(var(--edge-rgb), 0.12); color: var(--navy); padding: 9px 12px; border-radius: 8px; font-family: var(--font-body); font-size: 14px; color-scheme: dark;
   }
   .task-field input:focus, .task-field select:focus, .task-field textarea:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
   .task-field textarea { resize: vertical; min-height: 60px; font-size: 16px; font-weight: 600; line-height: 1.3; }
@@ -612,6 +618,10 @@
   .task-combo-empty { padding: 10px 12px; color: rgba(var(--ink-rgb), 0.5); font-size: 13px; }
   .task-checkbox-row { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 14px; color: var(--navy); cursor: pointer; }
   .task-checkbox-row input { accent-color: var(--lime); width: 16px; height: 16px; }
+  /* The native iOS date picker's "Reset" reverts to the original date and can't
+     clear it, so this app-level Clear actually empties the field. */
+  .task-date-clear { float: right; background: none; border: none; color: var(--navy-dim); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; cursor: pointer; padding: 0; }
+  .task-date-clear:hover { color: var(--lime); }
   .task-project-line { font-size: 12px; color: rgba(var(--ink-rgb), 0.55); margin-bottom: 14px; padding: 8px 12px; background: rgba(var(--edge-rgb), 0.03); border-radius: 6px; }
   .task-project-line .lab { color: rgba(var(--ink-rgb), 0.4); letter-spacing: 0.08em; text-transform: uppercase; font-size: 10px; font-weight: 700; margin-right: 8px; }
   .task-modal-actions { display: flex; gap: 8px; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(var(--edge-rgb), 0.06); flex-wrap: wrap; }
@@ -642,6 +652,9 @@
   .event-acct-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; margin-bottom: 14px; }
   .event-acct-pill.work { background: rgba(93,156,236,0.15); color: #9cc5f5; border: 1px solid rgba(93,156,236,0.3); }
   .event-acct-pill.personal { background: rgba(167,193,64,0.15); color: var(--lime); border: 1px solid rgba(167,193,64,0.3); }
+  /* In create mode the pill toggles the account on tap. */
+  .event-acct-pill.clickable { cursor: pointer; }
+  .event-acct-pill.clickable::after { content: '⇄'; margin-left: 4px; opacity: 0.7; }
   .event-acct-pill .dot { width: 6px; height: 6px; border-radius: 50%; }
   .event-acct-pill.work .dot { background: #5d9cec; }
   .event-acct-pill.personal .dot { background: var(--lime); }
@@ -650,10 +663,14 @@
   .event-field input[type="text"],
   .event-field input[type="date"],
   .event-field input[type="time"] {
-    width: 100%; background: rgba(var(--edge-rgb), 0.05); border: 1px solid rgba(var(--edge-rgb), 0.12); color: var(--navy); padding: 9px 12px; border-radius: 8px; font-family: var(--font-body); font-size: 14px; color-scheme: dark;
+    width: 100%; min-width: 0; background: rgba(var(--edge-rgb), 0.05); border: 1px solid rgba(var(--edge-rgb), 0.12); color: var(--navy); padding: 9px 12px; border-radius: 8px; font-family: var(--font-body); font-size: 14px; color-scheme: dark;
   }
   .event-field input:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
   .event-time-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px; }
+  /* Grid items default to min-width:auto and won't shrink below the intrinsic
+     width of a native time input, which makes the Start/End fields overflow and
+     overlap on narrow screens. Allow them to shrink to their column. */
+  .event-time-grid > .event-field { min-width: 0; }
   .event-time-grid.allday { grid-template-columns: 1fr 1fr; }
   .event-allday-row { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 13px; color: var(--navy); cursor: pointer; }
   .event-allday-row input { accent-color: var(--lime); width: 16px; height: 16px; }
@@ -669,8 +686,10 @@
   @media (max-width: 600px) {
     .event-modal { padding: 40px 12px 20px; }
     .event-modal-content { padding: 18px; }
-    .event-time-grid { grid-template-columns: 1fr 1fr; }
-    .event-time-grid > :first-child { grid-column: 1 / -1; }
+    /* Native iOS time inputs have a hard minimum width that won't shrink to fit
+       two side-by-side columns on a phone, causing them to overlap. Stack the
+       date/start/end fields full-width so each one has room. */
+    .event-time-grid { grid-template-columns: 1fr; }
     .event-modal-actions { gap: 6px; }
     .event-btn { padding: 9px 12px; font-size: 11px; flex: 1; min-width: 0; }
     .event-btn.delete { order: 99; flex-basis: 100%; }
@@ -684,7 +703,7 @@
   .tag-r3 { background: rgba(212,144,49,0.2); color: var(--warn); }
   .tag-r4 { background: rgba(17,34,72,0.1); color: var(--navy); }
 
-  .chapter-panel { background: var(--white); border: 1px solid rgba(167,193,64,0.18); border-left: 3px solid var(--lime); border-radius: 8px; padding: 18px 22px; margin-bottom: 24px; position: relative; transition: padding 0.2s ease, margin 0.2s ease; }
+  .chapter-panel { background: var(--white); border: none; border-radius: 8px; padding: 18px 22px; margin-bottom: 24px; position: relative; transition: padding 0.2s ease, margin 0.2s ease; }
   .chapter-panel::before { content: none; }
   .chapter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; }
   .chapter-collapsed-meta { display: none; font-size: 12px; color: rgba(var(--ink-rgb), 0.55); font-weight: 500; white-space: nowrap; }
@@ -712,7 +731,7 @@
 
   .sidequest-alert { background: var(--lime-faint); border-left: 3px solid var(--lime); padding: 14px 18px; border-radius: 4px; margin-bottom: 24px; font-size: 13px; display: flex; align-items: center; gap: 12px; }
 
-  .daily-brief { background: var(--white); border: 1px solid rgba(167,193,64,0.18); border-left: 3px solid var(--lime); border-radius: 8px; padding: 18px 22px; margin-bottom: 24px; position: relative; }
+  .daily-brief { background: var(--white); border: none; border-radius: 8px; padding: 18px 22px; margin-bottom: 24px; position: relative; }
   .daily-brief.collapsed { padding: 12px 22px; border-color: transparent; margin-bottom: 12px; }
   .daily-brief.collapsed #brief-body { display: none; }
   .daily-brief-kicker { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--lime); font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -739,7 +758,7 @@
   .daily-brief-refresh.spinning svg { animation: spin 1s linear infinite; }
 
   /* ===== Morning Ritual card ===== */
-  .ritual-card { background: var(--white); border: 1px solid rgba(var(--edge-rgb), 0.06); border-left: 3px solid var(--lime); border-radius: 8px; padding: 16px 22px; margin-bottom: 22px; }
+  .ritual-card { background: var(--white); border: none; border-radius: 8px; padding: 16px 22px; margin-bottom: 22px; }
   .ritual-card.done, .ritual-card.collapsed { padding: 12px 22px; border-color: transparent; margin-bottom: 12px; }
   .ritual-card.done .ritual-list, .ritual-card.collapsed .ritual-list { display: none; }
   .ritual-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
@@ -769,6 +788,8 @@
   .ritual-step-action { background: transparent; border: 1px solid rgba(var(--edge-rgb), 0.12); color: rgba(var(--ink-rgb), 0.6); font-family: var(--font-body); font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 10px; border-radius: 999px; cursor: pointer; flex-shrink: 0; }
   .ritual-step-action:hover { color: var(--lime); border-color: var(--lime); }
   .ritual-card.weekend, body[data-mode="personal"] .ritual-card.morning-only { display: none; }
+  /* Morning + evening routines are owner-only — hidden for any other signed-in user. */
+  body.role-member #ritual-card, body.role-member #evening-card { display: none !important; }
   .ritual-subhead { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(var(--ink-rgb), 0.4); font-weight: 700; margin: 12px 4px 6px; }
   .ritual-section:first-of-type .ritual-subhead { margin-top: 4px; }
   .ritual-card.evening { border-left-color: var(--lime); }
@@ -799,8 +820,8 @@
   .quest-status-dot.status-done { background: rgba(var(--ink-rgb), 0.15); }
 
   /* ===== Daily Slack Check-in card ===== */
-  .checkin-card { background: var(--white); border: 1px solid rgba(var(--edge-rgb), 0.06); border-left: 3px solid #4a154b; border-radius: 8px; padding: 16px 22px; margin-bottom: 22px; }
-  .checkin-card.collapsed { padding: 12px 22px; border-color: transparent; }
+  .checkin-card { background: var(--white); border: none; border-radius: 8px; padding: 16px 22px; margin-bottom: 22px; }
+  .checkin-card.collapsed { padding: 12px 22px; border-color: transparent; margin-bottom: 12px; }
   .checkin-card.collapsed .checkin-body { display: none; }
   .checkin-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
   .checkin-card.collapsed .checkin-head { margin-bottom: 0; }
@@ -825,6 +846,8 @@
   .checkin-meta { font-size: 11px; color: rgba(var(--ink-rgb), 0.45); margin-right: auto; }
   /* Hide check-in card when in personal mode (work-only feature) */
   body[data-mode="personal"] .checkin-card { display: none; }
+  /* Weekday-only: hide the check-in card on weekends */
+  .checkin-card.weekend { display: none; }
   @media (max-width: 600px) {
     .checkin-card { padding: 14px 16px; }
     .checkin-text { min-height: 180px; font-size: 12.5px; }
@@ -1033,6 +1056,10 @@
     .triage-modal { padding: 0; align-items: stretch; overflow: hidden; }
     .triage-modal-content {
       padding: 16px;
+      /* Keep the header (× close) below the status bar and the input above the
+         home indicator on phones, so the modal is always dismissable. */
+      padding-top: max(16px, env(safe-area-inset-top));
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
       border-radius: 0;
       border: none;
       box-shadow: none;
@@ -1234,7 +1261,7 @@
   .msg-panel.open { pointer-events: all; }
   .msg-panel-backdrop { position: absolute; inset: 0; background: rgba(10,15,30,0.55); backdrop-filter: blur(2px); opacity: 0; transition: opacity 0.22s; }
   .msg-panel.open .msg-panel-backdrop { opacity: 1; }
-  .msg-panel-sheet { position: relative; width: 100%; max-width: 660px; background: var(--cream); display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.32,0.72,0,1); box-shadow: -20px 0 60px rgba(0,0,0,0.45); }
+  .msg-panel-sheet { position: relative; width: 100%; max-width: 660px; background: var(--cream); display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.32,0.72,0,1); box-shadow: -20px 0 60px rgba(0,0,0,0.45); padding-top: env(safe-area-inset-top); }
   .msg-panel.open .msg-panel-sheet { transform: translateX(0); }
   .msg-panel-head { padding: 16px 18px 14px; border-bottom: 1px solid var(--navy-faint); flex-shrink: 0; }
   .msg-panel-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
@@ -2264,6 +2291,10 @@
   .proj-seg button.on { background: var(--lime); color: var(--navy-accent); }
   .proj-chip { border: 1px solid rgba(var(--edge-rgb), 0.12); background: transparent; color: rgba(var(--ink-rgb), 0.6); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
   .proj-chip.on { border-color: var(--lime); color: var(--navy); background: var(--lime-faint); }
+  .proj-me-btn { display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(var(--edge-rgb), 0.12); background: transparent; color: rgba(var(--ink-rgb), 0.6); border-radius: 999px; padding: 8px; cursor: pointer; transition: all 0.15s; }
+  .proj-me-btn svg { width: 14px; height: 14px; }
+  .proj-me-btn:hover { color: var(--navy); border-color: rgba(var(--edge-rgb), 0.3); }
+  .proj-me-btn.on { border-color: var(--lime); color: var(--navy); background: var(--lime-faint); }
 
   /* Collapsible timeline */
   .proj-timeline-panel { background: var(--white); border: 1px solid rgba(var(--edge-rgb), 0.07); border-radius: 12px; margin-bottom: 18px; overflow: hidden; }
@@ -2760,6 +2791,14 @@
   } catch(e){ console.warn('[capacitor bootstrap]', e); }
 })();
 
+// Stale-while-revalidate cache for tab data: paint last-known data instantly on
+// load, then refresh in the background. Keeps heavier tabs from flashing a
+// "loading…" placeholder on every page reload. Stored in localStorage.
+window.lrlCache = {
+  save(key, data){ try { if (data && !data.error) localStorage.setItem('lrl-swr-' + key, JSON.stringify(data)); } catch(e){} },
+  read(key){ try { const c = localStorage.getItem('lrl-swr-' + key); return c ? JSON.parse(c) : null; } catch(e){ return null; } },
+};
+
 // Durable key/value storage. On native iOS, back window.storage with Capacitor
 // Preferences so values (e.g. collapsed-panel state) survive WKWebView localStorage
 // eviction between app launches. We mirror every write into localStorage too so the
@@ -3012,7 +3051,7 @@ window.lrl = (function(){
       </div>
     </div>
 
-    <div class="chapter-panel" id="chapter-panel">
+    <div class="chapter-panel collapsed" id="chapter-panel">
       <div class="chapter-header">
         <button class="chapter-toggle" id="chapter-toggle" title="Collapse/expand">
           <span id="chapter-collapse-caret">▾</span> Q2 2026
@@ -3105,6 +3144,14 @@ window.lrl = (function(){
           </div>
           <button class="ritual-step-action" data-action="jump-checkin">Jump ›</button>
         </div>
+        <div class="ritual-step" data-step="linkedinComments">
+          <button class="ritual-check" aria-label="Toggle done"></button>
+          <div class="ritual-step-body">
+            <div class="ritual-step-label">Submit at least 10 LinkedIn comments</div>
+            <div class="ritual-step-meta">Engage on the feed</div>
+          </div>
+          <button class="ritual-step-action" data-action="open-linkedin">Open ↗</button>
+        </div>
         <div class="ritual-step" data-step="marketing">
           <button class="ritual-check" aria-label="Toggle done"></button>
           <div class="ritual-step-body">
@@ -3140,9 +3187,12 @@ window.lrl = (function(){
       <div class="panel quest-panel" id="calendar-panel">
         <div class="quest-panel-head">
           <button class="quest-panel-toggle" id="cal-panel-toggle" title="Collapse/expand">
-            <span class="quest-panel-caret" id="cal-panel-caret">▾</span> Today's Calendar
+            <span class="quest-panel-caret" id="cal-panel-caret">▾</span> Schedule
           </button>
-          <span class="quest-panel-meta" id="cal-panel-meta"></span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="quest-panel-meta" id="cal-panel-meta"></span>
+            <button class="panel-add-btn" id="cal-add-btn" title="Add event" aria-label="Add event">+</button>
+          </div>
         </div>
         <div id="today-calendar" class="quest-panel-body"><div style="color:var(--navy-dim);font-size:13px;padding:8px 0">loading…</div></div>
       </div>
@@ -3259,7 +3309,7 @@ window.lrl = (function(){
           <button type="button" class="af-tbar-btn" id="tg-mine" title="My tasks only">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
           </button>
-          <button type="button" class="af-tbar-btn" id="tg-routines" title="Show routines">
+          <button type="button" class="af-tbar-btn" id="tg-routines" title="Show recurring tasks">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
           </button>
           <button type="button" class="af-tbar-btn" id="tg-done" title="Show completed">
@@ -3565,15 +3615,14 @@ window.lrl = (function(){
         </select>
       </div>
     </div>
-    <div class="task-row-2col">
-      <div class="task-field">
-        <label>Due date</label>
-        <input type="date" id="task-due-input"/>
-      </div>
-      <div class="task-field">
-        <label>End date (optional)</label>
-        <input type="date" id="task-dueend-input"/>
-      </div>
+    <div class="task-field">
+      <label>Due date <button type="button" class="task-date-clear" id="task-due-clear">Clear</button></label>
+      <input type="date" id="task-due-input"/>
+    </div>
+    <label class="task-checkbox-row" id="task-dueend-toggle-row"><input type="checkbox" id="task-dueend-toggle"/> End date</label>
+    <div class="task-field" id="task-dueend-wrap" style="display:none">
+      <label>End date <button type="button" class="task-date-clear" id="task-dueend-clear">Clear</button></label>
+      <input type="date" id="task-dueend-input"/>
     </div>
     <div class="task-modal-actions">
       <button class="task-btn-trash" id="task-delete-btn" style="display:none" title="Delete task">
@@ -3643,7 +3692,7 @@ window.lrl = (function(){
   <div class="privacy-status">Privacy</div>
 </div>
 
-<span class="version-tag">v: day-6</span>
+<span class="version-tag">v: day-7</span>
 
 <!-- =========================== AUTOFOCUS IIFE =========================== -->
 <script>
@@ -3656,6 +3705,10 @@ async function loadState(){try{const r=await window.storage.get(SKEY);if(r&&r.va
 let saveT=null;
 function saveState(){clearTimeout(saveT);saveT=setTimeout(async()=>{try{await window.storage.set(SKEY,JSON.stringify(state));}catch(e){}},150);}
 async function fetchTasks(){
+  if (!SEED_TASKS.length) {
+    const c = window.lrlCache.read('tasks');
+    if (c && c.length) { try { SEED_TASKS = c; BASE = {}; c.forEach(t => BASE[t.id] = t); render(); } catch(e){} }
+  }
   try {
     const r = await fetch('/api/tasks/all');
     const d = await r.json();
@@ -3682,6 +3735,15 @@ function relTime(d){if(!d)return '—';const days=Math.floor((TODAY-d)/86400000)
 function dueLabel(t){const e=effDate(t);if(!e)return{txt:'No date',cls:'none'};const n=daysFrom(e);const fmt=e.toLocaleDateString('en-US',{month:'short',day:'numeric'});if(n<0)return{txt:(n===-1?'Yesterday':Math.abs(n)+'d overdue')+' · '+fmt,cls:'over'};if(n===0)return{txt:'Today · '+fmt,cls:'today'};if(n===1)return{txt:'Tomorrow · '+fmt,cls:'soon'};if(n<=7)return{txt:'In '+n+'d · '+fmt,cls:'soon'};return{txt:fmt,cls:''};}
 function bucketOf(t){const e=effDate(t);if(!e)return{key:'none',label:'No Due Date',rank:5};const n=daysFrom(e);if(n<0)return{key:'over',label:'Overdue',rank:0};if(n===0)return{key:'today',label:'Today',rank:1};if(n<=7)return{key:'week',label:'This Week',rank:2};return{key:'later',label:'Later',rank:3};}
 function notYetDue(t){if(t.recurring){const nd=nextDue(t);return nd&&nd>today;}const s=parseD(t.dueStart),e=parseD(t.dueEnd);if(s&&e&&s>today)return true;return false;}
+// Human-readable recurrence cadence, e.g. "Weekly" or "Every 2 months".
+function recurLabel(t){
+  if(!t.recurring)return '';
+  const n=t.recurInterval||1;
+  const u=(t.recurUnit||'').toLowerCase();
+  const unit=/week/.test(u)?'week':/month/.test(u)?'month':/year/.test(u)?'year':'day';
+  if(n===1)return {day:'Daily',week:'Weekly',month:'Monthly',year:'Yearly'}[unit];
+  return 'Every '+n+' '+unit+'s';
+}
 
 const el=id=>document.getElementById(id);
 const ui={src:'all',sort:'due',group:'bucket',q:'',routines:false,showdone:false,statFilter:null,owner:'all'};
@@ -3690,6 +3752,7 @@ try { const sc = localStorage.getItem('lrl-task-scope'); if (sc) ui.owner = sc; 
 
 function visible(){
   const sf=ui.statFilter;
+  const q = (ui.q || '').trim().toLowerCase();
   return allTasks().filter(t=>{
     if(t.done&&!ui.showdone)return false;
     if(ui.src!=='all'&&t.source!==ui.src)return false;
@@ -3697,8 +3760,14 @@ function visible(){
       if(ui.owner==='me'&&!t.assignedToMe)return false;
       if(ui.owner==='following'&&!t.followingMe)return false;
     }
-    if(!ui.routines&&notYetDue(t)&&!t.done)return false;
-    if(ui.q){const q=ui.q.toLowerCase();if(!(t.name.toLowerCase().includes(q)||(t.project||'').toLowerCase().includes(q)))return false;}
+    // A search is a global find within the current work/personal + owner scope:
+    // match by name/project and ignore the date-bucket view filters (routines,
+    // not-yet-due, stat card) so any matching task surfaces.
+    if(q) return t.name.toLowerCase().includes(q)||(t.project||'').toLowerCase().includes(q);
+    // Recurring tasks live behind the routines toggle: hidden by default, shown
+    // only when "Show routines" (the ↻ icon) is on. Non-recurring tasks with a
+    // future date range stay hidden until due, as before.
+    if(!ui.routines&&!t.done&&(t.recurring||notYetDue(t)))return false;
     if(sf){
       if(sf==='work'&&t.source!=='work')return false;
       if(sf==='personal'&&t.source!=='personal')return false;
@@ -3774,12 +3843,13 @@ function row(t){
   const checkedCls = t.done ? 'checked' : '';
   const statusKey = (t.status || 'Planned').toLowerCase().replace(/\s+/g,'-');
   const statusDot = '<span class="quest-status-dot status-'+statusKey+'" title="'+(t.status||'Planned')+'"></span>';
-  const repeatIcon = t.recurring ? '<span class="quest-repeat" title="Recurring task" aria-label="Recurring task">↻</span>' : '';
+  const repeatLab = recurLabel(t);
+  const repeatIcon = repeatLab ? '<span class="quest-repeat" title="Repeats '+escapeHtml(repeatLab.toLowerCase())+'" aria-label="Repeats '+escapeHtml(repeatLab.toLowerCase())+'">↻</span>' : '';
   return '<div class="quest-item'+doneCls+'" data-task-id="'+t.id+'" data-task-url="'+escapeHtml(t.url||'')+'">'
     +'<div class="quest-check '+checkedCls+'" data-act="check"></div>'
     +statusDot
-    +'<div class="quest-text" data-act="open">'+escapeHtml(t.name)+sub+'</div>'
-    +'<div class="quest-meta-tags">'+priHtml+dueHtml+sourceTag+repeatIcon+'</div>'
+    +'<div class="quest-text" data-act="open">'+escapeHtml(t.name)+repeatIcon+sub+'</div>'
+    +'<div class="quest-meta-tags">'+priHtml+dueHtml+sourceTag+'</div>'
     +followBtn
     +star
     +'</div>';
@@ -3827,10 +3897,16 @@ function render(){
 }
 function updateHeader(){
   // Stat tiles count from the same base as visible(): open tasks, mode-filtered,
-  // and excluding future recurrences (unless "show routines" toggle is on).
-  // This keeps the Open count consistent with what's actually rendered below.
-  let live = allTasks().filter(t => !t.done && !(notYetDue(t) && !ui.routines));
-  if (ui.src !== 'all') live = live.filter(t => t.source === ui.src);
+  // excluding future recurrences (unless "show routines" is on), AND scoped to the
+  // same owner filter the list uses — otherwise the counts wouldn't match what
+  // actually renders (e.g. "13 overdue" but none assigned to me).
+  let base = allTasks().filter(t => !t.done && !((t.recurring || notYetDue(t)) && !ui.routines));
+  if (ui.src !== 'all') base = base.filter(t => t.source === ui.src);
+  let live = base;
+  if (ui.src !== 'personal'){
+    if (ui.owner === 'me') live = base.filter(t => t.assignedToMe);
+    else if (ui.owner === 'following') live = base.filter(t => t.followingMe);
+  }
   const work=live.filter(t=>t.source==='work').length, pers=live.filter(t=>t.source==='personal').length;
   const od=live.filter(t=>{const e=effDate(t);return e&&daysFrom(e)<0;}).length;
   const td=live.filter(t=>{const e=effDate(t);return e&&daysFrom(e)===0;}).length;
@@ -3839,8 +3915,9 @@ function updateHeader(){
     const active=ui.statFilter===filter?' active':'';
     return '<div class="stat '+cls+active+'" data-filter="'+filter+'" role="button" tabindex="0" aria-pressed="'+(active?'true':'false')+'" title="Filter to '+label.toLowerCase()+'"><div class="statn">'+n+'</div><div class="statl">'+label+'</div></div>';
   };
-  // "Following" card: count of tasks I follow; clicking toggles the Following view.
-  const followCount=live.filter(t=>t.followingMe).length;
+  // "Following" card counts the tasks I follow within the current mode, regardless
+  // of the me/following owner scope, so it always shows how many I'm following.
+  const followCount=base.filter(t=>t.followingMe).length;
   const followActive=ui.owner==='following'?' active':'';
   const followTile='<div class="stat s-following'+followActive+'" data-scope="following" role="button" tabindex="0" aria-pressed="'+(followActive?'true':'false')+'" title="Show tasks I follow"><div class="statn">'+followCount+'</div><div class="statl">Following</div></div>';
   el('hdrstats').innerHTML=tile(live.length,'Open','s-open','open')+tile(work,'Work','s-work','work')+tile(pers,'Personal','s-personal','personal')+tile(td,'Today','s-today','today')+tile(od,'Overdue','s-over','overdue')+tile(md,"My Day",'s-myday','myday')+followTile;
@@ -4163,7 +4240,7 @@ function setChapterCollapsed(collapsed){
 }
 
 // ====== Morning Ritual ======
-const RITUAL_STEPS = ['birthdays', 'inboxes', 'notionComments', 'slackMessages', 'reviewCalendar', 'braindump', 'sequence', 'checkin', 'marketing', 'salesTouchpoints'];
+const RITUAL_STEPS = ['birthdays', 'inboxes', 'notionComments', 'slackMessages', 'reviewCalendar', 'braindump', 'sequence', 'checkin', 'linkedinComments', 'marketing', 'salesTouchpoints'];
 function ritualKey(){
   return 'lrl-ritual-' + new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
 }
@@ -4283,6 +4360,7 @@ function toggleRitualStep(step){
   const state = loadRitual();
   state[step] = !state[step];
   saveRitual(state);
+  window._lastRitualEdit = Date.now();
   syncRitualToServer(state);
   window.lrl?.haptic(state[step] ? 'success' : 'tap');
   const nowAllDone = RITUAL_STEPS.every(k => state[k]);
@@ -4315,9 +4393,9 @@ function applyDailyGamification(){
   const ritualDoneCount = RITUAL_STEPS.filter(k => state[k]).length;
   const ritualDone = ritualDoneCount === RITUAL_STEPS.length;
 
-  // Hide the Daily Check-in card once the ritual step is checked
+  // Hide the Daily Check-in card once the ritual step is checked (or on weekends)
   const checkinCard = document.getElementById('checkin-card');
-  if (checkinCard) checkinCard.style.display = state.checkin ? 'none' : '';
+  if (checkinCard) checkinCard.style.display = (state.checkin || isChicagoWeekend()) ? 'none' : '';
 
   // Day-cleared banner
   const taskDiv = document.getElementById('today-quests');
@@ -4404,6 +4482,27 @@ function initRitual(){
   if (localStorage.getItem('lrl-ritual-collapsed') === '1') card.classList.add('collapsed');
   // Pull server state asynchronously and re-render once it lands
   pullRitualFromServer().then(serverState => { if (serverState) renderRitual(); });
+  // Cross-device freshness: when this device regains focus/visibility (e.g. you
+  // switch back from your phone), re-pull the latest ritual state so it doesn't
+  // stay stale while another device updated it. Covers morning + evening.
+  let _ritualResyncBusy = false;
+  const ritualResync = async () => {
+    if (document.visibilityState === 'hidden' || _ritualResyncBusy) return;
+    // Don't clobber a change made here in the last few seconds before its
+    // own server sync has landed.
+    if (Date.now() - (window._lastRitualEdit || 0) < 4000) return;
+    _ritualResyncBusy = true;
+    try {
+      const m = await pullRitualFromServer(); if (m) renderRitual();
+      if (typeof pullEveningFromServer === 'function'){ const e = await pullEveningFromServer(); if (e && typeof renderEvening === 'function') renderEvening(); }
+    } catch(e){} finally { _ritualResyncBusy = false; }
+  };
+  document.addEventListener('visibilitychange', ritualResync);
+  window.addEventListener('focus', ritualResync);
+  window.addEventListener('lrl-refresh', ritualResync);
+  // Poll while visible so two devices open at once converge without a manual
+  // refresh (focus/visibility alone won't fire if the window never blurred).
+  setInterval(() => { if (document.visibilityState === 'visible') ritualResync(); }, 30000);
   // Toggle button collapses/expands explicitly
   document.getElementById('ritual-toggle')?.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -4437,6 +4536,8 @@ function initRitual(){
         document.getElementById('checkin-card')?.scrollIntoView({ behavior:'smooth', block:'center' });
       } else if (action === 'jump-tasks'){
         document.getElementById('today-quests')?.scrollIntoView({ behavior:'smooth', block:'center' });
+      } else if (action === 'open-linkedin'){
+        window.openExternalSafe?.('https://www.linkedin.com/feed/');
       } else if (action === 'jump-marketing'){
         document.querySelector('.tab[data-tab="marketing"]')?.click();
       } else if (action === 'jump-sales'){
@@ -4596,6 +4697,7 @@ function toggleEveningStep(step){
   const state = loadEvening();
   state[step] = !state[step];
   saveEvening(state);
+  window._lastRitualEdit = Date.now();
   syncEveningToServer(state);
   window.lrl?.haptic(state[step] ? 'success' : 'tap');
   const nowAllDone = visibleEveningSteps().every(k => state[k]);
@@ -4668,6 +4770,10 @@ window.addEventListener('lrl-mode-changed', renderEvening);
 })();
 
 async function fetchComms(){
+  if (!COMMS_DATA || !COMMS_DATA.length) {
+    const c = window.lrlCache.read('comms');
+    if (c) { try { COMMS_DATA = c; window.COMMS_DATA = c; renderComms(); } catch(e){} }
+  }
   try {
     const status = window.commsStatus || 'unread';
     const r = await fetch('/api/comms/gmail?status=' + encodeURIComponent(status));
@@ -4687,11 +4793,16 @@ async function fetchComms(){
       permalink: t.url,
     }));
     window.COMMS_DATA = COMMS_DATA;
+    window.lrlCache.save('comms', COMMS_DATA);
     window.dispatchEvent(new CustomEvent('lrl-comms-updated'));
   } catch (e) { console.error('fetchComms', e); }
 }
 
 async function fetchTodayQuests(){
+  if ((!TODAY_EVENTS || !TODAY_EVENTS.length) && (!TODAY_TASKS || !TODAY_TASKS.length)) {
+    const c = window.lrlCache.read('quests');
+    if (c) { try { TODAY_EVENTS = c.events || []; TODAY_TASKS = c.tasks || []; window.TODAY_TASKS = TODAY_TASKS; renderTodayQuests(); } catch(e){} }
+  }
   try {
     const [calRes, workRes, lifeRes] = await Promise.all([
       fetch('/api/calendar/today').then(r=>r.json()),
@@ -4701,6 +4812,7 @@ async function fetchTodayQuests(){
     TODAY_EVENTS = calRes.events || [];
     TODAY_TASKS = [...(workRes.tasks||[]), ...(lifeRes.tasks||[])];
     window.TODAY_TASKS = TODAY_TASKS;
+    window.lrlCache.save('quests', { events: TODAY_EVENTS, tasks: TODAY_TASKS });
     window.dispatchEvent(new CustomEvent('lrl-tasks-updated'));
   } catch (e) { console.error('fetchTodayQuests', e); }
 }
@@ -5190,6 +5302,7 @@ function openTaskCreate() {
   document.getElementById('task-priority-input').value = '';
   document.getElementById('task-due-input').value = '';
   document.getElementById('task-dueend-input').value = '';
+  setTaskEndDateVisible(false);
   // Default DB: Personal — unless the dashboard is in Work mode.
   const defaultSource = (typeof mode !== 'undefined' && mode === 'work') ? 'work' : 'personal';
   document.querySelectorAll('#task-source-toggle .task-source-opt').forEach(b => {
@@ -5286,6 +5399,7 @@ function openTaskEdit(t, scope){
   document.getElementById('task-priority-input').value = t.priority || '';
   document.getElementById('task-due-input').value = (t.dueStart || '').slice(0,10);
   document.getElementById('task-dueend-input').value = (t.dueEnd || '').slice(0,10);
+  setTaskEndDateVisible(!!t.dueEnd);
   // Project: when this surface knows the task's project state (projectId is
   // defined — even if null), show the editable selector pre-seeded with the
   // current project. Otherwise fall back to the read-only line.
@@ -5345,6 +5459,28 @@ document.getElementById('task-modal-close')?.addEventListener('click', closeTask
 document.getElementById('task-modal')?.addEventListener('click', (e) => {
   if (e.target.id === 'task-modal') closeTaskEdit();
 });
+// Notion-style date range: the "End date" toggle reveals the end field. Turning
+// it off hides and clears it so the task saves with no end (a single-day due).
+function setTaskEndDateVisible(on){
+  const tog = document.getElementById('task-dueend-toggle');
+  const wrap = document.getElementById('task-dueend-wrap');
+  if (tog) tog.checked = on;
+  if (wrap) wrap.style.display = on ? '' : 'none';
+  if (!on) { const ei = document.getElementById('task-dueend-input'); if (ei) ei.value = ''; }
+}
+document.getElementById('task-dueend-toggle')?.addEventListener('change', (e) => {
+  setTaskEndDateVisible(e.target.checked);
+});
+// Clear the start date (and with it the end date — an end with no start is
+// meaningless). Saving then sends dueStart:null, which clears the Notion date.
+document.getElementById('task-due-clear')?.addEventListener('click', () => {
+  const di = document.getElementById('task-due-input');
+  if (di) di.value = '';
+  setTaskEndDateVisible(false);
+});
+document.getElementById('task-dueend-clear')?.addEventListener('click', () => {
+  setTaskEndDateVisible(false);
+});
 document.getElementById('task-open-notion-btn')?.addEventListener('click', () => {
   const url = editingTask?.url;
   if (!url) { window.lrl?.toast('No Notion link for this task', 'error'); return; }
@@ -5385,6 +5521,7 @@ document.getElementById('task-save-btn')?.addEventListener('click', async () => 
       priority: document.getElementById('task-priority-input').value || null,
       myDay: document.getElementById('task-myday-input').checked,
       dueStart: document.getElementById('task-due-input').value || null,
+      dueEnd: document.getElementById('task-dueend-input').value || null,
       projectId: document.getElementById('task-project-input').value || null,
     };
     if (_createFromEmailCtx) {
@@ -5466,6 +5603,8 @@ document.getElementById('task-save-btn')?.addEventListener('click', async () => 
 
 // ====== Calendar event edit modal ======
 let editingEvent = null;
+let _eventCreateMode = false;
+let _eventCreateAccount = 'work';
 
 document.getElementById('today-calendar')?.addEventListener('click', (e) => {
   const item = e.target.closest('[data-event-id]');
@@ -5548,8 +5687,12 @@ function chicagoHM(iso){
 
 function openEventEdit(ev){
   editingEvent = ev;
+  _eventCreateMode = false;
   const modal = document.getElementById('event-modal');
   if (!modal) return;
+  document.querySelector('.event-modal-title span').textContent = 'Edit Event';
+  document.getElementById('event-delete-btn').style.display = '';
+  document.getElementById('event-open-google-btn').style.display = '';
   // Populate fields
   const acct = document.getElementById('event-acct');
   acct.className = 'event-acct-pill ' + ev.account;
@@ -5575,16 +5718,60 @@ function toggleAllDayFields(allDay){
   document.getElementById('event-end-wrap').style.display = allDay ? 'none' : '';
 }
 
+// Reflect the chosen account on the pill (work vs personal styling + label).
+function setEventAcct(account){
+  _eventCreateAccount = account;
+  const acct = document.getElementById('event-acct');
+  if (!acct) return;
+  acct.className = 'event-acct-pill ' + account + (_eventCreateMode ? ' clickable' : '');
+  acct.querySelector('.label').textContent = account;
+}
+
+function openEventCreate(){
+  _eventCreateMode = true;
+  editingEvent = null;
+  const modal = document.getElementById('event-modal');
+  if (!modal) return;
+  document.querySelector('.event-modal-title span').textContent = 'New Event';
+  // Default the account to the current dashboard lens (personal-only when in
+  // personal mode, otherwise work). Tap the pill to switch.
+  const m = document.body.dataset.mode || 'all';
+  setEventAcct(m === 'personal' ? 'personal' : 'work');
+  document.getElementById('event-title-input').value = '';
+  document.getElementById('event-allday-input').checked = false;
+  // Prefill today + the next top-of-hour for a sensible 1-hour slot.
+  const now = new Date();
+  document.getElementById('event-date-input').value = chicagoYMD(now);
+  const startH = parseInt(chicagoHM(now).slice(0,2), 10);
+  document.getElementById('event-start-input').value = `${pad2(startH)}:00`;
+  // +1 hour, but clamp at end-of-day so a late start can't wrap before the start.
+  document.getElementById('event-end-input').value = startH >= 23 ? '23:59' : `${pad2(startH+1)}:00`;
+  toggleAllDayFields(false);
+  // No event yet — hide Delete + Open in Google.
+  document.getElementById('event-delete-btn').style.display = 'none';
+  document.getElementById('event-open-google-btn').style.display = 'none';
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  window.lrl.haptic('tap');
+}
+
 function closeEventEdit(){
   document.getElementById('event-modal')?.classList.remove('open');
   document.body.style.overflow = '';
   editingEvent = null;
+  _eventCreateMode = false;
 }
 
 document.getElementById('event-modal-close')?.addEventListener('click', closeEventEdit);
 document.getElementById('event-modal')?.addEventListener('click', (e) => {
   if (e.target.id === 'event-modal') closeEventEdit();
 });
+// In create mode the account pill toggles between work and personal.
+document.getElementById('event-acct')?.addEventListener('click', () => {
+  if (!_eventCreateMode) return;
+  setEventAcct(_eventCreateAccount === 'work' ? 'personal' : 'work');
+});
+document.getElementById('cal-add-btn')?.addEventListener('click', openEventCreate);
 document.getElementById('event-allday-input')?.addEventListener('change', (e) => {
   toggleAllDayFields(e.target.checked);
 });
@@ -5593,7 +5780,7 @@ document.getElementById('event-open-google-btn')?.addEventListener('click', () =
 });
 
 document.getElementById('event-save-btn')?.addEventListener('click', async () => {
-  if (!editingEvent) return;
+  if (!editingEvent && !_eventCreateMode) return;
   const btn = document.getElementById('event-save-btn');
   const title = document.getElementById('event-title-input').value.trim();
   if (!title) { window.lrl.toast('Title is required', 'error'); return; }
@@ -5617,14 +5804,20 @@ document.getElementById('event-save-btn')?.addEventListener('click', async () =>
   }
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
-    const r = await fetch(`/api/calendar/events/${editingEvent.account}/${editingEvent.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, start, end, allDay }),
-    });
+    const r = _eventCreateMode
+      ? await fetch(`/api/calendar/events/${_eventCreateAccount}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, start, end, allDay }),
+        })
+      : await fetch(`/api/calendar/events/${editingEvent.account}/${editingEvent.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, start, end, allDay }),
+        });
     if (!r.ok) { const j = await r.json().catch(()=>({})); throw new Error(j.error || 'save failed'); }
     window.lrl.haptic('success');
-    window.lrl.toast('Event updated', 'success');
+    window.lrl.toast(_eventCreateMode ? 'Event created' : 'Event updated', 'success');
     closeEventEdit();
     await fetchTodayQuests();
     renderTodayQuests();
@@ -5711,6 +5904,16 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
       applyMode();
     }
   } catch (e) { /* network/auth issue — leave the full (owner) UI */ }
+})();
+
+// Confirm a returning OAuth connection (e.g. Slack) and clean the URL.
+(() => {
+  const connected = new URLSearchParams(location.search).get('connected');
+  if (!connected) return;
+  const label = connected === 'slack' ? 'Slack connected — you can post as yourself now' : 'Connected';
+  setTimeout(() => window.lrl?.toast(label, 'success'), 400);
+  const url = new URL(location.href); url.searchParams.delete('connected');
+  history.replaceState(null, '', url.toString());
 })();
 
 // Tab switching
@@ -6330,9 +6533,22 @@ async function sendCheckin(){
       body: JSON.stringify({ text: text.value }),
     });
     const d = await r.json();
+    // Member hasn't connected their own Slack yet — send them through OAuth so
+    // the check-in posts as them, not the owner.
+    if (r.status === 409 && d.error === 'slack_not_connected') {
+      window.lrl?.toast('Connect your Slack to post as yourself…', '');
+      window.location.href = d.connectUrl || '/auth/slack';
+      return;
+    }
     if (!r.ok || d.error) throw new Error(d.error || 'send failed');
     const data = { date: chicagoTodayString(), ts: Date.now(), permalink: d.permalink || null };
     try { localStorage.setItem(CHECKIN_SENT_KEY, JSON.stringify(data)); } catch(e){}
+    // Persist the "Send daily check-in" step into the synced ritual state so it
+    // shows complete on every device, not just the one it was sent from.
+    try {
+      const rs = loadRitual();
+      if (!rs.checkin){ rs.checkin = true; saveRitual(rs); window._lastRitualEdit = Date.now(); syncRitualToServer(rs); }
+    } catch(e){}
     updateCheckinStatus();
     window.lrl?.haptic('celebrate');
     window.lrl?.confetti({ count: 50 });
@@ -6351,6 +6567,9 @@ async function sendCheckin(){
 function initCheckin(){
   const card = document.getElementById('checkin-card');
   if (!card) return;
+  // Weekday-only: skip the daily check-in on weekends.
+  if (isChicagoWeekend()){ card.classList.add('weekend'); return; }
+  card.classList.remove('weekend');
   updateCheckinStatus();
   // Restore collapsed state (default: expanded)
   if (localStorage.getItem(CHECKIN_COLLAPSED_KEY) === '1') setCheckinCollapsed(true);
@@ -6833,6 +7052,10 @@ function clearReviewRow(controlEl, id){
 }
 
 async function fetchReview(){
+  if (!REVIEW_DATA) {
+    const c = window.lrlCache.read('review');
+    if (c) { try { REVIEW_DATA = c; renderReview(); } catch(e){} }
+  }
   try {
     const [reviewRes, projRes] = await Promise.all([
       fetch('/api/review').then(r => r.json()),
@@ -6841,6 +7064,7 @@ async function fetchReview(){
     ]);
     if (reviewRes.error) { document.getElementById('review-body').innerHTML = `<div style="color:#ff7a6b;padding:20px">${reviewRes.error}</div>`; return; }
     REVIEW_DATA = reviewRes;
+    window.lrlCache.save('review', reviewRes);
     if (projRes && projRes.projects) REVIEW_PROJECTS = projRes.projects;
     renderReview();
   } catch(e){
@@ -7150,6 +7374,7 @@ async function fetchHealth(){
       return;
     }
     HEALTH_DATA = d;
+    window.lrlCache.save('health', d);
   } catch(e){
     const body = document.getElementById('health-body');
     if (body) body.innerHTML = `<div style="color:#ff7a6b;padding:20px">${e.message}</div>`;
@@ -7161,6 +7386,7 @@ let _healthLoaded = false;
 function maybeLoadHealth(){
   if (_healthLoaded) return;
   _healthLoaded = true;
+  const c = window.lrlCache.read('health'); if (c) { try { HEALTH_DATA = c; renderHealth(); } catch(e){} }
   fetchHealth().then(renderHealth);
 }
 
@@ -7199,6 +7425,7 @@ async function fetchFinance(){
       }
       return;
     }
+    window.lrlCache.save('finance', d);
     renderFinance(d);
   } catch (e){
     body.innerHTML = `<div style="color:#ff7a6b;padding:20px">${e.message}</div>`;
@@ -7366,6 +7593,7 @@ function attachFinanceHandlers(){
 function maybeLoadFinance(){
   if (_financeLoaded) return;
   _financeLoaded = true;
+  const c = window.lrlCache.read('finance'); if (c) { try { renderFinance(c); } catch(e){} }
   fetchFinance();
 }
 
@@ -7753,8 +7981,12 @@ document.addEventListener('keydown', (e) => {
   window.addEventListener('lrl-refresh', () => loadWeather(true));
   // Restore collapsed states
   if (localStorage.getItem('lrl-brief-collapsed') === '1') setBriefCollapsed(true);
-  if (localStorage.getItem('lrl-chapter-collapsed') === '1') setChapterCollapsed(true);
-  else window.storage.get('lrl-chapter-collapsed').then(r => { if (r && r.value === '1') setChapterCollapsed(true); }).catch(()=>{});
+  // The chapter (rocks) card defaults to collapsed in the HTML so it never
+  // flash-opens on a cold mobile launch (localStorage may be evicted and the
+  // durable read is async). Only expand it when storage says it was left open.
+  const chapStored = localStorage.getItem('lrl-chapter-collapsed');
+  if (chapStored === '0') setChapterCollapsed(false);
+  else if (chapStored === null) window.storage.get('lrl-chapter-collapsed').then(r => { if (r && r.value === '0') setChapterCollapsed(false); }).catch(()=>{});
   // Re-render calendar every 60s so past/live event states stay accurate
   setInterval(() => { if (TODAY_EVENTS.length) renderTodayQuests(); }, 60000);
 })();
@@ -7776,6 +8008,9 @@ async function fetchGoals(opts){
     const r = await fetch('/api/goals' + (opts.fresh ? '?fresh=1' : ''));
     const d = await r.json();
     GOALS_DATA = d.goals || [];
+    // Show milestones alphabetically by name (consistent across the list + the
+    // campaign card's "Next:" hint).
+    GOALS_DATA.forEach(g => { if (Array.isArray(g.milestones)) g.milestones.sort((a, b) => (a.name || '').localeCompare(b.name || '')); });
     _lastGoalsFetch = Date.now();
   } catch(e) { console.error('fetchGoals', e); GOALS_DATA = []; }
 }
@@ -8036,7 +8271,8 @@ document.addEventListener('visibilitychange', async () => {
 <!-- =========================== PROJECTS TAB =========================== -->
 <script>
 (function(){
-  const P = { data: null, statusFilter: 'Active', areaFilter: null, groupBy: 'area', search: '', collapsed: {}, undatedOpen: false, expanded: {} };
+  const P = { data: null, statusFilter: 'Active', areaFilter: null, groupBy: 'area', search: '', collapsed: {}, undatedOpen: false, expanded: {}, meOnly: false };
+  try { P.meOnly = localStorage.getItem('lrl-proj-me') === '1'; } catch(e){}
   const TL_KEY = 'lrl-proj-timeline-collapsed';
   // Status options per source, for the inline status editor.
   const STATUS_OPTS = { work: ['Planned','On Hold','Active','Ongoing','Billing','Done'], personal: ['Planned','On Hold','Active','Ongoing','Done'] };
@@ -8054,10 +8290,11 @@ document.addEventListener('visibilitychange', async () => {
   const curMode = () => document.body.dataset.mode || 'all';
   // Projects visible under the current mode toggle (all = work + personal)
   function inMode(){
-    const ps = (P.data && P.data.projects) || [];
+    let ps = (P.data && P.data.projects) || [];
     const m = curMode();
-    if (m === 'work') return ps.filter((p) => p.source === 'work');
-    if (m === 'personal') return ps.filter((p) => p.source === 'personal');
+    if (m === 'work') ps = ps.filter((p) => p.source === 'work');
+    else if (m === 'personal') ps = ps.filter((p) => p.source === 'personal');
+    if (P.meOnly) ps = ps.filter((p) => p.assignedToMe);
     return ps;
   }
   const openUrl = (url) => { if (!url) return; (window.openNotion ? openNotion(url) : window.open(url, '_blank', 'noopener')); };
@@ -8097,18 +8334,30 @@ document.addEventListener('visibilitychange', async () => {
     if (P.groupBy === 'status'){ const ord = ['Active','Ongoing','Billing','Planned','On Hold','Done','No Status']; return keys.slice().sort((a,b) => ord.indexOf(a) - ord.indexOf(b)); }
     return keys.slice().sort((a,b) => { const na = /^(No |Unassigned)/.test(a), nb = /^(No |Unassigned)/.test(b); if (na !== nb) return na ? 1 : -1; return a.localeCompare(b); });
   }
-  function groupAll(items){ const g = {}; items.forEach((p) => { const k = groupKeyOf(p); (g[k] = g[k] || []).push(p); }); return g; }
+  // Owner grouping is multi-key: a project with several assignees appears under
+  // each of them. Every other grouping has a single key.
+  const groupKeysOf = (p) => {
+    if (P.groupBy === 'owner') return (p.owners && p.owners.length) ? p.owners.slice() : ['Unassigned'];
+    return [groupKeyOf(p)];
+  };
+  function groupAll(items){ const g = {}; items.forEach((p) => { groupKeysOf(p).forEach((k) => { (g[k] = g[k] || []).push(p); }); }); return g; }
 
   async function load(fresh){
     const body = document.getElementById('projects-body');
+    // Stale-while-revalidate: the board is heavier than other tabs, so paint the
+    // last-known data instantly (no "loading…" flash) and refresh in the background.
+    if (!P.data && !fresh){
+      const c = window.lrlCache.read('projects'); if (c){ try { P.data = c; render(); } catch(e){} }
+    }
     try {
       const r = await fetch('/api/projects/board' + (fresh ? '?fresh=1' : ''));
       const d = await r.json();
       if (d.error) throw new Error(d.error);
       P.data = d;
+      window.lrlCache.save('projects', d);
       render();
     } catch(e){
-      if (body) body.innerHTML = '<div class="proj-empty">Couldn’t load projects: ' + esc(e.message) + '</div>';
+      if (!P.data && body) body.innerHTML = '<div class="proj-empty">Couldn’t load projects: ' + esc(e.message) + '</div>';
     }
   }
 
@@ -8158,7 +8407,10 @@ document.addEventListener('visibilitychange', async () => {
     }
     const search = '<div class="proj-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>'
       + `<input id="proj-search-input" type="text" placeholder="Search projects…" autocomplete="off" value="${esc(P.search)}"></div>`;
-    return '<div class="proj-controls">' + search + '<div class="proj-ctl-group"><span class="proj-ctl-label">Group by</span><div class="proj-seg">' + seg + '</div></div>' + areaChips + '</div>';
+    const meBtn = `<button class="proj-me-btn ${P.meOnly ? 'on' : ''}" id="proj-me-btn" title="Show only projects assigned to me" aria-label="Show only projects assigned to me" aria-pressed="${P.meOnly ? 'true' : 'false'}">`
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
+      + '</button>';
+    return '<div class="proj-controls">' + search + meBtn + '<div class="proj-ctl-group"><span class="proj-ctl-label">Group by</span><div class="proj-seg">' + seg + '</div></div>' + areaChips + '</div>';
   }
 
   function undatedHTML(undatedList){
@@ -8401,6 +8653,12 @@ document.addEventListener('visibilitychange', async () => {
       el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fire(); } });
     });
     body.querySelectorAll('.proj-seg button').forEach((b) => b.addEventListener('click', () => { P.groupBy = b.dataset.group; render(); }));
+    const meBtn = body.querySelector('#proj-me-btn');
+    if (meBtn) meBtn.addEventListener('click', () => {
+      P.meOnly = !P.meOnly;
+      try { localStorage.setItem('lrl-proj-me', P.meOnly ? '1' : '0'); } catch(e){}
+      render();
+    });
     body.querySelectorAll('.proj-chip').forEach((b) => b.addEventListener('click', () => {
       const a = b.dataset.area;
       P.areaFilter = (a === '') ? null : (P.areaFilter === a ? null : a);
@@ -8435,7 +8693,15 @@ document.addEventListener('visibilitychange', async () => {
     attachGroupSortables(r);
   }
 
-  function maybeLoadProjects(){ if (_loaded) return; _loaded = true; load(); }
+  function maybeLoadProjects(){
+    // Re-activating the tab re-renders the (already loaded) board so it never
+    // sits on a stale "loading…" if the first render happened while hidden.
+    if (_loaded){ if (P.data) render(); return; }
+    _loaded = true;
+    // Paint last-known board instantly on first open, then load() refreshes it.
+    const c = window.lrlCache.read('projects'); if (c){ try { P.data = c; render(); } catch(e){} }
+    load();
+  }
   window.maybeLoadProjects = maybeLoadProjects;
   window.addEventListener('lrl-refresh', () => { if (_loaded) load(true); });
   // Combine with the ALL/WORK/PERSONAL toggle: reset the mode-specific filters
@@ -8490,12 +8756,20 @@ document.addEventListener('visibilitychange', async () => {
     if (MKT.loaded || MKT.loading) return;
     MKT.loading = true;
     const body = document.getElementById('mkt-body');
+    // Stale-while-revalidate: paint last-known marketing data instantly, then refresh.
+    const cached = window.lrlCache.read('marketing');
+    if (cached) { try {
+      MKT.data = cached.data; MKT.cal = cached.cal; MKT.calMonth = cached.calMonth; MKT.stats = cached.stats;
+      if (cached.data) [].concat(cached.data.overdue||[], cached.data.dueToday||[], cached.data.thisWeek||[], cached.data.publishedToday||[]).forEach(a=>{ MKT.assetsById[a.id]=a; });
+      renderMktBody();
+    } catch(e){} }
     try {
       await Promise.all([ fetchMktToday(true), fetchMktCalendar(chiMonth(), true), fetchMktStats(true) ]);
       MKT.loaded = true;
+      window.lrlCache.save('marketing', { data: MKT.data, cal: MKT.cal, calMonth: MKT.calMonth, stats: MKT.stats });
       renderMktBody();
     } catch(err){
-      if (body) body.innerHTML = `<div class="mkt-empty">Couldn't load marketing: ${mEsc(err.message)}</div>`;
+      if (body && !cached) body.innerHTML = `<div class="mkt-empty">Couldn't load marketing: ${mEsc(err.message)}</div>`;
     } finally { MKT.loading = false; }
   }
   window.maybeLoadMarketing = maybeLoadMarketing;
@@ -8781,8 +9055,15 @@ document.addEventListener('visibilitychange', async () => {
   async function maybeLoadSales(){
     if (S.loaded||S.loading) return; S.loading=true;
     const body=document.getElementById('sales-body');
-    try { await Promise.all([fetchSales(true), fetchPulse(true), fetchOverdue(true)]); S.loaded=true; renderSales(); }
-    catch(err){ if(body) body.innerHTML=`<div class="mkt-empty">Couldn't load sales: ${esc(err.message)}</div>`; }
+    // Stale-while-revalidate: paint last-known sales data instantly, then refresh.
+    const cached = window.lrlCache.read('sales');
+    if (cached) { try {
+      S.data = cached.data; S.pulse = cached.pulse; S.overdue = cached.overdue;
+      if (cached.data) { (cached.data.stages||[]).forEach(st=>st.deals.forEach(x=>S.dealsById[x.id]=x)); (cached.data.recentWins||[]).forEach(x=>S.dealsById[x.id]=x); }
+      renderSales();
+    } catch(e){} }
+    try { await Promise.all([fetchSales(true), fetchPulse(true), fetchOverdue(true)]); S.loaded=true; window.lrlCache.save('sales', { data:S.data, pulse:S.pulse, overdue:S.overdue }); renderSales(); }
+    catch(err){ if(body && !cached) body.innerHTML=`<div class="mkt-empty">Couldn't load sales: ${esc(err.message)}</div>`; }
     finally { S.loading=false; }
   }
   window.maybeLoadSales = maybeLoadSales;

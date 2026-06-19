@@ -140,6 +140,13 @@ function clearUserCache(userKey) {
   for (const key of [...cache.keys()]) if (key.endsWith('::' + userKey)) cache.delete(key);
 }
 
+// Invalidate a cached() base key across all per-user namespaced variants. cached()
+// stores under `${key}::${userKey}`, so deleting the bare key alone is a no-op for
+// signed-in requests — this clears the bare key and every `key::*` variant.
+function clearCached(base) {
+  for (const k of [...cache.keys()]) if (k === base || k.startsWith(base + '::')) cache.delete(k);
+}
+
 function originFromReq(req) {
   if (req) return `${req.protocol}://${req.get('host')}`;
   if (process.env.RAILWAY_PUBLIC_DOMAIN) return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
@@ -162,12 +169,23 @@ async function queryTasks(dataSourceId, { peopleProp, myDayOnly } = {}) {
     // Member without a resolved Notion id → match nothing (never the owner's tasks).
     and.push({ property: peopleProp, people: { contains: nid || '00000000-0000-0000-0000-000000000000' } });
   }
-  return notion.dataSources.query({
-    data_source_id: dataSourceId,
-    filter: { and },
-    sorts: [{ property: 'Due', direction: 'ascending' }],
-    page_size: 100,
-  });
+  // Page through every match — a single 100-row page silently dropped tasks once
+  // a database had more than 100 non-done tasks (they just never appeared in any
+  // list or search).
+  const results = [];
+  let cursor;
+  do {
+    const r = await notion.dataSources.query({
+      data_source_id: dataSourceId,
+      filter: { and },
+      sorts: [{ property: 'Due', direction: 'ascending' }],
+      page_size: 100,
+      start_cursor: cursor,
+    });
+    results.push(...(r.results || []));
+    cursor = r.has_more ? r.next_cursor : null;
+  } while (cursor);
+  return { results };
 }
 
 function simplifyTask(page, source) {
@@ -274,6 +292,19 @@ function authedClient(account = 'work') {
 
 function configuredAccounts() {
   return ACCOUNTS.filter((a) => !!process.env[ACCOUNT_ENVS[a]]);
+}
+
+// Resolve the Slack user token to post as. The signed-in user's own connected
+// token wins; the owner (and single-user / background) falls back to the env
+// token. A member who hasn't connected Slack gets none — never the owner's, so
+// a check-in is never posted under someone else's identity.
+function currentSlackToken() {
+  const u = currentUser();
+  if (u && u.slack_user_token) {
+    try { return decrypt(u.slack_user_token); } catch (e) { /* fall through */ }
+  }
+  if (!u || u.role === 'owner') return process.env.SLACK_USER_TOKEN || null;
+  return null;
 }
 
 // Dev-only: auto-authenticate so localhost preview doesn't need Google sign-in.
@@ -458,6 +489,7 @@ app.get('/api/me', async (req, res) => {
       if (u) return res.json({
         id: u.id, email: u.email, name: u.name, role: u.role,
         personalEnabled: u.personal_enabled, gmailConnected: !!u.google_refresh_token,
+        slackConnected: !!u.slack_user_token || (u.role === 'owner' && !!process.env.SLACK_USER_TOKEN),
         theme: u.theme, timezone: u.timezone,
       });
     } catch (e) { /* fall through to owner fallback */ }
@@ -470,6 +502,7 @@ app.get('/api/me', async (req, res) => {
     role: isOwner ? 'owner' : 'member',
     personalEnabled: isOwner,
     gmailConnected: isOwner,
+    slackConnected: isOwner && !!process.env.SLACK_USER_TOKEN,
     theme: 'indigo',
     timezone: TZ,
   });
@@ -530,6 +563,61 @@ app.get('/auth/google/callback', async (req, res) => {
 </body></html>`);
   } catch (err) {
     res.status(500).send('OAuth error: ' + err.message);
+  }
+});
+
+// ----- SLACK OAuth (per-user, so check-ins post as the signed-in user) -----
+// Requires a Slack app with user scope `chat:write`, its OAuth redirect set to
+// `${origin}/auth/slack/callback`, and SLACK_CLIENT_ID / SLACK_CLIENT_SECRET.
+app.get('/auth/slack', (req, res) => {
+  if (!process.env.SLACK_CLIENT_ID || !process.env.SLACK_CLIENT_SECRET) {
+    return res.status(500).send('SLACK_CLIENT_ID / SLACK_CLIENT_SECRET not configured');
+  }
+  const redirectUri = `${originFromReq(req)}/auth/slack/callback`;
+  const url = 'https://slack.com/oauth/v2/authorize?' + new URLSearchParams({
+    client_id: process.env.SLACK_CLIENT_ID,
+    user_scope: 'chat:write',
+    redirect_uri: redirectUri,
+  }).toString();
+  res.redirect(url);
+});
+
+app.get('/auth/slack/callback', async (req, res) => {
+  try {
+    const { code } = req.query;
+    if (!code) return res.status(400).send('Missing code');
+    const redirectUri = `${originFromReq(req)}/auth/slack/callback`;
+    const tokenRes = await fetch('https://slack.com/api/oauth.v2.access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: process.env.SLACK_CLIENT_ID,
+        client_secret: process.env.SLACK_CLIENT_SECRET,
+        code,
+        redirect_uri: redirectUri,
+      }).toString(),
+    });
+    const data = await tokenRes.json();
+    if (!data.ok) throw new Error(data.error || 'oauth failed');
+    // The user token (xoxp-…) lives under authed_user.access_token.
+    const userToken = data.authed_user?.access_token;
+    if (!userToken) throw new Error('no user token returned (check the user_scope)');
+    if (dbEnabled() && req.session?.userId && secretsConfigured()) {
+      await dbUsers.setSlackToken(req.session.userId, encrypt(userToken));
+      clearUserCache(req.session.userId);
+      return res.redirect('/?connected=slack');
+    }
+    // Single-user / no-store fallback: show the token to paste as SLACK_USER_TOKEN.
+    res.type('html').send(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"/><title>LRL OS — Slack auth</title></head>
+<body style="background:#0a0f1e;color:#f5f5f7;font-family:ui-monospace,Menlo,monospace;padding:2rem;line-height:1.5">
+  <h1 style="color:#a7c140;font-family:Georgia,serif">Slack user token captured</h1>
+  <p>Copy this and add to Railway as <code style="background:#131a30;padding:0.1rem 0.4rem;border-radius:4px">SLACK_USER_TOKEN</code>:</p>
+  <pre style="background:#131a30;padding:1rem;border-radius:8px;overflow-x:auto;user-select:all">${userToken}</pre>
+  <p style="opacity:0.6;font-size:0.85rem">Then redeploy. Do not share this token.</p>
+</body></html>`);
+  } catch (err) {
+    res.status(500).send('Slack OAuth error: ' + err.message);
   }
 });
 
@@ -645,7 +733,7 @@ app.get('/api/goals', async (req, res) => {
     // ?fresh=1 bypasses the 60s cache so milestone completion state reflects
     // the current Notion truth immediately (used by the app's Refresh button
     // and the auto-resync when the tab regains focus).
-    if (req.query.fresh === '1' || req.query.fresh === 'true') cache.delete('goals');
+    if (req.query.fresh === '1' || req.query.fresh === 'true') clearCached('goals');
     const goals = await cached('goals', async () => {
       const [work, life] = await Promise.all([
         fetchGoalsForSource(WORK_PROJECTS_DS, WORK_TASKS_DS, 'work', 'Project'),
@@ -661,10 +749,10 @@ app.get('/api/goals', async (req, res) => {
 
 app.post('/api/tasks', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  const { source, name, status, priority, myDay, dueStart, projectId, taskBody } = req.body || {};
+  const { source, name, status, priority, myDay, dueStart, dueEnd, projectId, taskBody } = req.body || {};
   if (!source || !name) return res.status(400).json({ error: 'source and name are required' });
   try {
-    const result = await createNotionTask({ source, name, status, priority, myDay, dueStart, projectId: projectId || undefined, body: taskBody || undefined });
+    const result = await createNotionTask({ source, name, status, priority, myDay, dueStart, dueEnd, projectId: projectId || undefined, body: taskBody || undefined });
     invalidateTaskCaches();
     res.json({ ok: true, id: result.id, url: result.url });
   } catch (err) {
@@ -698,7 +786,7 @@ app.post('/api/reminders/sync', async (req, res) => {
 app.get('/api/projects', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
-    if (req.query.fresh === '1') cache.delete('projects-list');
+    if (req.query.fresh === '1') clearCached('projects-list');
     const all = await cached('projects-list', fetchActiveProjects);
     // Return every non-archived project (each carrying its status). The client
     // shows only active statuses in the picker menu, but needs the full set to
@@ -726,6 +814,23 @@ async function fetchRelationNameMap(dsId) {
     cursor = r.has_more ? r.next_cursor : null;
   } while (cursor);
   return map;
+}
+
+// Resolve a single page's title directly (cached). Fallback for relation ids the
+// prefetched name maps don't cover — e.g. Area/System pages a data-source query
+// didn't surface — so every relation defined in Notion still resolves to a name.
+const _relTitleCache = new Map();
+async function resolvePageTitle(id) {
+  if (!notion || !id) return null;
+  if (_relTitleCache.has(id)) return _relTitleCache.get(id);
+  let title = null;
+  try {
+    const pg = await notion.pages.retrieve({ page_id: id });
+    const tp = Object.values(pg.properties || {}).find((x) => x.type === 'title');
+    title = tp?.title?.[0]?.plain_text || null;
+  } catch (e) { /* unreadable — leave null */ }
+  _relTitleCache.set(id, title);
+  return title;
 }
 
 // Full board of projects (work + personal) for the Projects tab: status,
@@ -759,6 +864,22 @@ async function fetchProjectsBoard() {
     queryAll(WORK_PROJECTS_DS),
     queryAll(LIFE_PROJECTS_DS),
   ]);
+
+  // Backfill any Area/System relation ids the prefetched maps don't cover (some
+  // relation targets aren't surfaced by a single data-source query), so projects
+  // like the Q2 Rocks still show their TRACTION/EOS area + system.
+  const extra = {};
+  const missing = new Set();
+  const collectMissing = (rel, map) => (rel || []).forEach((r) => { if (r.id && !map[r.id]) missing.add(r.id); });
+  for (const p of workPages) {
+    collectMissing(p.properties.AREA?.relation, workAreaMap);
+    collectMissing(p.properties.SYSTEM?.relation, systemMap);
+  }
+  for (const p of personalPages) {
+    collectMissing(p.properties.Area?.relation, personalAreaMap);
+    collectMissing(p.properties.HUBS?.relation, personalHubMap);
+  }
+  await Promise.all([...missing].map(async (id) => { const t = await resolvePageTitle(id); if (t) extra[id] = t; }));
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -796,6 +917,11 @@ async function fetchProjectsBoard() {
       system: systems[0] || null,
       systems,
       owners,
+      // Personal projects are inherently the user's; work projects are "mine" when
+      // the signed-in user is one of the Notion assignees. Drives the "Me" filter.
+      assignedToMe: source === 'personal'
+        ? true
+        : (pr.Assigned?.people || []).some((u) => u.id === currentNotionUserId()),
       start,
       end,
       rangeStart,        // non-null only when Target Deadline is a real range
@@ -812,14 +938,14 @@ async function fetchProjectsBoard() {
 
   const workProjects = workPages.map((p) => build(
     p, 'work',
-    (p.properties.AREA?.relation || []).map((r) => workAreaMap[r.id]).filter(Boolean),
-    (p.properties.SYSTEM?.relation || []).map((r) => systemMap[r.id]).filter(Boolean),
+    (p.properties.AREA?.relation || []).map((r) => workAreaMap[r.id] || extra[r.id]).filter(Boolean),
+    (p.properties.SYSTEM?.relation || []).map((r) => systemMap[r.id] || extra[r.id]).filter(Boolean),
     (p.properties.Assigned?.people || []).map((u) => u.name).filter(Boolean),
   ));
   const personalProjects = personalPages.map((p) => build(
     p, 'personal',
-    (p.properties.Area?.relation || []).map((r) => personalAreaMap[r.id]).filter(Boolean),
-    (p.properties.HUBS?.relation || []).map((r) => personalHubMap[r.id]).filter(Boolean),
+    (p.properties.Area?.relation || []).map((r) => personalAreaMap[r.id] || extra[r.id]).filter(Boolean),
+    (p.properties.HUBS?.relation || []).map((r) => personalHubMap[r.id] || extra[r.id]).filter(Boolean),
     [],   // personal projects don't surface owner avatars
   ));
 
@@ -841,9 +967,90 @@ async function fetchProjectsBoard() {
 app.get('/api/projects/board', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
-    if (req.query.fresh === '1') cache.delete('projects-board');
+    if (req.query.fresh === '1') clearCached('projects-board');
     const data = await cached('projects-board', fetchProjectsBoard);
     res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/projects/diag — pinpoints why a project's Area/System isn't resolving.
+// Reports what the integration's relation-name maps contain, and for each work
+// project that has Area/System relations but resolves to no name, probes the
+// relation ids: are they in the map, does the query even return them, and can
+// the page be retrieved directly (vs. a permission error).
+app.get('/api/projects/diag', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  if (currentUser()?.role !== 'owner') return res.status(403).json({ error: 'owner only' });
+  try {
+    // Which integration is the server actually using? Match this name against the
+    // database's Connections list to confirm the right integration is connected.
+    let botUser = null;
+    try { const me = await notion.users.me(); botUser = { name: me.name, id: me.id, type: me.type }; }
+    catch (e) { botUser = { error: e.code || e.message }; }
+    const areaMap = await fetchRelationNameMap(PROJECT_AREA_DS).catch((e) => ({ __error: e.message }));
+    const sysMap = await fetchRelationNameMap(PROJECT_SYSTEM_DS).catch((e) => ({ __error: e.message }));
+    const pages = [];
+    let cursor;
+    do {
+      const r = await notion.dataSources.query({
+        data_source_id: WORK_PROJECTS_DS,
+        filter: { property: 'Archived', checkbox: { equals: false } },
+        page_size: 100, start_cursor: cursor,
+      });
+      pages.push(...r.results);
+      cursor = r.has_more ? r.next_cursor : null;
+    } while (cursor);
+    const unresolved = [];
+    for (const p of pages) {
+      const aRel = p.properties.AREA?.relation || [];
+      const sRel = p.properties.SYSTEM?.relation || [];
+      const aNames = aRel.map((r) => areaMap[r.id]).filter(Boolean);
+      const sNames = sRel.map((r) => sysMap[r.id]).filter(Boolean);
+      if ((aRel.length && !aNames.length) || (sRel.length && !sNames.length)) {
+        const probes = [];
+        for (const r of [...aRel, ...sRel]) {
+          const probe = { id: r.id, inAreaMap: !!areaMap[r.id], inSysMap: !!sysMap[r.id] };
+          try {
+            const pg = await notion.pages.retrieve({ page_id: r.id });
+            const tp = Object.values(pg.properties || {}).find((x) => x.type === 'title');
+            probe.retrieveTitle = tp?.title?.[0]?.plain_text || null;
+          } catch (e) { probe.retrieveError = e.code || e.message; }
+          probes.push(probe);
+        }
+        unresolved.push({
+          name: p.properties.Name?.title?.[0]?.plain_text || '(untitled)',
+          areaRelCount: aRel.length, areaHasMore: !!p.properties.AREA?.has_more,
+          systemRelCount: sRel.length, systemHasMore: !!p.properties.SYSTEM?.has_more,
+          probes,
+        });
+      }
+    }
+    // Direct read probe of known TRACTION-bucket pages: does the integration have
+    // page-level access at all, and what error does Notion return if not?
+    const knownIds = {
+      'TRACTION (area)': '290458f0-8cd9-80ea-acd8-de8f210cb22f',
+      'GROWTH (area)': '290458f0-8cd9-8062-9fe6-df6c6d9a9267',
+      'EOS (system)': '25b34cc1-0f2f-4699-9792-c2ff3aa202c9',
+    };
+    const knownProbes = {};
+    for (const [label, id] of Object.entries(knownIds)) {
+      try {
+        const pg = await notion.pages.retrieve({ page_id: id });
+        const tp = Object.values(pg.properties || {}).find((x) => x.type === 'title');
+        knownProbes[label] = { ok: true, title: tp?.title?.[0]?.plain_text || null };
+      } catch (e) { knownProbes[label] = { ok: false, error: e.code || e.message }; }
+    }
+    res.json({
+      botUser,
+      knownProbes,
+      areaMap: areaMap.__error ? areaMap : { count: Object.keys(areaMap).length, titles: Object.values(areaMap) },
+      systemMap: sysMap.__error ? sysMap : { count: Object.keys(sysMap).length, titles: Object.values(sysMap) },
+      workProjectCount: pages.length,
+      unresolvedCount: unresolved.length,
+      unresolved: unresolved.slice(0, 25),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -892,7 +1099,7 @@ app.patch('/api/projects/:id', async (req, res) => {
     if (system !== undefined) properties[systemProp] = { relation: system ? [{ id: system }] : [] };
     if (!Object.keys(properties).length) return res.status(400).json({ error: 'No supported fields to update' });
     await notion.pages.update({ page_id: id, properties });
-    cache.delete('projects-board');
+    clearCached('projects-board');
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -973,11 +1180,19 @@ app.get('/api/tasks/all', async (_req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
     const tasks = await cached('tasks-all-board', async () => {
-      const [w, l] = await Promise.all([
+      const [w, l, projects] = await Promise.all([
         workTasks({ myDayOnly: false, allAssignees: true }),
         lifeTasks({ myDayOnly: false }),
+        cached('projects-list', fetchActiveProjects),
       ]);
-      return [...w, ...l];
+      // Resolve each task's project name from its relation id so the Tasks tab
+      // can group/label by project (simplifyTask only captures projectId).
+      const nameById = new Map(projects.map((p) => [p.id, p.name]));
+      const all = [...w, ...l];
+      for (const t of all) {
+        if (t.projectId) t.project = nameById.get(t.projectId) || null;
+      }
+      return all;
     });
     res.json({ tasks });
   } catch (err) {
@@ -1354,17 +1569,17 @@ app.get('/api/calendar/today', async (_req, res) => {
 
 // ----- AI: Daily Brief -----
 
-const BRIEF_SYSTEM = `You write a live Daily Focus briefing for Gretchen Cawthon — integrator and systems architect at Left Right Labs.
+const BRIEF_SYSTEM = (name) => `You write a live Daily Focus briefing for ${name || 'the signed-in user'}, addressed directly to them.
 
 CRITICAL: This is a LIVE check based on the current time, NOT a recap of the whole day. Focus only on:
-- What's UPCOMING on her calendar (events starting after now)
-- Tasks still open on her My Day list
+- What's UPCOMING on your calendar (events starting after now)
+- Tasks still open on your My Day list
 - Anything time-sensitive that's slipping (overdue, deadline approaching)
 - One forward-looking observation: what to prioritize next, what to skip, what's worth pausing for
 
-DO NOT recap events or work she's already completed. DO NOT mention things in the past. Look forward.
+DO NOT recap events or work already completed. DO NOT mention things in the past. Look forward.
 
-Voice: direct, warm, casual. Like a friend who knows her day. Uses ellipses sometimes; never em-dashes. No corporate tone. No "let's" or "looks like you've got a busy afternoon!" Skip preambles.
+Voice: direct, warm, casual. Like a friend who knows your day. Uses ellipses sometimes; never em-dashes. No corporate tone. No "let's" or "looks like you've got a busy afternoon!" Skip preambles.
 
 Format: 3-4 sentences. Plain text — no markdown, no bullets, no headers.
 
@@ -1843,7 +2058,7 @@ const RITUAL_CONFIGS = {
   morning: {
     textProp: 'Morning Routine',
     doneProp: 'Morning Done',
-    steps: ['birthdays', 'inboxes', 'notionComments', 'slackMessages', 'reviewCalendar', 'braindump', 'sequence', 'checkin', 'marketing', 'salesTouchpoints'],
+    steps: ['birthdays', 'inboxes', 'notionComments', 'slackMessages', 'reviewCalendar', 'braindump', 'sequence', 'checkin', 'linkedinComments', 'marketing', 'salesTouchpoints'],
   },
   evening: {
     textProp: 'Evening Routine',
@@ -1953,10 +2168,15 @@ async function fetchActiveProjects() {
 }
 
 async function gatherTodayContext() {
+  // Only the owner (personal enabled) gets personal/life context. Members see
+  // work only, so the owner's personal tasks/goals never bleed into their brief.
+  // No request context (background jobs) → treat as owner/full.
+  const u = currentUser();
+  const personalOn = u ? !!u.personal_enabled : true;
   const [calEvents, workMyDay, lifeMyDay, goals] = await Promise.all([
     Promise.all(configuredAccounts().map((a) => fetchToday(a).catch(() => []))).then((r) => r.flat()),
     workTasks({ myDayOnly: true }).catch(() => []),
-    lifeTasks({ myDayOnly: true }).catch(() => []),
+    personalOn ? lifeTasks({ myDayOnly: true }).catch(() => []) : Promise.resolve([]),
     cached('goals', async () => {
       const [w, l] = await Promise.all([
         fetchGoalsForSource(WORK_PROJECTS_DS, WORK_TASKS_DS, 'work', 'Project'),
@@ -1965,7 +2185,8 @@ async function gatherTodayContext() {
       return [...w, ...l];
     }).catch(() => []),
   ]);
-  return { calEvents, workMyDay, lifeMyDay, goals };
+  const scopedGoals = personalOn ? goals : goals.filter((g) => g.source === 'work');
+  return { calEvents, workMyDay, lifeMyDay, goals: scopedGoals };
 }
 
 function buildBriefUserPrompt({ calEvents, workMyDay, lifeMyDay, goals }) {
@@ -2030,7 +2251,11 @@ async function dailyFocusHandler(req, res) {
   const today = chicagoTodayISODate();
   const { bucket } = chicagoNowParts();
   const force = req.query.force === '1' || req.query.force === 'true';
-  const cacheKey = `focus-${today}-${bucket}`;
+  // Scope the cache per signed-in user so one person's focus (and their calendar/
+  // tasks) is never served to another.
+  const u = currentUser();
+  const userKey = u ? (u.id || u.email) : 'anon';
+  const cacheKey = `focus-${today}-${bucket}-${userKey}`;
   if (!force) {
     const hit = briefCache.get(cacheKey);
     if (hit && Date.now() - hit.t < BRIEF_TTL_MS) {
@@ -2045,7 +2270,7 @@ async function dailyFocusHandler(req, res) {
       max_tokens: 600,
       thinking: { type: 'adaptive' },
       output_config: { effort: 'low' },
-      system: BRIEF_SYSTEM,
+      system: BRIEF_SYSTEM(u?.name),
       messages: [{ role: 'user', content: userPrompt }],
     });
     const text = msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
@@ -2292,7 +2517,7 @@ async function createNotionProject({ source, name }) {
   return { id: page.id, name, url: page.url };
 }
 
-async function createNotionTask({ source, name, dueStart, myDay, priority, projectId, body, status }) {
+async function createNotionTask({ source, name, dueStart, dueEnd, myDay, priority, projectId, body, status }) {
   const dsId = TASK_DS_BY_SOURCE[source];
   if (!dsId) throw new Error(`unknown source: ${source}`);
   const properties = {
@@ -2300,7 +2525,7 @@ async function createNotionTask({ source, name, dueStart, myDay, priority, proje
     Status: { status: { name: status || 'Planned' } },
   };
   if (myDay) properties['My Day'] = { checkbox: true };
-  if (dueStart) properties.Due = { date: { start: dueStart, end: null } };
+  if (dueStart) properties.Due = { date: { start: dueStart, end: dueEnd || null } };
   if (priority) properties['Priority 2'] = { select: { name: priority } };
   if (projectId) properties.Project = { relation: [{ id: projectId }] };
   if (source === 'work') {
@@ -2385,6 +2610,18 @@ async function deleteCalendarEvent({ account, id }) {
   await cal.events.delete({ calendarId: 'primary', eventId: id });
   return { id, deleted: true };
 }
+
+app.post('/api/calendar/events/:account', async (req, res) => {
+  const { account } = req.params;
+  try {
+    const r = await createCalendarEvent({ ...req.body, account });
+    cache.delete('calendar-today');
+    res.json(r);
+  } catch (err) {
+    console.error('Calendar create error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 app.patch('/api/calendar/events/:account/:id', async (req, res) => {
   const { account, id } = req.params;
@@ -2600,13 +2837,17 @@ app.get('/api/checkin/diag', (_req, res) => {
 });
 
 app.post('/api/checkin/send', async (req, res) => {
-  // Prefer the user token (post as the actual user) when configured,
-  // otherwise fall back to the bot token (posts as the LifeOS app).
-  const userToken = process.env.SLACK_USER_TOKEN;
+  // Post as the signed-in user's own Slack account when connected; the owner
+  // falls back to the env user token. A member who hasn't connected Slack is
+  // asked to connect rather than posting under the owner's identity.
+  const userToken = currentSlackToken();
   const botToken = process.env.SLACK_BOT_TOKEN;
-  console.log('[checkin] tokens — user:', userToken ? userToken.slice(0,5) : 'MISSING', 'bot:', botToken ? botToken.slice(0,5) : 'MISSING');
+  const u = currentUser();
+  if (!userToken && u && u.role !== 'owner') {
+    return res.status(409).json({ error: 'slack_not_connected', connectUrl: '/auth/slack' });
+  }
   const token = userToken || botToken;
-  if (!token) return res.status(500).json({ error: 'Slack token not configured (set SLACK_USER_TOKEN or SLACK_BOT_TOKEN)' });
+  if (!token) return res.status(500).json({ error: 'Slack token not configured (connect Slack or set SLACK_USER_TOKEN / SLACK_BOT_TOKEN)' });
   const { text } = req.body || {};
   if (!text || !text.trim()) return res.status(400).json({ error: 'text required' });
   try {

@@ -142,6 +142,9 @@ export const users = {
     const col = account === 'personal' ? 'google_refresh_token_personal' : 'google_refresh_token';
     await query(`UPDATE users SET ${col} = $2, updated_at = now() WHERE id = $1`, [id, encToken]);
   },
+  async setSlackToken(id, encToken) {
+    await query('UPDATE users SET slack_user_token = $2, updated_at = now() WHERE id = $1', [id, encToken]);
+  },
   async setNotionUserId(id, notionId) {
     await query('UPDATE users SET notion_user_id = $2, updated_at = now() WHERE id = $1', [id, notionId]);
   },
