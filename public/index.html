@@ -3692,7 +3692,7 @@ window.lrl = (function(){
   <div class="privacy-status">Privacy</div>
 </div>
 
-<span class="version-tag">v: day-7</span>
+<span class="version-tag">v: day-8</span>
 
 <!-- =========================== AUTOFOCUS IIFE =========================== -->
 <script>
@@ -3714,7 +3714,16 @@ async function fetchTasks(){
     const d = await r.json();
     SEED_TASKS = d.tasks || [];
     BASE = {};
-    SEED_TASKS.forEach(t => BASE[t.id] = t);
+    let doneCleared = false;
+    SEED_TASKS.forEach(t => {
+      BASE[t.id] = t;
+      // Recurring tasks reuse the same page id: completing one occurrence rolls
+      // the due date forward and resets the status (e.g. back to "Planned"), but
+      // the local "done" flag would otherwise persist and keep the recurred task
+      // hidden as completed. Trust the server status and drop the stale flag.
+      if (t.recurring && t.status !== 'Done' && state.done[t.id]) { delete state.done[t.id]; doneCleared = true; }
+    });
+    if (doneCleared) saveState();
     window.lrlCache.save('tasks', SEED_TASKS);
     render();
   } catch(e) { console.error('fetchTasks failed', e); }
