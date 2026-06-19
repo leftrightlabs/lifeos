@@ -4944,7 +4944,10 @@ function attachQuestSortable(container){
 }
 
 function renderQuestRow(t){
-  const tag = t.source === 'work' ? '<span class="quest-tag tag-work">work</span>' : '<span class="quest-tag tag-personal">personal</span>';
+  // In a single-source view (Work or Personal mode) the source label is
+  // redundant — every task already matches the mode — so only show it in All.
+  const tag = (mode !== 'all' && mode === t.source) ? ''
+    : (t.source === 'work' ? '<span class="quest-tag tag-work">work</span>' : '<span class="quest-tag tag-personal">personal</span>');
   const due = dueLabel(t);
   const dueHtml = due ? `<span class="quest-due-inline ${due.cls}" data-act="edit-due">${due.text}</span>` : '<span class="quest-due-inline" data-act="edit-due" style="opacity:0.35">+ date</span>';
   const checked = t.done ? 'checked' : '';
