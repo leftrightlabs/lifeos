@@ -202,7 +202,11 @@ function simplifyTask(page, source) {
     dueEnd: due.end || null,
     edited: page.last_edited_time || null,
     myDay: !!props['My Day']?.checkbox,
-    recurring: !!props['Recurring?']?.checkbox,
+    // A task recurs if the "Recurring?" checkbox is on OR it has a recur
+    // interval configured. Many tasks (especially personal/LifeOS ones) drive
+    // recurrence purely off Recur Unit/Interval with the checkbox left unchecked,
+    // so the checkbox alone misses them.
+    recurring: !!props['Recurring?']?.checkbox || (props['Recur Interval']?.number || 0) > 0,
     recurUnit: props['Recur Unit']?.select?.name || null,
     recurInterval: props['Recur Interval']?.number || null,
     estHours: props['Est Hours']?.number ?? null,
