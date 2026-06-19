@@ -244,6 +244,7 @@
   .quest-due-inline.overdue { color: #ff7a6b; font-weight: 600; }
   .quest-due-inline.today { color: var(--lime); font-weight: 600; }
   .quest-due-inline.tomorrow { color: #d4a854; font-weight: 600; }
+  .quest-est { font-size: 11px; color: rgba(var(--ink-rgb), 0.5); white-space: nowrap; letter-spacing: 0.02em; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: rgba(var(--edge-rgb), 0.05); }
   .quest-due-edit { font-size: 11px; background: rgba(var(--edge-rgb), 0.06); color: var(--navy); border: 1px solid var(--lime); border-radius: 4px; padding: 2px 4px; font-family: var(--font-body); color-scheme: dark; }
   .quest-item.syncing { opacity: 0.6; }
   .quest-star { appearance: none; -webkit-appearance: none; border: 0; background: none; cursor: pointer; padding: 3px; line-height: 0; flex-shrink: 0; border-radius: 6px; transition: background 0.15s; }
@@ -3692,7 +3693,7 @@ window.lrl = (function(){
   <div class="privacy-status">Privacy</div>
 </div>
 
-<span class="version-tag">v: day-8</span>
+<span class="version-tag">v: day-9</span>
 
 <!-- =========================== AUTOFOCUS IIFE =========================== -->
 <script>
@@ -3835,6 +3836,8 @@ function row(t){
     : '';
   const priHtml = t.priority
     ? '<span class="quest-pri '+t.priority.toLowerCase()+'">'+t.priority+'</span>' : '';
+  const estHtml = (t.estHours != null && t.estHours > 0)
+    ? '<span class="quest-est" title="Estimated '+t.estHours+'h">'+(Number.isInteger(t.estHours)?t.estHours:t.estHours.toFixed(1))+'h</span>' : '';
   const sourceTag = t.source==='work'
     ? '<span class="quest-tag tag-work">work</span>'
     : '<span class="quest-tag tag-personal">personal</span>';
@@ -3858,7 +3861,7 @@ function row(t){
     +'<div class="quest-check '+checkedCls+'" data-act="check"></div>'
     +statusDot
     +'<div class="quest-text" data-act="open">'+escapeHtml(t.name)+repeatIcon+sub+'</div>'
-    +'<div class="quest-meta-tags">'+priHtml+dueHtml+sourceTag+'</div>'
+    +'<div class="quest-meta-tags">'+priHtml+estHtml+dueHtml+sourceTag+'</div>'
     +followBtn
     +star
     +'</div>';
@@ -4921,13 +4924,15 @@ function renderQuestRow(t){
   const star = `<button class="quest-star ${starCls}" data-act="star" title="${starTitle}" aria-label="${starTitle}"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>`;
   const priHtml = t.priority
     ? `<span class="quest-pri ${t.priority.toLowerCase()}">${t.priority}</span>` : '';
+  const estHtml = (t.estHours != null && t.estHours > 0)
+    ? `<span class="quest-est" title="Estimated ${t.estHours}h">${Number.isInteger(t.estHours)?t.estHours:t.estHours.toFixed(1)}h</span>` : '';
   const statusKey = (t.status || 'Planned').toLowerCase().replace(/\s+/g,'-');
   const statusDot = `<span class="quest-status-dot status-${statusKey}" title="${t.status || 'Planned'}"></span>`;
   return `<div class="quest-item${doneCls}" data-task-id="${t.id}" data-task-url="${t.url}">
     <div class="quest-check ${checked}" data-act="check"></div>
     ${statusDot}
     <div class="quest-text" data-act="open">${escapeHtml(t.name)}</div>
-    <div class="quest-meta-tags">${priHtml}${dueHtml}${tag}</div>
+    <div class="quest-meta-tags">${priHtml}${estHtml}${dueHtml}${tag}</div>
     ${star}
   </div>`;
 }

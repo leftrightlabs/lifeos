@@ -205,6 +205,7 @@ function simplifyTask(page, source) {
     recurring: !!props['Recurring?']?.checkbox,
     recurUnit: props['Recur Unit']?.select?.name || null,
     recurInterval: props['Recur Interval']?.number || null,
+    estHours: props['Est Hours']?.number ?? null,
     priority: props['Priority 2']?.select?.name || props.Priority?.status?.name || null,
     project: null,
     projectId: (props.Project?.relation || [])[0]?.id || null,
