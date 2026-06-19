@@ -244,7 +244,8 @@
   .quest-due-inline.overdue { color: #ff7a6b; font-weight: 600; }
   .quest-due-inline.today { color: var(--lime); font-weight: 600; }
   .quest-due-inline.tomorrow { color: #d4a854; font-weight: 600; }
-  .quest-est { font-size: 11px; color: rgba(var(--ink-rgb), 0.5); white-space: nowrap; letter-spacing: 0.02em; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: rgba(var(--edge-rgb), 0.05); }
+  .quest-est { font-size: 11px; color: rgba(var(--ink-rgb), 0.5); white-space: nowrap; letter-spacing: 0.02em; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: rgba(var(--edge-rgb), 0.05); cursor: pointer; }
+  .quest-est.empty { font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(var(--ink-rgb), 0.32); background: transparent; border: 1px dashed rgba(var(--edge-rgb), 0.18); }
   .quest-due-edit { font-size: 11px; background: rgba(var(--edge-rgb), 0.06); color: var(--navy); border: 1px solid var(--lime); border-radius: 4px; padding: 2px 4px; font-family: var(--font-body); color-scheme: dark; }
   .quest-item.syncing { opacity: 0.6; }
   .quest-star { appearance: none; -webkit-appearance: none; border: 0; background: none; cursor: pointer; padding: 3px; line-height: 0; flex-shrink: 0; border-radius: 6px; transition: background 0.15s; }
@@ -595,7 +596,7 @@
   .task-source-pill.personal .dot { background: var(--lime); }
   .task-field { display: block; margin-bottom: 12px; }
   .task-field label { display: block; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(var(--ink-rgb), 0.5); font-weight: 700; margin-bottom: 6px; }
-  .task-field input[type="text"], .task-field input[type="date"], .task-field select, .task-field textarea {
+  .task-field input[type="text"], .task-field input[type="date"], .task-field input[type="number"], .task-field select, .task-field textarea {
     width: 100%; min-width: 0; background: rgba(var(--edge-rgb), 0.05); border: 1px solid rgba(var(--edge-rgb), 0.12); color: var(--navy); padding: 9px 12px; border-radius: 8px; font-family: var(--font-body); font-size: 14px; color-scheme: dark;
   }
   .task-field input:focus, .task-field select:focus, .task-field textarea:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
@@ -3637,6 +3638,10 @@ window.lrl = (function(){
         </select>
       </div>
     </div>
+    <div class="task-field" id="task-est-field" style="display:none">
+      <label>Est. hours</label>
+      <input type="number" id="task-est-input" min="0" step="0.5" inputmode="decimal" placeholder="e.g. 2"/>
+    </div>
     <div class="task-field">
       <label>Due date <button type="button" class="task-date-clear" id="task-due-clear">Clear</button></label>
       <input type="text" id="task-due-input" class="lrl-dateinput" readonly inputmode="none" placeholder="Select a date"/>
@@ -3861,7 +3866,8 @@ function row(t){
   const priHtml = t.priority
     ? '<span class="quest-pri '+t.priority.toLowerCase()+'">'+t.priority+'</span>' : '';
   const estHtml = (t.estHours != null && t.estHours > 0)
-    ? '<span class="quest-est" title="Estimated '+t.estHours+'h">'+(Number.isInteger(t.estHours)?t.estHours:t.estHours.toFixed(1))+'h</span>' : '';
+    ? '<span class="quest-est" title="Estimated '+t.estHours+'h — tap to edit">'+(Number.isInteger(t.estHours)?t.estHours:t.estHours.toFixed(1))+'h</span>'
+    : (t.source==='work' ? '<span class="quest-est empty" title="No time estimate — tap to add">No EST</span>' : '');
   const sourceTag = t.source==='work'
     ? '<span class="quest-tag tag-work">work</span>'
     : '<span class="quest-tag tag-personal">personal</span>';
@@ -4950,7 +4956,8 @@ function renderQuestRow(t){
   const priHtml = t.priority
     ? `<span class="quest-pri ${t.priority.toLowerCase()}">${t.priority}</span>` : '';
   const estHtml = (t.estHours != null && t.estHours > 0)
-    ? `<span class="quest-est" title="Estimated ${t.estHours}h">${Number.isInteger(t.estHours)?t.estHours:t.estHours.toFixed(1)}h</span>` : '';
+    ? `<span class="quest-est" title="Estimated ${t.estHours}h — tap to edit">${Number.isInteger(t.estHours)?t.estHours:t.estHours.toFixed(1)}h</span>`
+    : (t.source==='work' ? '<span class="quest-est empty" title="No time estimate — tap to add">No EST</span>' : '');
   const statusKey = (t.status || 'Planned').toLowerCase().replace(/\s+/g,'-');
   const statusDot = `<span class="quest-status-dot status-${statusKey}" title="${t.status || 'Planned'}"></span>`;
   return `<div class="quest-item${doneCls}" data-task-id="${t.id}" data-task-url="${t.url}">
@@ -5331,12 +5338,14 @@ function openTaskCreate() {
   document.getElementById('task-priority-input').value = '';
   document.getElementById('task-due-input').value = '';
   document.getElementById('task-dueend-input').value = '';
+  document.getElementById('task-est-input').value = '';
   setTaskEndDateVisible(false);
   // Default DB: Personal — unless the dashboard is in Work mode.
   const defaultSource = (typeof mode !== 'undefined' && mode === 'work') ? 'work' : 'personal';
   document.querySelectorAll('#task-source-toggle .task-source-opt').forEach(b => {
     b.classList.toggle('active', b.dataset.source === defaultSource);
   });
+  setTaskEstVisible(defaultSource === 'work');
   // Project selector: reset now, then re-render once the list loads (without
   // clobbering anything the user may have already typed).
   populateTaskProjects();
@@ -5429,6 +5438,10 @@ function openTaskEdit(t, scope){
   document.getElementById('task-due-input').value = (t.dueStart || '').slice(0,10);
   document.getElementById('task-dueend-input').value = (t.dueEnd || '').slice(0,10);
   setTaskEndDateVisible(!!t.dueEnd);
+  // Est. hours lives only on the work DB — show the field for work tasks and
+  // seed it with the current value (blank when there's no estimate yet).
+  setTaskEstVisible(src === 'work');
+  document.getElementById('task-est-input').value = (t.estHours != null ? t.estHours : '');
   // Project: when this surface knows the task's project state (projectId is
   // defined — even if null), show the editable selector pre-seeded with the
   // current project. Otherwise fall back to the read-only line.
@@ -5479,6 +5492,8 @@ document.getElementById('task-source-toggle')?.addEventListener('click', (e) => 
   btn.classList.add('active');
   // Project list is source-specific — reset to that DB's projects.
   populateTaskProjects(btn.dataset.source, '');
+  // Est. hours only applies to work tasks.
+  setTaskEstVisible(btn.dataset.source === 'work');
 });
 
 // + button on Today's Quest panel
@@ -5496,6 +5511,12 @@ function setTaskEndDateVisible(on){
   if (tog) tog.checked = on;
   if (wrap) wrap.style.display = on ? '' : 'none';
   if (!on) { const ei = document.getElementById('task-dueend-input'); if (ei) ei.value = ''; }
+}
+// Est. hours is a work-only field — hide it (and clear the input) for personal.
+function setTaskEstVisible(on){
+  const field = document.getElementById('task-est-field');
+  if (field) field.style.display = on ? '' : 'none';
+  if (!on) { const ei = document.getElementById('task-est-input'); if (ei) ei.value = ''; }
 }
 document.getElementById('task-dueend-toggle')?.addEventListener('change', (e) => {
   setTaskEndDateVisible(e.target.checked);
@@ -5651,6 +5672,10 @@ document.getElementById('task-save-btn')?.addEventListener('click', async () => 
       dueEnd: document.getElementById('task-dueend-input').value || null,
       projectId: document.getElementById('task-project-input').value || null,
     };
+    if (source === 'work') {
+      const ev = document.getElementById('task-est-input').value.trim();
+      body.estHours = ev === '' ? null : Number(ev);
+    }
     if (_createFromEmailCtx) {
       const ec = _createFromEmailCtx;
       body.taskBody = [
@@ -5697,6 +5722,12 @@ document.getElementById('task-save-btn')?.addEventListener('click', async () => 
   // silently clear it.
   if (editingTask.projectId !== undefined){
     body.projectId = document.getElementById('task-project-input').value || null;
+  }
+  // Est. hours is work-only; send it (incl. null to clear) so editing a card
+  // that had no estimate persists the number the user just typed.
+  if (editingTask.source === 'work'){
+    const ev = document.getElementById('task-est-input').value.trim();
+    body.estHours = ev === '' ? null : Number(ev);
   }
   if (!body.name) { window.lrl.toast('Task name is required', 'error'); return; }
   btn.disabled = true; btn.textContent = 'Saving…';
