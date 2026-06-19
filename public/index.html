@@ -3662,6 +3662,8 @@ async function fetchTasks(){
     SEED_TASKS = d.tasks || [];
     BASE = {};
     SEED_TASKS.forEach(t => BASE[t.id] = t);
+    window.lrlCache.save('tasks', SEED_TASKS);
+    render();
   } catch(e) { console.error('fetchTasks failed', e); }
 }
 
