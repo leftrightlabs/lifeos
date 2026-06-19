@@ -599,6 +599,24 @@
     width: 100%; min-width: 0; background: rgba(var(--edge-rgb), 0.05); border: 1px solid rgba(var(--edge-rgb), 0.12); color: var(--navy); padding: 9px 12px; border-radius: 8px; font-family: var(--font-body); font-size: 14px; color-scheme: dark;
   }
   .task-field input:focus, .task-field select:focus, .task-field textarea:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
+  .lrl-dateinput { cursor: pointer; }
+  /* Custom date picker popover (replaces the tiny native calendar) */
+  .lrl-datepop { position: fixed; z-index: 100050; width: 280px; background: var(--cream); border: 1px solid rgba(var(--edge-rgb), 0.14); border-radius: 12px; padding: 12px; box-shadow: 0 20px 55px rgba(0,0,0,0.55); display: none; }
+  .lrl-datepop.open { display: block; }
+  .lrl-datepop-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
+  .lrl-datepop-title { font-family: var(--font-display); font-weight: 800; font-size: 14px; color: var(--navy); letter-spacing: 0.01em; }
+  .lrl-datepop-nav { width: 32px; height: 32px; border-radius: 8px; border: 1px solid rgba(var(--edge-rgb), 0.12); background: rgba(var(--edge-rgb), 0.05); color: var(--navy); cursor: pointer; font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center; padding: 0; }
+  .lrl-datepop-nav:hover { border-color: var(--lime); color: var(--lime); }
+  .lrl-datepop-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .lrl-datepop-dow { text-align: center; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(var(--ink-rgb), 0.45); padding: 4px 0; }
+  .lrl-datepop-day { aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--navy); border: 1px solid transparent; cursor: pointer; }
+  .lrl-datepop-day:hover { background: rgba(167,193,64,0.14); }
+  .lrl-datepop-day.other { color: rgba(var(--ink-rgb), 0.28); font-weight: 500; }
+  .lrl-datepop-day.today { border-color: var(--lime); }
+  .lrl-datepop-day.selected { background: var(--lime); color: var(--navy-accent); font-weight: 800; }
+  .lrl-datepop-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+  .lrl-datepop-foot button { background: transparent; border: 1px solid rgba(var(--edge-rgb), 0.12); color: rgba(var(--ink-rgb), 0.7); font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+  .lrl-datepop-foot button:hover { border-color: var(--lime); color: var(--lime); }
   .task-field textarea { resize: vertical; min-height: 60px; font-size: 16px; font-weight: 600; line-height: 1.3; }
   .task-row-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   /* Searchable project combobox */
@@ -3621,12 +3639,12 @@ window.lrl = (function(){
     </div>
     <div class="task-field">
       <label>Due date <button type="button" class="task-date-clear" id="task-due-clear">Clear</button></label>
-      <input type="date" id="task-due-input"/>
+      <input type="text" id="task-due-input" class="lrl-dateinput" readonly inputmode="none" placeholder="Select a date"/>
     </div>
     <label class="task-checkbox-row" id="task-dueend-toggle-row"><input type="checkbox" id="task-dueend-toggle"/> End date</label>
     <div class="task-field" id="task-dueend-wrap" style="display:none">
       <label>End date <button type="button" class="task-date-clear" id="task-dueend-clear">Clear</button></label>
-      <input type="date" id="task-dueend-input"/>
+      <input type="text" id="task-dueend-input" class="lrl-dateinput" readonly inputmode="none" placeholder="Select a date"/>
     </div>
     <div class="task-modal-actions">
       <button class="task-btn-trash" id="task-delete-btn" style="display:none" title="Delete task">
@@ -3696,7 +3714,7 @@ window.lrl = (function(){
   <div class="privacy-status">Privacy</div>
 </div>
 
-<span class="version-tag">v: day-11</span>
+<span class="version-tag">v: day-12</span>
 
 <!-- =========================== AUTOFOCUS IIFE =========================== -->
 <script>
@@ -4014,14 +4032,9 @@ el('list').addEventListener('click',e=>{
     const dueEl=e.target.closest('.quest-due-inline');
     if(!dueEl)return;
     const current=(t.dueStart||'').slice(0,10);
-    const input=document.createElement('input');
-    input.type='date';input.value=current;input.className='quest-due-edit';
-    let committed=false;
-    const cancel=()=>{if(!committed)render();};
-    input.addEventListener('blur',cancel);
-    input.addEventListener('change',async()=>{
-      committed=true;
-      const newDate=input.value||null;
+    window.lrlDatePicker.openAt(dueEl, current, async(picked)=>{
+      const newDate=picked||null;
+      if((newDate||'')===(current||'')) return;
       const prev={dueStart:t.dueStart,dueEnd:t.dueEnd};
       state.edits[id]=Object.assign({},state.edits[id],{dueStart:newDate,dueEnd:null});
       state.touched[id]=new Date().toISOString();
@@ -4042,9 +4055,6 @@ el('list').addEventListener('click',e=>{
         window.lrl.toast('Sync failed: '+err.message,'error');
       }
     });
-    dueEl.replaceWith(input);
-    input.focus();
-    if(input.showPicker)input.showPicker();
     return;
   }
   // Default (open) — bare row click or data-act="open"
@@ -5195,16 +5205,9 @@ document.getElementById('today-quests').addEventListener('click', async (e) => {
     e.stopPropagation();
     const dueEl = e.target.closest('.quest-due-inline');
     const current = (t.dueStart || '').slice(0,10);
-    const input = document.createElement('input');
-    input.type = 'date';
-    input.value = current;
-    input.className = 'quest-due-edit';
-    let committed = false;
-    const cancel = () => { if (!committed) renderTodayQuests(); };
-    input.addEventListener('blur', cancel);
-    input.addEventListener('change', async () => {
-      committed = true;
-      const newDate = input.value || null;
+    window.lrlDatePicker.openAt(dueEl, current, async (picked) => {
+      const newDate = picked || null;
+      if ((newDate||'') === (current||'')) return;
       const prevStart = t.dueStart, prevEnd = t.dueEnd;
       t.dueStart = newDate;
       t.dueEnd = null;
@@ -5227,9 +5230,6 @@ document.getElementById('today-quests').addEventListener('click', async (e) => {
         window.lrl.toast('Sync failed: ' + err.message, 'error');
       }
     });
-    dueEl.replaceWith(input);
-    input.focus();
-    if (input.showPicker) input.showPicker();
     return;
   }
 
@@ -5510,6 +5510,104 @@ document.getElementById('task-due-clear')?.addEventListener('click', () => {
 document.getElementById('task-dueend-clear')?.addEventListener('click', () => {
   setTaskEndDateVisible(false);
 });
+
+// ── Custom date picker ─────────────────────────────────────────────────────
+// The native <input type="date"> calendar renders tiny in this webview, so any
+// input with class "lrl-dateinput" gets this popover instead. The input still
+// holds an ISO yyyy-mm-dd value, so all existing read/write code is unchanged.
+(function(){
+  const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const DOW=['Su','Mo','Tu','We','Th','Fr','Sa'];
+  let pop, viewY, viewM, activeInput=null, activeCb=null, anchorEl=null, selIso='';
+  const pad=n=>String(n).padStart(2,'0');
+  const isoOf=(y,m,d)=>y+'-'+pad(m+1)+'-'+pad(d);
+  function parseISO(s){if(!s)return null;const p=s.slice(0,10).split('-').map(Number);if(p.length<3||!p[0])return null;return {y:p[0],m:p[1]-1,d:p[2]};}
+  function ensurePop(){
+    if(pop) return pop;
+    pop=document.createElement('div');
+    pop.className='lrl-datepop';
+    document.body.appendChild(pop);
+    pop.addEventListener('click', onPopClick);
+    return pop;
+  }
+  function render(){
+    const sel=parseISO(selIso);
+    const today=new Date();
+    const startDow=new Date(viewY,viewM,1).getDay();
+    const daysInMonth=new Date(viewY,viewM+1,0).getDate();
+    const prevDays=new Date(viewY,viewM,0).getDate();
+    let cells='';
+    for(let i=0;i<startDow;i++){cells+=`<div class="lrl-datepop-day other">${prevDays-startDow+1+i}</div>`;}
+    for(let d=1;d<=daysInMonth;d++){
+      const iso=isoOf(viewY,viewM,d);
+      const isToday=today.getFullYear()===viewY&&today.getMonth()===viewM&&today.getDate()===d;
+      const isSel=sel&&sel.y===viewY&&sel.m===viewM&&sel.d===d;
+      cells+=`<div class="lrl-datepop-day${isToday?' today':''}${isSel?' selected':''}" data-iso="${iso}">${d}</div>`;
+    }
+    const trail=(7-((startDow+daysInMonth)%7))%7;
+    for(let i=1;i<=trail;i++){cells+=`<div class="lrl-datepop-day other">${i}</div>`;}
+    pop.innerHTML=`<div class="lrl-datepop-head">`
+      +`<button type="button" class="lrl-datepop-nav" data-nav="-1" aria-label="Previous month">‹</button>`
+      +`<span class="lrl-datepop-title">${MON[viewM]} ${viewY}</span>`
+      +`<button type="button" class="lrl-datepop-nav" data-nav="1" aria-label="Next month">›</button></div>`
+      +`<div class="lrl-datepop-grid">${DOW.map(d=>`<div class="lrl-datepop-dow">${d}</div>`).join('')}${cells}</div>`
+      +`<div class="lrl-datepop-foot"><button type="button" data-today="1">Today</button><button type="button" data-clear="1">Clear</button></div>`;
+  }
+  function position(){
+    if(!anchorEl) return;
+    const r=anchorEl.getBoundingClientRect();
+    const w=280;
+    let left=Math.min(r.left, window.innerWidth-8-w); if(left<8) left=8;
+    let top=r.bottom+6;
+    if(top+340>window.innerHeight-8 && r.top-340>0) top=r.top-340;
+    pop.style.left=left+'px';
+    pop.style.top=top+'px';
+  }
+  function seed(iso){
+    selIso=iso||'';
+    const sel=parseISO(iso);
+    viewY=sel?sel.y:new Date().getFullYear();
+    viewM=sel?sel.m:new Date().getMonth();
+  }
+  function open(input){
+    ensurePop();
+    activeInput=input; activeCb=null; anchorEl=input;
+    seed(input.value);
+    render(); pop.classList.add('open'); position();
+  }
+  // Programmatic open anchored to any element, with a callback receiving the
+  // chosen ISO date (or '' when cleared). Used by the inline date chips.
+  function openAt(anchor, iso, cb){
+    ensurePop();
+    activeInput=null; activeCb=cb; anchorEl=anchor;
+    seed(iso);
+    render(); pop.classList.add('open'); position();
+  }
+  function close(){ if(pop) pop.classList.remove('open'); activeInput=null; activeCb=null; anchorEl=null; }
+  function commit(iso){
+    const cb=activeCb, inp=activeInput;
+    close();
+    if(cb){ cb(iso||''); }
+    else if(inp){ inp.value=iso||''; inp.dispatchEvent(new Event('change',{bubbles:true})); }
+  }
+  function onPopClick(e){
+    const nav=e.target.closest('[data-nav]');
+    if(nav){ viewM+=parseInt(nav.dataset.nav,10); if(viewM<0){viewM=11;viewY--;} if(viewM>11){viewM=0;viewY++;} render(); return; }
+    if(e.target.closest('[data-today]')){ const t=new Date(); commit(isoOf(t.getFullYear(),t.getMonth(),t.getDate())); return; }
+    if(e.target.closest('[data-clear]')){ commit(''); return; }
+    const day=e.target.closest('.lrl-datepop-day[data-iso]');
+    if(day) commit(day.dataset.iso);
+  }
+  document.addEventListener('mousedown',(e)=>{
+    const inp=e.target.closest('.lrl-dateinput');
+    if(inp){ e.preventDefault(); open(inp); return; }
+    if(pop&&pop.classList.contains('open')&&!e.target.closest('.lrl-datepop')&&!e.target.closest('[data-act="edit-due"]')) close();
+  });
+  document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') close(); });
+  window.addEventListener('resize',()=>{ if(pop&&pop.classList.contains('open')) position(); });
+  window.addEventListener('scroll',()=>{ if(pop&&pop.classList.contains('open')) position(); }, true);
+  window.lrlDatePicker={ openAt };
+})();
 document.getElementById('task-open-notion-btn')?.addEventListener('click', () => {
   const url = editingTask?.url;
   if (!url) { window.lrl?.toast('No Notion link for this task', 'error'); return; }
@@ -8634,11 +8732,12 @@ document.addEventListener('visibilitychange', async () => {
   function startDateEdit(el){
     const card = el.closest('.proj-row'); const id = card.dataset.id;
     const p = (P.data.projects || []).find((x) => x.id === id) || {};
-    const inp = document.createElement('input'); inp.type = 'date'; inp.className = 'proj-inline-date'; inp.value = (p.end || '').slice(0, 10);
-    el.replaceWith(inp); inp.focus(); try { inp.showPicker && inp.showPicker(); } catch (e) {}
-    let committed = false;
-    inp.addEventListener('change', () => { committed = true; commitDeadline(id, inp.value || null); });
-    inp.addEventListener('blur', () => { setTimeout(() => { if (!committed && document.body.contains(inp)) renderResults(); }, 120); });
+    const current = (p.end || '').slice(0, 10);
+    window.lrlDatePicker.openAt(el, current, (picked) => {
+      const newDate = picked || null;
+      if ((newDate||'') === (current||'')) return;
+      commitDeadline(id, newDate);
+    });
   }
 
   function listHTML(){
