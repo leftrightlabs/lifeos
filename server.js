@@ -119,6 +119,7 @@ async function resolveNotionUserId(email) {
 
 const cache = new Map();
 const CACHE_TTL_OVERRIDES = {
+  'attract-insights': 6 * 60 * 60_000, // GA4 + AI analysis: refresh every 6h
   'journal-rings': 5 * 60_000, // heavier query (per-row body-text check); cache longer
   'vto-goals': 10 * 60_000,    // goals rarely change
   'active-projects': 5 * 60_000, // project status changes slowly
@@ -3228,7 +3229,7 @@ function dashifyId(id) {
 
 // ===== Attract / Marketing domain — extracted to src/routes/attract.js =====
 const { MARKETING_ASSETS_DS, fetchMarketingChannelMap, serializeMarketingAsset } =
-  registerAttractRoutes(app, { notion, cache, cached, currentQuarter, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId });
+  registerAttractRoutes(app, { notion, cache, cached, currentQuarter, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, anthropic, userContext });
 
 // =========================== MOVE THE NEEDLE (Phase 0) ===========================
 // GET /api/needle/today — ONE ranked, cross-zone "what to do next" list. This is

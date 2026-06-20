@@ -5,6 +5,12 @@ node_modules/
 *.log
 .claude/
 
+# Service-account / API keys — NEVER commit
+ga-service-account.json
+*-service-account.json
+*.gserviceaccount.json
+secrets/
+
 # iOS / Capacitor build artifacts
 ios/App/App/public/
 ios/App/Pods/

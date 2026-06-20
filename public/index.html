@@ -224,6 +224,15 @@
   .cv-note { font-size:11.5px; color:var(--navy-dim); margin:12px 0 6px; font-weight:600; }
   .cv-stage { font-size:8.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; padding:2px 6px; border-radius:3px; background:var(--lime-faint); color:var(--lime); white-space:nowrap; flex-shrink:0; max-width:150px; overflow:hidden; text-overflow:ellipsis; }
   .cv-empty { color:var(--navy-dim); font-size:13px; padding:6px 0; }
+  /* Attract "What's Working" (GA4 + AI) */
+  .aw-list { margin:0; padding-left:18px; }
+  .aw-list li { font-size:13px; color:var(--navy); line-height:1.45; margin-bottom:7px; }
+  .aw-list li:last-child { margin-bottom:0; }
+  .aw-props { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; border-top:1px solid var(--navy-faint); padding-top:12px; }
+  .aw-prop { display:flex; flex-direction:column; gap:3px; background:var(--cream-2); border:1px solid var(--navy-faint); border-radius:8px; padding:8px 12px; }
+  .aw-prop-name { font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--navy-dim); }
+  .aw-prop-stat { font-size:12.5px; color:var(--navy); font-weight:600; }
+  .aw-trend { font-weight:700; } .aw-trend.up { color:var(--lime); } .aw-trend.down { color:#e57373; }
   /* Source toggle for new-task modal */
   .task-source-toggle { display: flex; gap: 6px; margin-bottom: 14px; }
   .task-source-opt { padding: 5px 16px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0.05em; cursor: pointer; border: 1.5px solid rgba(var(--edge-rgb), 0.12); background: transparent; color: rgba(var(--ink-rgb), 0.45); transition: all 0.15s; font-family: var(--font-body); }
@@ -3438,6 +3447,7 @@ window.lrl = (function(){
     <div class="section-label">Attract</div>
     <h1 class="page-title"><span>Attract</span></h1>
     <div class="page-subtitle">Publish today's content, track where it went live, and see what's ahead.</div>
+    <div id="attract-act"><div class="cv-empty" style="padding:14px 0">Analyzing what's working…</div></div>
     <div id="mkt-body"><div style="color:var(--navy-dim);font-size:13px;padding:20px 0">loading…</div></div>
   </div>
   <div class="mkt-modal" id="mkt-modal"><div class="mkt-modal-content" id="mkt-modal-content"></div></div>
@@ -8605,11 +8615,44 @@ document.addEventListener('visibilitychange', async () => {
       await Promise.all([ fetchMktToday(true), fetchMktCalendar(chiMonth(), true), fetchMktStats(true) ]);
       MKT.loaded = true;
       renderMktBody();
+      fetchAttractInsights().then(renderAttractInsights);
     } catch(err){
       if (body) body.innerHTML = `<div class="mkt-empty">Couldn't load marketing: ${mEsc(err.message)}</div>`;
     } finally { MKT.loading = false; }
   }
   window.maybeLoadMarketing = maybeLoadMarketing;
+
+  // ---- Attract "What's Working" — GA4 + AI suggestions (collapsible .mkt-section) ----
+  let AW_DATA = null;
+  let AW_COLLAPSED = false;
+  try { AW_COLLAPSED = localStorage.getItem('lrl-attract-aw-collapsed') === '1'; } catch(e){}
+  async function fetchAttractInsights(fresh){
+    try { const r = await fetch('/api/attract/insights' + (fresh?'?fresh=1':'')); AW_DATA = await r.json(); }
+    catch(e){ console.error('fetchAttractInsights', e); AW_DATA = null; }
+  }
+  function renderAttractInsights(){
+    const el = document.getElementById('attract-act'); if(!el) return;
+    const d = AW_DATA;
+    let body;
+    if (!d) body = '<div class="cv-empty">Couldn\'t load analytics.</div>';
+    else if (!d.configured) body = '<div class="cv-empty">Connect Google Analytics to see what\'s working.</div>';
+    else {
+      const sugg = d.suggestions || [];
+      body = sugg.length ? '<ul class="aw-list">' + sugg.map(s=>'<li>'+mEsc(s)+'</li>').join('') + '</ul>' : '<div class="cv-empty">No suggestions yet — check back after more data.</div>';
+      const props = (d.properties||[]).filter(p=>!p.error);
+      if (props.length){
+        body += '<div class="aw-props">' + props.map(p=>{
+          const t = p.trend && p.trend.sessions;
+          const tt = (t==null) ? '' : ' <span class="aw-trend '+(t>=0?'up':'down')+'">'+(t>=0?'▲':'▼')+Math.abs(t)+'%</span>';
+          const topCh = (p.channels && p.channels[0]) ? p.channels[0].name : '';
+          return '<div class="aw-prop"><span class="aw-prop-name">'+mEsc(p.label)+'</span><span class="aw-prop-stat">'+Number(p.totals.sessions||0).toLocaleString()+' sessions'+tt+(topCh?' · top: '+mEsc(topCh):'')+'</span></div>';
+        }).join('') + '</div>';
+      }
+    }
+    el.innerHTML = '<div class="mkt-section'+(AW_COLLAPSED?' collapsed':'')+'"><div class="mkt-sec-head" data-aw-toggle><span class="mkt-sec-caret">▾</span><span class="mkt-sec-title">What\'s Working</span><span class="mkt-sec-count zero">28d · GA</span></div><div class="mkt-sec-body">'+body+'</div></div>';
+    el.querySelector('[data-aw-toggle]')?.addEventListener('click', function(){ AW_COLLAPSED=!AW_COLLAPSED; try{localStorage.setItem('lrl-attract-aw-collapsed', AW_COLLAPSED?'1':'0');}catch(e){} this.closest('.mkt-section').classList.toggle('collapsed'); window.lrl?.haptic?.('tap'); });
+  }
+  window.refreshAttractInsights = async function(){ await fetchAttractInsights(true); renderAttractInsights(); };
 
   // ---- render ----
   function dateBadge(dateStr, today){

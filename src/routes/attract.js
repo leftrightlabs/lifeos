@@ -1,5 +1,7 @@
+import { whatsWorkingAll, gaConfigured } from '../providers/google/analytics.js';
+
 export function registerAttractRoutes(app, ctx) {
-  const { notion, cache, cached, currentQuarter, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId } = ctx;
+  const { notion, cache, cached, currentQuarter, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, anthropic, userContext } = ctx;
 
 // =========================== MARKETING PUBLISHING ===========================
 const MARKETING_ASSETS_DS = '4170ff99-ce76-42b5-bcf2-7f672c362ec4';
@@ -322,6 +324,40 @@ app.get('/api/attract/media', async (req, res) => {
     res.send(Buffer.from(await upstream.arrayBuffer()));
   } catch (err) { res.status(500).end(err.message); }
 });
+
+  // GET /api/attract/insights — GA4 "what's working" across both properties + AI suggestions.
+  app.get('/api/attract/insights', async (req, res) => {
+    try {
+      if (!gaConfigured()) return res.json({ configured: false, properties: [], suggestions: [] });
+      if (req.query.fresh === '1') {
+        const u = userContext.getStore()?.user;
+        cache.delete(u ? `attract-insights::${u.id || u.email}` : 'attract-insights');
+      }
+      const data = await cached('attract-insights', async () => {
+        const properties = await whatsWorkingAll();
+        const ok = properties.filter((p) => !p.error);
+        let suggestions = [];
+        if (anthropic && ok.length) {
+          try {
+            const tp = (n) => (n == null ? 'n/a' : (n >= 0 ? '+' : '') + n + '%');
+            const summary = ok.map((p) => {
+              const pages = p.topPages.slice(0, 5).map((x) => `${x.path} (${x.sessions} sessions, ${x.keyEvents} conv)`).join('; ');
+              const chans = p.channels.slice(0, 6).map((x) => `${x.name} (${x.sessions} sessions, ${x.keyEvents} conv)`).join('; ');
+              return `PROPERTY "${p.label}" — last 28d vs prior 28d: ${p.totals.sessions} sessions (${tp(p.trend.sessions)}), ${p.totals.users} users, ${p.totals.keyEvents} conversions (${tp(p.trend.keyEvents)}).\n  Top pages: ${pages}\n  Channels: ${chans}`;
+            }).join('\n\n');
+            const noConv = ok.every((p) => p.totals.keyEvents === 0);
+            const prompt = `You are the marketing analyst for Left Right Labs (a brand + website design agency). Google Analytics, last 28 days vs the prior 28, for two web properties (the main site and the "Toolkit" that hosts lead-gen opt-in funnels):\n\n${summary}\n\nGive 3-5 short, specific, action-oriented insights — each ONE sentence, grounded in these exact numbers (name the page, channel, or property). Focus on what is driving growth and leads and what to do next.${noConv ? ' IMPORTANT: conversions/key events are not set up in GA4 yet (all show 0), so base insights on traffic + engagement, and make ONE insight recommend marking the opt-in completions as Key Events in GA4 so lead conversions can be tracked.' : ''} Reply with ONLY a JSON array of strings, nothing else.`;
+            const msg = await anthropic.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 500, messages: [{ role: 'user', content: prompt }] });
+            const text = (msg.content?.[0]?.text) || '[]';
+            const mm = text.match(/\[[\s\S]*\]/);
+            if (mm) suggestions = JSON.parse(mm[0]);
+          } catch (e) { console.error('attract-insights ai:', e.message); }
+        }
+        return { asOf: new Date().toISOString(), properties, suggestions };
+      });
+      res.json({ configured: true, ...data });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
 
   return { MARKETING_ASSETS_DS, fetchMarketingChannelMap, serializeMarketingAsset };
 }
