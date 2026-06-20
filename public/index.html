@@ -922,6 +922,8 @@
   /* Morning + End-of-Day checklists nested inside the My Day panel → read as sub-sections */
   #quest-panel > #ritual-card, #quest-panel > #evening-card { background: transparent; border: none; border-radius: 0; padding: 14px 0 0; margin: 14px 0 0; border-top: 1px solid var(--navy-faint); }
   .quest-panel.collapsed > #ritual-card, .quest-panel.collapsed > #evening-card { display: none; }
+  /* Checklist titles read as sub-sections of My Day — smaller + lighter than the card title */
+  #ritual-toggle, #evening-toggle { font-size: 12.5px; font-weight: 600; letter-spacing: 0.06em; }
   .ritual-card.evening.collapsed, .ritual-card.evening.done { border-left-color: transparent; }
   .ritual-card.evening.done .ritual-toggle { color: var(--lime); }
   .ritual-card.evening .ritual-status.done { color: var(--lime); }
