@@ -10,6 +10,8 @@ import { initDb, isEnabled as dbEnabled, users as dbUsers } from './db.js';
 import { decrypt, encrypt, isConfigured as secretsConfigured } from './secrets.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { registerConvertRoutes } from './src/routes/convert.js';
+import { serializeDeal, serializeContactRow, queryAllDeals, fetchSalesProductMap } from './src/providers/notion/convert.js';
+import { CONTACTS_DS, PULSE_RELATIONSHIPS } from './src/config/convert.js';
 
 if (process.env.NODE_ENV !== 'production') {
   const { default: dotenv } = await import('dotenv');
@@ -3213,9 +3215,8 @@ app.post('/api/ai/triage/apply', async (req, res) => {
   res.json({ results });
 });
 
-// ===== Convert / Sales domain — extracted to src/routes/convert.js =====
-const { serializeDeal, queryAllDeals, fetchSalesProductMap, serializeContactRow, CONTACTS_DS, PULSE_RELATIONSHIPS } =
-  registerConvertRoutes(app, { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID });
+// ===== Convert / Sales domain — routes in src/routes/convert.js; data in src/providers/notion/convert.js =====
+registerConvertRoutes(app, { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID });
 
 // =========================== MARKETING PUBLISHING ===========================
 const MARKETING_ASSETS_DS = '4170ff99-ce76-42b5-bcf2-7f672c362ec4';
@@ -3592,8 +3593,8 @@ app.get('/api/needle/today', async (req, res) => {
       const convert = await (async () => {
         const out = [];
         try {
-          const productMap = await fetchSalesProductMap().catch(() => ({}));
-          const deals = (await queryAllDeals()).map((pg) => serializeDeal(pg, productMap));
+          const productMap = await fetchSalesProductMap(notion, cached).catch(() => ({}));
+          const deals = (await queryAllDeals(notion)).map((pg) => serializeDeal(pg, productMap));
           deals
             .filter((d) => !d.archived && NEEDLE_LATE_DEAL_STAGES.has(d.status))
             .sort((a, b) => (b.value || 0) - (a.value || 0))
@@ -3608,7 +3609,7 @@ app.get('/api/needle/today', async (req, res) => {
             });
         } catch (e) { console.error('needle:deals', e.message); }
         try {
-          // Bounded overdue-contacts query, mirrors /api/sales/overdue (never-touched + oldest).
+          // Bounded overdue-contacts query, mirrors /api/convert/overdue (never-touched + oldest).
           const relFilter = { or: PULSE_RELATIONSHIPS.map((name) => ({ property: 'Relationship', select: { equals: name } })) };
           const baseAnd = (extra) => ({ and: [{ property: 'Archive', checkbox: { equals: false } }, relFilter, extra] });
           const [neverRes, touchedRes] = await Promise.all([

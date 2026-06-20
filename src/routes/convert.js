@@ -1,93 +1,18 @@
+import { SALES_STAGES, SALES_STAGE_GROUP, CONTACTS_DS, SALES_ACTIVITY_DS, TRINA_USER_ID, PULSE_RELATIONSHIPS, PULSE_TOUCHPOINTS, PULSE_GOAL, SALES_GOAL, CONVERT_FOLLOWUP_STAGES } from '../config/convert.js';
+import { serializeDeal, serializeContactRow, queryAllDeals, fetchSalesProductMap } from '../providers/notion/convert.js';
+
 export function registerConvertRoutes(app, ctx) {
   const { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID } = ctx;
 
-// =========================== SALES PIPELINE ===========================
-const SALES_PIPELINE_DS = 'cec1b3e9-791d-4a55-bd80-b0226552f543';
-const SALES_PRODUCTS_DS = '6e492b13-f5c7-4b8f-812e-3e05f1dc48ee';
 
-// Canonical funnel order + grouping (open vs won vs lost). Mirrors the
-// Pipeline Status options in Notion's SALES PIPELINE board.
-const SALES_STAGES = [
-  { name: 'New / To Qualify', group: 'open' },
-  { name: 'Engaged / In Conversation', group: 'open' },
-  { name: 'Consult Scheduled', group: 'open' },
-  { name: 'No Show / Reschedule', group: 'open' },
-  { name: 'Consult Completed', group: 'open' },
-  { name: 'Build Scope', group: 'open' },
-  { name: 'Decision Pending', group: 'open' },
-  { name: 'On Hold', group: 'open' },
-  { name: 'Closed Won', group: 'won' },
-  { name: 'Closed Lost', group: 'lost' },
-];
-const SALES_STAGE_INDEX = Object.fromEntries(SALES_STAGES.map((s, i) => [s.name, i]));
-const SALES_STAGE_GROUP = Object.fromEntries(SALES_STAGES.map((s) => [s.name, s.group]));
-
-// product page-id (dashless) -> Product Name
-async function fetchSalesProductMap() {
-  return cached('sales-product-map', async () => {
-    const map = {};
-    let cursor;
-    do {
-      const r = await notion.dataSources.query({ data_source_id: SALES_PRODUCTS_DS, page_size: 100, start_cursor: cursor });
-      for (const p of r.results) {
-        const name = p.properties?.['Product Name']?.title?.[0]?.plain_text || '';
-        if (name) map[p.id.replace(/-/g, '')] = name;
-      }
-      cursor = r.has_more ? r.next_cursor : null;
-    } while (cursor);
-    return map;
-  });
-}
-
-function serializeDeal(page, productMap, opts = {}) {
-  const p = page.properties || {};
-  const rt = (prop) => (prop?.rich_text || []).map((t) => t.plain_text).join('');
-  const archivedName = p.Archived?.status?.name || p.Archived?.select?.name || '';
-  const out = {
-    id: page.id,
-    url: page.url,
-    name: p['Deal Name']?.title?.[0]?.plain_text || '(untitled deal)',
-    value: typeof p['Deal Value']?.number === 'number' ? p['Deal Value'].number : null,
-    status: p['Pipeline Status']?.status?.name || null,
-    typeOfSale: p['Type of Sale']?.select?.name || null,
-    callBooked: p['Call Booked']?.date?.start || null,
-    callCompleted: p['Call Completed']?.date?.start || null,
-    dateWon: p['Date Won']?.date?.start || null,
-    dateLost: p['Date Lost']?.date?.start || null,
-    products: (p['Product Interest']?.relation || []).map((r) => productMap[r.id.replace(/-/g, '')]).filter(Boolean),
-    archived: archivedName === '__YES__',
-    created: page.created_time || null,
-  };
-  const recon = rt(p.Recon);
-  if (opts.includeRecon) out.recon = recon;
-  out.hasRecon = !!recon.trim();
-  return out;
-}
-
-async function queryAllDeals() {
-  const all = [];
-  let cursor;
-  do {
-    const r = await notion.dataSources.query({
-      data_source_id: SALES_PIPELINE_DS,
-      sorts: [{ property: 'Deal Value', direction: 'descending' }],
-      page_size: 100,
-      start_cursor: cursor,
-    });
-    all.push(...r.results);
-    cursor = r.has_more ? r.next_cursor : null;
-  } while (cursor);
-  return all;
-}
-
-// GET /api/sales/pipeline — open deals grouped by stage + headline metrics.
-app.get('/api/sales/pipeline', async (req, res) => {
+// GET /api/convert/pipeline — open deals grouped by stage + headline metrics.
+app.get('/api/convert/pipeline', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
     if (req.query.fresh === '1') cache.delete('sales-pipeline');
     const data = await cached('sales-pipeline', async () => {
-      const productMap = await fetchSalesProductMap().catch(() => ({}));
-      const pages = await queryAllDeals();
+      const productMap = await fetchSalesProductMap(notion, cached).catch(() => ({}));
+      const pages = await queryAllDeals(notion);
       const deals = pages.map((pg) => serializeDeal(pg, productMap)).filter((d) => !d.archived);
       const q = currentQuarter();
       const openStages = SALES_STAGES.filter((s) => s.group === 'open');
@@ -124,18 +49,18 @@ app.get('/api/sales/pipeline', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET /api/sales/deal/:id — full single deal incl. the Recon brief.
-app.get('/api/sales/deal/:id', async (req, res) => {
+// GET /api/convert/deal/:id — full single deal incl. the Recon brief.
+app.get('/api/convert/deal/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
-    const productMap = await fetchSalesProductMap().catch(() => ({}));
+    const productMap = await fetchSalesProductMap(notion, cached).catch(() => ({}));
     const page = await notion.pages.retrieve({ page_id: dashifyId(req.params.id) });
     res.json({ deal: serializeDeal(page, productMap, { includeRecon: true }) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// PATCH /api/sales/deal/:id — move stage, edit value, mark won/lost.
-app.patch('/api/sales/deal/:id', async (req, res) => {
+// PATCH /api/convert/deal/:id — move stage, edit value, mark won/lost.
+app.patch('/api/convert/deal/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { status, value, dateWon, dateLost } = req.body || {};
   try {
@@ -156,15 +81,6 @@ app.patch('/api/sales/deal/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// =========================== SALES PULSE TRACKER ===========================
-const CONTACTS_DS = '28d458f0-8cd9-8178-b291-000bdc3fb399';
-const SALES_ACTIVITY_DS = 'b5d8dd3c-303b-49c2-96cf-23b2cfa476ae';
-const TRINA_USER_ID = 'eea4c3fe-668e-4ce7-a8e8-30314ff7f986';
-const PULSE_RELATIONSHIPS = ['Alumni', 'Network Partner', 'Lead', 'Active Client'];
-// Touchpoint types that count as low-lift "pulse" outreach (vs. real sales moves)
-const PULSE_TOUCHPOINTS = ['👋 General Touchpoint', '🙏 Thank You / Nurture'];
-const PULSE_GOAL = 85;
-const SALES_GOAL = 15;
 
 // Plain UTC date math on YYYY-MM-DD strings (all values here are date-only).
 function addDaysISO(iso, n) {
@@ -179,22 +95,9 @@ function weekStartISO(iso) {
   return addDaysISO(iso, -back);
 }
 
-function serializeContactRow(page) {
-  const p = page.properties || {};
-  const lt = p['Last Touched']?.date?.start || null;
-  return {
-    id: page.id,
-    url: page.url,
-    name: p['Full Name']?.title?.[0]?.plain_text || '(no name)',
-    relationship: p['Relationship']?.select?.name || null,
-    stage: p['Stage']?.select?.name || null,
-    track: p['Track']?.select?.name || null,
-    lastTouched: lt,
-  };
-}
 
-// GET /api/sales/overdue — active-relationship contacts, never/oldest touched first.
-app.get('/api/sales/overdue', async (req, res) => {
+// GET /api/convert/overdue — active-relationship contacts, never/oldest touched first.
+app.get('/api/convert/overdue', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
     // Optional ?rel= filters to a single relationship (else all four).
@@ -229,12 +132,6 @@ app.get('/api/sales/overdue', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Contact Stages that represent an active sales conversation worth chasing.
-const CONVERT_FOLLOWUP_STAGES = [
-  '02. First touch sent', '03. In conversation', '04. Follow-up pending',
-  '05. Call invited', '06. Call booked', '07. Reconnected',
-  '08. Needs identified', '09. Offer invited', '10. Proposal sent',
-];
 
 // GET /api/convert/act — the Convert zone "Act" layer: gap-to-quarter, the deals
 // that would close it, stage-aware follow-ups due, and stale deals to prune.
@@ -250,8 +147,8 @@ app.get('/api/convert/act', async (req, res) => {
     const data = await cached('convert-act', async () => {
       const LATE = new Set(['Consult Completed', 'Build Scope', 'Decision Pending']);
       const q = currentQuarter();
-      const productMap = await fetchSalesProductMap().catch(() => ({}));
-      const deals = (await queryAllDeals()).map((pg) => serializeDeal(pg, productMap)).filter((d) => !d.archived);
+      const productMap = await fetchSalesProductMap(notion, cached).catch(() => ({}));
+      const deals = (await queryAllDeals(notion)).map((pg) => serializeDeal(pg, productMap)).filter((d) => !d.archived);
 
       let booked = 0, openValue = 0, openCount = 0;
       const late = [], onHold = [];
@@ -309,8 +206,8 @@ app.get('/api/convert/act', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET /api/sales/pulse — this-week pulse vs sales counts, goals, and weekly streak.
-app.get('/api/sales/pulse', async (req, res) => {
+// GET /api/convert/pulse — this-week pulse vs sales counts, goals, and weekly streak.
+app.get('/api/convert/pulse', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
     if (req.query.fresh === '1') cache.delete('sales-pulse');
@@ -370,8 +267,8 @@ app.get('/api/sales/pulse', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET /api/sales/contacts?q= — search active contacts for the drawer dropdown.
-app.get('/api/sales/contacts', async (req, res) => {
+// GET /api/convert/contacts?q= — search active contacts for the drawer dropdown.
+app.get('/api/convert/contacts', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
     const q = (req.query.q || '').trim();
@@ -388,8 +285,8 @@ app.get('/api/sales/contacts', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// POST /api/sales/touchpoint — log an activity + bump the contact's Last Touched.
-app.post('/api/sales/touchpoint', async (req, res) => {
+// POST /api/convert/touchpoint — log an activity + bump the contact's Last Touched.
+app.post('/api/convert/touchpoint', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { contactId, contactName, touchpointType, channel, notes, loggedBy, timestamp } = req.body || {};
   if (!contactId || !touchpointType) return res.status(400).json({ error: 'contactId and touchpointType are required' });
@@ -414,8 +311,8 @@ app.post('/api/sales/touchpoint', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET /api/sales/touchpoints?period=month|quarter — list activity rows for a period with full detail.
-app.get('/api/sales/touchpoints', async (req, res) => {
+// GET /api/convert/touchpoints?period=month|quarter — list activity rows for a period with full detail.
+app.get('/api/convert/touchpoints', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
     const period = req.query.period === 'quarter' ? 'quarter' : 'month';
@@ -473,8 +370,8 @@ app.get('/api/sales/touchpoints', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// PATCH /api/sales/touchpoint/:id — update an existing activity row.
-app.patch('/api/sales/touchpoint/:id', async (req, res) => {
+// PATCH /api/convert/touchpoint/:id — update an existing activity row.
+app.patch('/api/convert/touchpoint/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { touchpointType, channel, notes, loggedBy, timestamp } = req.body || {};
   try {
@@ -490,5 +387,5 @@ app.patch('/api/sales/touchpoint/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-  return { serializeDeal, queryAllDeals, fetchSalesProductMap, serializeContactRow, CONTACTS_DS, PULSE_RELATIONSHIPS };
 }
+

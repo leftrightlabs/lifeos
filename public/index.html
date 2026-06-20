@@ -4789,7 +4789,7 @@ function renderNeedleCards(){
         const btn = el.querySelector('.needle-act'); const prev = btn.textContent;
         btn.disabled = true; btn.textContent = 'Logging…';
         try {
-          const r = await fetch('/api/sales/touchpoint', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ contactId: act.contactId, contactName: act.contactName, touchpointType:'👋 General Touchpoint' }) });
+          const r = await fetch('/api/convert/touchpoint', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ contactId: act.contactId, contactName: act.contactName, touchpointType:'👋 General Touchpoint' }) });
           if (!r.ok) throw new Error('failed');
           window.lrl?.haptic?.('success'); window.lrl?.toast?.('Touch logged for ' + (act.contactName || 'contact'), 'success');
           NEEDLE_DISMISSED.add(id); await saveNeedleDismissed(); renderNeedleCards();
@@ -8880,13 +8880,13 @@ document.addEventListener('visibilitychange', async () => {
   const dchip=(ds)=>{ if(!ds) return ''; const dt=new Date(ds+'T12:00:00'); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
   const saveCollapse=()=>{ try{localStorage.setItem(COLLAPSE_KEY,JSON.stringify(S.collapsed));}catch(_){} };
 
-  async function fetchSales(fresh){ const r=await fetch('/api/sales/pipeline'+(fresh?'?fresh=1':'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.data=d; (d.stages||[]).forEach(st=>st.deals.forEach(x=>S.dealsById[x.id]=x)); (d.recentWins||[]).forEach(x=>S.dealsById[x.id]=x); return d; }
-  async function fetchPulse(fresh){ const r=await fetch('/api/sales/pulse'+(fresh?'?fresh=1':'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.pulse=d; return d; }
-  async function fetchOverdue(fresh){ const rel=(S.reachRel&&S.reachRel!=='all')?S.reachRel:''; const qs=[fresh?'fresh=1':'', rel?('rel='+encodeURIComponent(rel)):''].filter(Boolean).join('&'); const r=await fetch('/api/sales/overdue'+(qs?'?'+qs:'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.overdue=d; return d; }
+  async function fetchSales(fresh){ const r=await fetch('/api/convert/pipeline'+(fresh?'?fresh=1':'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.data=d; (d.stages||[]).forEach(st=>st.deals.forEach(x=>S.dealsById[x.id]=x)); (d.recentWins||[]).forEach(x=>S.dealsById[x.id]=x); return d; }
+  async function fetchPulse(fresh){ const r=await fetch('/api/convert/pulse'+(fresh?'?fresh=1':'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.pulse=d; return d; }
+  async function fetchOverdue(fresh){ const rel=(S.reachRel&&S.reachRel!=='all')?S.reachRel:''; const qs=[fresh?'fresh=1':'', rel?('rel='+encodeURIComponent(rel)):''].filter(Boolean).join('&'); const r=await fetch('/api/convert/overdue'+(qs?'?'+qs:'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.overdue=d; return d; }
   async function reachSearch(q){
     if(!q || q.length<2){ S.reachResults=undefined; renderReachList(); return; }
     S.reachResults=null; renderReachList(); // "Searching…"
-    try{ const r=await fetch('/api/sales/contacts?q='+encodeURIComponent(q)); const d=await r.json(); if(q===(S.reachSearch||'')){ S.reachResults=d.contacts||[]; renderReachList(); } }catch(_){ S.reachResults=[]; renderReachList(); }
+    try{ const r=await fetch('/api/convert/contacts?q='+encodeURIComponent(q)); const d=await r.json(); if(q===(S.reachSearch||'')){ S.reachResults=d.contacts||[]; renderReachList(); } }catch(_){ S.reachResults=[]; renderReachList(); }
   }
 
   async function maybeLoadSales(){
@@ -8946,7 +8946,7 @@ document.addEventListener('visibilitychange', async () => {
     el.innerHTML=html;
     el.querySelectorAll('[data-cv-toggle]').forEach(function(h){ h.addEventListener('click', function(){ var k=h.getAttribute('data-cv-toggle'); CV_COLLAPSED[k]=!CV_COLLAPSED[k]; cvSaveCollapsed(); h.closest('.mkt-section').classList.toggle('collapsed'); window.lrl?.haptic?.('tap'); }); });
     el.querySelectorAll('[data-cvopen]').forEach(function(b){ b.addEventListener('click', function(e){ e.stopPropagation(); var u=b.getAttribute('data-cvopen'); if(u) window.open(u,'_blank'); }); });
-    el.querySelectorAll('[data-cvtouch]').forEach(function(b){ b.addEventListener('click', async function(e){ e.stopPropagation(); var id=b.getAttribute('data-cvtouch'), name=b.getAttribute('data-cvname'), prev=b.textContent; b.disabled=true; b.textContent='Logging…'; try{ var r=await fetch('/api/sales/touchpoint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contactId:id,contactName:name,touchpointType:'👋 General Touchpoint'})}); if(!r.ok) throw new Error('failed'); window.lrl?.haptic?.('success'); window.lrl?.toast?.('Touch logged for '+name,'success'); var card=b.closest('.needle-card'); if(card){ card.style.transition='opacity .3s'; card.style.opacity='0'; setTimeout(function(){ card.remove(); },300); } }catch(err){ b.disabled=false; b.textContent=prev; window.lrl?.toast?.('Could not log touch','error'); } }); });
+    el.querySelectorAll('[data-cvtouch]').forEach(function(b){ b.addEventListener('click', async function(e){ e.stopPropagation(); var id=b.getAttribute('data-cvtouch'), name=b.getAttribute('data-cvname'), prev=b.textContent; b.disabled=true; b.textContent='Logging…'; try{ var r=await fetch('/api/convert/touchpoint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contactId:id,contactName:name,touchpointType:'👋 General Touchpoint'})}); if(!r.ok) throw new Error('failed'); window.lrl?.haptic?.('success'); window.lrl?.toast?.('Touch logged for '+name,'success'); var card=b.closest('.needle-card'); if(card){ card.style.transition='opacity .3s'; card.style.opacity='0'; setTimeout(function(){ card.remove(); },300); } }catch(err){ b.disabled=false; b.textContent=prev; window.lrl?.toast?.('Could not log touch','error'); } }); });
   }
   window.refreshConvertAct = async function(){ await fetchConvertAct(true); renderConvertAct(); };
 
@@ -9090,12 +9090,12 @@ document.addEventListener('visibilitychange', async () => {
     const modal=document.getElementById('sales-modal'); const el=document.getElementById('sales-modal-content');
     el.innerHTML='<button class="mkt-modal-close" data-sales-close>×</button><div class="mkt-empty" style="padding:30px">Loading…</div>';
     modal.classList.add('open'); document.body.style.overflow='hidden';
-    try { const r=await fetch('/api/sales/deal/'+id); const d=await r.json(); if(d.error) throw new Error(d.error); S.dealsById[d.deal.id]=d.deal; el.innerHTML=detailHtml(d.deal); }
+    try { const r=await fetch('/api/convert/deal/'+id); const d=await r.json(); if(d.error) throw new Error(d.error); S.dealsById[d.deal.id]=d.deal; el.innerHTML=detailHtml(d.deal); }
     catch(err){ el.innerHTML='<button class="mkt-modal-close" data-sales-close>×</button><div class="mkt-empty" style="padding:30px">'+esc(err.message)+'</div>'; }
   }
   function closeSalesModal(){ document.getElementById('sales-modal').classList.remove('open'); document.body.style.overflow=''; }
 
-  async function salesPatch(id,payload){ const r=await fetch('/api/sales/deal/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error||'save failed');} return r.json(); }
+  async function salesPatch(id,payload){ const r=await fetch('/api/convert/deal/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error||'save failed');} return r.json(); }
 
   document.addEventListener('click', async (e)=>{
     const t=e.target;
@@ -9165,7 +9165,7 @@ document.addEventListener('visibilitychange', async () => {
     document.getElementById('tp-modal').classList.add('open'); document.body.style.overflow='hidden';
     sheet.innerHTML='<div class="mkt-empty" style="padding:30px 0">Loading…</div>';
     try{
-      const r=await fetch('/api/sales/touchpoints?period='+period);
+      const r=await fetch('/api/convert/touchpoints?period='+period);
       const d=await r.json(); if(d.error) throw new Error(d.error);
       const p=S.pulse||{};
       const label=period==='quarter'?esc(p.quarterLabel||'This Quarter'):'This Month';
@@ -9195,7 +9195,7 @@ document.addEventListener('visibilitychange', async () => {
   async function drawerSearch(q){
     const box=document.getElementById('pulse-results'); if(!box) return;
     if(!q || q.length<2){ box.style.display='none'; box.innerHTML=''; return; }
-    try{ const r=await fetch('/api/sales/contacts?q='+encodeURIComponent(q)); const d=await r.json(); const list=d.contacts||[];
+    try{ const r=await fetch('/api/convert/contacts?q='+encodeURIComponent(q)); const d=await r.json(); const list=d.contacts||[];
       box.innerHTML = list.length ? list.map(c=>`<div class="pulse-results-item" data-drawer-pick="${c.id}" data-cname="${esc(c.name)}"><span>${esc(c.name)}</span><span class="rel">${esc(c.relationship||'')}</span></div>`).join('') : '<div class="pulse-results-item" style="cursor:default;color:var(--navy-dim)">No matches</div>';
       box.style.display='block';
     }catch(_){}
@@ -9211,9 +9211,9 @@ document.addEventListener('visibilitychange', async () => {
     try{
       let r;
       if(isEdit){
-        r=await fetch('/api/sales/touchpoint/'+drawer.editId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({touchpointType:type,channel,notes,loggedBy:drawer.loggedBy,timestamp:date})});
+        r=await fetch('/api/convert/touchpoint/'+drawer.editId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({touchpointType:type,channel,notes,loggedBy:drawer.loggedBy,timestamp:date})});
       } else {
-        r=await fetch('/api/sales/touchpoint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contactId:drawer.contactId,contactName:drawer.contactName,touchpointType:type,channel,notes,loggedBy:drawer.loggedBy,timestamp:date})});
+        r=await fetch('/api/convert/touchpoint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contactId:drawer.contactId,contactName:drawer.contactName,touchpointType:type,channel,notes,loggedBy:drawer.loggedBy,timestamp:date})});
       }
       const d=await r.json(); if(!r.ok||d.error) throw new Error(d.error||'failed');
       window.lrl?.haptic('success');
