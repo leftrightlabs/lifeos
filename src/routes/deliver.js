@@ -28,7 +28,8 @@ export function registerDeliverRoutes(app, ctx) {
           fillsGap: o.categories.some((c) => gaps.has(c)),
         }))
         .sort((a, b) => (Number(b.fillsGap) - Number(a.fillsGap)) || (Number(!!b.url) - Number(!!a.url)));
-      res.json({ ladder, drafts, totalOffers: offers.length, asOf: new Date().toISOString() });
+      const offerList = offers.map((o) => ({ name: o.name, categories: o.categories, status: o.status, url: o.url, notionUrl: o.notionUrl }));
+      res.json({ ladder, drafts, offers: offerList, totalOffers: offers.length, asOf: new Date().toISOString() });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 

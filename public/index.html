@@ -9864,9 +9864,11 @@ document.addEventListener('visibilitychange', async () => {
   .dl-hl { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 14px; font-size: 13px; color: var(--navy-dim); }
   .dl-hl-item b { color: var(--navy); font-size: 15px; }
   .dl-ladder-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
-  .dl-ladder { border: 1px solid var(--navy-faint); border-radius: 10px; padding: 12px; }
+  .dl-ladder { border: 1px solid var(--navy-faint); border-radius: 10px; padding: 12px; cursor: pointer; transition: border-color .12s, background .12s; }
+  .dl-ladder:hover { border-color: var(--lime); }
   .dl-ladder.gap { border-color: rgba(255,183,77,.5); background: rgba(255,183,77,.06); }
   .dl-ladder.gap .dl-ladder-meta { color: #e0a23c; }
+  .dl-ladder.sel { border-color: var(--lime); background: var(--lime-faint); }
   .dl-ladder-name { font-size: 11px; font-weight: 700; letter-spacing: .05em; color: var(--navy); }
   .dl-ladder-meta { font-size: 12px; color: var(--navy-dim); margin-top: 4px; }
   .dl-owner { padding: 7px 0; }
@@ -9883,7 +9885,7 @@ document.addEventListener('visibilitychange', async () => {
   const ACTIVE=new Set(['Active','Ongoing','Billing']);
   let COL={}; try{ COL=JSON.parse(localStorage.getItem('lrl-deliver-col')||'{}')||{}; }catch(e){ COL={}; }
   const saveCol=()=>{ try{ localStorage.setItem('lrl-deliver-col', JSON.stringify(COL)); }catch(e){} };
-  let ownerOpen=null, booted=false;
+  let ownerOpen=null, ladderOpen=null, booted=false;
 
   const today=()=>{ const d=new Date(); d.setHours(0,0,0,0); return d.toISOString().slice(0,10); };
   const target=(p)=> p.end||p.due||p.deadline||null;
@@ -9919,16 +9921,22 @@ document.addEventListener('visibilitychange', async () => {
     const d=DLX.offers;
     if(!d) return '<div class="cv-empty">Loading offer catalog…</div>';
     if(d.error) return '<div class="cv-empty">Couldn\'t load offers: '+esc(d.error)+'</div>';
-    const cards=(d.ladder||[]).map(l=>{ const live=l.live>0, draftN=l.total-l.live;
-      return '<div class="dl-ladder'+(live?'':' gap')+'"><div class="dl-ladder-name">'+esc(l.name)+'</div><div class="dl-ladder-meta">'+(live?('✓ '+l.live+' live'):'⚠ none live')+(draftN>0?(' · '+draftN+' draft'):'')+'</div></div>';
+    const cards=(d.ladder||[]).map(l=>{ const live=l.live>0, draftN=l.total-l.live, sel=ladderOpen===l.name;
+      return '<div class="dl-ladder'+(live?'':' gap')+(sel?' sel':'')+'" data-ladder="'+esc(l.name)+'"><div class="dl-ladder-name">'+esc(l.name)+'</div><div class="dl-ladder-meta">'+(live?('✓ '+l.live+' live'):'⚠ none live')+(draftN>0?(' · '+draftN+' draft'):'')+'</div></div>';
     }).join('');
     let html='<div class="dl-ladder-row">'+cards+'</div>';
-    const drafts=d.drafts||[];
-    if(drafts.length){
-      html+='<div class="cv-note" style="margin:13px 0 8px">Finish &amp; publish ('+drafts.length+'):</div>';
-      html+=drafts.slice(0,10).map(o=>actionCard(o.status, o.name, o.status+(o.url?' · has landing URL':' · no URL yet')+(o.fillsGap?' · fills a ladder gap':''), o.url||o.notionUrl)).join('');
-      if(drafts.length>10) html+='<div class="cv-note" style="margin-top:6px">+'+(drafts.length-10)+' more drafts</div>';
-    } else html+='<div class="cv-note" style="margin-top:11px">Every offer is published. 🎉</div>';
+    if(ladderOpen){
+      const list=(d.offers||[]).filter(o=>(o.categories||[]).includes(ladderOpen)).sort((a,b)=>((a.status==='Published'?0:1)-(b.status==='Published'?0:1))||a.name.localeCompare(b.name));
+      html+='<div class="cv-note" style="margin:13px 0 8px">'+esc(ladderOpen)+' — '+list.length+' offer'+(list.length===1?'':'s')+' · tap the rung again to clear</div>';
+      html+= list.length ? list.map(o=>actionCard(o.status, o.name, o.status+(o.url?' · has landing URL':' · no URL yet'), o.url||o.notionUrl)).join('') : '<div class="cv-empty">No offers in this rung yet.</div>';
+    } else {
+      const drafts=d.drafts||[];
+      if(drafts.length){
+        html+='<div class="cv-note" style="margin:13px 0 8px">Finish &amp; publish ('+drafts.length+') · or tap a rung above to filter:</div>';
+        html+=drafts.slice(0,10).map(o=>actionCard(o.status, o.name, o.status+(o.url?' · has landing URL':' · no URL yet')+(o.fillsGap?' · fills a ladder gap':''), o.url||o.notionUrl)).join('');
+        if(drafts.length>10) html+='<div class="cv-note" style="margin-top:6px">+'+(drafts.length-10)+' more drafts</div>';
+      } else html+='<div class="cv-note" style="margin-top:11px">Every offer is published. 🎉 Tap a rung to see its offers.</div>';
+    }
     return html;
   }
   function renewalsHTML(){
@@ -9988,6 +9996,7 @@ document.addEventListener('visibilitychange', async () => {
     el.querySelectorAll('.proj-group-head').forEach(h=>h.addEventListener('click',()=>{ const g=h.closest('.proj-group'); const now=g.classList.toggle('collapsed'); COL[g.dataset.dlGroup]=now; saveCol(); }));
     el.querySelectorAll('[data-dl-owner]').forEach(o=>o.querySelector('.dl-owner-row').addEventListener('click',()=>{ const n=o.getAttribute('data-dl-owner'); ownerOpen = ownerOpen===n ? null : n; render(); }));
     el.querySelectorAll('[data-dlopen]').forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation(); const u=b.getAttribute('data-dlopen'); if(!u) return; if(PA()) PA().openUrl(u); else window.open(u,'_blank','noopener'); }));
+    el.querySelectorAll('[data-ladder]').forEach(c=>c.addEventListener('click',()=>{ const n=c.getAttribute('data-ladder'); ladderOpen = ladderOpen===n ? null : n; render(); }));
     wireCards(el);
   }
 
