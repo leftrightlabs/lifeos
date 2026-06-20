@@ -1,4 +1,5 @@
 import { whatsWorkingAll, gaConfigured } from '../providers/google/analytics.js';
+import { ytWhatsWorking, ytConfigured } from '../providers/google/youtube.js';
 
 export function registerAttractRoutes(app, ctx) {
   const { notion, cache, cached, currentQuarter, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, anthropic, userContext } = ctx;
@@ -325,35 +326,41 @@ app.get('/api/attract/media', async (req, res) => {
   } catch (err) { res.status(500).end(err.message); }
 });
 
-  // GET /api/attract/insights — GA4 "what's working" across both properties + AI suggestions.
+  // GET /api/attract/insights — GA4 web + YouTube "what's working" + AI suggestions.
   app.get('/api/attract/insights', async (req, res) => {
     try {
-      if (!gaConfigured()) return res.json({ configured: false, properties: [], suggestions: [] });
+      if (!gaConfigured() && !ytConfigured()) return res.json({ configured: false, properties: [], youtube: null, suggestions: [] });
       if (req.query.fresh === '1') {
         const u = userContext.getStore()?.user;
         cache.delete(u ? `attract-insights::${u.id || u.email}` : 'attract-insights');
       }
       const data = await cached('attract-insights', async () => {
-        const properties = await whatsWorkingAll();
-        const ok = properties.filter((p) => !p.error);
+        const [properties, youtube] = await Promise.all([
+          gaConfigured() ? whatsWorkingAll() : Promise.resolve([]),
+          ytConfigured() ? ytWhatsWorking().catch((e) => ({ label: 'YouTube', error: (e.message || String(e)).slice(0, 200) })) : Promise.resolve(null),
+        ]);
+        const okGa = properties.filter((p) => !p.error);
+        const okYt = youtube && !youtube.error ? youtube : null;
         let suggestions = [];
-        if (anthropic && ok.length) {
+        if (anthropic && (okGa.length || okYt)) {
           try {
             const tp = (n) => (n == null ? 'n/a' : (n >= 0 ? '+' : '') + n + '%');
-            const summary = ok.map((p) => {
+            const gaSummary = okGa.map((p) => {
               const pages = p.topPages.slice(0, 5).map((x) => `${x.path} (${x.sessions} sessions, ${x.keyEvents} conv)`).join('; ');
               const chans = p.channels.slice(0, 6).map((x) => `${x.name} (${x.sessions} sessions, ${x.keyEvents} conv)`).join('; ');
-              return `PROPERTY "${p.label}" — last 28d vs prior 28d: ${p.totals.sessions} sessions (${tp(p.trend.sessions)}), ${p.totals.users} users, ${p.totals.keyEvents} conversions (${tp(p.trend.keyEvents)}).\n  Top pages: ${pages}\n  Channels: ${chans}`;
+              return `WEB PROPERTY "${p.label}" — last 28d vs prior 28d: ${p.totals.sessions} sessions (${tp(p.trend.sessions)}), ${p.totals.users} users, ${p.totals.keyEvents} conversions (${tp(p.trend.keyEvents)}).\n  Top pages: ${pages}\n  Channels: ${chans}`;
             }).join('\n\n');
-            const noConv = ok.every((p) => p.totals.keyEvents === 0);
-            const prompt = `You are the marketing analyst for Left Right Labs (a brand + website design agency). Google Analytics, last 28 days vs the prior 28, for two web properties (the main site and the "Toolkit" that hosts lead-gen opt-in funnels):\n\n${summary}\n\nGive 3-5 short, specific, action-oriented insights — each ONE sentence, grounded in these exact numbers (name the page, channel, or property). Focus on what is driving growth and leads and what to do next.${noConv ? ' IMPORTANT: conversions/key events are not set up in GA4 yet (all show 0), so base insights on traffic + engagement, and make ONE insight recommend marking the opt-in completions as Key Events in GA4 so lead conversions can be tracked.' : ''} Reply with ONLY a JSON array of strings, nothing else.`;
-            const msg = await anthropic.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 500, messages: [{ role: 'user', content: prompt }] });
+            const ytSummary = okYt ? `YOUTUBE CHANNEL "${okYt.channelTitle}" — ${okYt.subscribers} subscribers, ${okYt.videoCount} videos, ${okYt.totalViews} lifetime views, recent uploads average ${okYt.recentAvgViews} views.\n  Top recent videos: ${okYt.topVideos.map((v) => `"${v.title}" (${v.views} views, ${v.likes} likes, ${v.comments} comments)`).join('; ')}` : '';
+            const summary = [gaSummary, ytSummary].filter(Boolean).join('\n\n');
+            const noConv = okGa.length && okGa.every((p) => p.totals.keyEvents === 0);
+            const prompt = `You are the marketing analyst for Left Right Labs (a brand + website design agency). Below is the last 28 days of data across web (Google Analytics: the main site + the "Toolkit" lead-gen funnels) and YouTube. Left Right Labs especially wants to GROW the YouTube channel.\n\n${summary}\n\nGive 4-6 short, specific, action-oriented insights — each ONE sentence, grounded in these exact numbers (name the page, channel, video, or property). Cover both web and YouTube, and include at least two YouTube-growth insights (e.g. which video topic/format over-performed relative to the average and to make more of it).${noConv ? ' Also: GA4 conversions/key events are not set up yet (web conversions show 0), so make ONE insight recommend marking the opt-in completions as Key Events in GA4.' : ''} Reply with ONLY a JSON array of strings, nothing else.`;
+            const msg = await anthropic.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 600, messages: [{ role: 'user', content: prompt }] });
             const text = (msg.content?.[0]?.text) || '[]';
             const mm = text.match(/\[[\s\S]*\]/);
             if (mm) suggestions = JSON.parse(mm[0]);
           } catch (e) { console.error('attract-insights ai:', e.message); }
         }
-        return { asOf: new Date().toISOString(), properties, suggestions };
+        return { asOf: new Date().toISOString(), properties, youtube, suggestions };
       });
       res.json({ configured: true, ...data });
     } catch (err) { res.status(500).json({ error: err.message }); }

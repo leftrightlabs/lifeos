@@ -8640,13 +8640,19 @@ document.addEventListener('visibilitychange', async () => {
       const sugg = d.suggestions || [];
       body = sugg.length ? '<ul class="aw-list">' + sugg.map(s=>'<li>'+mEsc(s)+'</li>').join('') + '</ul>' : '<div class="cv-empty">No suggestions yet — check back after more data.</div>';
       const props = (d.properties||[]).filter(p=>!p.error);
-      if (props.length){
-        body += '<div class="aw-props">' + props.map(p=>{
+      const yt = (d.youtube && !d.youtube.error) ? d.youtube : null;
+      if (props.length || yt){
+        let tiles = props.map(p=>{
           const t = p.trend && p.trend.sessions;
           const tt = (t==null) ? '' : ' <span class="aw-trend '+(t>=0?'up':'down')+'">'+(t>=0?'▲':'▼')+Math.abs(t)+'%</span>';
           const topCh = (p.channels && p.channels[0]) ? p.channels[0].name : '';
           return '<div class="aw-prop"><span class="aw-prop-name">'+mEsc(p.label)+'</span><span class="aw-prop-stat">'+Number(p.totals.sessions||0).toLocaleString()+' sessions'+tt+(topCh?' · top: '+mEsc(topCh):'')+'</span></div>';
-        }).join('') + '</div>';
+        }).join('');
+        if (yt){
+          const topV = (yt.topVideos && yt.topVideos[0]) ? yt.topVideos[0] : null;
+          tiles += '<div class="aw-prop"><span class="aw-prop-name">YouTube</span><span class="aw-prop-stat">'+Number(yt.subscribers||0).toLocaleString()+' subs · '+Number(yt.videoCount||0).toLocaleString()+' videos · avg '+Number(yt.recentAvgViews||0).toLocaleString()+' views'+(topV?'<br><span style="color:var(--navy-dim);font-weight:500">top: '+mEsc(topV.title.slice(0,42))+' ('+Number(topV.views).toLocaleString()+')</span>':'')+'</span></div>';
+        }
+        body += '<div class="aw-props">' + tiles + '</div>';
       }
     }
     el.innerHTML = '<div class="mkt-section'+(AW_COLLAPSED?' collapsed':'')+'"><div class="mkt-sec-head" data-aw-toggle><span class="mkt-sec-caret">▾</span><span class="mkt-sec-title">What\'s Working</span><span class="mkt-sec-count zero">28d · GA</span></div><div class="mkt-sec-body">'+body+'</div></div>';
