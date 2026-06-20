@@ -1767,6 +1767,9 @@
 
   /* === Privacy mode (blur sensitive numbers for demos) === */
   .app-footer { position: fixed; bottom: 0.5rem; left: 0.75rem; z-index: 95; display: inline-flex; align-items: center; gap: 8px; }
+  .app-footer .refresh-btn { width: 32px; height: 32px; padding: 0; background: rgba(var(--edge-rgb), 0.04); border-color: rgba(var(--edge-rgb), 0.1); color: rgba(var(--ink-rgb), 0.5); }
+  .app-footer .refresh-btn:hover { color: var(--lime); border-color: var(--lime); background: var(--lime-faint); }
+  .app-footer #week-of { font-size: 10.5px; color: rgba(var(--ink-rgb), 0.4); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
   .privacy-fab { background: rgba(var(--edge-rgb), 0.04); border: 1px solid rgba(var(--edge-rgb), 0.1); color: rgba(var(--ink-rgb), 0.5); width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; transition: all 0.18s; flex-shrink: 0; }
   /* Theme picker in the footer: 32px to match the privacy fab, menu opens upward */
   .theme-picker-footer .theme-fab { width: 32px; height: 32px; }
@@ -3132,14 +3135,6 @@ window.lrl = (function(){
       </div>
     </div>
     <div class="header-meta">
-      <button class="refresh-btn" onclick="triggerRefresh()" title="Refresh dashboard from live APIs">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="23 4 23 10 17 10"></polyline>
-          <polyline points="1 20 1 14 7 14"></polyline>
-          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-        </svg>
-      </button>
-      <span id="week-of">Loading…</span>
       <a href="/auth/logout" class="signout-link" title="Sign out" aria-label="Sign out">
         <span class="signout-text">Sign out</span>
         <svg class="signout-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -3874,6 +3869,14 @@ window.lrl = (function(){
       <div class="theme-menu-label">Color theme</div>
     </div>
   </div>
+  <button class="refresh-btn" onclick="triggerRefresh()" title="Refresh dashboard from live APIs">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="23 4 23 10 17 10"></polyline>
+      <polyline points="1 20 1 14 7 14"></polyline>
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+    </svg>
+  </button>
+  <span id="week-of">Loading…</span>
   <div class="privacy-status">Privacy</div>
 </div>
 
@@ -4875,7 +4878,7 @@ function renderEvening(){
   if (personalSec) personalSec.style.display = (m === 'personal' || m === 'all') ? '' : 'none';
   // In single-mode view we don't need the "Work"/"Personal" sub-headers
   card.querySelectorAll('.ritual-subhead').forEach(el => {
-    el.style.display = (m === 'all') ? '' : 'none';
+    el.style.display = (m === 'all' && !weekend) ? '' : 'none'; // single section on weekends → no labels
   });
   // Reflect checked states
   EVENING_ALL_STEPS.forEach(k => {
