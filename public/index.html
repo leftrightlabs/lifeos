@@ -3487,7 +3487,7 @@ window.lrl = (function(){
       <div class="kpi-card"><div class="kpi-label">Debt Paydown</div><div class="kpi-value"><span>$11K</span></div><div class="kpi-change positive">44% to $25K</div></div>
       <div class="kpi-card"><div class="kpi-label">Emergency Fund</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending YNAB integration</div></div>
       <div class="kpi-card"><div class="kpi-label">Monthly Budget</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending YNAB integration</div></div>
-      <div class="kpi-card"><div class="kpi-label">Net Worth</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending integration</div></div>
+      <div class="kpi-card"><div class="kpi-label">Net Worth</div><div class="kpi-value"><span id="wealth-networth">—</span></div><div class="kpi-change" id="wealth-networth-sub">Pending integration</div></div>
     </div>
   </div>
 
@@ -5846,6 +5846,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     if (tab.dataset.tab === 'finance') maybeLoadFinance();
     if (tab.dataset.tab === 'marketing') maybeLoadMarketing();
     if (tab.dataset.tab === 'pipeline') maybeLoadSales();
+    if (tab.dataset.tab === 'finance-personal') window.maybeLoadWealth?.();
     if (tab.dataset.tab === 'projects') window.maybeLoadProjects?.();
   });
 });
@@ -7279,6 +7280,20 @@ async function fetchHealth(){
 
 // Lazy-load when the Health tab is opened (don't fetch on every page load)
 let _healthLoaded = false;
+function maybeLoadWealth(){
+  fetch('/api/wealth/networth').then(r=>r.json()).then(d=>{
+    const v = document.getElementById('wealth-networth');
+    const sub = document.getElementById('wealth-networth-sub');
+    if (!v || !sub) return;
+    if (d.error){ sub.textContent = 'YNAB error'; return; }
+    if (!d.configured){ sub.textContent = 'Connect YNAB to show net worth'; return; }
+    const nw = Math.round(d.netWorth || 0);
+    v.textContent = (nw < 0 ? '-$' : '$') + Math.abs(nw).toLocaleString('en-US');
+    const dt = d.asOf ? new Date(d.asOf).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+    sub.textContent = 'via YNAB' + (dt ? (' · ' + dt) : '');
+    sub.classList.remove('positive');
+  }).catch(e=>console.error('maybeLoadWealth', e));
+}
 function maybeLoadHealth(){
   if (_healthLoaded) return;
   _healthLoaded = true;
@@ -7838,6 +7853,7 @@ document.addEventListener('keydown', (e) => {
       setTimeout(() => {
         if (saved === 'health') window.maybeLoadHealth?.();
         if (saved === 'finance') window.maybeLoadFinance?.();
+        if (saved === 'finance-personal') window.maybeLoadWealth?.();
         if (saved === 'marketing') window.maybeLoadMarketing?.();
         if (saved === 'pipeline') window.maybeLoadSales?.();
         if (saved === 'projects') window.maybeLoadProjects?.();

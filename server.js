@@ -13,6 +13,7 @@ import { registerConvertRoutes } from './src/routes/convert.js';
 import { serializeDeal, serializeContactRow, queryAllDeals, fetchSalesProductMap } from './src/providers/notion/convert.js';
 import { CONTACTS_DS, PULSE_RELATIONSHIPS } from './src/config/convert.js';
 import { registerAttractRoutes } from './src/routes/attract.js';
+import { registerWealthRoutes } from './src/routes/wealth.js';
 
 if (process.env.NODE_ENV !== 'production') {
   const { default: dotenv } = await import('dotenv');
@@ -120,6 +121,7 @@ async function resolveNotionUserId(email) {
 const cache = new Map();
 const CACHE_TTL_OVERRIDES = {
   'attract-insights': 6 * 60 * 60_000, // GA4 + AI analysis: refresh every 6h
+  'ynab-networth': 60 * 60_000, // YNAB net worth: refresh hourly
   'journal-rings': 5 * 60_000, // heavier query (per-row body-text check); cache longer
   'vto-goals': 10 * 60_000,    // goals rarely change
   'active-projects': 5 * 60_000, // project status changes slowly
@@ -3230,6 +3232,7 @@ function dashifyId(id) {
 // ===== Attract / Marketing domain — extracted to src/routes/attract.js =====
 const { MARKETING_ASSETS_DS, fetchMarketingChannelMap, serializeMarketingAsset } =
   registerAttractRoutes(app, { notion, cache, cached, currentQuarter, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, anthropic, userContext });
+registerWealthRoutes(app, { cached, cache, userContext });
 
 // =========================== MOVE THE NEEDLE (Phase 0) ===========================
 // GET /api/needle/today — ONE ranked, cross-zone "what to do next" list. This is
