@@ -2992,7 +2992,7 @@ window.lrl = (function(){
     <button class="tab" data-tab="autofocus" data-modes="all,work,personal">Tasks</button>
     <button class="tab" data-tab="review" data-modes="all,work,personal">Review</button>
     <button class="tab tab-ctx" data-tab="pipeline" data-modes="work">Convert</button>
-    <button class="tab tab-ctx" data-tab="marketing" data-modes="work">Marketing</button>
+    <button class="tab tab-ctx" data-tab="marketing" data-modes="work">Attract</button>
     <button class="tab tab-ctx" data-tab="finance" data-modes="work">Finance</button>
     <button class="tab tab-ctx" data-tab="team" data-modes="work">Team</button>
     <button class="tab tab-ctx" data-tab="health" data-modes="personal">Health</button>
@@ -3435,8 +3435,8 @@ window.lrl = (function(){
 
   <!-- MARKETING TAB -->
   <div class="tab-content" data-content="marketing">
-    <div class="section-label">Marketing Engine</div>
-    <h1 class="page-title"><span>Marketing</span></h1>
+    <div class="section-label">Attract</div>
+    <h1 class="page-title"><span>Attract</span></h1>
     <div class="page-subtitle">Publish today's content, track where it went live, and see what's ahead.</div>
     <div id="mkt-body"><div style="color:var(--navy-dim);font-size:13px;padding:20px 0">loading…</div></div>
   </div>
@@ -8575,7 +8575,7 @@ document.addEventListener('visibilitychange', async () => {
   }
 
   async function fetchMktToday(fresh){
-    const r = await fetch('/api/marketing/today' + (fresh?'?fresh=1':''));
+    const r = await fetch('/api/attract/today' + (fresh?'?fresh=1':''));
     const d = await r.json();
     if (d.error) throw new Error(d.error);
     MKT.data = d;
@@ -8584,14 +8584,14 @@ document.addEventListener('visibilitychange', async () => {
   }
   async function fetchMktCalendar(month, fresh){
     const m = month || chiMonth();
-    const r = await fetch('/api/marketing/calendar?month=' + m + (fresh?'&fresh=1':''));
+    const r = await fetch('/api/attract/calendar?month=' + m + (fresh?'&fresh=1':''));
     const d = await r.json();
     if (d.error) throw new Error(d.error);
     MKT.cal = d; MKT.calMonth = d.month || m;
     return d;
   }
   async function fetchMktStats(fresh){
-    const r = await fetch('/api/marketing/stats' + (fresh?'?fresh=1':''));
+    const r = await fetch('/api/attract/stats' + (fresh?'?fresh=1':''));
     const d = await r.json();
     if (d.error) throw new Error(d.error);
     MKT.stats = d; return d;
@@ -8770,7 +8770,7 @@ document.addEventListener('visibilitychange', async () => {
     el.innerHTML = '<button class="mkt-modal-close" data-mkt-close>×</button><div class="mkt-empty" style="padding:30px">Loading…</div>';
     modal.classList.add('open'); document.body.style.overflow='hidden';
     try {
-      const r = await fetch('/api/marketing/asset/'+id); const d = await r.json();
+      const r = await fetch('/api/attract/asset/'+id); const d = await r.json();
       if (d.error) throw new Error(d.error);
       MKT.assetsById[d.asset.id] = d.asset;
       renderMktModalCard(d.asset);
@@ -8805,7 +8805,7 @@ document.addEventListener('visibilitychange', async () => {
   }
 
   async function mktPatch(id, payload){
-    const r = await fetch('/api/marketing/asset/'+id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const r = await fetch('/api/attract/asset/'+id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
     if (!r.ok){ const j=await r.json().catch(()=>({})); throw new Error(j.error||'save failed'); }
     return r.json();
   }
