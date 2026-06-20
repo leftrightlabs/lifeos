@@ -533,6 +533,59 @@
   .fin-accounts-body { padding: 0 18px 12px; }
   .fin-accounts-body .fin-row .value.negative { color: #ff7a6b; }
 
+  /* ===== Scale zone — Act layer (cards on top) + board divider ===== */
+  /* Status pill in section header: LIVE NOW (amber) / NEEDS WIRING (muted) */
+  .scale-tag { font-size: 9.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .scale-tag.live { background: rgba(255,183,77,0.16); color: #ffb74d; }
+  .scale-tag.wiring { background: rgba(var(--edge-rgb),0.08); color: rgba(var(--ink-rgb),0.5); }
+  /* Little status chip inside an Act card (WATCH / RED / FIX NEXT / RENEW?) */
+  .scale-chip { font-size: 9px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; flex-shrink: 0; }
+  .scale-chip.watch { background: rgba(255,183,77,0.16); color: #ffb74d; }
+  .scale-chip.red { background: rgba(255,122,107,0.16); color: #ff7a6b; }
+  .scale-chip.fix { background: var(--lime-faint); color: var(--lime); }
+  .scale-chip.renew { background: rgba(93,156,236,0.16); color: #9cc5f5; }
+  .needle-card.zone-scale .needle-act:hover { color: #ffb74d; border-color: #ffb74d; }
+  /* Above-the-line P&L bar (revenue vs break-even & goal) */
+  .scale-pl { padding: 4px 0 2px; }
+  .scale-pl-bar { height: 12px; background: rgba(var(--edge-rgb),0.06); border-radius: 6px; overflow: hidden; position: relative; }
+  .scale-pl-fill { height: 100%; background: var(--lime); border-radius: 6px; transition: width 0.6s ease; }
+  .scale-pl-fill.amber { background: #d4a854; }
+  .scale-pl-fill.red { background: #ff7a6b; }
+  .scale-pl-be { position: absolute; top: -3px; bottom: -3px; width: 2px; background: rgba(var(--ink-rgb),0.45); }
+  .scale-pl-meta { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: rgba(var(--ink-rgb),0.6); margin-top: 8px; flex-wrap: wrap; }
+  .scale-pl-meta b { color: var(--navy); font-weight: 700; }
+  .scale-wiring { font-size: 12.5px; color: rgba(var(--ink-rgb),0.55); line-height: 1.5; }
+  .scale-empty { font-size: 12px; color: rgba(var(--ink-rgb),0.5); margin-top: 8px; }
+  .privacy-on .scale-pl-bar, .privacy-on .scale-pl-meta { filter: blur(10px); user-select: none; }
+  .privacy-on .scale-pl-bar:active, .privacy-on .scale-pl-meta:active { filter: blur(0); }
+  /* "THE NUMBERS" divider between the Act layer and the full board */
+  .scale-divider { display: flex; align-items: center; gap: 14px; margin: 26px 0 16px; }
+  .scale-divider::before, .scale-divider::after { content: ''; flex: 1; height: 1px; background: rgba(var(--edge-rgb),0.1); }
+  .scale-divider span { font-size: 10.5px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(var(--ink-rgb),0.45); white-space: nowrap; }
+  /* 6-up KPI summary row — generic color states (reuses .fin-kpi) */
+  .scale-kpi-grid { margin-bottom: 16px; }
+  .fin-kpi.negative .fin-kpi-value { color: #ff7a6b; }
+  .fin-kpi.short .fin-kpi-value { color: #ff7a6b; }
+  .fin-kpi.pos .fin-kpi-value { color: var(--lime); }
+  /* Revenue-by-month bar chart (vs goal & break-even dashed lines) */
+  .scale-chart-card { padding: 16px 18px 14px; }
+  .scale-chart-plot { position: relative; height: 180px; margin-top: 16px; }
+  .scale-chart-bars { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 10px; z-index: 1; }
+  .scale-chart-barcell { flex: 1; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
+  .scale-chart-bar { width: 100%; max-width: 56px; min-height: 2px; border-radius: 6px 6px 0 0; background: #d4a854; transition: height .6s ease; }
+  .scale-chart-bar.goal { background: var(--lime); }
+  .scale-chart-bar.mid { background: #d4a854; }
+  .scale-chart-bar.low { background: #b07f4e; }
+  .scale-chart-bar.partial { opacity: 0.5; }
+  .scale-chart-line { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(var(--ink-rgb),0.3); z-index: 2; pointer-events: none; }
+  .scale-chart-line.goal { border-top-color: rgba(129,140,248,0.55); }
+  .scale-chart-line.be { border-top-color: rgba(212,168,84,0.55); }
+  .scale-chart-line span { position: absolute; right: 0; top: -8px; font-size: 10px; font-weight: 700; color: rgba(var(--ink-rgb),0.6); background: var(--white); padding: 0 5px; border-radius: 3px; }
+  .scale-chart-xaxis { display: flex; gap: 10px; margin-top: 8px; }
+  .scale-chart-x { flex: 1; text-align: center; font-size: 11px; font-weight: 600; color: rgba(var(--ink-rgb),0.5); }
+  .privacy-on .scale-chart-plot { filter: blur(10px); }
+  .privacy-on .scale-chart-plot:active { filter: blur(0); }
+
   /* ===== Health rings + streaks ===== */
   .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 18px; }
   .health-card { background: var(--white); border: 1px solid var(--navy-faint); border-radius: 12px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
@@ -3093,7 +3146,7 @@ window.lrl = (function(){
     <button class="tab" data-tab="review" data-modes="all,work,personal">Review</button>
     <button class="tab tab-ctx" data-tab="marketing" data-modes="work">Attract</button>
     <button class="tab tab-ctx" data-tab="pipeline" data-modes="work">Convert</button>
-    <button class="tab tab-ctx" data-tab="finance" data-modes="work">Finance</button>
+    <button class="tab tab-ctx" data-tab="finance" data-modes="work">Scale</button>
     <button class="tab tab-ctx" data-tab="team" data-modes="work">Team</button>
     <button class="tab tab-ctx" data-tab="health" data-modes="personal">Health</button>
     <button class="tab tab-ctx" data-tab="finance-personal" data-modes="personal">Wealth</button>
@@ -3556,8 +3609,9 @@ window.lrl = (function(){
 
   <!-- FINANCE TAB -->
   <div class="tab-content" data-content="finance">
-    <h1 class="page-title"><span>Finance</span></h1>
-    <div class="page-subtitle">Live from Xero · cash on hand, runway, P&L, what's owed.</div>
+    <div class="section-label">Finance · Ops · Systems</div>
+    <h1 class="page-title"><span>Scale</span></h1>
+    <div class="page-subtitle">Which few numbers are off — and what do I fix next? Only what's off shows up top; the full board is below.</div>
     <div id="finance-body"><div style="color:var(--navy-dim);font-size:13px;padding:20px 0">loading…</div></div>
   </div>
 
@@ -7799,9 +7853,142 @@ function finGoalBlock(actual, goalObj){
   </div>`;
 }
 
+// ---- Scale "Act" layer: collapsible sections (shared .mkt-section pattern) ----
+let SCALE_COLLAPSED = {};
+try { SCALE_COLLAPSED = JSON.parse(localStorage.getItem('lrl-scale-collapsed') || '{}') || {}; } catch(e){ SCALE_COLLAPSED = {}; }
+function scaleSaveCollapsed(){ try { localStorage.setItem('lrl-scale-collapsed', JSON.stringify(SCALE_COLLAPSED)); } catch(e){} }
+function scaleSection(key, title, status, bodyHtml){
+  const collapsed = SCALE_COLLAPSED[key] ? ' collapsed' : '';
+  const tag = status ? `<span class="scale-tag ${status.cls}">${status.text}</span>` : '';
+  return `<div class="mkt-section${collapsed}"><div class="mkt-sec-head" data-scale-toggle="${key}"><span class="mkt-sec-caret">▾</span><span class="mkt-sec-title">${title}</span>${tag}</div><div class="mkt-sec-body">${bodyHtml}</div></div>`;
+}
+function scaleActCard(chipCls, chipText, title, why, action){
+  let act = '';
+  if (action){
+    const attr = action.scroll ? `data-scale-scroll="${action.scroll}"` : (action.url ? `data-scale-open="${escapeHtml(action.url)}"` : '');
+    act = `<div class="needle-actions"><button class="needle-act" ${attr}>${action.label}</button></div>`;
+  }
+  return `<div class="needle-card zone-scale"><div class="needle-main"><div class="needle-toprow"><span class="scale-chip ${chipCls}">${chipText}</span><span class="needle-title">${escapeHtml(title)}</span></div><div class="needle-why">${why}</div></div>${act}</div>`;
+}
+// Compact money for the KPI summary row ("$52.3k", "-$8.2k", "$1.2M")
+function fmtMoneyK(n){
+  if (n == null || isNaN(n)) return '—';
+  const neg = n < 0, abs = Math.abs(n);
+  let s;
+  if (abs >= 1_000_000) s = `$${(abs/1_000_000).toFixed(abs >= 10_000_000 ? 1 : 2)}M`;
+  else if (abs >= 1000) s = `$${(abs/1000).toFixed(1)}k`;
+  else s = `$${Math.round(abs)}`;
+  return (neg ? '-' : '') + s;
+}
+
+// ---- Scale Act layer: what's off + what to fix next (top of the tab) ----
+function scaleActHtml(d){
+  let html = '';
+
+  // 1) Above the line — this month's revenue vs break-even & goal (LIVE) + runway watch
+  const rev = d.mtdRevenue || 0;
+  const rg = d.goals?.revenue?.mtd || {};
+  const goal = rg.goal, be = rg.breakEven;
+  let plBody = '';
+  if (goal){
+    const pct = (rev / goal) * 100;
+    const barPct = Math.max(0, Math.min(100, pct));
+    let tier = 'red';
+    if (pct >= 100) tier = '';                         // at/over goal → lime (default fill)
+    else if (be != null && rev >= be) tier = 'amber';  // past break-even
+    else if (be == null && pct >= 50) tier = 'amber';
+    const bePct = (be != null && goal) ? Math.max(0, Math.min(100, (be / goal) * 100)) : null;
+    plBody += `<div class="scale-pl">
+      <div class="scale-pl-bar">
+        <div class="scale-pl-fill ${tier}" style="width:${barPct}%"></div>
+        ${bePct != null ? `<div class="scale-pl-be" style="left:${bePct}%" title="Break-even ${fmtMoneyFull(be)}"></div>` : ''}
+      </div>
+      <div class="scale-pl-meta">
+        <span><b>${fmtMoneyFull(rev)}</b> revenue this month</span>
+        <span>${be != null ? `Break-even ${fmtMoneyFull(be)} · ` : ''}Goal ${fmtMoneyFull(goal)}</span>
+      </div>
+    </div>`;
+  } else {
+    plBody += `<div class="scale-pl-meta"><span><b>${fmtMoneyFull(rev)}</b> revenue this month</span></div>`;
+    plBody += `<div class="scale-empty">Add a "Revenue" metric to your VTO Scorecard to see break-even &amp; goal.</div>`;
+  }
+  if (d.runwayMonths != null && d.runwayMonths < 4){
+    const danger = d.runwayMonths < 2;
+    plBody += scaleActCard(danger ? 'red' : 'watch', danger ? 'RED' : 'WATCH', 'Cash runway',
+      `${d.runwayMonths} months — tighten spend / accelerate collections`,
+      { label: 'Open', scroll: 'board' });
+  }
+  html += scaleSection('aboveline', 'Above the line', { text: 'LIVE NOW', cls: 'live' }, plBody);
+
+  // 2) Scorecard off-track — VTO actuals not wired yet
+  html += scaleSection('scorecard', 'Scorecard off-track', { text: 'NEEDS WIRING', cls: 'wiring' },
+    `<div class="scale-wiring">Connect your VTO Scorecard actuals (weekly metric values). Once wired, only metrics <b>below target</b> show here — e.g. discovery calls booked, close rate. Revenue &amp; profit status already show under <b>Above the line</b>.</div>`);
+
+  // 3) Systems to fix — Business Functions not wired yet
+  html += scaleSection('systems', 'Systems to fix', { text: 'NEEDS WIRING', cls: 'wiring' },
+    `<div class="scale-wiring">Connect <b>Business Functions</b>. Broken &amp; critical systems will rank here by impact/effort, so the quick wins (high impact, low effort) surface first.</div>`);
+
+  // 4) Spend to decide — tools / subscriptions not wired yet
+  html += scaleSection('spend', 'Spend to decide', { text: 'NEEDS WIRING', cls: 'wiring' },
+    `<div class="scale-wiring">Connect your <b>tools / subscriptions</b>. Upcoming renewals will show here to keep or cancel before billing.</div>`);
+
+  return html;
+}
+
+// ---- Scale board: 6-up KPI summary row (replaces the scattered tiles) ----
+function scaleKpiCard(label, value, meta, cls){
+  return `<div class="fin-kpi ${cls || ''}"><div class="fin-kpi-label">${label}</div><div class="fin-kpi-value">${value}</div><div class="fin-kpi-meta">${meta}</div></div>`;
+}
+function scaleKpiRow(d){
+  const nBank = (d.bankAccounts || []).length;
+  const rw = d.runwayMonths;
+  const net = d.mtdNet || 0;
+  const cards = [
+    scaleKpiCard('Cash on hand', fmtMoneyK(d.bankTotal || 0), `across ${nBank} account${nBank === 1 ? '' : 's'}`, (d.bankTotal || 0) < 0 ? 'negative' : ''),
+    scaleKpiCard('Credit cards', fmtMoneyK(d.creditTotal || 0), 'owed', (d.creditTotal || 0) < 0 ? 'negative' : ''),
+    scaleKpiCard('Runway', rw == null ? '∞' : `${rw}<span class="unit">mo</span>`, 'at current burn', (rw != null && rw < 3) ? 'short' : ''),
+    scaleKpiCard('Owed to us (A/R)', fmtMoneyK(d.accountsReceivable || 0), 'invoices out'),
+    scaleKpiCard('We owe (A/P)', fmtMoneyK(d.accountsPayable || 0), 'bills due'),
+    scaleKpiCard('Net this month', (net > 0 ? '+' : '') + fmtMoneyK(net), net < 0 ? 'in the red' : 'in the black', net < 0 ? 'negative' : 'pos'),
+  ];
+  return `<div class="fin-kpi-grid scale-kpi-grid">${cards.join('')}</div>`;
+}
+
+// ---- Scale board: revenue-by-month bar chart (vs goal & break-even) ----
+function scaleRevChart(d){
+  const trend = d.revenueTrend || [];
+  if (!trend.length) return '';
+  const rg = d.goals?.revenue?.mtd || {};
+  const goal = rg.goal || 0, be = rg.breakEven || 0;
+  const maxRev = Math.max(0, ...trend.map(t => t.revenue || 0));
+  const scaleMax = Math.max(goal * 1.15, be * 1.15, maxRev * 1.08, 1);
+  const hpct = v => Math.max(0, Math.min(100, (v / scaleMax) * 100));
+  const tierOf = v => (goal > 0 && v >= goal) ? 'goal' : ((be > 0 && v >= be) ? 'mid' : 'low');
+  const bars = trend.map(t => {
+    const v = t.revenue || 0;
+    return `<div class="scale-chart-barcell"><div class="scale-chart-bar ${tierOf(v)}${t.partial ? ' partial' : ''}" style="height:${hpct(v)}%" title="${escapeHtml(t.label)}: ${fmtMoneyFull(v)}${t.partial ? ' (so far)' : ''}"></div></div>`;
+  }).join('');
+  const xaxis = trend.map(t => `<div class="scale-chart-x">${escapeHtml(t.label)}${t.partial ? '*' : ''}</div>`).join('');
+  const lines =
+    (goal > 0 ? `<div class="scale-chart-line goal" style="top:${100 - hpct(goal)}%"><span>${fmtMoneyK(goal)}</span></div>` : '') +
+    (be > 0 ? `<div class="scale-chart-line be" style="top:${100 - hpct(be)}%"><span>${fmtMoneyK(be)}</span></div>` : '');
+  const sub = (goal || be)
+    ? `<div class="fin-card-meta">vs. ${goal ? fmtMoneyK(goal) + ' goal' : ''}${goal && be ? ' · ' : ''}${be ? fmtMoneyK(be) + ' break-even' : ''}</div>`
+    : '';
+  const partialNote = trend.some(t => t.partial) ? `<div class="scale-empty" style="margin-top:10px">* current month so far (month-to-date)</div>` : '';
+  return `<div class="fin-card scale-chart-card">
+    <div class="fin-card-head"><div class="fin-card-title">Revenue by month</div>${sub}</div>
+    <div class="scale-chart-plot">${lines}<div class="scale-chart-bars">${bars}</div></div>
+    <div class="scale-chart-xaxis">${xaxis}</div>
+    ${partialNote}
+  </div>`;
+}
+
 function renderFinance(d){
   const body = document.getElementById('finance-body');
   if (!body) return;
+
+  // ---- Cash Capacity card (existing) ----
   const cc = d.cashCapacity || {};
   const ccMonths = cc.months ?? 0;
   const capacityTier = ccMonths >= 3 ? '' : (ccMonths >= 1 ? 'warning' : 'short');
@@ -7828,12 +8015,7 @@ function renderFinance(d){
     </div>
   `;
 
-  const runwayShort = d.runwayMonths != null && d.runwayMonths < 3;
-  const runwayDisplay = d.runwayMonths == null ? '∞' : `${d.runwayMonths}<span class="unit">mo</span>`;
-  const burnLine = d.monthlyBurn > 0 ? `Burn ~${fmtMoneyFull(d.monthlyBurn)}/mo (last 3mo avg)` : 'Not enough history yet';
-  const netNeg = d.mtdNet < 0;
-
-  // Account group helpers
+  // ---- Account groups (existing) ----
   const bankRows = (d.bankAccounts || []).length
     ? d.bankAccounts.map(a => `<div class="fin-row"><span class="label">${escapeHtml(a.name)}</span><span class="value">${fmtMoneyFull(a.balance)}</span></div>`).join('')
     : '<div class="fin-row"><span class="label" style="color:rgba(var(--ink-rgb), 0.45)">No bank accounts found</span></div>';
@@ -7843,7 +8025,8 @@ function renderFinance(d){
   const bankCollapsed = localStorage.getItem('lrl-fin-bank-collapsed') === '1' ? 'collapsed' : '';
   const ccCardsCollapsed = localStorage.getItem('lrl-fin-cc-collapsed') === '1' ? 'collapsed' : '';
 
-  const html = `
+  // ---- Revenue triplet (existing — MTD/QTD/YTD with goal bars) ----
+  const revTriplet = `
     <div class="fin-grid fin-grid-revenue">
       <div class="fin-kpi rev-ytd">
         <div class="fin-kpi-label">YTD Revenue</div>
@@ -7863,8 +8046,14 @@ function renderFinance(d){
         <div class="fin-kpi-meta">Expenses ${fmtMoneyFull(d.mtdExpenses)}</div>
         ${finGoalBlock(d.mtdRevenue, d.goals?.revenue?.mtd)}
       </div>
-    </div>
+    </div>`;
 
+  // ---- Original detailed tiles (full detail kept verbatim from the prior Finance tab) ----
+  const runwayShort = d.runwayMonths != null && d.runwayMonths < 3;
+  const runwayDisplay = d.runwayMonths == null ? '∞' : `${d.runwayMonths}<span class="unit">mo</span>`;
+  const burnLine = d.monthlyBurn > 0 ? `Burn ~${fmtMoneyFull(d.monthlyBurn)}/mo (last 3mo avg)` : 'Not enough history yet';
+  const netNeg = d.mtdNet < 0;
+  const cashGrid = `
     <div class="fin-grid fin-grid-cash">
       ${capacityCard}
       <div class="fin-kpi runway ${runwayShort ? 'short' : ''}">
@@ -7872,8 +8061,8 @@ function renderFinance(d){
         <div class="fin-kpi-value">${runwayDisplay}</div>
         <div class="fin-kpi-meta">${burnLine}</div>
       </div>
-    </div>
-
+    </div>`;
+  const netGrid = `
     <div class="fin-grid fin-grid-net">
       <div class="fin-kpi net ${netNeg ? 'negative' : ''}">
         <div class="fin-kpi-label">MTD net</div>
@@ -7881,48 +8070,55 @@ function renderFinance(d){
         <div class="fin-kpi-meta">${netNeg ? 'In the red this month' : 'In the black'}</div>
         ${finGoalBlock(d.mtdNet, d.goals?.profit?.mtd)}
       </div>
-    </div>
-
+    </div>`;
+  const arApRow = `
     <div class="fin-twocol">
       <div class="fin-card">
-        <div class="fin-card-head">
-          <div class="fin-card-title">Accounts receivable</div>
-        </div>
+        <div class="fin-card-head"><div class="fin-card-title">Accounts receivable</div></div>
         <div class="fin-kpi-value" style="font-size:22px">${fmtMoneyFull(d.accountsReceivable)}</div>
         <div class="fin-kpi-meta" style="margin-top:6px">Owed to you</div>
       </div>
       <div class="fin-card">
-        <div class="fin-card-head">
-          <div class="fin-card-title">Accounts payable</div>
-        </div>
+        <div class="fin-card-head"><div class="fin-card-title">Accounts payable</div></div>
         <div class="fin-kpi-value" style="font-size:22px">${fmtMoneyFull(d.accountsPayable)}</div>
         <div class="fin-kpi-meta" style="margin-top:6px">You owe</div>
       </div>
-    </div>
+    </div>`;
 
-    <div class="fin-accounts-group ${bankCollapsed}" id="fin-bank-group">
-      <div class="fin-accounts-head" data-toggle="bank">
-        <button class="fin-accounts-toggle"><span class="fin-accounts-caret">▾</span> Bank Accounts</button>
-        <span class="fin-accounts-total">${fmtMoneyFull(d.bankTotal || 0)}</span>
+  // ---- Compose: Act layer on top, "The Numbers" full board (every original tile) below ----
+  const html = `
+    ${scaleActHtml(d)}
+    <div id="scale-board">
+      <div class="scale-divider"><span>The Numbers — your full finance board</span></div>
+      ${scaleKpiRow(d)}
+      ${revTriplet}
+      ${cashGrid}
+      ${netGrid}
+      ${arApRow}
+      <div class="fin-accounts-group ${bankCollapsed}" id="fin-bank-group">
+        <div class="fin-accounts-head" data-toggle="bank">
+          <button class="fin-accounts-toggle"><span class="fin-accounts-caret">▾</span> Bank Accounts</button>
+          <span class="fin-accounts-total">${fmtMoneyFull(d.bankTotal || 0)}</span>
+        </div>
+        <div class="fin-accounts-body">${bankRows}</div>
       </div>
-      <div class="fin-accounts-body">${bankRows}</div>
-    </div>
-
-    <div class="fin-accounts-group ${ccCardsCollapsed}" id="fin-cc-group">
-      <div class="fin-accounts-head" data-toggle="cc">
-        <button class="fin-accounts-toggle"><span class="fin-accounts-caret">▾</span> Credit Cards</button>
-        <span class="fin-accounts-total ${(d.creditTotal || 0) < 0 ? 'negative' : ''}">${fmtMoneyFull(d.creditTotal || 0)}</span>
+      <div class="fin-accounts-group ${ccCardsCollapsed}" id="fin-cc-group">
+        <div class="fin-accounts-head" data-toggle="cc">
+          <button class="fin-accounts-toggle"><span class="fin-accounts-caret">▾</span> Credit Cards</button>
+          <span class="fin-accounts-total ${(d.creditTotal || 0) < 0 ? 'negative' : ''}">${fmtMoneyFull(d.creditTotal || 0)}</span>
+        </div>
+        <div class="fin-accounts-body">${ccRows}</div>
       </div>
-      <div class="fin-accounts-body">${ccRows}</div>
+      ${scaleRevChart(d)}
+      <div class="fin-as-of">As of ${new Date(d.asOf).toLocaleString('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</div>
     </div>
-
-    <div class="fin-as-of">As of ${new Date(d.asOf).toLocaleString('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</div>
   `;
   body.innerHTML = html;
   attachFinanceHandlers();
 }
 
 function attachFinanceHandlers(){
+  // Bank / Credit account-group collapse (existing board behavior)
   document.querySelectorAll('#finance-body .fin-accounts-head').forEach(head => {
     head.addEventListener('click', (e) => {
       const group = head.closest('.fin-accounts-group');
@@ -7932,6 +8128,23 @@ function attachFinanceHandlers(){
       localStorage.setItem(key, group.classList.contains('collapsed') ? '1' : '0');
       window.lrl?.haptic('tap');
     });
+  });
+  // Scale Act-layer section collapse (shared .mkt-section pattern)
+  document.querySelectorAll('#finance-body [data-scale-toggle]').forEach(head => {
+    head.addEventListener('click', () => {
+      const k = head.getAttribute('data-scale-toggle');
+      SCALE_COLLAPSED[k] = !SCALE_COLLAPSED[k]; scaleSaveCollapsed();
+      head.closest('.mkt-section')?.classList.toggle('collapsed');
+      window.lrl?.haptic?.('tap');
+    });
+  });
+  // Act-card "Open" → scroll down to the full board
+  document.querySelectorAll('#finance-body [data-scale-scroll]').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('scale-board')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  });
+  // Act-card "Open" → external URL
+  document.querySelectorAll('#finance-body [data-scale-open]').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); const u = btn.getAttribute('data-scale-open'); if (u) window.open(u, '_blank'); });
   });
 }
 

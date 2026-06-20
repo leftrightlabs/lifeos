@@ -3175,8 +3175,28 @@ app.get('/api/finance/xero', async (_req, res) => {
       const burnEndLastDay = new Date(burnEndY, burnEndMonth, 0).getDate();
       const burnEnd = `${burnEndY}-${pad(burnEndMonth)}-${pad(burnEndLastDay)}`;
 
+      // Last 6 months (incl. current, capped at today) for the revenue-by-month chart.
+      // Explicit per-month P&L calls reuse the battle-tested single-period parser
+      // and keep month labels + ordering fully under our control.
+      const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const trendMonths = [];
+      for (let k = 5; k >= 0; k--) {
+        let mm = mNum - k, yy = yNum;
+        while (mm < 1) { mm += 12; yy -= 1; }
+        const lastDay = new Date(yy, mm, 0).getDate();
+        trendMonths.push({
+          year: yy, month: mm, label: MONTH_ABBR[mm - 1],
+          fromDate: `${yy}-${pad(mm)}-01`,
+          toDate: k === 0 ? todayStr : `${yy}-${pad(mm)}-${pad(lastDay)}`,
+          partial: k === 0,
+        });
+      }
+
       const xLog = (name) => (err) => { console.error(`[xero] ${name} failed:`, err.message); return null; };
-      const [bankRaw, mtdRaw, qtdRaw, ytdRaw, burnRaw, bsRaw, vtoGoals] = await Promise.all([
+      const trendPromises = trendMonths.map((mo) =>
+        xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: mo.fromDate, toDate: mo.toDate, paymentsOnly: 'true' }).catch(xLog(`P&L ${mo.label}`))
+      );
+      const [bankRaw, mtdRaw, qtdRaw, ytdRaw, burnRaw, bsRaw, vtoGoals, ...trendRaw] = await Promise.all([
         // BankSummary takes a single optional `date` (closing date), NOT a
         // fromDate/toDate range. Pass today's date so closing balances are
         // as of today.
@@ -3188,6 +3208,7 @@ app.get('/api/finance/xero', async (_req, res) => {
         xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate: burnStart, toDate: burnEnd, paymentsOnly: 'true' }).catch(xLog('P&L burn')),
         xeroGet('/api.xro/2.0/Reports/BalanceSheet', { date: todayStr }).catch(xLog('BalanceSheet')),
         cached('vto-goals', fetchVtoGoals),
+        ...trendPromises,
       ]);
       const bank = bankRaw ? parseBankSummary(bankRaw.Reports?.[0]) : { accounts: [], totalCash: 0 };
       const mtd = mtdRaw ? parseProfitAndLoss(mtdRaw.Reports?.[0]) : { income: 0, expenses: 0, net: 0 };
@@ -3195,6 +3216,10 @@ app.get('/api/finance/xero', async (_req, res) => {
       const ytd = ytdRaw ? parseProfitAndLoss(ytdRaw.Reports?.[0]) : { income: 0, expenses: 0, net: 0 };
       const burn = burnRaw ? parseProfitAndLoss(burnRaw.Reports?.[0]) : { income: 0, expenses: 0, net: 0 };
       const bs = bsRaw ? parseBalanceSheet(bsRaw.Reports?.[0]) : { accountsReceivable: 0, accountsPayable: 0 };
+      const revenueTrend = trendMonths.map((mo, i) => {
+        const pl = trendRaw[i] ? parseProfitAndLoss(trendRaw[i].Reports?.[0]) : { income: 0, net: 0 };
+        return { label: mo.label, year: mo.year, month: mo.month, revenue: pl.income, net: pl.net, partial: mo.partial };
+      });
       // Diagnostic: if YTD has income but zero expenses, the parser missed the
       // expense rows. Log the raw labels so we can tune the regex.
       if (ytd.income > 0 && ytd.expenses === 0 && ytdRaw) {
@@ -3266,6 +3291,7 @@ app.get('/api/finance/xero', async (_req, res) => {
         accountsReceivable: bs.accountsReceivable,
         accountsPayable: bs.accountsPayable,
         cashCapacity,
+        revenueTrend,
         goals: {
           revenue: revenueGoals,
           profit: profitGoals,
@@ -3616,11 +3642,11 @@ app.get('/api/needle/today', async (req, res) => {
             if (typeof goal === 'number' && typeof actual === 'number' && goal > 0 && actual < goal) {
               out.push({ id: 'finance:revenue', zone: 'scale', title: 'Quarterly revenue behind goal',
                 why: `${fmtUSD(goal - actual)} to go · ${fmtUSD(actual)} of ${fmtUSD(goal)} QTD`,
-                score: 68, action: { label: 'Open in Finance', kind: 'jump', tab: 'finance' } });
+                score: 68, action: { label: 'Open in Scale', kind: 'jump', tab: 'finance' } });
             } else if (typeof fin.runwayMonths === 'number' && fin.runwayMonths > 0 && fin.runwayMonths < 4) {
               out.push({ id: 'finance:runway', zone: 'scale', title: 'Cash runway is short',
                 why: `${fin.runwayMonths} months of runway — tighten spend / accelerate collections`,
-                score: 66, action: { label: 'Open in Finance', kind: 'jump', tab: 'finance' } });
+                score: 66, action: { label: 'Open in Scale', kind: 'jump', tab: 'finance' } });
             }
           }
         } catch (e) { console.error('needle:scale', e.message); }
