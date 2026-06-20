@@ -522,6 +522,14 @@
   /* Move the Needle content hides under privacy mode (client names / deal values) */
   .privacy-on #needle-body { filter: blur(9px); user-select: none; }
   .privacy-on #needle-body:active { filter: blur(0); }
+  /* Draggable cards — per-user saved order (grip handle, hover-revealed) */
+  .lrl-card { position: relative; }
+  .lrl-grip { position: absolute; top: 7px; left: 6px; z-index: 4; cursor: grab; color: var(--navy-dim); opacity: 0; font-size: 12px; line-height: 1; padding: 3px; transition: opacity .15s, color .15s; touch-action: none; }
+  .lrl-card:hover .lrl-grip { opacity: .5; }
+  .lrl-grip:hover { opacity: 1; color: var(--lime); }
+  .lrl-grip:active { cursor: grabbing; }
+  .lrl-card-ghost { opacity: .35; }
+  .lrl-card-chosen { box-shadow: 0 10px 28px rgba(0,0,0,0.28); }
 
   /* Accounts group cards (Bank / Credit) */
   .fin-accounts-group { background: var(--white); border: none; border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
@@ -3310,7 +3318,7 @@ window.lrl = (function(){
       </div>
     </div>
 
-    <div class="quest-row">
+    <div class="quest-row" id="quest-row">
       <div class="panel quest-panel" id="quest-panel">
         <div class="quest-panel-head">
           <button class="quest-panel-toggle" id="tasks-panel-toggle" title="Collapse/expand">
@@ -8711,9 +8719,14 @@ document.addEventListener('keydown', (e) => {
   // Persistent date + weather strip under the nav (visible on every tab)
   const tid = document.getElementById('topinfo-date');
   const tNow = new Date();
-  if (tid) tid.textContent = tNow.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  if (tid) tid.textContent = tNow.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(',', '');
   const tip = document.getElementById('topinfo-period');
-  if (tip) tip.textContent = tNow.getFullYear() + ' · Q' + (Math.floor(tNow.getMonth() / 3) + 1);
+  if (tip) {
+    const q = Math.floor(tNow.getMonth() / 3);
+    const qEnd = new Date(tNow.getFullYear(), q * 3 + 3, 0); // last day of the quarter
+    const dLeft = Math.max(0, Math.ceil((qEnd - new Date(tNow.getFullYear(), tNow.getMonth(), tNow.getDate())) / 86400000));
+    tip.textContent = tNow.getFullYear() + ' · Q' + (q + 1) + ' · ' + dLeft + 'd left';
+  }
   loadWeather();
   window.addEventListener('lrl-refresh', () => loadWeather(true));
   // Restore collapsed states
@@ -10407,6 +10420,39 @@ document.addEventListener('visibilitychange', async () => {
     render();
   }
   window.maybeLoadDeliver=maybeLoadDeliver;
+})();
+</script>
+
+<!-- ===== Draggable cards: per-user saved order (Today tab; extends to zones) ===== -->
+<script>
+(function(){
+  window.lrlPrefs = window.lrlPrefs || {};
+  function postOrder(){ try { fetch('/api/prefs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prefs:{cardOrder: window.lrlPrefs.cardOrder||{}}})}); } catch(e){} }
+  function curOrder(p){ return [...p.querySelectorAll(':scope > .lrl-card')].map(el=>el.dataset.card); }
+  function applyOrder(p,key){
+    const ord=(window.lrlPrefs.cardOrder||{})[key]; if(!ord||!ord.length) return;
+    const map={}; p.querySelectorAll(':scope > .lrl-card').forEach(el=>{ map[el.dataset.card]=el; });
+    ord.forEach(id=>{ const el=map[id]; if(el) p.appendChild(el); });
+  }
+  window.lrlCardSort=function(parent,key){
+    if(!parent || parent.__lrlSorted) return;
+    [...parent.children].forEach(el=>{
+      if(el.tagName==='H1' || el.classList.contains('section-label') || el.classList.contains('page-title')) return;
+      if(!el.id) return;
+      el.classList.add('lrl-card'); el.dataset.card=el.id;
+      if(!el.querySelector(':scope > .lrl-grip')){ const g=document.createElement('span'); g.className='lrl-grip'; g.title='Drag to reorder'; g.setAttribute('aria-hidden','true'); g.textContent='⠿'; el.insertBefore(g, el.firstChild); }
+    });
+    applyOrder(parent,key);
+    if(typeof Sortable!=='undefined'){
+      Sortable.create(parent,{ draggable:'.lrl-card', handle:'.lrl-grip', animation:160, ghostClass:'lrl-card-ghost', chosenClass:'lrl-card-chosen', fallbackOnBody:true,
+        onEnd:function(){ window.lrlPrefs.cardOrder=window.lrlPrefs.cardOrder||{}; window.lrlPrefs.cardOrder[key]=curOrder(parent); postOrder(); try{ window.lrl&&window.lrl.haptic&&window.lrl.haptic('success'); }catch(e){} } });
+    }
+    parent.__lrlSorted=true;
+  };
+  fetch('/api/prefs').then(function(r){return r.json();}).then(function(d){ window.lrlPrefs=d.prefs||{}; }).catch(function(){}).finally(function(){
+    var today=document.querySelector('[data-content="command"]');
+    if(today) window.lrlCardSort(today,'today');
+  });
 })();
 </script>
 
