@@ -17,7 +17,6 @@ import { registerWealthRoutes } from './src/routes/wealth.js';
 import { registerScaleRoutes } from './src/routes/scale.js';
 import { registerLegoRoutes } from './src/routes/lego.js';
 import { registerDeliverRoutes } from './src/routes/deliver.js';
-import { registerPrefsRoutes } from './src/routes/prefs.js';
 
 if (process.env.NODE_ENV !== 'production') {
   const { default: dotenv } = await import('dotenv');
@@ -3531,9 +3530,6 @@ const { MARKETING_ASSETS_DS, fetchMarketingChannelMap, serializeMarketingAsset }
   registerAttractRoutes(app, { notion, cache, cached, currentQuarter, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, anthropic, userContext });
 registerWealthRoutes(app, { cached, cache, userContext });
 registerScaleRoutes(app, { notion, cached, computeXeroFinance, chicagoToday });
-
-// ===== Per-user UI preferences (card order, etc.) =====
-registerPrefsRoutes(app, { ALLOWED_EMAIL });
 registerLegoRoutes(app, { notion, cache, cached, userContext });
 
 // ===== Deliver domain — wired sections (offers + care-plan renewals); project sections render client-side =====

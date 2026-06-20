@@ -25,5 +25,3 @@ ios/App/App.xcodeproj/xcuserdata/
 ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
 *.xcuserstate
 
-# Local per-user prefs fallback (dev; prod uses Postgres)
-.lrl-prefs.json

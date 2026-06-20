@@ -41,8 +41,6 @@ CREATE TABLE IF NOT EXISTS users (
 
 async function ensureSchema() {
   await pool.query(SCHEMA);
-  // Per-user UI preferences (card order, etc.) — added after the initial schema.
-  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS prefs JSONB NOT NULL DEFAULT '{}'::jsonb");
 }
 
 // Seed the owner row from the existing env tokens so the live single-user setup
@@ -149,8 +147,5 @@ export const users = {
   },
   async setNotionUserId(id, notionId) {
     await query('UPDATE users SET notion_user_id = $2, updated_at = now() WHERE id = $1', [id, notionId]);
-  },
-  async setPrefs(id, prefs) {
-    await query('UPDATE users SET prefs = $2, updated_at = now() WHERE id = $1', [id, prefs]);
   },
 };
