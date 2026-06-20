@@ -3093,6 +3093,7 @@ window.lrl = (function(){
     <button class="tab" data-tab="review" data-modes="all,work,personal">Review</button>
     <button class="tab tab-ctx" data-tab="marketing" data-modes="work">Attract</button>
     <button class="tab tab-ctx" data-tab="pipeline" data-modes="work">Convert</button>
+    <button class="tab tab-ctx" data-tab="deliver" data-modes="work">Deliver</button>
     <button class="tab tab-ctx" data-tab="finance" data-modes="work">Finance</button>
     <button class="tab tab-ctx" data-tab="team" data-modes="work">Team</button>
     <button class="tab tab-ctx" data-tab="health" data-modes="personal">Health</button>
@@ -3534,6 +3535,14 @@ window.lrl = (function(){
         </button>
       </div>
     </div>
+  </div>
+
+  <!-- DELIVER TAB -->
+  <div class="tab-content" data-content="deliver">
+    <div class="section-label">Deliver</div>
+    <h1 class="page-title"><span>Deliver</span></h1>
+    <div class="page-subtitle">Client delivery at a glance — what's overdue, landing soon, undated, and who's carrying the load.</div>
+    <div id="deliver-act"><div class="cv-empty">Loading…</div></div>
   </div>
 
   <!-- PROJECTS TAB -->
@@ -6248,6 +6257,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     if (tab.dataset.tab === 'pipeline') maybeLoadSales();
     if (tab.dataset.tab === 'finance-personal') window.maybeLoadWealth?.();
     if (tab.dataset.tab === 'projects') window.maybeLoadProjects?.();
+    if (tab.dataset.tab === 'deliver') window.maybeLoadDeliver?.();
   });
 });
 
@@ -8294,6 +8304,7 @@ document.addEventListener('keydown', (e) => {
         if (saved === 'marketing') window.maybeLoadMarketing?.();
         if (saved === 'pipeline') window.maybeLoadSales?.();
         if (saved === 'projects') window.maybeLoadProjects?.();
+        if (saved === 'deliver') window.maybeLoadDeliver?.();
       }, 0);
     }
   }
@@ -9825,6 +9836,78 @@ document.addEventListener('visibilitychange', async () => {
   document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ closeSalesModal(); closeDrawer(); closeTpModal(); } if(e.key==='Enter'&&e.target.closest&&e.target.closest('[data-sales-val]')) e.target.blur(); });
 
   window.addEventListener('lrl-refresh', async ()=>{ if(!S.loaded) return; try{ await Promise.all([fetchSales(true), fetchPulse(true), fetchOverdue(true), fetchConvertAct(true)]); renderSales(); renderConvertAct(); }catch(_){} });
+})();
+</script>
+
+<!-- ===== DELIVER zone: client-delivery Act layer over the projects board ===== -->
+<script>
+(function(){
+  const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const DL={ loaded:false, loading:false, data:null };
+  let DL_COLLAPSED={}; try{ DL_COLLAPSED=JSON.parse(localStorage.getItem('lrl-deliver-collapsed')||'{}')||{}; }catch(e){ DL_COLLAPSED={}; }
+  const dlSave=()=>{ try{ localStorage.setItem('lrl-deliver-collapsed', JSON.stringify(DL_COLLAPSED)); }catch(e){} };
+  const fmtDate=(iso)=>{ if(!iso) return ''; const d=new Date(iso+'T12:00:00'); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
+  const owners=(p)=> (p.owners||[]).join(', ');
+
+  function dlSection(key,title,badge,badgeCls,bodyHtml){
+    const collapsed = DL_COLLAPSED[key] ? ' collapsed' : '';
+    const badgeHtml = (badge!=null && badge!=='') ? '<span class="mkt-sec-count '+(badgeCls||'')+'">'+badge+'</span>' : '';
+    return '<div class="mkt-section'+collapsed+'"><div class="mkt-sec-head" data-dl-toggle="'+key+'"><span class="mkt-sec-caret">▾</span><span class="mkt-sec-title">'+title+'</span>'+badgeHtml+'</div><div class="mkt-sec-body">'+bodyHtml+'</div></div>';
+  }
+  function card(chip, name, why, url){
+    return '<div class="needle-card zone-deliver"><div class="needle-main"><div class="needle-toprow"><span class="cv-stage">'+esc(chip)+'</span><span class="needle-title">'+esc(name||'')+'</span></div><div class="needle-why">'+esc(why)+'</div></div><div class="needle-actions"><button class="needle-act" data-dlopen="'+esc(url||'')+'">Open</button></div></div>';
+  }
+
+  function renderDeliver(){
+    const el=document.getElementById('deliver-act'); if(!el) return;
+    const d=DL.data;
+    if(!d){ el.innerHTML='<div class="cv-empty">Couldn\'t load Deliver actions.</div>'; return; }
+    const s=d.summary||{}; let html='';
+    html+='<div class="cv-note" style="margin:-4px 0 14px">'+(s.active||0)+' active · '+(s.production||0)+' in production · as of '+fmtDate(d.today)+'</div>';
+
+    const ov=d.overdue||[];
+    const ovBody = ov.length ? ov.map(p=>card(p.daysOverdue+'d late',p.name,(owners(p)||'—')+' · was due '+fmtDate(p.target),p.url)).join('')
+      : '<div class="cv-empty">Nothing overdue. 🎉</div>';
+    html+=dlSection('overdue','Overdue', (ov.length||'0'), (ov.length?'alert':'zero'), ovBody);
+
+    const ds=d.dueSoon||[];
+    const dsBody = ds.length ? ds.map(p=>{ const when=p.inDays===0?'today':(p.inDays===1?'tomorrow':('in '+p.inDays+'d')); return card(when,p.name,(owners(p)||'—')+' · '+fmtDate(p.target)+(p.area?(' · '+p.area):''),p.url); }).join('')
+      : '<div class="cv-empty">Nothing due in the next two weeks.</div>';
+    html+=dlSection('duesoon','Due soon', (ds.length||'0'), (ds.length?'':'zero'), dsBody);
+
+    const un=d.undated||[];
+    const unBody = un.length ? un.map(p=>card(p.status||'Active',p.name,(owners(p)||'—')+' · no date set',p.url)).join('')
+      : '<div class="cv-empty">Every active project has a date. 🎯</div>';
+    html+=dlSection('undated','Needs a date', (un.length||'0'), (un.length?'':'zero'), unBody);
+
+    const bo=d.byOwner||[];
+    let woBody='<div class="cv-empty">No active projects.</div>';
+    if(bo.length){ const max=Math.max.apply(null,bo.map(o=>o.n))||1;
+      woBody=bo.map(o=>{ const pct=Math.max(6,Math.round((o.n/max)*100)); return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px"><span style="color:var(--navy)">'+esc(o.owner)+'</span><span style="color:var(--navy-dim)">'+o.n+' active</span></div><div class="chapter-progress"><div class="chapter-progress-bar" style="width:'+pct+'%"></div></div></div>'; }).join('');
+    }
+    html+=dlSection('workload','Workload by owner', '', '', woBody);
+
+    const all=d.all||[];
+    if(DL_COLLAPSED['all']===undefined) DL_COLLAPSED['all']=true; // reference board collapsed by default
+    const allBody = all.length ? all.map(p=>card(p.area||p.status||'—',p.name,(owners(p)||'—')+' · '+(p.target?fmtDate(p.target):'no date'),p.url)).join('')
+      : '<div class="cv-empty">No active work projects.</div>';
+    html+=dlSection('all','All active projects', (all.length||'0'), '', allBody);
+
+    el.innerHTML=html;
+    el.querySelectorAll('[data-dl-toggle]').forEach(function(h){ h.addEventListener('click', function(){ var k=h.getAttribute('data-dl-toggle'); DL_COLLAPSED[k]=!DL_COLLAPSED[k]; dlSave(); h.closest('.mkt-section').classList.toggle('collapsed'); window.lrl?.haptic?.('tap'); }); });
+    el.querySelectorAll('[data-dlopen]').forEach(function(b){ b.addEventListener('click', function(e){ e.stopPropagation(); var u=b.getAttribute('data-dlopen'); if(u) window.open(u,'_blank'); }); });
+  }
+
+  async function fetchDeliver(fresh){ const r=await fetch('/api/deliver/act'+(fresh?'?fresh=1':'')); const d=await r.json(); if(d.error) throw new Error(d.error); DL.data=d; return d; }
+  async function maybeLoadDeliver(){
+    if(DL.loaded||DL.loading) return; DL.loading=true;
+    const el=document.getElementById('deliver-act');
+    try{ await fetchDeliver(false); DL.loaded=true; renderDeliver(); }
+    catch(err){ if(el) el.innerHTML='<div class="cv-empty">Couldn\'t load Deliver: '+esc(err.message)+'</div>'; }
+    finally{ DL.loading=false; }
+  }
+  window.maybeLoadDeliver=maybeLoadDeliver;
+  window.addEventListener('lrl-refresh', async ()=>{ if(!DL.loaded) return; try{ await fetchDeliver(true); renderDeliver(); }catch(_){} });
 })();
 </script>
 
