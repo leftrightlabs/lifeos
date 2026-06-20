@@ -556,6 +556,7 @@
   .scale-pl-meta b { color: var(--navy); font-weight: 700; }
   .scale-wiring { font-size: 12.5px; color: rgba(var(--ink-rgb),0.55); line-height: 1.5; }
   .scale-empty { font-size: 12px; color: rgba(var(--ink-rgb),0.5); margin-top: 8px; }
+  .scale-sys-next { font-size: 11.5px; color: rgba(var(--ink-rgb),0.55); margin-top: 4px; line-height: 1.35; }
   .privacy-on .scale-pl-bar, .privacy-on .scale-pl-meta { filter: blur(10px); user-select: none; }
   .privacy-on .scale-pl-bar:active, .privacy-on .scale-pl-meta:active { filter: blur(0); }
   /* "THE NUMBERS" divider between the Act layer and the full board */
@@ -7924,9 +7925,9 @@ function scaleActHtml(d){
   html += scaleSection('scorecard', 'Scorecard off-track', { text: 'NEEDS WIRING', cls: 'wiring' },
     `<div class="scale-wiring">Connect your VTO Scorecard actuals (weekly metric values). Once wired, only metrics <b>below target</b> show here — e.g. discovery calls booked, close rate. Revenue &amp; profit status already show under <b>Above the line</b>.</div>`);
 
-  // 3) Systems to fix — Business Functions not wired yet
-  html += scaleSection('systems', 'Systems to fix', { text: 'NEEDS WIRING', cls: 'wiring' },
-    `<div class="scale-wiring">Connect <b>Business Functions</b>. Broken &amp; critical systems will rank here by impact/effort, so the quick wins (high impact, low effort) surface first.</div>`);
+  // 3) Systems to fix — LIVE from the Business Functions DB (filled async by renderScaleSystems)
+  html += scaleSection('systems', 'Systems to fix', { text: 'LIVE NOW', cls: 'live' },
+    `<div id="scale-systems"><div class="scale-empty">Loading systems…</div></div>`);
 
   // 4) Spend to decide — tools / subscriptions not wired yet
   html += scaleSection('spend', 'Spend to decide', { text: 'NEEDS WIRING', cls: 'wiring' },
@@ -7934,6 +7935,46 @@ function scaleActHtml(d){
 
   return html;
 }
+
+// ---- "Systems to fix" — live from the Business Functions DB (/api/scale/systems) ----
+let SCALE_SYSTEMS = null;
+let _scaleSystemsStarted = false;
+async function fetchScaleSystems(fresh){
+  try {
+    const r = await fetch('/api/scale/systems' + (fresh ? '?fresh=1' : ''));
+    const j = await r.json();
+    SCALE_SYSTEMS = (j && j.error) ? { error: j.error } : j;
+  } catch (e){ console.error('fetchScaleSystems', e); SCALE_SYSTEMS = { error: e.message }; }
+}
+function scaleSystemChip(health){
+  if (health === 'Broken' || health === 'Missing') return { cls: 'red', text: (health || '').toUpperCase() };
+  return { cls: 'watch', text: (health || 'NEEDS WORK').toUpperCase() };
+}
+function renderScaleSystems(){
+  const el = document.getElementById('scale-systems');
+  if (!el) return;
+  const d = SCALE_SYSTEMS;
+  if (!d){ el.innerHTML = '<div class="scale-empty">Loading systems…</div>'; return; }
+  if (d.error){ el.innerHTML = `<div class="scale-empty">Couldn't load Business Functions — ${escapeHtml(d.error)}</div>`; return; }
+  const systems = d.systems || [];
+  if (!systems.length){ el.innerHTML = '<div class="scale-empty">No systems need attention right now. 🎉</div>'; return; }
+  const cards = systems.slice(0, 6).map(s => {
+    const chip = scaleSystemChip(s.health);
+    const bits = [];
+    if (s.priority) bits.push(`${escapeHtml(s.priority)} priority`);
+    if (s.func) bits.push(escapeHtml(s.func));
+    if (s.quickWin) bits.push('quick win — high impact, low effort');
+    else if (s.impact != null && s.effort != null) bits.push(`impact ${s.impact}/5 · effort ${s.effort}/5`);
+    const why = bits.join(' · ') || 'Needs attention';
+    const next = s.nextActions ? `<div class="scale-sys-next">→ ${escapeHtml(s.nextActions)}</div>` : '';
+    const open = s.url ? `<div class="needle-actions"><button class="needle-act" data-scale-open="${escapeHtml(s.url)}">Open</button></div>` : '';
+    return `<div class="needle-card zone-scale"><div class="needle-main"><div class="needle-toprow"><span class="scale-chip ${chip.cls}">${chip.text}</span><span class="needle-title">${escapeHtml(s.name || 'Untitled system')}</span></div><div class="needle-why">${why}</div>${next}</div>${open}</div>`;
+  }).join('');
+  const extra = systems.length > 6 ? `<div class="scale-empty" style="margin-top:8px">+${systems.length - 6} more need attention — open the Business Functions DB for the full list</div>` : '';
+  el.innerHTML = cards + extra;
+  el.querySelectorAll('[data-scale-open]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); const u = b.getAttribute('data-scale-open'); if (u) window.open(u, '_blank'); }));
+}
+window.refreshScaleSystems = async function(){ await fetchScaleSystems(true); renderScaleSystems(); };
 
 // ---- Scale board: 6-up KPI summary row (replaces the scattered tiles) ----
 function scaleKpiCard(label, value, meta, cls){
@@ -8115,6 +8156,7 @@ function renderFinance(d){
   `;
   body.innerHTML = html;
   attachFinanceHandlers();
+  renderScaleSystems();   // refill #scale-systems from cached data (or show loading until it arrives)
 }
 
 function attachFinanceHandlers(){
@@ -8153,6 +8195,8 @@ function maybeLoadFinance(){
   _financeLoaded = true;
   const c = window.lrlCache.read('finance'); if (c) { try { renderFinance(c); } catch(e){} }
   fetchFinance();
+  // "Systems to fix" loads from its own endpoint; render into #scale-systems when ready.
+  if (!_scaleSystemsStarted){ _scaleSystemsStarted = true; fetchScaleSystems().then(renderScaleSystems); }
 }
 
 // Quick Capture chat

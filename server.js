@@ -14,6 +14,7 @@ import { serializeDeal, serializeContactRow, queryAllDeals, fetchSalesProductMap
 import { CONTACTS_DS, PULSE_RELATIONSHIPS } from './src/config/convert.js';
 import { registerAttractRoutes } from './src/routes/attract.js';
 import { registerWealthRoutes } from './src/routes/wealth.js';
+import { registerScaleRoutes } from './src/routes/scale.js';
 
 if (process.env.NODE_ENV !== 'production') {
   const { default: dotenv } = await import('dotenv');
@@ -125,6 +126,7 @@ const CACHE_TTL_OVERRIDES = {
   'ynab-wealth': 60 * 60_000, // YNAB wealth summary: refresh hourly
   'journal-rings': 5 * 60_000, // heavier query (per-row body-text check); cache longer
   'vto-goals': 10 * 60_000,    // goals rarely change
+  'scale-systems': 10 * 60_000, // Business Functions change slowly (weekly review)
   'active-projects': 5 * 60_000, // project status changes slowly
   'projects-board': 5 * 60_000,  // Projects tab board (area/system maps + paginated projects)
   'weather': 20 * 60_000,        // current conditions change slowly
@@ -3517,6 +3519,7 @@ function dashifyId(id) {
 const { MARKETING_ASSETS_DS, fetchMarketingChannelMap, serializeMarketingAsset } =
   registerAttractRoutes(app, { notion, cache, cached, currentQuarter, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, anthropic, userContext });
 registerWealthRoutes(app, { cached, cache, userContext });
+registerScaleRoutes(app, { notion, cached });
 
 // =========================== MOVE THE NEEDLE (Phase 0) ===========================
 // GET /api/needle/today — ONE ranked, cross-zone "what to do next" list. This is
