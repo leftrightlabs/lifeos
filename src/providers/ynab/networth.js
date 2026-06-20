@@ -34,12 +34,19 @@ export async function getWealthSummary() {
   const [acc, mon, cat] = await Promise.all([ynabGet('/accounts'), ynabGet('/months/current'), ynabGet('/categories')]);
 
   const accounts = (acc.accounts || []).filter((a) => !a.deleted && !a.closed);
-  let assets = 0, liabilities = 0, cash = 0, savings = 0;
+  // The WF "Priority Credit Line" is a securities-backed line of credit (borrowed
+  // against investments to subsidize the business). YNAB has it typed as otherAsset
+  // with a negative balance, so match it by name/type and keep it OUT of consumer
+  // debt — Gretchen tracks it separately from cards + the car loan.
+  const isLineOfCredit = (a) => a.type === 'lineOfCredit' || /credit line|line of credit/i.test(a.name || '');
+  let assets = 0, liabilities = 0, cash = 0, savings = 0, investments = 0, lineOfCredit = 0, otherDebt = 0;
   for (const a of accounts) {
     const b = m(a.balance);
     if (b >= 0) assets += b; else liabilities += b;
     if (LIQUID.has(a.type)) cash += b;
     if (a.type === 'savings') savings += b;
+    if (a.type === 'otherAsset' && b > 0) investments += b; // brokerage / retirement
+    if (b < 0) { if (isLineOfCredit(a)) lineOfCredit += b; else otherDebt += b; }
   }
 
   const month = mon.month || {};
@@ -64,7 +71,10 @@ export async function getWealthSummary() {
     cash: Math.round(cash),
     savings: Math.round(savings),
     emergencyFund: Math.round(savings), // per Gretchen: savings account is the emergency cushion
-    debt: Math.round(-liabilities), // positive
+    debt: Math.round(-liabilities), // total owed (kept for back-compat)
+    otherDebt: Math.round(-otherDebt), // cards + car loan
+    lineOfCredit: Math.round(-lineOfCredit), // securities-backed LOC (business)
+    investments: Math.round(investments), // brokerage + retirement
     month: {
       income: Math.round(m(month.income)),
       budgeted: Math.round(m(month.budgeted)),

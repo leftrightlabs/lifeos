@@ -3489,7 +3489,9 @@ window.lrl = (function(){
       <div class="kpi-card"><div class="kpi-label">Emergency Fund</div><div class="kpi-value"><span id="w-emergency">—</span></div><div class="kpi-change" id="w-emergency-sub">savings cushion</div></div>
       <div class="kpi-card"><div class="kpi-label">Age of Money</div><div class="kpi-value"><span id="w-aom">—</span></div><div class="kpi-change" id="w-aom-sub">days of buffer</div></div>
       <div class="kpi-card"><div class="kpi-label">Cash on Hand</div><div class="kpi-value"><span id="w-cash">—</span></div><div class="kpi-change" id="w-cash-sub">checking + cash</div></div>
-      <div class="kpi-card"><div class="kpi-label">Debt</div><div class="kpi-value"><span id="w-debt">—</span></div><div class="kpi-change" id="w-debt-sub">credit line, cards & loans</div></div>
+      <div class="kpi-card"><div class="kpi-label">Investments</div><div class="kpi-value"><span id="w-invest">—</span></div><div class="kpi-change" id="w-invest-sub">brokerage &amp; retirement</div></div>
+      <div class="kpi-card"><div class="kpi-label">Other Debt</div><div class="kpi-value"><span id="w-debt">—</span></div><div class="kpi-change" id="w-debt-sub">cards &amp; car loan</div></div>
+      <div class="kpi-card"><div class="kpi-label">Line of Credit</div><div class="kpi-value"><span id="w-loc">—</span></div><div class="kpi-change" id="w-loc-sub">against investments</div></div>
     </div>
     <div id="w-goals" style="margin-top:16px"></div>
   </div>
@@ -7297,7 +7299,9 @@ function maybeLoadWealth(){
     set('w-emergency', money(d.emergencyFund), 'savings cushion');
     set('w-aom', (mb.ageOfMoney==null ? '—' : String(mb.ageOfMoney)), 'days of buffer');
     set('w-cash', money(d.cash), 'checking + cash');
-    set('w-debt', money(d.debt), 'credit line, cards & loans');
+    set('w-invest', money(d.investments), 'brokerage & retirement');
+    set('w-debt', money(d.otherDebt), 'cards & car loan');
+    set('w-loc', money(d.lineOfCredit), 'against investments');
     const gEl = document.getElementById('w-goals');
     if (gEl){
       const goals = d.goals || [];
