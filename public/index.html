@@ -189,6 +189,44 @@
   .quest-panel-caret { display: none; }
   .quest-panel-meta { font-size: 11px; color: var(--navy-dim); font-family: var(--font-body); font-weight: 500; letter-spacing: 0.06em; white-space: nowrap; }
   .quest-panel.collapsed .panel-add-btn { display: none; }
+  /* Move-the-needle panel (Phase 0): ranked cross-zone next-actions */
+  .needle-panel .needle-meta-link { background:none; border:none; color:var(--navy-dim); cursor:pointer; font-size:12px; font-family:var(--font-body); padding:0 2px; }
+  .needle-panel .needle-meta-link:hover { color:var(--lime); }
+  .needle-card { display:flex; align-items:flex-start; gap:12px; padding:11px 12px; border:1px solid var(--navy-faint); border-left-width:3px; border-radius:8px; background:var(--cream-2); margin-bottom:8px; }
+  .needle-card:last-child { margin-bottom:0; }
+  .needle-card.zone-attract { border-left-color:#5d9cec; }
+  .needle-card.zone-convert { border-left-color:var(--lime); }
+  .needle-card.zone-deliver { border-left-color:#c98bdb; }
+  .needle-card.zone-scale   { border-left-color:#ffb74d; }
+  .needle-main { flex:1; min-width:0; }
+  .needle-toprow { display:flex; align-items:center; gap:8px; margin-bottom:3px; }
+  .needle-zone { font-size:9px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; padding:2px 6px; border-radius:3px; flex-shrink:0; }
+  .needle-zone.zone-attract { background:rgba(93,156,236,0.16); color:#9cc5f5; }
+  .needle-zone.zone-convert { background:var(--lime-faint); color:var(--lime); }
+  .needle-zone.zone-deliver { background:rgba(201,139,219,0.16); color:#d7a6e6; }
+  .needle-zone.zone-scale   { background:rgba(255,183,77,0.16); color:#ffb74d; }
+  .needle-title { font-size:13.5px; font-weight:600; color:var(--navy); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .needle-why { font-size:11.5px; color:var(--navy-dim); line-height:1.35; }
+  .needle-actions { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  .needle-act { background:transparent; border:1px solid rgba(var(--edge-rgb),0.14); color:rgba(var(--ink-rgb),0.7); font-family:var(--font-body); font-size:10.5px; font-weight:700; letter-spacing:0.04em; padding:5px 10px; border-radius:999px; cursor:pointer; white-space:nowrap; transition:all .15s; }
+  .needle-act:hover { color:var(--lime); border-color:var(--lime); }
+  .needle-act:disabled { opacity:0.5; cursor:default; }
+  .needle-dismiss { background:transparent; border:none; color:var(--navy-dim); font-size:17px; line-height:1; cursor:pointer; padding:2px 5px; border-radius:6px; flex-shrink:0; }
+  .needle-dismiss:hover { color:var(--danger); }
+  /* Convert zone "Act" layer (gap / follow-ups / prune) above the pipeline board */
+  .cv-layer { display:flex; align-items:center; gap:12px; margin:24px 0 16px; }
+  .cv-line { flex:1; height:1px; background:var(--navy-faint); }
+  .cv-layer-lbl { font-size:10.5px; font-weight:800; letter-spacing:.13em; text-transform:uppercase; color:var(--navy-dim); white-space:nowrap; }
+  .cv-group { background:var(--white); border:1px solid var(--navy-faint); border-radius:12px; padding:16px 18px; margin-bottom:14px; }
+  .cv-group-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+  .cv-group-title { font-size:14.5px; font-weight:700; color:var(--navy); }
+  .cv-group-sub { font-size:11.5px; color:var(--navy-dim); }
+  .cv-gap-bar { height:12px; background:var(--cream-2); border-radius:6px; overflow:hidden; margin:6px 0; }
+  .cv-gap-fill { height:100%; background:var(--lime); border-radius:6px; transition:width .5s; }
+  .cv-gap-meta { display:flex; justify-content:space-between; font-size:12.5px; color:var(--navy-dim); gap:10px; }
+  .cv-note { font-size:11.5px; color:var(--navy-dim); margin:12px 0 6px; font-weight:600; }
+  .cv-stage { font-size:8.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; padding:2px 6px; border-radius:3px; background:var(--lime-faint); color:var(--lime); white-space:nowrap; flex-shrink:0; max-width:150px; overflow:hidden; text-overflow:ellipsis; }
+  .cv-empty { color:var(--navy-dim); font-size:13px; padding:6px 0; }
   /* Source toggle for new-task modal */
   .task-source-toggle { display: flex; gap: 6px; margin-bottom: 14px; }
   .task-source-opt { padding: 5px 16px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0.05em; cursor: pointer; border: 1.5px solid rgba(var(--edge-rgb), 0.12); background: transparent; color: rgba(var(--ink-rgb), 0.45); transition: all 0.15s; font-family: var(--font-body); }
@@ -2956,7 +2994,7 @@ window.lrl = (function(){
     <button class="tab" data-tab="projects" data-modes="all,work,personal">Projects</button>
     <button class="tab" data-tab="autofocus" data-modes="all,work,personal">Tasks</button>
     <button class="tab" data-tab="review" data-modes="all,work,personal">Review</button>
-    <button class="tab tab-ctx" data-tab="pipeline" data-modes="work">Sales</button>
+    <button class="tab tab-ctx" data-tab="pipeline" data-modes="work">Convert</button>
     <button class="tab tab-ctx" data-tab="marketing" data-modes="work">Marketing</button>
     <button class="tab tab-ctx" data-tab="finance" data-modes="work">Finance</button>
     <button class="tab tab-ctx" data-tab="team" data-modes="work">Team</button>
@@ -2970,6 +3008,16 @@ window.lrl = (function(){
   <div class="tab-content active" data-content="command">
     <div class="section-label">Today's Overview</div>
     <h1 class="page-title"><span>Today</span></h1>
+
+    <div class="panel quest-panel needle-panel" id="needle-panel">
+      <div class="quest-panel-head">
+        <button class="quest-panel-toggle" id="needle-panel-toggle" title="Collapse/expand">
+          <span class="quest-panel-caret" id="needle-caret">▾</span> Move the needle today
+        </button>
+        <span class="quest-panel-meta" id="needle-panel-meta"></span>
+      </div>
+      <div id="needle-body" class="quest-panel-body"><div style="color:var(--navy-dim);font-size:13px;padding:8px 0">loading…</div></div>
+    </div>
 
     <div class="daily-brief" id="daily-brief">
       <div class="daily-brief-kicker">
@@ -3296,9 +3344,11 @@ window.lrl = (function(){
 
   <!-- PIPELINE TAB -->
   <div class="tab-content" data-content="pipeline">
-    <div class="section-label">Sales Pipeline</div>
-    <h1 class="page-title"><span>Sales</span></h1>
-    <div class="page-subtitle">Every open deal by stage, what's closing, and the lead research behind each one.</div>
+    <div class="section-label">Convert</div>
+    <h1 class="page-title"><span>Convert</span></h1>
+    <div class="page-subtitle">Who to chase, what must close to hit the quarter, and what to prune — your full pipeline sits below.</div>
+    <div id="convert-act"><div style="color:var(--navy-dim);font-size:13px;padding:14px 0">loading…</div></div>
+    <div class="cv-layer"><span class="cv-line"></span><span class="cv-layer-lbl">The pipeline — full board</span><span class="cv-line"></span></div>
     <div id="sales-body"><div style="color:var(--navy-dim);font-size:13px;padding:20px 0">loading…</div></div>
   </div>
   <div class="mkt-modal" id="sales-modal"><div class="mkt-modal-content" id="sales-modal-content"></div></div>
@@ -4673,6 +4723,101 @@ async function fetchTodayQuests(){
     window.dispatchEvent(new CustomEvent('lrl-tasks-updated'));
   } catch (e) { console.error('fetchTodayQuests', e); }
 }
+
+// ---- Move the needle today (Phase 0) -------------------------------------
+let NEEDLE_CARDS = [];
+let NEEDLE_DISMISSED = new Set();
+let NEEDLE_ACTION_BY_ID = {};
+function needleDismissStoreKey(){ return 'lrl-needle-dismissed-' + chicagoYMD(new Date().toISOString()); }
+function needleEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function loadNeedleDismissed(){
+  try { const r = await window.storage.get(needleDismissStoreKey()); NEEDLE_DISMISSED = new Set(JSON.parse((r && r.value) || '[]')); }
+  catch(e){ NEEDLE_DISMISSED = new Set(); }
+}
+async function saveNeedleDismissed(){
+  try { await window.storage.set(needleDismissStoreKey(), JSON.stringify([...NEEDLE_DISMISSED])); } catch(e){}
+}
+async function fetchNeedleCards(fresh){
+  try {
+    const r = await fetch('/api/needle/today' + (fresh ? '?fresh=1' : ''));
+    const data = await r.json();
+    NEEDLE_CARDS = data.cards || [];
+    window.__needleAsOf = data.asOf || null;
+  } catch(e){ console.error('fetchNeedleCards', e); NEEDLE_CARDS = []; }
+}
+function renderNeedleCards(){
+  const body = document.getElementById('needle-body');
+  const meta = document.getElementById('needle-panel-meta');
+  if (!body) return;
+  const cards = NEEDLE_CARDS.filter(c => !NEEDLE_DISMISSED.has(c.id));
+  NEEDLE_ACTION_BY_ID = {};
+  cards.forEach(c => { NEEDLE_ACTION_BY_ID[c.id] = c.action || {}; });
+  if (meta){
+    const t = window.__needleAsOf ? new Date(window.__needleAsOf).toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'}) : '';
+    meta.innerHTML = `${cards.length} ${cards.length===1?'move':'moves'}${t?` · as of ${t}`:''} <button class="needle-meta-link" id="needle-refresh" title="Refresh">↻</button>`;
+  }
+  if (!cards.length){
+    body.innerHTML = '<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">Nothing urgent — pipeline, delivery and content are current. 🎉</div>';
+  } else {
+    body.innerHTML = cards.map(c => `
+      <div class="needle-card zone-${needleEsc(c.zone)}" data-id="${needleEsc(c.id)}">
+        <div class="needle-main">
+          <div class="needle-toprow">
+            <span class="needle-zone zone-${needleEsc(c.zone)}">${needleEsc(c.zoneLabel)}</span>
+            <span class="needle-title">${needleEsc(c.title)}</span>
+          </div>
+          <div class="needle-why">${needleEsc(c.why)}</div>
+        </div>
+        <div class="needle-actions">
+          <button class="needle-act">${needleEsc((c.action && c.action.label) || 'Open')}</button>
+          <button class="needle-dismiss" title="Dismiss for today" aria-label="Dismiss">×</button>
+        </div>
+      </div>`).join('');
+  }
+  document.getElementById('needle-refresh')?.addEventListener('click', async (e)=>{ e.stopPropagation(); await fetchNeedleCards(true); renderNeedleCards(); });
+  body.querySelectorAll('.needle-card').forEach(el => {
+    const id = el.getAttribute('data-id');
+    el.querySelector('.needle-dismiss')?.addEventListener('click', async (e)=>{
+      e.stopPropagation(); NEEDLE_DISMISSED.add(id); await saveNeedleDismissed();
+      window.lrl?.haptic?.('tap'); renderNeedleCards();
+    });
+    el.querySelector('.needle-act')?.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const act = NEEDLE_ACTION_BY_ID[id] || {};
+      if (act.kind === 'jump' && act.tab){
+        document.querySelector(`.tab[data-tab="${act.tab}"]`)?.click();
+        window.scrollTo({ top:0, behavior:'smooth' });
+      } else if (act.kind === 'touchpoint' && act.contactId){
+        const btn = el.querySelector('.needle-act'); const prev = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Logging…';
+        try {
+          const r = await fetch('/api/sales/touchpoint', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ contactId: act.contactId, contactName: act.contactName, touchpointType:'👋 General Touchpoint' }) });
+          if (!r.ok) throw new Error('failed');
+          window.lrl?.haptic?.('success'); window.lrl?.toast?.('Touch logged for ' + (act.contactName || 'contact'), 'success');
+          NEEDLE_DISMISSED.add(id); await saveNeedleDismissed(); renderNeedleCards();
+        } catch(err){ btn.disabled = false; btn.textContent = prev; window.lrl?.toast?.('Could not log touch', 'error'); }
+      }
+    });
+  });
+}
+async function initNeedlePanel(){
+  const panel = document.getElementById('needle-panel');
+  const btn = document.getElementById('needle-panel-toggle');
+  if (panel && btn){
+    if (localStorage.getItem('lrl-needle-panel-collapsed') === '1') panel.classList.add('collapsed');
+    btn.addEventListener('click', ()=>{
+      panel.classList.toggle('collapsed');
+      localStorage.setItem('lrl-needle-panel-collapsed', panel.classList.contains('collapsed') ? '1' : '0');
+      window.lrl?.haptic?.('tap');
+    });
+  }
+  await loadNeedleDismissed();
+  await fetchNeedleCards();
+  renderNeedleCards();
+}
+window.refreshNeedle = async (fresh) => { await fetchNeedleCards(!!fresh); renderNeedleCards(); };
+document.addEventListener('DOMContentLoaded', () => { initNeedlePanel(); });
 
 function fmtTime(iso){
   if(!iso) return '';
@@ -8750,11 +8895,51 @@ document.addEventListener('visibilitychange', async () => {
   async function maybeLoadSales(){
     if (S.loaded||S.loading) return; S.loading=true;
     const body=document.getElementById('sales-body');
-    try { await Promise.all([fetchSales(true), fetchPulse(true), fetchOverdue(true)]); S.loaded=true; renderSales(); }
+    try { await Promise.all([fetchSales(true), fetchPulse(true), fetchOverdue(true), fetchConvertAct(true)]); S.loaded=true; renderSales(); renderConvertAct(); }
     catch(err){ if(body) body.innerHTML=`<div class="mkt-empty">Couldn't load sales: ${esc(err.message)}</div>`; }
     finally { S.loading=false; }
   }
   window.maybeLoadSales = maybeLoadSales;
+
+  // ---- Convert "Act" layer: gap-to-quarter, follow-ups due, prune ----
+  function cvMoney(n){ return (typeof n==='number'&&isFinite(n)) ? '$'+Math.round(n).toLocaleString('en-US') : '—'; }
+  async function fetchConvertAct(fresh){ try{ const r=await fetch('/api/convert/act'+(fresh?'?fresh=1':'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.act=d; }catch(e){ console.error('fetchConvertAct',e); S.act=null; } }
+  function renderConvertAct(){
+    const el=document.getElementById('convert-act'); if(!el) return;
+    const d=S.act;
+    if(!d){ el.innerHTML='<div class="cv-empty">Couldn\'t load Convert actions.</div>'; return; }
+    const g=d.gap||{}; let html='';
+    // Gap to quarter
+    html+='<div class="cv-group"><div class="cv-group-head"><div class="cv-group-title">Gap to quarter</div><div class="cv-group-sub">'+esc(d.quarterLabel||'')+'</div></div>';
+    if(g.goal){ const pct=Math.round((g.pct||0)*100);
+      html+='<div class="cv-gap-bar"><div class="cv-gap-fill" style="width:'+pct+'%"></div></div>';
+      html+='<div class="cv-gap-meta"><span><b style="color:var(--navy)">'+cvMoney(g.booked)+'</b> booked</span><span>'+cvMoney(g.remaining)+' to go · goal '+cvMoney(g.goal)+'</span></div>';
+    } else {
+      html+='<div class="cv-gap-meta"><span><b style="color:var(--navy)">'+cvMoney(g.booked)+'</b> won this quarter</span><span>'+cvMoney(d.openValue)+' open</span></div>';
+      html+='<div class="cv-empty" style="font-size:11px">Add a "Revenue" metric to your VTO Scorecard to see the gap-to-goal bar.</div>';
+    }
+    if((d.closeTheGap||[]).length){
+      html+='<div class="cv-note">These close the gap'+(g.remaining?(' (need '+cvMoney(g.remaining)+')'):'')+':</div>';
+      html+=d.closeTheGap.map(function(dl){ return '<div class="needle-card zone-convert"><div class="needle-main"><div class="needle-toprow"><span class="cv-stage">'+esc(dl.status||'')+'</span><span class="needle-title">'+esc(dl.name||'')+'</span></div><div class="needle-why">'+cvMoney(dl.value)+'</div></div><div class="needle-actions"><button class="needle-act" data-cvopen="'+esc(dl.url||'')+'">Open</button></div></div>'; }).join('');
+    }
+    html+='</div>';
+    // Follow-ups due
+    html+='<div class="cv-group"><div class="cv-group-head"><div class="cv-group-title">Follow-ups due</div><div class="cv-group-sub">'+((d.followups||[]).length)+' to chase</div></div>';
+    if((d.followups||[]).length){
+      html+=d.followups.map(function(c){ var stage=(c.stage||'').replace(/^\d+\.\s*/,''); var why=c.lastTouched?('No touch in '+c.daysSince+'d'):'Never logged'; if(c.relationship) why+=' · '+esc(c.relationship); return '<div class="needle-card zone-convert"><div class="needle-main"><div class="needle-toprow"><span class="cv-stage">'+esc(stage)+'</span><span class="needle-title">'+esc(c.name||'')+'</span></div><div class="needle-why">'+why+'</div></div><div class="needle-actions"><button class="needle-act" data-cvtouch="'+esc(c.id)+'" data-cvname="'+esc(c.name||'')+'">Log a touch</button></div></div>'; }).join('');
+    } else { html+='<div class="cv-empty">No stage-based follow-ups due right now. 🎉</div>'; }
+    html+='</div>';
+    // Prune
+    if((d.prune||[]).length){
+      html+='<div class="cv-group"><div class="cv-group-head"><div class="cv-group-title">Prune the pipeline</div><div class="cv-group-sub">On Hold · revive or drop</div></div>';
+      html+=d.prune.map(function(dl){ return '<div class="needle-card zone-convert"><div class="needle-main"><div class="needle-toprow"><span class="cv-stage">On Hold</span><span class="needle-title">'+esc(dl.name||'')+'</span></div><div class="needle-why">'+cvMoney(dl.value)+'</div></div><div class="needle-actions"><button class="needle-act" data-cvopen="'+esc(dl.url||'')+'">Open</button></div></div>'; }).join('');
+      html+='</div>';
+    }
+    el.innerHTML=html;
+    el.querySelectorAll('[data-cvopen]').forEach(function(b){ b.addEventListener('click', function(e){ e.stopPropagation(); var u=b.getAttribute('data-cvopen'); if(u) window.open(u,'_blank'); }); });
+    el.querySelectorAll('[data-cvtouch]').forEach(function(b){ b.addEventListener('click', async function(e){ e.stopPropagation(); var id=b.getAttribute('data-cvtouch'), name=b.getAttribute('data-cvname'), prev=b.textContent; b.disabled=true; b.textContent='Logging…'; try{ var r=await fetch('/api/sales/touchpoint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contactId:id,contactName:name,touchpointType:'👋 General Touchpoint'})}); if(!r.ok) throw new Error('failed'); window.lrl?.haptic?.('success'); window.lrl?.toast?.('Touch logged for '+name,'success'); var card=b.closest('.needle-card'); if(card){ card.style.transition='opacity .3s'; card.style.opacity='0'; setTimeout(function(){ card.remove(); },300); } }catch(err){ b.disabled=false; b.textContent=prev; window.lrl?.toast?.('Could not log touch','error'); } }); });
+  }
+  window.refreshConvertAct = async function(){ await fetchConvertAct(true); renderConvertAct(); };
 
   // ---- Sales Pulse: weekly counters + overdue contacts + log drawer ----
   const TOUCHPOINTS = ['👋 General Touchpoint','📩 Follow-Up','🎯 Offer Sent','📋 Proposal Sent','📞 Sales Call','🙏 Thank You / Nurture','🔁 Re-Engage'];
@@ -9074,7 +9259,7 @@ document.addEventListener('visibilitychange', async () => {
 
   document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ closeSalesModal(); closeDrawer(); closeTpModal(); } if(e.key==='Enter'&&e.target.closest&&e.target.closest('[data-sales-val]')) e.target.blur(); });
 
-  window.addEventListener('lrl-refresh', async ()=>{ if(!S.loaded) return; try{ await Promise.all([fetchSales(true), fetchPulse(true), fetchOverdue(true)]); renderSales(); }catch(_){} });
+  window.addEventListener('lrl-refresh', async ()=>{ if(!S.loaded) return; try{ await Promise.all([fetchSales(true), fetchPulse(true), fetchOverdue(true), fetchConvertAct(true)]); renderSales(); renderConvertAct(); }catch(_){} });
 })();
 </script>
 
