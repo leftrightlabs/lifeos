@@ -14,7 +14,6 @@ import { serializeDeal, serializeContactRow, queryAllDeals, fetchSalesProductMap
 import { CONTACTS_DS, PULSE_RELATIONSHIPS } from './src/config/convert.js';
 import { registerAttractRoutes } from './src/routes/attract.js';
 import { registerWealthRoutes } from './src/routes/wealth.js';
-import { registerDeliverRoutes } from './src/routes/deliver.js';
 
 if (process.env.NODE_ENV !== 'production') {
   const { default: dotenv } = await import('dotenv');
@@ -3492,9 +3491,6 @@ function dashifyId(id) {
 const { MARKETING_ASSETS_DS, fetchMarketingChannelMap, serializeMarketingAsset } =
   registerAttractRoutes(app, { notion, cache, cached, currentQuarter, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, anthropic, userContext });
 registerWealthRoutes(app, { cached, cache, userContext });
-
-// ===== Deliver domain — client-delivery Act layer over the projects board (src/routes/deliver.js) =====
-registerDeliverRoutes(app, { cached, cache, userContext, fetchProjectsBoard, chicagoTodayISODate });
 
 // =========================== MOVE THE NEEDLE (Phase 0) ===========================
 // GET /api/needle/today — ONE ranked, cross-zone "what to do next" list. This is

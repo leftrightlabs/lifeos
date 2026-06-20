@@ -8713,6 +8713,7 @@ document.addEventListener('visibilitychange', async () => {
       P.data = d;
       window.lrlCache.save('projects', d);
       render();
+      window.dispatchEvent(new CustomEvent('lrl-projects-loaded'));
     } catch(e){
       if (!P.data && body) body.innerHTML = '<div class="proj-empty">Couldn’t load projects: ' + esc(e.message) + '</div>';
     }
@@ -8946,6 +8947,7 @@ document.addEventListener('visibilitychange', async () => {
       if (!r.ok){ const j = await r.json().catch(() => ({})); throw new Error(j.error || 'save failed'); }
       applyEdit(id, body);
       renderResults();
+      window.dispatchEvent(new CustomEvent('lrl-project-updated'));
       window.lrl?.haptic?.('success'); window.lrl?.toast?.('Project updated', 'success');
     } catch (e){ window.lrl?.toast?.('Save failed: ' + e.message, 'error'); renderResults(); }
   }
@@ -9061,6 +9063,14 @@ document.addEventListener('visibilitychange', async () => {
     load();
   }
   window.maybeLoadProjects = maybeLoadProjects;
+  // Reusable read/edit API so other zones (e.g. Deliver) can render the same
+  // expandable/editable project cards over the shared board data.
+  window.lrlProjects = {
+    projects: () => (P.data && P.data.projects) || [],
+    rowHTML, startStatusEdit, startDateEdit, patchProject, commitDeadline, openUrl,
+    expanded: P.expanded,
+    ensureLoaded: () => { if (!_loaded) maybeLoadProjects(); },
+  };
   window.addEventListener('lrl-refresh', () => { if (_loaded) load(true); });
   // Combine with the ALL/WORK/PERSONAL toggle: reset the mode-specific filters
   // (area chips + status differ per mode) and re-render with the new scope.
@@ -9840,74 +9850,135 @@ document.addEventListener('visibilitychange', async () => {
 </script>
 
 <!-- ===== DELIVER zone: client-delivery Act layer over the projects board ===== -->
+<style>
+  #deliver-act { container: projbody / inline-size; }
+  .dl-sec { background: var(--white); border: 1px solid var(--navy-faint); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+  .dl-sec-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; cursor: pointer; }
+  .dl-sec-title { font-size: 16px; font-weight: 700; color: var(--navy); }
+  .dl-sec-sub { font-size: 12.5px; color: var(--navy-dim); margin-top: 2px; }
+  .dl-sec-body { margin-top: 14px; }
+  .dl-sec.collapsed .dl-sec-body { display: none; }
+  .dl-pill { flex: none; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+  .dl-pill.live { background: var(--lime-faint); color: var(--lime); }
+  .dl-pill.wire { background: rgba(148,163,184,0.14); color: var(--navy-dim); }
+  .dl-hl { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 14px; font-size: 13px; color: var(--navy-dim); }
+  .dl-hl-item b { color: var(--navy); font-size: 15px; }
+  .dl-ladder-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  .dl-ladder { border: 1px solid var(--navy-faint); border-radius: 10px; padding: 12px; opacity: .65; }
+  .dl-ladder-name { font-size: 11px; font-weight: 700; letter-spacing: .05em; color: var(--navy); }
+  .dl-ladder-meta { font-size: 12px; color: var(--navy-dim); margin-top: 4px; }
+  .dl-owner { padding: 7px 0; }
+  .dl-owner-row { display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 13px; margin-bottom: 5px; }
+  .dl-owner-name { color: var(--navy); font-weight: 600; }
+  .dl-owner-n { color: var(--navy-dim); font-size: 12px; }
+  .dl-owner-row:hover .dl-owner-name { color: var(--lime); }
+  .dl-drill { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--navy-faint); }
+</style>
 <script>
 (function(){
   const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  const DL={ loaded:false, loading:false, data:null };
-  let DL_COLLAPSED={}; try{ DL_COLLAPSED=JSON.parse(localStorage.getItem('lrl-deliver-collapsed')||'{}')||{}; }catch(e){ DL_COLLAPSED={}; }
-  const dlSave=()=>{ try{ localStorage.setItem('lrl-deliver-collapsed', JSON.stringify(DL_COLLAPSED)); }catch(e){} };
-  const fmtDate=(iso)=>{ if(!iso) return ''; const d=new Date(iso+'T12:00:00'); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
-  const owners=(p)=> (p.owners||[]).join(', ');
+  const PA=()=>window.lrlProjects;
+  const ACTIVE=new Set(['Active','Ongoing','Billing']);
+  let COL={}; try{ COL=JSON.parse(localStorage.getItem('lrl-deliver-col')||'{}')||{}; }catch(e){ COL={}; }
+  const saveCol=()=>{ try{ localStorage.setItem('lrl-deliver-col', JSON.stringify(COL)); }catch(e){} };
+  let ownerOpen=null, booted=false;
 
-  function dlSection(key,title,badge,badgeCls,bodyHtml){
-    const collapsed = DL_COLLAPSED[key] ? ' collapsed' : '';
-    const badgeHtml = (badge!=null && badge!=='') ? '<span class="mkt-sec-count '+(badgeCls||'')+'">'+badge+'</span>' : '';
-    return '<div class="mkt-section'+collapsed+'"><div class="mkt-sec-head" data-dl-toggle="'+key+'"><span class="mkt-sec-caret">▾</span><span class="mkt-sec-title">'+title+'</span>'+badgeHtml+'</div><div class="mkt-sec-body">'+bodyHtml+'</div></div>';
-  }
-  function card(chip, name, why, url){
-    return '<div class="needle-card zone-deliver"><div class="needle-main"><div class="needle-toprow"><span class="cv-stage">'+esc(chip)+'</span><span class="needle-title">'+esc(name||'')+'</span></div><div class="needle-why">'+esc(why)+'</div></div><div class="needle-actions"><button class="needle-act" data-dlopen="'+esc(url||'')+'">Open</button></div></div>';
+  const today=()=>{ const d=new Date(); d.setHours(0,0,0,0); return d.toISOString().slice(0,10); };
+  const target=(p)=> p.end||p.due||p.deadline||null;
+  const isOverdue=(p)=>{ const t=target(p); return !!(p.atRisk || (t && t<today() && p.status!=='Done')); };
+  const activeWork=()=> (PA()&&PA().projects()||[]).filter(p=>p.source==='work' && ACTIVE.has(p.status));
+
+  function shell(key,title,sub,pillText,pillCls,bodyHtml){
+    const collapsed = COL[key] ? ' collapsed':'';
+    const pill = pillText ? '<span class="dl-pill '+(pillCls||'')+'">'+esc(pillText)+'</span>':'';
+    return '<div class="dl-sec'+collapsed+'" data-dl-sec="'+esc(key)+'"><div class="dl-sec-head"><div><div class="dl-sec-title">'+esc(title)+'</div>'+(sub?'<div class="dl-sec-sub">'+esc(sub)+'</div>':'')+'</div>'+pill+'</div><div class="dl-sec-body">'+bodyHtml+'</div></div>';
   }
 
-  function renderDeliver(){
+  function groupByArea(list){ const g={}; list.forEach(p=>{ const a=p.area||'No Area'; (g[a]=g[a]||[]).push(p); }); return g; }
+  const sortDelivery=(a,b)=>{ const rank=p=>p.status==='Billing'?0:(isOverdue(p)?1:2); const r=rank(a)-rank(b); if(r) return r; return (target(a)||'9999').localeCompare(target(b)||'9999'); };
+  function areaGroupsHTML(list, prefix){
+    if(!list.length) return '<div class="cv-empty">No active client projects here.</div>';
+    const g=groupByArea(list);
+    const keys=Object.keys(g).sort((a,b)=>{ const na=/^No /.test(a),nb=/^No /.test(b); if(na!==nb) return na?1:-1; return a.localeCompare(b); });
+    return keys.map(k=>{ const ck=prefix+':'+k; const collapsed=COL[ck]?' collapsed':''; const items=g[k].slice().sort(sortDelivery);
+      return '<div class="proj-group'+collapsed+'" data-dl-group="'+esc(ck)+'"><div class="proj-group-head"><span class="caret">▾</span><h3>'+esc(k)+'</h3><span class="cnt">'+items.length+'</span></div><div class="proj-group-body">'+items.map(p=>PA().rowHTML(p)).join('')+'</div></div>';
+    }).join('');
+  }
+
+  function offersPlaceholder(){
+    const ladders=['Get Clear','Get Noticed','Get Paid','Get Support'];
+    const cards=ladders.map(l=>'<div class="dl-ladder"><div class="dl-ladder-name">'+l.toUpperCase()+'</div><div class="dl-ladder-meta">— not wired —</div></div>').join('');
+    return '<div class="dl-ladder-row">'+cards+'</div><div class="cv-note" style="margin-top:11px">Connect your <b>Products</b> DB — add a <b>ladder stage</b> (Get Clear/Noticed/Paid/Support), a <b>live/draft</b> status, and a <b>landing URL</b> per offer — and this fills with which rungs are live vs missing, plus drafts to finish.</div>';
+  }
+  function renewalsPlaceholder(){
+    return '<div class="cv-note">Connect your <b>Web Properties</b> DB — add each client site\'s <b>plan tier</b>, <b>renewal date</b>, and <b>auto-renew</b> flag — and this surfaces care-plans coming up for renewal and upsell paths (e.g. LITE → PLUS).</div>';
+  }
+
+  function render(){
     const el=document.getElementById('deliver-act'); if(!el) return;
-    const d=DL.data;
-    if(!d){ el.innerHTML='<div class="cv-empty">Couldn\'t load Deliver actions.</div>'; return; }
-    const s=d.summary||{}; let html='';
-    html+='<div class="cv-note" style="margin:-4px 0 14px">'+(s.active||0)+' active · '+(s.production||0)+' in production · as of '+fmtDate(d.today)+'</div>';
+    if(!PA()){ el.innerHTML='<div class="cv-empty">Projects engine not ready.</div>'; return; }
+    const all=PA().projects()||[];
+    const aw=activeWork();
+    if(!all.length){ el.innerHTML='<div class="cv-empty">Loading client work…</div>'; return; }
 
-    const ov=d.overdue||[];
-    const ovBody = ov.length ? ov.map(p=>card(p.daysOverdue+'d late',p.name,(owners(p)||'—')+' · was due '+fmtDate(p.target),p.url)).join('')
-      : '<div class="cv-empty">Nothing overdue. 🎉</div>';
-    html+=dlSection('overdue','Overdue', (ov.length||'0'), (ov.length?'alert':'zero'), ovBody);
+    const invoice=aw.filter(p=>p.status==='Billing');
+    const atRisk=aw.filter(isOverdue);
+    let html='';
 
-    const ds=d.dueSoon||[];
-    const dsBody = ds.length ? ds.map(p=>{ const when=p.inDays===0?'today':(p.inDays===1?'tomorrow':('in '+p.inDays+'d')); return card(when,p.name,(owners(p)||'—')+' · '+fmtDate(p.target)+(p.area?(' · '+p.area):''),p.url); }).join('')
-      : '<div class="cv-empty">Nothing due in the next two weeks.</div>';
-    html+=dlSection('duesoon','Due soon', (ds.length||'0'), (ds.length?'':'zero'), dsBody);
+    const hl='<div class="dl-hl"><span class="dl-hl-item"><b>'+invoice.length+'</b> ready to invoice</span><span class="dl-hl-item"><b>'+atRisk.length+'</b> at risk</span><span class="dl-hl-item"><b>'+aw.length+'</b> active</span></div>';
+    html+=shell('billship','Bill it / ship it','Active client work — invoice-ready & at-risk float to the top of each area','LIVE','live', hl+areaGroupsHTML(aw,'bs'));
+    html+=shell('offers','Offer catalog health','Products — finish, publish, and close ladder gaps','NEEDS WIRING','wire', offersPlaceholder());
+    html+=shell('renewals','Care-plan renewals','Web Properties — recurring revenue to protect','NEEDS WIRING','wire', renewalsPlaceholder());
 
-    const un=d.undated||[];
-    const unBody = un.length ? un.map(p=>card(p.status||'Active',p.name,(owners(p)||'—')+' · no date set',p.url)).join('')
-      : '<div class="cv-empty">Every active project has a date. 🎯</div>';
-    html+=dlSection('undated','Needs a date', (un.length||'0'), (un.length?'':'zero'), unBody);
-
-    const bo=d.byOwner||[];
-    let woBody='<div class="cv-empty">No active projects.</div>';
+    const counts={}; aw.forEach(p=>(p.owners||[]).forEach(o=>counts[o]=(counts[o]||0)+1));
+    const bo=Object.entries(counts).map(([owner,n])=>({owner,n})).sort((a,b)=>b.n-a.n);
+    let wo='<div class="cv-empty">No active projects.</div>';
     if(bo.length){ const max=Math.max.apply(null,bo.map(o=>o.n))||1;
-      woBody=bo.map(o=>{ const pct=Math.max(6,Math.round((o.n/max)*100)); return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px"><span style="color:var(--navy)">'+esc(o.owner)+'</span><span style="color:var(--navy-dim)">'+o.n+' active</span></div><div class="chapter-progress"><div class="chapter-progress-bar" style="width:'+pct+'%"></div></div></div>'; }).join('');
+      wo=bo.map(o=>{ const pct=Math.max(6,Math.round((o.n/max)*100)); const open=ownerOpen===o.owner;
+        return '<div class="dl-owner'+(open?' open':'')+'" data-dl-owner="'+esc(o.owner)+'"><div class="dl-owner-row"><span class="dl-owner-name">'+esc(o.owner)+(open?' ▾':' ›')+'</span><span class="dl-owner-n">'+o.n+' active</span></div><div class="chapter-progress"><div class="chapter-progress-bar" style="width:'+pct+'%"></div></div></div>';
+      }).join('');
+      if(ownerOpen){ const list=aw.filter(p=>(p.owners||[]).includes(ownerOpen));
+        wo+='<div class="dl-drill"><div class="cv-note" style="margin-bottom:9px">'+esc(ownerOpen)+' — '+list.length+' active · grouped by area, soonest due first</div>'+areaGroupsHTML(list,'own')+'</div>'; }
     }
-    html+=dlSection('workload','Workload by owner', '', '', woBody);
-
-    const all=d.all||[];
-    if(DL_COLLAPSED['all']===undefined) DL_COLLAPSED['all']=true; // reference board collapsed by default
-    const allBody = all.length ? all.map(p=>card(p.area||p.status||'—',p.name,(owners(p)||'—')+' · '+(p.target?fmtDate(p.target):'no date'),p.url)).join('')
-      : '<div class="cv-empty">No active work projects.</div>';
-    html+=dlSection('all','All active projects', (all.length||'0'), '', allBody);
+    html+=shell('workload','Workload by owner','Click a name to open that person\'s projects','', '', wo);
 
     el.innerHTML=html;
-    el.querySelectorAll('[data-dl-toggle]').forEach(function(h){ h.addEventListener('click', function(){ var k=h.getAttribute('data-dl-toggle'); DL_COLLAPSED[k]=!DL_COLLAPSED[k]; dlSave(); h.closest('.mkt-section').classList.toggle('collapsed'); window.lrl?.haptic?.('tap'); }); });
-    el.querySelectorAll('[data-dlopen]').forEach(function(b){ b.addEventListener('click', function(e){ e.stopPropagation(); var u=b.getAttribute('data-dlopen'); if(u) window.open(u,'_blank'); }); });
+    wire(el);
   }
 
-  async function fetchDeliver(fresh){ const r=await fetch('/api/deliver/act'+(fresh?'?fresh=1':'')); const d=await r.json(); if(d.error) throw new Error(d.error); DL.data=d; return d; }
-  async function maybeLoadDeliver(){
-    if(DL.loaded||DL.loading) return; DL.loading=true;
-    const el=document.getElementById('deliver-act');
-    try{ await fetchDeliver(false); DL.loaded=true; renderDeliver(); }
-    catch(err){ if(el) el.innerHTML='<div class="cv-empty">Couldn\'t load Deliver: '+esc(err.message)+'</div>'; }
-    finally{ DL.loading=false; }
+  function wire(el){
+    el.querySelectorAll('.dl-sec-head').forEach(h=>h.addEventListener('click',()=>{ const s=h.closest('.dl-sec'); COL[s.dataset.dlSec]=!s.classList.contains('collapsed'); saveCol(); s.classList.toggle('collapsed'); }));
+    el.querySelectorAll('.proj-group-head').forEach(h=>h.addEventListener('click',()=>{ const g=h.closest('.proj-group'); const now=g.classList.toggle('collapsed'); COL[g.dataset.dlGroup]=now; saveCol(); }));
+    el.querySelectorAll('[data-dl-owner]').forEach(o=>o.querySelector('.dl-owner-row').addEventListener('click',()=>{ const n=o.getAttribute('data-dl-owner'); ownerOpen = ownerOpen===n ? null : n; render(); }));
+    wireCards(el);
+  }
+
+  // Reuse the Projects engine's card behaviour (expand + inline edits that save to Notion).
+  function wireCards(root){
+    const P=PA(); if(!P) return;
+    root.querySelectorAll('.proj-row > .proj-card-head').forEach(head=>head.addEventListener('click',e=>{
+      if(e.target.closest('[data-edit-status],[data-edit-date],.proj-avatars,.proj-inline-select,.proj-inline-date,select,input,button,a,.proj-open-link')) return;
+      const c=head.closest('.proj-row'); P.expanded[c.dataset.id]=!c.classList.contains('expanded'); render();
+    }));
+    root.querySelectorAll('[data-edit-status]').forEach(el=>el.addEventListener('click',e=>{ e.stopPropagation(); P.startStatusEdit(el); }));
+    root.querySelectorAll('[data-edit-date]').forEach(el=>el.addEventListener('click',e=>{ e.stopPropagation(); P.startDateEdit(el); }));
+    root.querySelectorAll('.proj-edit-status').forEach(sel=>sel.addEventListener('change',()=>P.patchProject(sel.closest('.proj-row').dataset.id,{status:sel.value})));
+    root.querySelectorAll('.proj-edit-deadline').forEach(inp=>inp.addEventListener('change',()=>P.commitDeadline(inp.closest('.proj-row').dataset.id, inp.value||null)));
+    root.querySelectorAll('.proj-edit-area').forEach(sel=>sel.addEventListener('change',()=>{ const c=sel.closest('.proj-row'); P.patchProject(c.dataset.id,{area:sel.value||null,source:c.dataset.source}); }));
+    root.querySelectorAll('.proj-edit-system').forEach(sel=>sel.addEventListener('change',()=>{ const c=sel.closest('.proj-row'); P.patchProject(c.dataset.id,{system:sel.value||null,source:c.dataset.source}); }));
+    root.querySelectorAll('.proj-open-link').forEach(el=>el.addEventListener('click',e=>{ e.stopPropagation(); P.openUrl(el.dataset.url); }));
+  }
+
+  function maybeLoadDeliver(){
+    if(!booted){ booted=true;
+      window.addEventListener('lrl-projects-loaded', render);
+      window.addEventListener('lrl-project-updated', render);
+      window.addEventListener('lrl-refresh', ()=>{ if(PA()) PA().ensureLoaded(); });
+    }
+    if(PA()) PA().ensureLoaded();
+    render();
   }
   window.maybeLoadDeliver=maybeLoadDeliver;
-  window.addEventListener('lrl-refresh', async ()=>{ if(!DL.loaded) return; try{ await fetchDeliver(true); renderDeliver(); }catch(_){} });
 })();
 </script>
 
