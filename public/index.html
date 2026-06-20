@@ -141,6 +141,11 @@
   .zonepop .zp-item { padding: 11px 13px; border-radius: 9px; cursor: pointer; color: var(--navy); font-size: 13px; font-weight: 600; background: rgba(148,163,184,0.05); }
   .zonepop .zp-item:hover { background: var(--lime-faint); color: var(--lime); }
   .zonepop .zp-item.on { background: var(--lime); color: var(--navy-accent); }
+  .zonepop .zp-modes { display: flex; gap: 4px; padding: 2px 2px 9px; margin-bottom: 5px; border-bottom: 1px solid var(--navy-faint); }
+  .zonepop .zp-mode { flex: 1; padding: 8px 6px; border-radius: 8px; border: none; background: rgba(148,163,184,0.06); color: var(--navy-dim); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; font-family: var(--font-body); }
+  .zonepop .zp-mode:hover:not(.on) { color: var(--navy); }
+  .zonepop .zp-mode.on { background: var(--lime); color: var(--navy-accent); }
+  #mode-lens { display: none; }  /* mode control folded into the Zones popup */
   .execsub { display: none; gap: 6px; margin: -14px 0 22px; flex-wrap: wrap; }
   .execsub-item { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-dim); padding: 8px 15px; border-radius: 999px; background: rgba(148,163,184,0.06); border: none; cursor: pointer; font-family: var(--font-body); }
   .execsub-item:hover { color: var(--navy); }
@@ -10521,25 +10526,38 @@ document.addEventListener('visibilitychange', async () => {
   es.innerHTML = EXEC.map(x=>'<button class="execsub-item" data-k="'+x.k+'">'+x.label+'</button>').join('');
   es.querySelectorAll('.execsub-item').forEach(b => b.addEventListener('click', ()=>clickTab(b.dataset.k)));
 
+  const setMode = m => { const b=document.querySelector('.mode-btn[data-mode="'+m+'"]'); if(b) b.click(); };
   function renderZones(){
-    const m = curMode();
-    const grid = zs => '<div class="zp-grid">'+zs.map(z=>'<div class="zp-item" data-z="'+z.k+'">'+z.label+'</div>').join('')+'</div>';
+    const m = curMode(), dc = curContent();
+    const isMember = document.body.classList.contains('role-member');
+    const modeRow = isMember ? '' : '<div class="zp-modes">'+[['all','All'],['work','Work'],['personal','Personal']].map(x=>'<button class="zp-mode'+(m===x[0]?' on':'')+'" data-m="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>';
+    const grid = zs => '<div class="zp-grid">'+zs.map(z=>'<div class="zp-item'+(z.k===dc?' on':'')+'" data-z="'+z.k+'">'+z.label+'</div>').join('')+'</div>';
     const grp = (lbl,zs) => '<div class="zp-group-label">'+lbl+'</div>'+grid(zs);
-    pop.innerHTML = m==='work' ? grid(WORK_Z) : m==='personal' ? grid(PERS_Z) : (grp('Work',WORK_Z)+grp('Personal',PERS_Z));
-    const dc = curContent();
-    pop.querySelectorAll('.zp-item').forEach(it => { it.classList.toggle('on', it.dataset.z===dc); it.addEventListener('click', ()=>{ clickTab(it.dataset.z); closeZones(); }); });
+    // Always show both groups so any zone is one tap from anywhere; picking a zone sets its lens.
+    pop.innerHTML = modeRow + (isMember ? grid(WORK_Z) : grp('Work',WORK_Z)+grp('Personal',PERS_Z));
+    pop.querySelectorAll('.zp-mode').forEach(b => b.addEventListener('click', ()=>setMode(b.dataset.m)));
+    pop.querySelectorAll('.zp-item').forEach(it => it.addEventListener('click', ()=>{ setMode(WORK_Z.some(z=>z.k===it.dataset.z)?'work':'personal'); clickTab(it.dataset.z); closeZones(); }));
   }
   function toggleZones(){ if(pop.classList.contains('open')) closeZones(); else { renderZones(); pop.classList.add('open'); } }
   function closeZones(){ pop.classList.remove('open'); }
   document.addEventListener('click', e => { if(!e.target.closest('#zonepop') && !e.target.closest('[data-nav="zones"]')) closeZones(); });
 
+  const ZICON = {
+    work: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+    personal: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    all: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  };
   window.syncNav = function(){
-    const dc = curContent(), g = groupOf(dc);
+    const dc = curContent(), g = groupOf(dc), m = curMode();
     nav.querySelectorAll('.navitem').forEach(n => n.classList.toggle('on', n.dataset.nav===g));
     es.style.display = (g==='execute') ? 'flex' : 'none';
     if (g==='execute'){ lastExec = dc; es.querySelectorAll('.execsub-item').forEach(b=>b.classList.toggle('on', b.dataset.k===dc)); }
-    const zlb = nav.querySelector('[data-nav="zones"] .ni-lb');
-    if (zlb){ const z = ALL_Z.find(z=>z.k===dc); zlb.textContent = z ? z.label : 'Zones'; }
+    const zItem = nav.querySelector('[data-nav="zones"]');
+    const zlb = zItem.querySelector('.ni-lb'), zic = zItem.querySelector('.ni-ic');
+    const z = ALL_Z.find(z=>z.k===dc);
+    if (zlb) zlb.textContent = z ? z.label : 'Zones';
+    if (zic) zic.innerHTML = svg(ZICON[m] || ZICON.all);          // icon reflects the current lens
+    zItem.style.color = m==='work' ? '#5d9cec' : (m==='personal' ? '#8fb3e6' : '');
   };
   window.addEventListener('lrl-mode-changed', ()=>{ closeZones(); syncNav(); });
   syncNav();
