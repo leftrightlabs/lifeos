@@ -4857,9 +4857,9 @@ async function pullEveningFromServer(){
 
 function visibleEveningSteps(){
   const m = document.body.dataset.mode || 'all';
-  if (m === 'work') return EVENING_WORK_STEPS;
-  if (m === 'personal') return EVENING_PERSONAL_STEPS;
-  return EVENING_ALL_STEPS;
+  let steps = (m === 'work') ? EVENING_WORK_STEPS : (m === 'personal') ? EVENING_PERSONAL_STEPS : EVENING_ALL_STEPS;
+  if (isChicagoWeekend()) steps = steps.filter(k => !EVENING_WORK_STEPS.includes(k)); // no work tasks on weekends
+  return steps;
 }
 
 function renderEvening(){
@@ -4868,9 +4868,10 @@ function renderEvening(){
   const state = loadEvening();
   // Mode-aware section visibility
   const m = document.body.dataset.mode || 'all';
+  const weekend = isChicagoWeekend();
   const workSec = card.querySelector('[data-section="work"]');
   const personalSec = card.querySelector('[data-section="personal"]');
-  if (workSec) workSec.style.display = (m === 'work' || m === 'all') ? '' : 'none';
+  if (workSec) workSec.style.display = (!weekend && (m === 'work' || m === 'all')) ? '' : 'none'; // no work checklist on weekends
   if (personalSec) personalSec.style.display = (m === 'personal' || m === 'all') ? '' : 'none';
   // In single-mode view we don't need the "Work"/"Personal" sub-headers
   card.querySelectorAll('.ritual-subhead').forEach(el => {
@@ -4891,6 +4892,8 @@ function renderEvening(){
     statusEl.textContent = allDone ? '✓ All done for the night' : `${doneCount} of ${visible.length} done`;
     statusEl.className = 'ritual-status' + (allDone ? ' done' : '');
   }
+  // Nothing left to show (e.g. work-only steps in work mode on a weekend) → hide the card.
+  card.style.display = visible.length ? '' : 'none';
 }
 
 function toggleEveningStep(step){
