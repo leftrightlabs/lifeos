@@ -3482,13 +3482,16 @@ window.lrl = (function(){
   <div class="tab-content" data-content="finance-personal">
     <div class="section-label">Personal Realm</div>
     <h1 class="page-title"><span>Wealth</span></h1>
-    <div class="page-subtitle">Personal income, expenses, debt paydown. (Placeholder.)</div>
+    <div class="page-subtitle">Live from YNAB — net worth, budget, savings &amp; goals.</div>
     <div class="kpi-grid">
-      <div class="kpi-card"><div class="kpi-label">Debt Paydown</div><div class="kpi-value"><span>$11K</span></div><div class="kpi-change positive">44% to $25K</div></div>
-      <div class="kpi-card"><div class="kpi-label">Emergency Fund</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending YNAB integration</div></div>
-      <div class="kpi-card"><div class="kpi-label">Monthly Budget</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending YNAB integration</div></div>
-      <div class="kpi-card"><div class="kpi-label">Net Worth</div><div class="kpi-value"><span id="wealth-networth">—</span></div><div class="kpi-change" id="wealth-networth-sub">Pending integration</div></div>
+      <div class="kpi-card"><div class="kpi-label">Net Worth</div><div class="kpi-value"><span id="w-networth">—</span></div><div class="kpi-change" id="w-networth-sub">via YNAB</div></div>
+      <div class="kpi-card"><div class="kpi-label">Monthly Budget</div><div class="kpi-value"><span id="w-budget">—</span></div><div class="kpi-change" id="w-budget-sub">this month</div></div>
+      <div class="kpi-card"><div class="kpi-label">Emergency Fund</div><div class="kpi-value"><span id="w-emergency">—</span></div><div class="kpi-change" id="w-emergency-sub">savings cushion</div></div>
+      <div class="kpi-card"><div class="kpi-label">Age of Money</div><div class="kpi-value"><span id="w-aom">—</span></div><div class="kpi-change" id="w-aom-sub">days of buffer</div></div>
+      <div class="kpi-card"><div class="kpi-label">Cash on Hand</div><div class="kpi-value"><span id="w-cash">—</span></div><div class="kpi-change" id="w-cash-sub">checking + cash</div></div>
+      <div class="kpi-card"><div class="kpi-label">Debt</div><div class="kpi-value"><span id="w-debt">—</span></div><div class="kpi-change" id="w-debt-sub">credit line, cards & loans</div></div>
     </div>
+    <div id="w-goals" style="margin-top:16px"></div>
   </div>
 
   <!-- LEGO TAB -->
@@ -7281,17 +7284,27 @@ async function fetchHealth(){
 // Lazy-load when the Health tab is opened (don't fetch on every page load)
 let _healthLoaded = false;
 function maybeLoadWealth(){
-  fetch('/api/wealth/networth').then(r=>r.json()).then(d=>{
-    const v = document.getElementById('wealth-networth');
-    const sub = document.getElementById('wealth-networth-sub');
-    if (!v || !sub) return;
-    if (d.error){ sub.textContent = 'YNAB error'; return; }
-    if (!d.configured){ sub.textContent = 'Connect YNAB to show net worth'; return; }
-    const nw = Math.round(d.netWorth || 0);
-    v.textContent = (nw < 0 ? '-$' : '$') + Math.abs(nw).toLocaleString('en-US');
+  fetch('/api/wealth/summary').then(r=>r.json()).then(d=>{
+    const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const money=(n)=>(n<0?'-$':'$')+Math.abs(Math.round(n||0)).toLocaleString('en-US');
+    const set=(id,val,sub)=>{ const v=document.getElementById(id); const s=document.getElementById(id+'-sub'); if(v&&val!=null)v.textContent=val; if(s&&sub!=null)s.textContent=sub; };
+    if (d.error){ set('w-networth','—','YNAB error'); return; }
+    if (!d.configured){ set('w-networth','—','Connect YNAB'); return; }
     const dt = d.asOf ? new Date(d.asOf).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
-    sub.textContent = 'via YNAB' + (dt ? (' · ' + dt) : '');
-    sub.classList.remove('positive');
+    const mb = d.month || {};
+    set('w-networth', money(d.netWorth), 'via YNAB · ' + dt);
+    set('w-budget', money(mb.spent), 'of ' + money(mb.budgeted) + ' budgeted' + (mb.budgeted ? (' · ' + Math.round((mb.spent/mb.budgeted)*100) + '%') : ''));
+    set('w-emergency', money(d.emergencyFund), 'savings cushion');
+    set('w-aom', (mb.ageOfMoney==null ? '—' : String(mb.ageOfMoney)), 'days of buffer');
+    set('w-cash', money(d.cash), 'checking + cash');
+    set('w-debt', money(d.debt), 'credit line, cards & loans');
+    const gEl = document.getElementById('w-goals');
+    if (gEl){
+      const goals = d.goals || [];
+      gEl.innerHTML = !goals.length ? '' : ('<div style="background:var(--white);border:1px solid var(--navy-faint);border-radius:12px;padding:16px 18px"><div style="font-size:14.5px;font-weight:700;color:var(--navy);margin-bottom:12px">Savings Goals</div>'
+        + goals.map(g=>{ const pct=Math.max(0,Math.min(100,Math.round(g.pct||0))); return '<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px;margin-bottom:4px"><span style="color:var(--navy)">'+esc(g.name)+'</span><span style="color:var(--navy-dim)">'+money(g.balance)+' / '+money(g.target)+' · '+pct+'%</span></div><div class="chapter-progress"><div class="chapter-progress-bar" style="width:'+pct+'%"></div></div></div>'; }).join('')
+        + '</div>');
+    }
   }).catch(e=>console.error('maybeLoadWealth', e));
 }
 function maybeLoadHealth(){

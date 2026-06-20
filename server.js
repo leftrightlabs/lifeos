@@ -122,6 +122,7 @@ const cache = new Map();
 const CACHE_TTL_OVERRIDES = {
   'attract-insights': 6 * 60 * 60_000, // GA4 + AI analysis: refresh every 6h
   'ynab-networth': 60 * 60_000, // YNAB net worth: refresh hourly
+  'ynab-wealth': 60 * 60_000, // YNAB wealth summary: refresh hourly
   'journal-rings': 5 * 60_000, // heavier query (per-row body-text check); cache longer
   'vto-goals': 10 * 60_000,    // goals rarely change
   'active-projects': 5 * 60_000, // project status changes slowly
