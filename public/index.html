@@ -3602,13 +3602,17 @@ window.lrl = (function(){
   <div class="tab-content" data-content="lego">
     <div class="section-label">Personal Realm</div>
     <h1 class="page-title"><span>LEGO</span></h1>
-    <div class="page-subtitle">Builds, conventions, inventory. (Placeholder — wires to LEGO MOCS [DB] in a later day.)</div>
+    <div class="page-subtitle">Live from your Notion LEGO databases — collection, builds &amp; conventions.</div>
     <div class="kpi-grid">
-      <div class="kpi-card"><div class="kpi-label">Active MOCs</div><div class="kpi-value"><span>3</span></div><div class="kpi-change">Texas Bluebonnets in progress</div></div>
-      <div class="kpi-card"><div class="kpi-label">Sets Owned</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending inventory sync</div></div>
-      <div class="kpi-card"><div class="kpi-label">Next Convention</div><div class="kpi-value"><span>Brick Rodeo</span></div><div class="kpi-change">Schedule pending review</div></div>
-      <div class="kpi-card"><div class="kpi-label">Studio Hours (Q)</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending time log</div></div>
+      <div class="kpi-card"><div class="kpi-label">Active MOCs</div><div class="kpi-value"><span id="lego-active">—</span></div><div class="kpi-change" id="lego-active-sub">loading…</div></div>
+      <div class="kpi-card"><div class="kpi-label">Sets Owned</div><div class="kpi-value"><span id="lego-sets">—</span></div><div class="kpi-change" id="lego-sets-sub">loading…</div></div>
+      <div class="kpi-card"><div class="kpi-label">Collection Value</div><div class="kpi-value"><span id="lego-value">—</span></div><div class="kpi-change" id="lego-value-sub">loading…</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total Pieces</div><div class="kpi-value"><span id="lego-pieces">—</span></div><div class="kpi-change" id="lego-pieces-sub">loading…</div></div>
+      <div class="kpi-card"><div class="kpi-label">MOCs Built</div><div class="kpi-value"><span id="lego-built">—</span></div><div class="kpi-change" id="lego-built-sub">loading…</div></div>
+      <div class="kpi-card"><div class="kpi-label">Awards</div><div class="kpi-value"><span id="lego-awards">—</span></div><div class="kpi-change" id="lego-awards-sub">loading…</div></div>
+      <div class="kpi-card"><div class="kpi-label">Next Convention</div><div class="kpi-value"><span id="lego-con">—</span></div><div class="kpi-change" id="lego-con-sub">loading…</div></div>
     </div>
+    <div id="lego-sections"></div>
   </div>
 
   <!-- RELATIONSHIPS TAB -->
@@ -6247,6 +6251,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     if (tab.dataset.tab === 'marketing') maybeLoadMarketing();
     if (tab.dataset.tab === 'pipeline') maybeLoadSales();
     if (tab.dataset.tab === 'finance-personal') window.maybeLoadWealth?.();
+    if (tab.dataset.tab === 'lego') window.maybeLoadLego?.();
     if (tab.dataset.tab === 'projects') window.maybeLoadProjects?.();
   });
 });
@@ -7728,6 +7733,66 @@ function maybeLoadWealth(){
     }
   }).catch(e=>console.error('maybeLoadWealth', e));
 }
+function maybeLoadLego(){
+  fetch('/api/lego/summary').then(r=>r.json()).then(d=>{
+    const money=(n)=>(n<0?'-$':'$')+Math.abs(Math.round(n||0)).toLocaleString('en-US');
+    const numf=(n)=>Math.round(n||0).toLocaleString('en-US');
+    const set=(id,val,sub)=>{ const v=document.getElementById(id); const s=document.getElementById(id+'-sub'); if(v&&val!=null)v.textContent=val; if(s&&sub!=null)s.textContent=sub; };
+    const IDS=['lego-active','lego-sets','lego-value','lego-pieces','lego-built','lego-awards','lego-con'];
+    const sectionsEl=document.getElementById('lego-sections');
+    if (d.error){ IDS.forEach(id=>set(id,'—','')); set('lego-active','—','Load failed'); set('lego-sets','—',String(d.error).slice(0,60)); if(sectionsEl)sectionsEl.innerHTML=''; return; }
+    if (!d.configured){ IDS.forEach(id=>set(id,'—','—')); set('lego-sets','—','Notion not connected'); if(sectionsEl)sectionsEl.innerHTML=''; return; }
+    const s=d.sets||{}, m=d.mocs||{};
+    set('lego-active', String(m.active||0), m.activeName ? (m.activeName+' in progress') : (m.active ? 'currently building' : 'nothing on the bench'));
+    set('lego-sets', numf(s.owned), s.wishlist ? ('+ '+s.wishlist+' on wishlist') : 'in your collection');
+    set('lego-value', money(s.collectionValue), s.profit ? ((s.profit>=0?'+':'')+money(s.profit)+' vs paid') : 'current market value');
+    set('lego-pieces', numf(s.totalPieces), 'across owned sets');
+    set('lego-built', numf(m.built), 'of '+numf(m.total)+' total MOCs');
+    set('lego-awards', String(m.awards||0), m.awards===1 ? 'convention win' : 'convention wins');
+    const c=d.nextConvention;
+    if (c){ const dt=c.date ? new Date(c.date.length<=10 ? c.date+'T12:00:00' : c.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : ''; set('lego-con', c.name, [dt, c.location].filter(Boolean).join(' · ') || 'upcoming'); }
+    else { set('lego-con','—','none scheduled'); }
+    renderLegoSections(d);
+  }).catch(e=>console.error('maybeLoadLego', e));
+}
+function renderLegoSections(d){
+  const host=document.getElementById('lego-sections'); if(!host) return;
+  const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const money=(n)=>(n<0?'-$':'$')+Math.abs(Math.round(n||0)).toLocaleString('en-US');
+  const numf=(n)=>Math.round(n||0).toLocaleString('en-US');
+  const fdate=(s)=> s? new Date(s.length<=10? s+'T12:00:00': s).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+  const section=(label,inner)=>inner?`<div style="margin-top:26px"><div style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--navy-dim);font-weight:700;margin-bottom:10px">${label}</div>${inner}</div>`:'';
+
+  // Build pipeline — MOCs grouped by status
+  const ORDER=['Planned','Building','Display Ready','On Loan','Gifted','Digital Render','Disassembled','Unsorted'];
+  const pipe=d.pipeline||{};
+  const cols=ORDER.filter(s=>pipe[s]&&pipe[s].length).map(s=>{
+    const items=pipe[s];
+    const cards=items.slice(0,8).map(it=>`<div style="background:rgba(var(--edge-rgb),0.04);border:1px solid var(--navy-faint);border-radius:6px;padding:7px 9px;margin-bottom:6px"><div style="font-size:12.5px;color:var(--navy);font-weight:600">${esc(it.name)}</div><div style="font-size:10.5px;color:var(--navy-dim);margin-top:2px">${[it.category,it.parts?numf(it.parts)+' pcs':null,it.award?'🏆':null].filter(Boolean).join(' · ')||'&nbsp;'}</div></div>`).join('');
+    const more=items.length>8?`<div style="font-size:10.5px;color:var(--navy-dim)">+${items.length-8} more</div>`:'';
+    return `<div class="kpi-card" style="min-width:170px"><div style="display:flex;justify-content:space-between;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--navy-dim);font-weight:700;margin-bottom:9px"><span>${esc(s)}</span><span>${items.length}</span></div>${cards}${more}</div>`;
+  }).join('');
+  const pipeline=cols?`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:start">${cols}</div>`:'';
+
+  // Collection breakdown — bars by theme + status
+  const bars=(arr)=>{ const max=Math.max(1,...arr.map(x=>x.count)); return arr.map(x=>`<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:var(--navy)">${esc(x.name)}</span><span style="color:var(--navy-dim)">${x.count}${x.value?' · '+money(x.value):''}</span></div><div class="chapter-progress"><div class="chapter-progress-bar" style="width:${Math.round(x.count/max*100)}%"></div></div></div>`).join(''); };
+  const col=d.collection||{};
+  const hasBreak=(col.byTheme&&col.byTheme.length)||(col.byStatus&&col.byStatus.length);
+  const breakdown=hasBreak?`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px"><div class="kpi-card"><div style="font-size:12px;color:var(--navy-dim);font-weight:700;margin-bottom:10px">By Theme</div>${bars(col.byTheme||[])}</div><div class="kpi-card"><div style="font-size:12px;color:var(--navy-dim);font-weight:700;margin-bottom:10px">By Status</div>${bars(col.byStatus||[])}</div></div>`:'';
+
+  // MOC showcase — image gallery
+  const gal=d.mocGallery||[];
+  const gallery=gal.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">${gal.map(it=>`<div class="kpi-card" style="padding:0;overflow:hidden"><div style="aspect-ratio:4/3;background:rgba(var(--edge-rgb),0.06)"><img src="${esc(it.image)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.parentNode.style.display='none'"></div><div style="padding:8px 10px"><div style="font-size:12px;color:var(--navy);font-weight:600">${esc(it.name)}</div><div style="font-size:10.5px;color:var(--navy-dim);margin-top:2px">${[it.category,it.award?'🏆 '+esc(it.award):null].filter(Boolean).join(' · ')||'&nbsp;'}</div></div></div>`).join('')}</div>`:'';
+
+  // LEGO projects (Area = 👻 LEGO)
+  const projs=d.projects; let projects='';
+  if(projs&&projs.length){
+    const chip=(s)=>s?`<span style="font-size:10px;color:${(s==='Active'||s==='Ongoing')?'var(--lime)':'var(--navy-dim)'};border:1px solid var(--navy-faint);border-radius:20px;padding:1px 8px;white-space:nowrap">${esc(s)}</span>`:'';
+    projects=`<div class="kpi-card">${projs.slice(0,12).map((p,i,a)=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;${i<a.length-1?'border-bottom:1px solid var(--navy-faint)':''}"><a href="${esc(p.url)}" target="_blank" rel="noopener" style="font-size:13px;color:var(--navy);text-decoration:none;flex:1">${esc(p.name)}</a>${chip(p.status)}${p.deadline?`<span style="font-size:11px;color:var(--navy-dim)">${fdate(p.deadline)}</span>`:''}</div>`).join('')}</div>`;
+  }
+
+  host.innerHTML = section('🛠️ Build Pipeline', pipeline) + section('📊 Collection Breakdown', breakdown) + section('🏆 MOC Showcase', gallery) + section('📁 LEGO Projects', projects);
+}
 function maybeLoadHealth(){
   if (_healthLoaded) return;
   _healthLoaded = true;
@@ -8291,6 +8356,7 @@ document.addEventListener('keydown', (e) => {
         if (saved === 'health') window.maybeLoadHealth?.();
         if (saved === 'finance') window.maybeLoadFinance?.();
         if (saved === 'finance-personal') window.maybeLoadWealth?.();
+        if (saved === 'lego') window.maybeLoadLego?.();
         if (saved === 'marketing') window.maybeLoadMarketing?.();
         if (saved === 'pipeline') window.maybeLoadSales?.();
         if (saved === 'projects') window.maybeLoadProjects?.();
