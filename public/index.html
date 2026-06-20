@@ -519,6 +519,9 @@
   .privacy-on .fin-kpi-bar { filter: blur(10px); user-select: none; }
   .privacy-on .fin-kpi-goal:active,
   .privacy-on .fin-kpi-bar:active { filter: blur(0); }
+  /* Move the Needle content hides under privacy mode (client names / deal values) */
+  .privacy-on #needle-body { filter: blur(9px); user-select: none; }
+  .privacy-on #needle-body:active { filter: blur(0); }
 
   /* Accounts group cards (Bank / Credit) */
   .fin-accounts-group { background: var(--white); border: none; border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
@@ -864,8 +867,11 @@
   .brief-weather .bw-temp { color: var(--navy); font-weight: 600; }
   /* Date/weather strip: a subtle band that butts flush against the header's
      bottom border, dividing the top nav from the tabs below. */
-  .topinfo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 18px; margin: 0 0 16px; font-size: 12px; background: var(--white); }
-  .topinfo-date { color: var(--navy-dim); font-weight: 500; letter-spacing: 0.01em; }
+  .topinfo { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 11px 18px; margin: 0 0 16px; font-size: 12px; background: var(--white); }
+  .topinfo-period { color: var(--navy-dim); font-weight: 600; letter-spacing: 0.05em; justify-self: start; white-space: nowrap; }
+  .topinfo-date { color: var(--navy-dim); font-weight: 500; letter-spacing: 0.01em; justify-self: center; text-align: center; white-space: nowrap; }
+  .topinfo .brief-weather { justify-self: end; }
+  @media (max-width: 480px) { .topinfo { gap: 7px; padding: 10px 12px; font-size: 11px; } }
   #brief-collapse-caret { display: none; }
   .daily-brief-text { font-family: var(--font-body); font-size: 15px; font-weight: 400; line-height: 1.6; color: var(--navy); }
   @media (max-width: 600px) { .daily-brief-text { font-size: 14.5px; line-height: 1.55; } }
@@ -3135,6 +3141,7 @@ window.lrl = (function(){
   </div>
 
   <div class="topinfo" id="topinfo">
+    <span class="topinfo-period" id="topinfo-period"></span>
     <span class="topinfo-date" id="topinfo-date"></span>
     <span class="brief-weather" id="brief-weather" title="Euless, TX" style="display:none"></span>
   </div>
@@ -3161,16 +3168,6 @@ window.lrl = (function(){
     <div class="section-label">Today's Overview</div>
     <h1 class="page-title"><span>Today</span></h1>
 
-    <div class="panel quest-panel needle-panel" id="needle-panel">
-      <div class="quest-panel-head">
-        <button class="quest-panel-toggle" id="needle-panel-toggle" title="Collapse/expand">
-          <span class="quest-panel-caret" id="needle-caret">▾</span> Move the needle today
-        </button>
-        <span class="quest-panel-meta" id="needle-panel-meta"></span>
-      </div>
-      <div id="needle-body" class="quest-panel-body"><div style="color:var(--navy-dim);font-size:13px;padding:8px 0">loading…</div></div>
-    </div>
-
     <div class="daily-brief" id="daily-brief">
       <div class="daily-brief-kicker">
         <button class="daily-brief-toggle" id="brief-toggle" title="Collapse/expand"><span id="brief-collapse-caret">▾</span> Current Focus <span id="brief-bucket" style="opacity:0.6;font-weight:500;text-transform:lowercase;letter-spacing:0.05em;font-size:0.75em"></span></button>
@@ -3181,6 +3178,16 @@ window.lrl = (function(){
       <div id="brief-body">
         <div class="daily-brief-text daily-brief-loading" id="brief-text">Composing your focus…</div>
       </div>
+    </div>
+
+    <div class="panel quest-panel needle-panel" id="needle-panel">
+      <div class="quest-panel-head">
+        <button class="quest-panel-toggle" id="needle-panel-toggle" title="Collapse/expand">
+          <span class="quest-panel-caret" id="needle-caret">▾</span> Move the needle
+        </button>
+        <span class="quest-panel-meta" id="needle-panel-meta"></span>
+      </div>
+      <div id="needle-body" class="quest-panel-body"><div style="color:var(--navy-dim);font-size:13px;padding:8px 0">loading…</div></div>
     </div>
 
     <div class="chapter-panel collapsed" id="chapter-panel">
@@ -8703,7 +8710,10 @@ document.addEventListener('keydown', (e) => {
   });
   // Persistent date + weather strip under the nav (visible on every tab)
   const tid = document.getElementById('topinfo-date');
-  if (tid) tid.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const tNow = new Date();
+  if (tid) tid.textContent = tNow.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const tip = document.getElementById('topinfo-period');
+  if (tip) tip.textContent = tNow.getFullYear() + ' · Q' + (Math.floor(tNow.getMonth() / 3) + 1);
   loadWeather();
   window.addEventListener('lrl-refresh', () => loadWeather(true));
   // Restore collapsed states
