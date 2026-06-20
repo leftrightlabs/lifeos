@@ -15,3 +15,15 @@ export const SYSTEM_PRIORITY_RANK = { Critical: 4, High: 3, Medium: 2, Low: 1 };
 // A "quick win" = high impact, low effort (the mockup's framing).
 export const QUICK_WIN_MIN_IMPACT = 4; // Impact Score is a 1-5 scale
 export const QUICK_WIN_MAX_EFFORT = 2; // Effort to Fix is a 1-5 scale
+
+// --- Scorecard off-track (VTO Scorecard scored against live systems) ---
+export const VTO_SCORECARD_DS = 'c359c68c-02bb-4fae-b4cb-3a512e5eafab';
+// The "Source" select on each metric → which live actual the app computes.
+// Only these are wired; rows with any other (or empty) Source are left out.
+export const SCORECARD_SOURCES = [
+  'Xero Revenue',
+  'Xero Profit',
+  'Xero Cash Capacity',
+  'Convert Touchpoints',
+  'Convert Deals Won',
+];

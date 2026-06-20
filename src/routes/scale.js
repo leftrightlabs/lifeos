@@ -1,14 +1,72 @@
-// Scale zone routes. Today: "Systems to fix" from the Business Functions DB.
-import { fetchBusinessFunctions } from '../providers/notion/scale.js';
+// Scale zone routes: "Systems to fix" (Business Functions) and "Scorecard
+// off-track" (VTO targets scored against live Xero + Convert actuals).
+import { fetchBusinessFunctions, fetchScorecardMetrics } from '../providers/notion/scale.js';
 import {
   SYSTEM_ATTENTION_STATUSES,
   SYSTEM_HEALTH_RANK,
   SYSTEM_PRIORITY_RANK,
   QUICK_WIN_MIN_IMPACT,
   QUICK_WIN_MAX_EFFORT,
+  SCORECARD_SOURCES,
 } from '../config/scale.js';
+// Reuse Convert's data primitives for the sales actuals (no Convert route changes).
+import { queryAllDeals, serializeDeal, fetchSalesProductMap } from '../providers/notion/convert.js';
+import { SALES_STAGE_GROUP, SALES_ACTIVITY_DS } from '../config/convert.js';
 
-export function registerScaleRoutes(app, { notion, cached }) {
+// Won-deal value + touchpoint counts for the current month and quarter.
+async function computeConvertActuals(notion, cached, monthStart, quarterStart, today) {
+  const productMap = await fetchSalesProductMap(notion, cached).catch(() => ({}));
+  const deals = (await queryAllDeals(notion)).map((pg) => serializeDeal(pg, productMap)).filter((d) => !d.archived);
+  let dealsWonValueMonth = 0, dealsWonValueQuarter = 0;
+  for (const d of deals) {
+    if ((SALES_STAGE_GROUP[d.status] || 'open') !== 'won' || !d.dateWon) continue;
+    if (d.dateWon >= quarterStart && d.dateWon <= today) dealsWonValueQuarter += d.value || 0;
+    if (d.dateWon >= monthStart && d.dateWon <= today) dealsWonValueMonth += d.value || 0;
+  }
+  let touchpointsMonth = 0, touchpointsQuarter = 0, cursor;
+  do {
+    const r = await notion.dataSources.query({
+      data_source_id: SALES_ACTIVITY_DS,
+      filter: { and: [
+        { property: 'Timestamp', date: { on_or_after: quarterStart } },
+        { property: 'Timestamp', date: { on_or_before: today } },
+      ] },
+      page_size: 100,
+      start_cursor: cursor,
+    });
+    for (const pg of r.results) {
+      const ts = pg.properties?.Timestamp?.date?.start?.slice(0, 10);
+      if (!ts) continue;
+      touchpointsQuarter++;
+      if (ts >= monthStart) touchpointsMonth++;
+    }
+    cursor = r.has_more ? r.next_cursor : null;
+  } while (cursor);
+  return { dealsWonValueMonth, dealsWonValueQuarter, touchpointsMonth, touchpointsQuarter };
+}
+
+// Map a metric's Source + cadence → its live actual.
+function actualFor(source, cadence, fin, conv) {
+  const q = cadence === 'Quarterly';
+  switch (source) {
+    case 'Xero Revenue': return fin ? (q ? fin.qtdRevenue : fin.mtdRevenue) : null;
+    case 'Xero Profit': return fin ? (q ? fin.qtdNet : fin.mtdNet) : null;
+    case 'Xero Cash Capacity': return fin?.cashCapacity ? Math.round((fin.cashCapacity.months / 3) * 100) / 100 : null;
+    case 'Convert Touchpoints': return conv ? (q ? conv.touchpointsQuarter : conv.touchpointsMonth) : null;
+    case 'Convert Deals Won': return conv ? (q ? conv.dealsWonValueQuarter : conv.dealsWonValueMonth) : null;
+    default: return null;
+  }
+}
+
+// Red / amber / green honoring Direction + Break Even.
+function scoreStatus(actual, goal, breakEven, direction) {
+  if (actual == null || goal == null) return 'unknown';
+  const up = !direction || direction.includes('higher');
+  if (up) return actual >= goal ? 'green' : (breakEven != null && actual >= breakEven ? 'amber' : 'red');
+  return actual <= goal ? 'green' : (breakEven != null && actual <= breakEven ? 'amber' : 'red');
+}
+
+export function registerScaleRoutes(app, { notion, cached, computeXeroFinance, chicagoToday }) {
   // Systems that need attention, ranked: urgency (Health Status) → Priority →
   // impact-per-effort, with a quick-win flag (high impact, low effort).
   app.get('/api/scale/systems', async (_req, res) => {
@@ -41,6 +99,55 @@ export function registerScaleRoutes(app, { notion, cached }) {
       res.json(data);
     } catch (err) {
       console.error('scale/systems error:', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Scorecard off-track: VTO metrics for the current quarter, each scored against
+  // its live actual (Xero finance / Convert sales). Only off-track (amber/red) drives
+  // the Act card; all scored metrics are returned for the board.
+  app.get('/api/scale/scorecard', async (_req, res) => {
+    try {
+      const data = await cached('scale-scorecard', async () => {
+        const today = chicagoToday();
+        const [y, m] = today.split('-').map(Number);
+        const pad = (n) => String(n).padStart(2, '0');
+        const monthStart = `${y}-${pad(m)}-01`;
+        const qn = Math.floor((m - 1) / 3) + 1;
+        const quarterStart = `${y}-${pad((qn - 1) * 3 + 1)}-01`;
+        const quarterLabel = `${y} Q${qn}`;
+
+        const all = await fetchScorecardMetrics(notion, quarterLabel);
+        const metrics = all.filter((mt) => SCORECARD_SOURCES.includes(mt.source));
+        const needXero = metrics.some((mt) => mt.source.startsWith('Xero'));
+        const needConvert = metrics.some((mt) => mt.source.startsWith('Convert'));
+
+        const fin = needXero ? await cached('xero-finance', computeXeroFinance).catch(() => null) : null;
+        const conv = needConvert
+          ? await computeConvertActuals(notion, cached, monthStart, quarterStart, today).catch(() => null)
+          : null;
+
+        const scored = metrics.map((mt) => {
+          const actual = actualFor(mt.source, mt.cadence, fin, conv);
+          const status = scoreStatus(actual, mt.goal, mt.breakEven, mt.direction);
+          const period = mt.cadence === 'Quarterly' ? 'this quarter' : (mt.cadence === 'Weekly' ? 'this week' : 'this month');
+          const pct = (actual != null && mt.goal) ? Math.round((actual / mt.goal) * 100) : null;
+          return { ...mt, actual, status, period, pct };
+        });
+        const rank = { red: 0, amber: 1, green: 2, unknown: 3 };
+        scored.sort((a, b) => (rank[a.status] - rank[b.status]) || (a.metric || '').localeCompare(b.metric || ''));
+        const offTrack = scored.filter((s) => s.status === 'red' || s.status === 'amber');
+        return {
+          quarter: quarterLabel,
+          metrics: scored,
+          offTrack,
+          counts: { total: scored.length, offTrack: offTrack.length },
+          asOf: new Date().toISOString(),
+        };
+      });
+      res.json(data);
+    } catch (err) {
+      console.error('scale/scorecard error:', err.message);
       res.status(500).json({ error: err.message });
     }
   });

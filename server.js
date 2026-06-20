@@ -127,6 +127,7 @@ const CACHE_TTL_OVERRIDES = {
   'journal-rings': 5 * 60_000, // heavier query (per-row body-text check); cache longer
   'vto-goals': 10 * 60_000,    // goals rarely change
   'scale-systems': 10 * 60_000, // Business Functions change slowly (weekly review)
+  'scale-scorecard': 5 * 60_000, // VTO targets + live actuals; refresh every 5m
   'active-projects': 5 * 60_000, // project status changes slowly
   'projects-board': 5 * 60_000,  // Projects tab board (area/system maps + paginated projects)
   'weather': 20 * 60_000,        // current conditions change slowly
@@ -3154,9 +3155,9 @@ function ymd(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-app.get('/api/finance/xero', async (_req, res) => {
-  try {
-    const data = await cached('xero-finance', async () => {
+// Compute the full Xero finance payload (extracted so the Scale scorecard can
+// reuse the same QTD/MTD figures via the shared `xero-finance` cache key).
+async function computeXeroFinance() {
       // Use Chicago time for all date boundaries (Railway runs UTC, which
       // would otherwise shift "today" by ±1 day in the evening).
       const todayStr = chicagoToday(); // YYYY-MM-DD in America/Chicago
@@ -3300,7 +3301,11 @@ app.get('/api/finance/xero', async (_req, res) => {
         },
         asOf: new Date().toISOString(),
       };
-    });
+}
+
+app.get('/api/finance/xero', async (_req, res) => {
+  try {
+    const data = await cached('xero-finance', computeXeroFinance);
     res.json(data);
   } catch (err) {
     console.error('Xero finance error:', err.message);
@@ -3519,7 +3524,7 @@ function dashifyId(id) {
 const { MARKETING_ASSETS_DS, fetchMarketingChannelMap, serializeMarketingAsset } =
   registerAttractRoutes(app, { notion, cache, cached, currentQuarter, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, anthropic, userContext });
 registerWealthRoutes(app, { cached, cache, userContext });
-registerScaleRoutes(app, { notion, cached });
+registerScaleRoutes(app, { notion, cached, computeXeroFinance, chicagoToday });
 
 // =========================== MOVE THE NEEDLE (Phase 0) ===========================
 // GET /api/needle/today — ONE ranked, cross-zone "what to do next" list. This is

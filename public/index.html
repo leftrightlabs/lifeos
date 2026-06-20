@@ -7921,9 +7921,9 @@ function scaleActHtml(d){
   }
   html += scaleSection('aboveline', 'Above the line', { text: 'LIVE NOW', cls: 'live' }, plBody);
 
-  // 2) Scorecard off-track — VTO actuals not wired yet
-  html += scaleSection('scorecard', 'Scorecard off-track', { text: 'NEEDS WIRING', cls: 'wiring' },
-    `<div class="scale-wiring">Connect your VTO Scorecard actuals (weekly metric values). Once wired, only metrics <b>below target</b> show here — e.g. discovery calls booked, close rate. Revenue &amp; profit status already show under <b>Above the line</b>.</div>`);
+  // 2) Scorecard off-track — LIVE: VTO targets scored vs Xero + Convert (filled async by renderScaleScorecard)
+  html += scaleSection('scorecard', 'Scorecard off-track', { text: 'LIVE NOW', cls: 'live' },
+    `<div id="scale-scorecard"><div class="scale-empty">Loading scorecard…</div></div>`);
 
   // 3) Systems to fix — LIVE from the Business Functions DB (filled async by renderScaleSystems)
   html += scaleSection('systems', 'Systems to fix', { text: 'LIVE NOW', cls: 'live' },
@@ -7975,6 +7975,51 @@ function renderScaleSystems(){
   el.querySelectorAll('[data-scale-open]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); const u = b.getAttribute('data-scale-open'); if (u) window.open(u, '_blank'); }));
 }
 window.refreshScaleSystems = async function(){ await fetchScaleSystems(true); renderScaleSystems(); };
+
+// ---- "Scorecard off-track" — VTO targets scored vs live Xero + Convert (/api/scale/scorecard) ----
+let SCALE_SCORECARD = null;
+let _scaleScorecardStarted = false;
+async function fetchScaleScorecard(fresh){
+  try {
+    const r = await fetch('/api/scale/scorecard' + (fresh ? '?fresh=1' : ''));
+    const j = await r.json();
+    SCALE_SCORECARD = (j && j.error) ? { error: j.error } : j;
+  } catch (e){ console.error('fetchScaleScorecard', e); SCALE_SCORECARD = { error: e.message }; }
+}
+function scaleScoreChip(status){
+  if (status === 'red') return { cls: 'red', text: 'BEHIND' };
+  if (status === 'amber') return { cls: 'watch', text: 'AT RISK' };
+  return { cls: 'watch', text: '—' };
+}
+function scaleFmtVal(v, unit){
+  if (v == null || isNaN(v)) return '—';
+  const u = (unit || '').toLowerCase();
+  if (u.includes('$')) return fmtMoneyK(v);
+  if (u.includes('ratio')) return (Math.round(v * 100) / 100).toFixed(2);
+  return Math.round(v).toLocaleString('en-US');
+}
+function renderScaleScorecard(){
+  const el = document.getElementById('scale-scorecard');
+  if (!el) return;
+  const d = SCALE_SCORECARD;
+  if (!d){ el.innerHTML = '<div class="scale-empty">Loading scorecard…</div>'; return; }
+  if (d.error){ el.innerHTML = `<div class="scale-empty">Couldn't load scorecard — ${escapeHtml(d.error)}</div>`; return; }
+  const off = d.offTrack || [];
+  if (!off.length){
+    const n = (d.counts && d.counts.total) || 0;
+    el.innerHTML = `<div class="scale-empty">All ${n} scored metric${n === 1 ? '' : 's'} on track for ${escapeHtml(d.quarter || 'this quarter')}. 🎉</div>`;
+    return;
+  }
+  const cards = off.map(mt => {
+    const chip = scaleScoreChip(mt.status);
+    const why = `${scaleFmtVal(mt.actual, mt.unit)} vs ${scaleFmtVal(mt.goal, mt.unit)} goal · ${escapeHtml(mt.period || '')}${mt.pct != null ? ` · ${mt.pct}%` : ''}`;
+    return `<div class="needle-card zone-scale"><div class="needle-main"><div class="needle-toprow"><span class="scale-chip ${chip.cls}">${chip.text}</span><span class="needle-title">${escapeHtml(mt.metric || '')}</span></div><div class="needle-why">${why}</div></div></div>`;
+  }).join('');
+  const onTrack = ((d.counts && d.counts.total) || 0) - off.length;
+  const note = onTrack > 0 ? `<div class="scale-empty" style="margin-top:8px">${onTrack} other metric${onTrack === 1 ? '' : 's'} on track · ${escapeHtml(d.quarter || '')}</div>` : '';
+  el.innerHTML = cards + note;
+}
+window.refreshScaleScorecard = async function(){ await fetchScaleScorecard(true); renderScaleScorecard(); };
 
 // ---- Scale board: 6-up KPI summary row (replaces the scattered tiles) ----
 function scaleKpiCard(label, value, meta, cls){
@@ -8156,7 +8201,8 @@ function renderFinance(d){
   `;
   body.innerHTML = html;
   attachFinanceHandlers();
-  renderScaleSystems();   // refill #scale-systems from cached data (or show loading until it arrives)
+  renderScaleSystems();     // refill #scale-systems from cached data (or show loading until it arrives)
+  renderScaleScorecard();   // refill #scale-scorecard likewise
 }
 
 function attachFinanceHandlers(){
@@ -8195,8 +8241,9 @@ function maybeLoadFinance(){
   _financeLoaded = true;
   const c = window.lrlCache.read('finance'); if (c) { try { renderFinance(c); } catch(e){} }
   fetchFinance();
-  // "Systems to fix" loads from its own endpoint; render into #scale-systems when ready.
+  // "Systems to fix" + "Scorecard off-track" load from their own endpoints.
   if (!_scaleSystemsStarted){ _scaleSystemsStarted = true; fetchScaleSystems().then(renderScaleSystems); }
+  if (!_scaleScorecardStarted){ _scaleScorecardStarted = true; fetchScaleScorecard().then(renderScaleScorecard); }
 }
 
 // Quick Capture chat
