@@ -217,10 +217,7 @@
   .cv-layer { display:flex; align-items:center; gap:12px; margin:24px 0 16px; }
   .cv-line { flex:1; height:1px; background:var(--navy-faint); }
   .cv-layer-lbl { font-size:10.5px; font-weight:800; letter-spacing:.13em; text-transform:uppercase; color:var(--navy-dim); white-space:nowrap; }
-  .cv-group { background:var(--white); border:1px solid var(--navy-faint); border-radius:12px; padding:16px 18px; margin-bottom:14px; }
-  .cv-group-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
-  .cv-group-title { font-size:14.5px; font-weight:700; color:var(--navy); }
-  .cv-group-sub { font-size:11.5px; color:var(--navy-dim); }
+  /* Convert "Act" sections now use the shared collapsible .mkt-section pattern (all-caps header + collapse). */
   .cv-gap-bar { height:12px; background:var(--cream-2); border-radius:6px; overflow:hidden; margin:6px 0; }
   .cv-gap-fill { height:100%; background:var(--lime); border-radius:6px; transition:width .5s; }
   .cv-gap-meta { display:flex; justify-content:space-between; font-size:12.5px; color:var(--navy-dim); gap:10px; }
@@ -8904,38 +8901,50 @@ document.addEventListener('visibilitychange', async () => {
   // ---- Convert "Act" layer: gap-to-quarter, follow-ups due, prune ----
   function cvMoney(n){ return (typeof n==='number'&&isFinite(n)) ? '$'+Math.round(n).toLocaleString('en-US') : '—'; }
   async function fetchConvertAct(fresh){ try{ const r=await fetch('/api/convert/act'+(fresh?'?fresh=1':'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.act=d; }catch(e){ console.error('fetchConvertAct',e); S.act=null; } }
+  // Collapsible-section state for the Convert "Act" layer. Uses the shared
+  // .mkt-section pattern (all-caps header + caret + persisted collapse) so it
+  // matches the pipeline board below and every future zone section.
+  let CV_COLLAPSED = {};
+  try { CV_COLLAPSED = JSON.parse(localStorage.getItem('lrl-convert-collapsed') || '{}') || {}; } catch(e){ CV_COLLAPSED = {}; }
+  function cvSaveCollapsed(){ try{ localStorage.setItem('lrl-convert-collapsed', JSON.stringify(CV_COLLAPSED)); }catch(e){} }
+  function cvSection(key, title, badge, badgeCls, bodyHtml){
+    const collapsed = CV_COLLAPSED[key] ? ' collapsed' : '';
+    const badgeHtml = (badge!=null && badge!=='') ? '<span class="mkt-sec-count '+(badgeCls||'')+'">'+badge+'</span>' : '';
+    return '<div class="mkt-section'+collapsed+'"><div class="mkt-sec-head" data-cv-toggle="'+key+'"><span class="mkt-sec-caret">▾</span><span class="mkt-sec-title">'+title+'</span>'+badgeHtml+'</div><div class="mkt-sec-body">'+bodyHtml+'</div></div>';
+  }
   function renderConvertAct(){
     const el=document.getElementById('convert-act'); if(!el) return;
     const d=S.act;
     if(!d){ el.innerHTML='<div class="cv-empty">Couldn\'t load Convert actions.</div>'; return; }
     const g=d.gap||{}; let html='';
     // Gap to quarter
-    html+='<div class="cv-group"><div class="cv-group-head"><div class="cv-group-title">Gap to quarter</div><div class="cv-group-sub">'+esc(d.quarterLabel||'')+'</div></div>';
+    let gapBody='';
     if(g.goal){ const pct=Math.round((g.pct||0)*100);
-      html+='<div class="cv-gap-bar"><div class="cv-gap-fill" style="width:'+pct+'%"></div></div>';
-      html+='<div class="cv-gap-meta"><span><b style="color:var(--navy)">'+cvMoney(g.booked)+'</b> booked</span><span>'+cvMoney(g.remaining)+' to go · goal '+cvMoney(g.goal)+'</span></div>';
+      gapBody+='<div class="cv-gap-bar"><div class="cv-gap-fill" style="width:'+pct+'%"></div></div>';
+      gapBody+='<div class="cv-gap-meta"><span><b style="color:var(--navy)">'+cvMoney(g.booked)+'</b> booked</span><span>'+cvMoney(g.remaining)+' to go · goal '+cvMoney(g.goal)+'</span></div>';
     } else {
-      html+='<div class="cv-gap-meta"><span><b style="color:var(--navy)">'+cvMoney(g.booked)+'</b> won this quarter</span><span>'+cvMoney(d.openValue)+' open</span></div>';
-      html+='<div class="cv-empty" style="font-size:11px">Add a "Revenue" metric to your VTO Scorecard to see the gap-to-goal bar.</div>';
+      gapBody+='<div class="cv-gap-meta"><span><b style="color:var(--navy)">'+cvMoney(g.booked)+'</b> won this quarter</span><span>'+cvMoney(d.openValue)+' open</span></div>';
+      gapBody+='<div class="cv-empty" style="font-size:11px">Add a "Revenue" metric to your VTO Scorecard to see the gap-to-goal bar.</div>';
     }
     if((d.closeTheGap||[]).length){
-      html+='<div class="cv-note">These close the gap'+(g.remaining?(' (need '+cvMoney(g.remaining)+')'):'')+':</div>';
-      html+=d.closeTheGap.map(function(dl){ return '<div class="needle-card zone-convert"><div class="needle-main"><div class="needle-toprow"><span class="cv-stage">'+esc(dl.status||'')+'</span><span class="needle-title">'+esc(dl.name||'')+'</span></div><div class="needle-why">'+cvMoney(dl.value)+'</div></div><div class="needle-actions"><button class="needle-act" data-cvopen="'+esc(dl.url||'')+'">Open</button></div></div>'; }).join('');
+      gapBody+='<div class="cv-note">These close the gap'+(g.remaining?(' (need '+cvMoney(g.remaining)+')'):'')+':</div>';
+      gapBody+=d.closeTheGap.map(function(dl){ return '<div class="needle-card zone-convert"><div class="needle-main"><div class="needle-toprow"><span class="cv-stage">'+esc(dl.status||'')+'</span><span class="needle-title">'+esc(dl.name||'')+'</span></div><div class="needle-why">'+cvMoney(dl.value)+'</div></div><div class="needle-actions"><button class="needle-act" data-cvopen="'+esc(dl.url||'')+'">Open</button></div></div>'; }).join('');
     }
-    html+='</div>';
+    html+=cvSection('gap','Gap to quarter', esc(d.quarterLabel||''), 'zero', gapBody);
     // Follow-ups due
-    html+='<div class="cv-group"><div class="cv-group-head"><div class="cv-group-title">Follow-ups due</div><div class="cv-group-sub">'+((d.followups||[]).length)+' to chase</div></div>';
-    if((d.followups||[]).length){
-      html+=d.followups.map(function(c){ var stage=(c.stage||'').replace(/^\d+\.\s*/,''); var why=c.lastTouched?('No touch in '+c.daysSince+'d'):'Never logged'; if(c.relationship) why+=' · '+esc(c.relationship); return '<div class="needle-card zone-convert"><div class="needle-main"><div class="needle-toprow"><span class="cv-stage">'+esc(stage)+'</span><span class="needle-title">'+esc(c.name||'')+'</span></div><div class="needle-why">'+why+'</div></div><div class="needle-actions"><button class="needle-act" data-cvtouch="'+esc(c.id)+'" data-cvname="'+esc(c.name||'')+'">Log a touch</button></div></div>'; }).join('');
-    } else { html+='<div class="cv-empty">No stage-based follow-ups due right now. 🎉</div>'; }
-    html+='</div>';
+    const fc=(d.followups||[]).length;
+    let fuBody;
+    if(fc){
+      fuBody=d.followups.map(function(c){ var stage=(c.stage||'').replace(/^\d+\.\s*/,''); var why=c.lastTouched?('No touch in '+c.daysSince+'d'):'Never logged'; if(c.relationship) why+=' · '+esc(c.relationship); return '<div class="needle-card zone-convert"><div class="needle-main"><div class="needle-toprow"><span class="cv-stage">'+esc(stage)+'</span><span class="needle-title">'+esc(c.name||'')+'</span></div><div class="needle-why">'+why+'</div></div><div class="needle-actions"><button class="needle-act" data-cvtouch="'+esc(c.id)+'" data-cvname="'+esc(c.name||'')+'">Log a touch</button></div></div>'; }).join('');
+    } else { fuBody='<div class="cv-empty">No stage-based follow-ups due right now. 🎉</div>'; }
+    html+=cvSection('followups','Follow-ups due', (fc||'0'), (fc?'':'zero'), fuBody);
     // Prune
     if((d.prune||[]).length){
-      html+='<div class="cv-group"><div class="cv-group-head"><div class="cv-group-title">Prune the pipeline</div><div class="cv-group-sub">On Hold · revive or drop</div></div>';
-      html+=d.prune.map(function(dl){ return '<div class="needle-card zone-convert"><div class="needle-main"><div class="needle-toprow"><span class="cv-stage">On Hold</span><span class="needle-title">'+esc(dl.name||'')+'</span></div><div class="needle-why">'+cvMoney(dl.value)+'</div></div><div class="needle-actions"><button class="needle-act" data-cvopen="'+esc(dl.url||'')+'">Open</button></div></div>'; }).join('');
-      html+='</div>';
+      const prBody=d.prune.map(function(dl){ return '<div class="needle-card zone-convert"><div class="needle-main"><div class="needle-toprow"><span class="cv-stage">On Hold</span><span class="needle-title">'+esc(dl.name||'')+'</span></div><div class="needle-why">'+cvMoney(dl.value)+'</div></div><div class="needle-actions"><button class="needle-act" data-cvopen="'+esc(dl.url||'')+'">Open</button></div></div>'; }).join('');
+      html+=cvSection('prune','Prune the pipeline', d.prune.length, '', prBody);
     }
     el.innerHTML=html;
+    el.querySelectorAll('[data-cv-toggle]').forEach(function(h){ h.addEventListener('click', function(){ var k=h.getAttribute('data-cv-toggle'); CV_COLLAPSED[k]=!CV_COLLAPSED[k]; cvSaveCollapsed(); h.closest('.mkt-section').classList.toggle('collapsed'); window.lrl?.haptic?.('tap'); }); });
     el.querySelectorAll('[data-cvopen]').forEach(function(b){ b.addEventListener('click', function(e){ e.stopPropagation(); var u=b.getAttribute('data-cvopen'); if(u) window.open(u,'_blank'); }); });
     el.querySelectorAll('[data-cvtouch]').forEach(function(b){ b.addEventListener('click', async function(e){ e.stopPropagation(); var id=b.getAttribute('data-cvtouch'), name=b.getAttribute('data-cvname'), prev=b.textContent; b.disabled=true; b.textContent='Logging…'; try{ var r=await fetch('/api/sales/touchpoint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contactId:id,contactName:name,touchpointType:'👋 General Touchpoint'})}); if(!r.ok) throw new Error('failed'); window.lrl?.haptic?.('success'); window.lrl?.toast?.('Touch logged for '+name,'success'); var card=b.closest('.needle-card'); if(card){ card.style.transition='opacity .3s'; card.style.opacity='0'; setTimeout(function(){ card.remove(); },300); } }catch(err){ b.disabled=false; b.textContent=prev; window.lrl?.toast?.('Could not log touch','error'); } }); });
   }
