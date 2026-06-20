@@ -9,6 +9,11 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { initDb, isEnabled as dbEnabled, users as dbUsers } from './db.js';
 import { decrypt, encrypt, isConfigured as secretsConfigured } from './secrets.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { registerConvertRoutes } from './src/routes/convert.js';
+import { serializeDeal, serializeContactRow, queryAllDeals, fetchSalesProductMap } from './src/providers/notion/convert.js';
+import { CONTACTS_DS, PULSE_RELATIONSHIPS } from './src/config/convert.js';
+import { registerAttractRoutes } from './src/routes/attract.js';
+import { registerWealthRoutes } from './src/routes/wealth.js';
 
 if (process.env.NODE_ENV !== 'production') {
   const { default: dotenv } = await import('dotenv');
@@ -115,6 +120,9 @@ async function resolveNotionUserId(email) {
 
 const cache = new Map();
 const CACHE_TTL_OVERRIDES = {
+  'attract-insights': 6 * 60 * 60_000, // GA4 + AI analysis: refresh every 6h
+  'ynab-networth': 60 * 60_000, // YNAB net worth: refresh hourly
+  'ynab-wealth': 60 * 60_000, // YNAB wealth summary: refresh hourly
   'journal-rings': 5 * 60_000, // heavier query (per-row body-text check); cache longer
   'vto-goals': 10 * 60_000,    // goals rarely change
   'active-projects': 5 * 60_000, // project status changes slowly
@@ -3469,435 +3477,8 @@ app.post('/api/ai/triage/apply', async (req, res) => {
   res.json({ results });
 });
 
-// =========================== SALES PIPELINE ===========================
-const SALES_PIPELINE_DS = 'cec1b3e9-791d-4a55-bd80-b0226552f543';
-const SALES_PRODUCTS_DS = '6e492b13-f5c7-4b8f-812e-3e05f1dc48ee';
-
-// Canonical funnel order + grouping (open vs won vs lost). Mirrors the
-// Pipeline Status options in Notion's SALES PIPELINE board.
-const SALES_STAGES = [
-  { name: 'New / To Qualify', group: 'open' },
-  { name: 'Engaged / In Conversation', group: 'open' },
-  { name: 'Consult Scheduled', group: 'open' },
-  { name: 'No Show / Reschedule', group: 'open' },
-  { name: 'Consult Completed', group: 'open' },
-  { name: 'Build Scope', group: 'open' },
-  { name: 'Decision Pending', group: 'open' },
-  { name: 'On Hold', group: 'open' },
-  { name: 'Closed Won', group: 'won' },
-  { name: 'Closed Lost', group: 'lost' },
-];
-const SALES_STAGE_INDEX = Object.fromEntries(SALES_STAGES.map((s, i) => [s.name, i]));
-const SALES_STAGE_GROUP = Object.fromEntries(SALES_STAGES.map((s) => [s.name, s.group]));
-
-// product page-id (dashless) -> Product Name
-async function fetchSalesProductMap() {
-  return cached('sales-product-map', async () => {
-    const map = {};
-    let cursor;
-    do {
-      const r = await notion.dataSources.query({ data_source_id: SALES_PRODUCTS_DS, page_size: 100, start_cursor: cursor });
-      for (const p of r.results) {
-        const name = p.properties?.['Product Name']?.title?.[0]?.plain_text || '';
-        if (name) map[p.id.replace(/-/g, '')] = name;
-      }
-      cursor = r.has_more ? r.next_cursor : null;
-    } while (cursor);
-    return map;
-  });
-}
-
-function serializeDeal(page, productMap, opts = {}) {
-  const p = page.properties || {};
-  const rt = (prop) => (prop?.rich_text || []).map((t) => t.plain_text).join('');
-  const archivedName = p.Archived?.status?.name || p.Archived?.select?.name || '';
-  const out = {
-    id: page.id,
-    url: page.url,
-    name: p['Deal Name']?.title?.[0]?.plain_text || '(untitled deal)',
-    value: typeof p['Deal Value']?.number === 'number' ? p['Deal Value'].number : null,
-    status: p['Pipeline Status']?.status?.name || null,
-    typeOfSale: p['Type of Sale']?.select?.name || null,
-    callBooked: p['Call Booked']?.date?.start || null,
-    callCompleted: p['Call Completed']?.date?.start || null,
-    dateWon: p['Date Won']?.date?.start || null,
-    dateLost: p['Date Lost']?.date?.start || null,
-    products: (p['Product Interest']?.relation || []).map((r) => productMap[r.id.replace(/-/g, '')]).filter(Boolean),
-    archived: archivedName === '__YES__',
-    created: page.created_time || null,
-  };
-  const recon = rt(p.Recon);
-  if (opts.includeRecon) out.recon = recon;
-  out.hasRecon = !!recon.trim();
-  return out;
-}
-
-async function queryAllDeals() {
-  const all = [];
-  let cursor;
-  do {
-    const r = await notion.dataSources.query({
-      data_source_id: SALES_PIPELINE_DS,
-      sorts: [{ property: 'Deal Value', direction: 'descending' }],
-      page_size: 100,
-      start_cursor: cursor,
-    });
-    all.push(...r.results);
-    cursor = r.has_more ? r.next_cursor : null;
-  } while (cursor);
-  return all;
-}
-
-// GET /api/sales/pipeline — open deals grouped by stage + headline metrics.
-app.get('/api/sales/pipeline', async (req, res) => {
-  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  try {
-    if (req.query.fresh === '1') cache.delete('sales-pipeline');
-    const data = await cached('sales-pipeline', async () => {
-      const productMap = await fetchSalesProductMap().catch(() => ({}));
-      const pages = await queryAllDeals();
-      const deals = pages.map((pg) => serializeDeal(pg, productMap)).filter((d) => !d.archived);
-      const q = currentQuarter();
-      const openStages = SALES_STAGES.filter((s) => s.group === 'open');
-      const stages = openStages.map((s) => ({ name: s.name, deals: [], count: 0, value: 0 }));
-      const byName = Object.fromEntries(stages.map((s) => [s.name, s]));
-      let openCount = 0, openValue = 0;
-      const won = { count: 0, value: 0 }, lost = { count: 0 };
-      const recentWins = [];
-      for (const d of deals) {
-        const grp = SALES_STAGE_GROUP[d.status] || 'open';
-        if (grp === 'open') {
-          const bucket = byName[d.status] || byName['New / To Qualify'];
-          if (bucket) { bucket.deals.push(d); bucket.count++; bucket.value += d.value || 0; }
-          openCount++; openValue += d.value || 0;
-        } else if (grp === 'won') {
-          if (d.dateWon && d.dateWon >= q.start && d.dateWon <= q.end) { won.count++; won.value += d.value || 0; }
-          recentWins.push(d);
-        } else if (grp === 'lost') {
-          if (d.dateLost && d.dateLost >= q.start && d.dateLost <= q.end) lost.count++;
-        }
-      }
-      recentWins.sort((a, b) => (b.dateWon || '').localeCompare(a.dateWon || ''));
-      const decided = won.count + lost.count;
-      return {
-        stages: stages.filter((s) => s.count > 0),
-        openCount, openValue,
-        won, lost,
-        winRate: decided ? Math.round((won.count / decided) * 100) : null,
-        quarterLabel: q.label,
-        recentWins: recentWins.slice(0, 12),
-      };
-    });
-    res.json(data);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// GET /api/sales/deal/:id — full single deal incl. the Recon brief.
-app.get('/api/sales/deal/:id', async (req, res) => {
-  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  try {
-    const productMap = await fetchSalesProductMap().catch(() => ({}));
-    const page = await notion.pages.retrieve({ page_id: dashifyId(req.params.id) });
-    res.json({ deal: serializeDeal(page, productMap, { includeRecon: true }) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// PATCH /api/sales/deal/:id — move stage, edit value, mark won/lost.
-app.patch('/api/sales/deal/:id', async (req, res) => {
-  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  const { status, value, dateWon, dateLost } = req.body || {};
-  try {
-    const properties = {};
-    if (status !== undefined && status !== null) {
-      properties['Pipeline Status'] = { status: { name: status } };
-      // Stamp the win/loss date automatically when entering a closed stage.
-      if (status === 'Closed Won' && dateWon === undefined) properties['Date Won'] = { date: { start: chicagoTodayISODate() } };
-      if (status === 'Closed Lost' && dateLost === undefined) properties['Date Lost'] = { date: { start: chicagoTodayISODate() } };
-    }
-    if (value !== undefined) properties['Deal Value'] = { number: value === null || value === '' ? null : Number(value) };
-    if (dateWon !== undefined) properties['Date Won'] = dateWon ? { date: { start: dateWon } } : { date: null };
-    if (dateLost !== undefined) properties['Date Lost'] = dateLost ? { date: { start: dateLost } } : { date: null };
-    if (!Object.keys(properties).length) return res.status(400).json({ error: 'no supported fields to update' });
-    await notion.pages.update({ page_id: dashifyId(req.params.id), properties });
-    cache.delete('sales-pipeline');
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// =========================== SALES PULSE TRACKER ===========================
-const CONTACTS_DS = '28d458f0-8cd9-8178-b291-000bdc3fb399';
-const SALES_ACTIVITY_DS = 'b5d8dd3c-303b-49c2-96cf-23b2cfa476ae';
-const TRINA_USER_ID = 'eea4c3fe-668e-4ce7-a8e8-30314ff7f986';
-const PULSE_RELATIONSHIPS = ['Alumni', 'Network Partner', 'Lead', 'Active Client'];
-// Touchpoint types that count as low-lift "pulse" outreach (vs. real sales moves)
-const PULSE_TOUCHPOINTS = ['👋 General Touchpoint', '🙏 Thank You / Nurture'];
-const PULSE_GOAL = 85;
-const SALES_GOAL = 15;
-
-// Plain UTC date math on YYYY-MM-DD strings (all values here are date-only).
-function addDaysISO(iso, n) {
-  const d = new Date(iso + 'T00:00:00Z');
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
-function weekStartISO(iso) {
-  // Monday of the week containing iso.
-  const d = new Date(iso + 'T00:00:00Z');
-  const back = (d.getUTCDay() + 6) % 7; // Mon=0 … Sun=6
-  return addDaysISO(iso, -back);
-}
-
-function serializeContactRow(page) {
-  const p = page.properties || {};
-  const lt = p['Last Touched']?.date?.start || null;
-  return {
-    id: page.id,
-    name: p['Full Name']?.title?.[0]?.plain_text || '(no name)',
-    relationship: p['Relationship']?.select?.name || null,
-    lastTouched: lt,
-  };
-}
-
-// GET /api/sales/overdue — active-relationship contacts, never/oldest touched first.
-app.get('/api/sales/overdue', async (req, res) => {
-  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  try {
-    // Optional ?rel= filters to a single relationship (else all four).
-    const rel = PULSE_RELATIONSHIPS.includes(req.query.rel) ? req.query.rel : null;
-    const cacheKey = rel ? `sales-overdue-${rel}` : 'sales-overdue';
-    if (req.query.fresh === '1') cache.delete(cacheKey);
-    const data = await cached(cacheKey, async () => {
-      // Two bounded, parallel queries instead of paginating the whole (800+)
-      // contact list — never-touched, plus oldest-touched (Notion-sorted). This
-      // surfaces exactly the most-overdue without the multi-second full sweep.
-      const relFilter = rel
-        ? { property: 'Relationship', select: { equals: rel } }
-        : { or: PULSE_RELATIONSHIPS.map((name) => ({ property: 'Relationship', select: { equals: name } })) };
-      const baseAnd = (extra) => ({ and: [ { property: 'Archive', checkbox: { equals: false } }, relFilter, extra ] });
-      const [neverRes, touchedRes] = await Promise.all([
-        notion.dataSources.query({ data_source_id: CONTACTS_DS, filter: baseAnd({ property: 'Last Touched', date: { is_empty: true } }), page_size: 100 }),
-        notion.dataSources.query({ data_source_id: CONTACTS_DS, filter: baseAnd({ property: 'Last Touched', date: { is_not_empty: true } }), sorts: [{ property: 'Last Touched', direction: 'ascending' }], page_size: 60 }),
-      ]);
-      const today = chicagoTodayISODate();
-      const out = [...neverRes.results, ...touchedRes.results].map(serializeContactRow);
-      out.forEach((c) => { c.daysSince = c.lastTouched ? Math.max(0, Math.round((new Date(today) - new Date(c.lastTouched)) / 864e5)) : null; });
-      // Never-touched first (alphabetical), then oldest-touched first.
-      out.sort((a, b) => {
-        if (!a.lastTouched && !b.lastTouched) return a.name.localeCompare(b.name);
-        if (!a.lastTouched) return -1;
-        if (!b.lastTouched) return 1;
-        return a.lastTouched.localeCompare(b.lastTouched);
-      });
-      return { contacts: out, total: out.length, more: neverRes.has_more || touchedRes.has_more };
-    });
-    res.json(data);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// GET /api/sales/pulse — this-week pulse vs sales counts, goals, and weekly streak.
-app.get('/api/sales/pulse', async (req, res) => {
-  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  try {
-    if (req.query.fresh === '1') cache.delete('sales-pulse');
-    const data = await cached('sales-pulse', async () => {
-      const today = chicagoTodayISODate();
-      const curMon = weekStartISO(today);
-      const sinceMon = addDaysISO(curMon, -7 * 26); // ~26 weeks of history for the streak
-      const rows = [];
-      let cursor;
-      do {
-        const r = await notion.dataSources.query({
-          data_source_id: SALES_ACTIVITY_DS,
-          filter: { property: 'Timestamp', date: { on_or_after: sinceMon } },
-          page_size: 100,
-          start_cursor: cursor,
-        });
-        for (const pg of r.results) {
-          const ts = pg.properties?.Timestamp?.date?.start;
-          const type = pg.properties?.['Touchpoint Type']?.select?.name || '';
-          if (ts) { const d = ts.slice(0, 10); rows.push({ date: d, week: weekStartISO(d), isPulse: PULSE_TOUCHPOINTS.includes(type) }); }
-        }
-        cursor = r.has_more ? r.next_cursor : null;
-      } while (cursor);
-      // Tally per week + month-to-date / quarter-to-date accumulation.
-      const wk = {};
-      const q = currentQuarter();
-      const monthStart = today.slice(0, 7) + '-01';
-      const month = { pulse: 0, sales: 0 }, quarter = { pulse: 0, sales: 0 };
-      for (const r of rows) {
-        const w = (wk[r.week] = wk[r.week] || { pulse: 0, sales: 0 }); if (r.isPulse) w.pulse++; else w.sales++;
-        if (r.date >= monthStart && r.date <= today) { if (r.isPulse) month.pulse++; else month.sales++; }
-        if (r.date >= q.start && r.date <= today) { if (r.isPulse) quarter.pulse++; else quarter.sales++; }
-      }
-      const cur = wk[curMon] || { pulse: 0, sales: 0 };
-      // Streak: count consecutive met weeks ending at the current week. A current
-      // week that hasn't hit goal yet doesn't break the streak (it's in progress).
-      let streak = 0, wkCursor = curMon, first = true;
-      for (let i = 0; i < 60; i++) {
-        const c = wk[wkCursor] || { pulse: 0, sales: 0 };
-        const met = c.sales >= SALES_GOAL;
-        if (met) streak++;
-        else if (first) { /* current week not yet met — skip, don't break */ }
-        else break;
-        first = false;
-        wkCursor = addDaysISO(wkCursor, -7);
-      }
-      return {
-        pulse: cur.pulse, pulseGoal: PULSE_GOAL,
-        sales: cur.sales, salesGoal: SALES_GOAL,
-        streak, weekStart: curMon, weekEnd: addDaysISO(curMon, 6),
-        month: { total: month.pulse + month.sales, pulse: month.pulse, sales: month.sales },
-        quarter: { total: quarter.pulse + quarter.sales, pulse: quarter.pulse, sales: quarter.sales },
-        quarterLabel: q.label,
-      };
-    });
-    res.json(data);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// GET /api/sales/contacts?q= — search active contacts for the drawer dropdown.
-app.get('/api/sales/contacts', async (req, res) => {
-  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  try {
-    const q = (req.query.q || '').trim();
-    const filter = q
-      ? { and: [ { property: 'Archive', checkbox: { equals: false } }, { property: 'Full Name', title: { contains: q } } ] }
-      : { property: 'Archive', checkbox: { equals: false } };
-    const r = await notion.dataSources.query({
-      data_source_id: CONTACTS_DS,
-      filter,
-      sorts: q ? undefined : [{ timestamp: 'last_edited_time', direction: 'descending' }],
-      page_size: 25,
-    });
-    res.json({ contacts: r.results.map(serializeContactRow) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// POST /api/sales/touchpoint — log an activity + bump the contact's Last Touched.
-app.post('/api/sales/touchpoint', async (req, res) => {
-  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  const { contactId, contactName, touchpointType, channel, notes, loggedBy, timestamp } = req.body || {};
-  if (!contactId || !touchpointType) return res.status(400).json({ error: 'contactId and touchpointType are required' });
-  const when = /^\d{4}-\d{2}-\d{2}$/.test(timestamp || '') ? timestamp : chicagoTodayISODate();
-  try {
-    const title = `${(contactName || 'Contact')} — ${touchpointType}`;
-    const properties = {
-      Description: { title: [{ text: { content: title.slice(0, 200) } }] },
-      'Touchpoint Type': { select: { name: touchpointType } },
-      Timestamp: { date: { start: when } },
-      Contact: { relation: [{ id: dashifyId(contactId) }] },
-      'Logged By': { people: [{ id: loggedBy === 'Trina' ? TRINA_USER_ID : GRETCHEN_USER_ID }] },
-    };
-    if (channel) properties.Channel = { select: { name: channel } };
-    if (notes && String(notes).trim()) properties.Notes = { rich_text: [{ text: { content: String(notes).slice(0, 1900) } }] };
-    const page = await notion.pages.create({ parent: { type: 'data_source_id', data_source_id: SALES_ACTIVITY_DS }, properties });
-    // Bump Last Touched on the contact to the interaction date.
-    try { await notion.pages.update({ page_id: dashifyId(contactId), properties: { 'Last Touched': { date: { start: when } } } }); } catch (e) { console.error('Last Touched update failed:', e.message); }
-    cache.delete('sales-pulse');
-    for (const k of cache.keys()) if (k.startsWith('sales-overdue')) cache.delete(k);
-    res.json({ ok: true, id: page.id });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// GET /api/sales/touchpoints?period=month|quarter — list activity rows for a period with full detail.
-app.get('/api/sales/touchpoints', async (req, res) => {
-  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  try {
-    const period = req.query.period === 'quarter' ? 'quarter' : 'month';
-    const today = chicagoTodayISODate();
-    const q = currentQuarter();
-    const start = period === 'quarter' ? q.start : today.slice(0, 7) + '-01';
-    const rows = [];
-    let cursor;
-    do {
-      const r = await notion.dataSources.query({
-        data_source_id: SALES_ACTIVITY_DS,
-        filter: { and: [
-          { property: 'Timestamp', date: { on_or_after: start } },
-          { property: 'Timestamp', date: { on_or_before: today } },
-        ]},
-        sorts: [{ property: 'Timestamp', direction: 'descending' }],
-        page_size: 100,
-        start_cursor: cursor,
-      });
-      for (const pg of r.results) {
-        const p = pg.properties || {};
-        const ts = p.Timestamp?.date?.start?.slice(0, 10);
-        if (!ts) continue;
-        const contactRel = (p.Contact?.relation || [])[0];
-        const contactId = contactRel?.id?.replace(/-/g, '') || null;
-        rows.push({
-          id: (pg.id || '').replace(/-/g, ''),
-          date: ts,
-          contactId,
-          contactName: null,
-          type: p['Touchpoint Type']?.select?.name || '',
-          channel: p.Channel?.select?.name || '',
-          notes: p.Notes?.rich_text?.[0]?.plain_text || '',
-          loggedBy: (p['Logged By']?.people || [])[0]?.name || '',
-          url: pg.url || `https://www.notion.so/${(pg.id || '').replace(/-/g, '')}`,
-          contactUrl: contactId ? `https://www.notion.so/${contactId}` : null,
-        });
-      }
-      cursor = r.has_more ? r.next_cursor : null;
-    } while (cursor);
-    // Batch-resolve contact names from the Contact relation.
-    const uniqueIds = [...new Set(rows.map(r => r.contactId).filter(Boolean))];
-    const nameMap = {};
-    await Promise.all(uniqueIds.map(async id => {
-      try {
-        const pg = await notion.pages.retrieve({ page_id: dashifyId(id) });
-        const p = pg.properties || {};
-        nameMap[id] = p['Full Name']?.title?.[0]?.plain_text || '(no name)';
-      } catch (_) { nameMap[id] = null; }
-    }));
-    for (const r of rows) {
-      r.contactName = (r.contactId && nameMap[r.contactId]) || '—';
-    }
-    res.json({ touchpoints: rows, period, total: rows.length });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// PATCH /api/sales/touchpoint/:id — update an existing activity row.
-app.patch('/api/sales/touchpoint/:id', async (req, res) => {
-  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  const { touchpointType, channel, notes, loggedBy, timestamp } = req.body || {};
-  try {
-    const properties = {};
-    if (touchpointType) properties['Touchpoint Type'] = { select: { name: touchpointType } };
-    if (timestamp && /^\d{4}-\d{2}-\d{2}$/.test(timestamp)) properties.Timestamp = { date: { start: timestamp } };
-    if (loggedBy) properties['Logged By'] = { people: [{ id: loggedBy === 'Trina' ? TRINA_USER_ID : GRETCHEN_USER_ID }] };
-    if (notes !== undefined) properties.Notes = String(notes).trim() ? { rich_text: [{ text: { content: String(notes).slice(0, 1900) } }] } : { rich_text: [] };
-    if (channel !== undefined) properties.Channel = channel ? { select: { name: channel } } : { select: null };
-    await notion.pages.update({ page_id: dashifyId(req.params.id), properties });
-    cache.delete('sales-pulse');
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// =========================== MARKETING PUBLISHING ===========================
-const MARKETING_ASSETS_DS = '4170ff99-ce76-42b5-bcf2-7f672c362ec4';
-const MARKETING_CHANNELS_DS = '87918a28-58ab-43d9-a038-7f0adec3f5d5';
-
-// The asset's per-channel published-URL columns. Each field name is identical
-// to the channel's "Channel Name" in CHANNELS [DB], which lets us map an
-// asset's CHANNELS relation straight onto the field to paste the live URL into.
-const MARKETING_CHANNEL_FIELDS = [
-  'LinkedIn (Gretchen)', 'LinkedIn (Trina)', 'LinkedIn (Company)',
-  'Facebook Page', 'Facebook Group', 'FB Profile (Gretchen)',
-  'Instagram', 'YouTube', 'Brandwave', 'LRL Blog',
-];
-
-function marketingPlatform(name) {
-  const n = (name || '').toLowerCase();
-  if (n.includes('linkedin')) return 'linkedin';
-  if (n.includes('instagram')) return 'instagram';
-  if (n.includes('facebook') || n.startsWith('fb ')) return 'facebook';
-  if (n.includes('youtube')) return 'youtube';
-  if (n.includes('blog')) return 'blog';
-  if (n.includes('brandwave') || n.includes('email') || n.includes('wave')) return 'email';
-  return 'other';
-}
+// ===== Convert / Sales domain — routes in src/routes/convert.js; data in src/providers/notion/convert.js =====
+registerConvertRoutes(app, { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID });
 
 function dashifyId(id) {
   const s = String(id || '').replace(/-/g, '');
@@ -3906,301 +3487,156 @@ function dashifyId(id) {
     : id;
 }
 
-function invalidateMarketingCaches() {
-  for (const k of cache.keys()) if (k.startsWith('marketing-')) cache.delete(k);
-}
+// ===== Attract / Marketing domain — extracted to src/routes/attract.js =====
+const { MARKETING_ASSETS_DS, fetchMarketingChannelMap, serializeMarketingAsset } =
+  registerAttractRoutes(app, { notion, cache, cached, currentQuarter, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, anthropic, userContext });
+registerWealthRoutes(app, { cached, cache, userContext });
 
-// channel page-id (dashless) -> Channel Name
-async function fetchMarketingChannelMap() {
-  return cached('marketing-channel-map', async () => {
-    const map = {};
-    let cursor;
-    do {
-      const r = await notion.dataSources.query({ data_source_id: MARKETING_CHANNELS_DS, page_size: 100, start_cursor: cursor });
-      for (const p of r.results) {
-        const name = p.properties?.['Channel Name']?.title?.[0]?.plain_text || '';
-        if (name) map[p.id.replace(/-/g, '')] = name;
-      }
-      cursor = r.has_more ? r.next_cursor : null;
-    } while (cursor);
-    return map;
-  });
-}
+// =========================== MOVE THE NEEDLE (Phase 0) ===========================
+// GET /api/needle/today — ONE ranked, cross-zone "what to do next" list. This is
+// a composing endpoint: it reuses the existing fetchers/serializers (projects
+// board, deals pipeline, overdue contacts, marketing assets) and only PEEKS the
+// already-cached Xero result for finance — it wires no new Notion databases.
+// Each zone source is guarded independently so one failure never blanks the panel.
+const NEEDLE_ZONE_LABEL = { attract: 'Attract', convert: 'Convert', deliver: 'Deliver', scale: 'Scale' };
+const NEEDLE_LATE_DEAL_STAGES = new Set(['Consult Completed', 'Build Scope', 'Decision Pending']);
+const fmtUSD = (n) => (typeof n === 'number' && isFinite(n)) ? '$' + Math.round(n).toLocaleString('en-US') : null;
 
-function marketingFileEntry(f, assetIdDashless, idx) {
-  const name = f.name || 'file';
-  const ext = (name.split('.').pop() || '').toLowerCase();
-  const isImage = ['png','jpg','jpeg','gif','webp','heic','svg','bmp'].includes(ext);
-  const isPdf = ext === 'pdf';
-  const isVideo = ['mp4','mov','webm','m4v'].includes(ext);
-  return {
-    name, ext,
-    kind: isImage ? 'image' : isPdf ? 'pdf' : isVideo ? 'video' : 'other',
-    // Always proxy through our server: Notion's signed URLs expire (~1h) and
-    // block cross-origin download. ?dl=1 forces an attachment download.
-    src: `/api/marketing/media?asset=${assetIdDashless}&idx=${idx}`,
-    download: `/api/marketing/media?asset=${assetIdDashless}&idx=${idx}&dl=1`,
-  };
-}
-
-function serializeMarketingAsset(page, channelMap, opts = {}) {
-  const p = page.properties || {};
-  const rt = (prop) => (prop?.rich_text || []).map((t) => t.plain_text).join('');
-  const idDashless = page.id.replace(/-/g, '');
-  const media = (p.Media?.files || []).map((f, i) => marketingFileEntry(f, idDashless, i));
-
-  // Channels: targeted (from CHANNELS relation, mapped by name to a field) first,
-  // then any field that already holds a live URL even if not explicitly targeted.
-  const channels = [];
-  const seen = new Set();
-  const targetedNames = (p.CHANNELS?.relation || [])
-    .map((r) => channelMap[r.id.replace(/-/g, '')])
-    .filter(Boolean);
-  for (const name of targetedNames) {
-    if (MARKETING_CHANNEL_FIELDS.includes(name) && !seen.has(name)) {
-      seen.add(name);
-      channels.push({ name, field: name, platform: marketingPlatform(name), url: p[name]?.url || '', targeted: true });
-    }
-  }
-  for (const field of MARKETING_CHANNEL_FIELDS) {
-    const val = p[field]?.url || '';
-    if (val && !seen.has(field)) {
-      seen.add(field);
-      channels.push({ name: field, field, platform: marketingPlatform(field), url: val, targeted: false });
-    }
-  }
-
-  return {
-    id: page.id,
-    url: page.url,
-    name: p['Asset Name']?.title?.[0]?.plain_text || '(untitled)',
-    status: p.Status?.status?.name || null,
-    publishDate: p['Publish Date']?.date?.start || null,
-    formats: (p.Format?.multi_select || []).map((o) => o.name),
-    contentType: p['Content Type']?.select?.name || null,
-    needs: (p.Needs?.multi_select || []).map((o) => o.name),
-    primaryTopic: rt(p['Primary Topic']),
-    notes: rt(p.Notes),
-    media,
-    channels,
-  };
-}
-
-function marketingRichText(block) {
-  const t = block[block.type];
-  return (t?.rich_text || []).map((r) => r.plain_text).join('');
-}
-
-// Parse a page body into copy "sections" split on headings/dividers, so the UI
-// can offer a Copy button per section (e.g. "LinkedIn Caption", "First Comment").
-async function fetchMarketingCopy(pageId) {
-  const blocks = [];
-  let cursor;
-  try {
-    do {
-      const r = await notion.blocks.children.list({ block_id: pageId, page_size: 100, start_cursor: cursor });
-      blocks.push(...r.results);
-      cursor = r.has_more ? r.next_cursor : null;
-    } while (cursor);
-  } catch (_) { return []; }
-  const sections = [];
-  let cur = { heading: '', lines: [] };
-  const flush = () => { if (cur.heading || cur.lines.join('').trim()) sections.push({ heading: cur.heading, text: cur.lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() }); };
-  for (const b of blocks) {
-    const type = b.type;
-    if (type === 'heading_1' || type === 'heading_2' || type === 'heading_3') {
-      flush(); cur = { heading: marketingRichText(b), lines: [] };
-    } else if (type === 'divider') {
-      flush(); cur = { heading: '', lines: [] };
-    } else if (type === 'bulleted_list_item' || type === 'numbered_list_item') {
-      cur.lines.push('• ' + marketingRichText(b));
-    } else if (type === 'to_do') {
-      cur.lines.push((b.to_do?.checked ? '☑ ' : '☐ ') + marketingRichText(b));
-    } else if (['paragraph','quote','callout','heading_toggle','toggle'].includes(type)) {
-      cur.lines.push(marketingRichText(b));
-    }
-  }
-  flush();
-  return sections.filter((s) => s.heading || s.text);
-}
-
-// GET /api/marketing/today — the publish queue: overdue + due-today (with copy),
-// plus a lightweight look at the next 7 days and what already went out today.
-app.get('/api/marketing/today', async (req, res) => {
+app.get('/api/needle/today', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
-    if (req.query.fresh === '1') cache.delete('marketing-today');
-    const data = await cached('marketing-today', async () => {
-      const channelMap = await fetchMarketingChannelMap();
+    if (req.query.fresh === '1') {
+      const u = userContext.getStore()?.user;
+      cache.delete(u ? `needle-today::${u.id || u.email}` : 'needle-today');
+    }
+    const data = await cached('needle-today', async () => {
       const today = chicagoTodayISODate();
-      const backBound = chicagoDateNDaysAgo(30);   // overdue up to 30d back
-      const weekEnd = chicagoDateNDaysAgo(-7);      // 7 days ahead
-      const r = await notion.dataSources.query({
-        data_source_id: MARKETING_ASSETS_DS,
-        filter: { and: [
-          { property: 'Publish Date', date: { on_or_after: backBound } },
-          { property: 'Publish Date', date: { on_or_before: weekEnd } },
-        ] },
-        sorts: [{ property: 'Publish Date', direction: 'ascending' }],
-        page_size: 100,
-      });
-      const assets = r.results.map((pg) => serializeMarketingAsset(pg, channelMap));
-      const overdue = [], dueToday = [], thisWeek = [], publishedToday = [];
-      for (const a of assets) {
-        const d = a.publishDate;
-        if (a.status === 'Published') { if (d === today) publishedToday.push(a); continue; }
-        if (d < today) overdue.push(a);
-        else if (d === today) dueToday.push(a);
-        else thisWeek.push(a);
-      }
-      // Fetch copy only for the actionable queue (overdue + today) to keep it fast.
-      await Promise.all([...overdue, ...dueToday].map(async (a) => { a.copy = await fetchMarketingCopy(a.id); }));
-      return { today, overdue, dueToday, thisWeek, publishedToday };
+      const todayMs = Date.parse(today + 'T00:00:00Z');
+
+      // ---- DELIVER: ready-to-bill (cash on the table) + overdue/at-risk work projects ----
+      const deliver = await (async () => {
+        const out = [];
+        try {
+          const { projects } = await fetchProjectsBoard();
+          for (const p of projects) {
+            if (p.source !== 'work') continue;
+            if (p.status === 'Billing') {
+              out.push({ id: `project:${p.id}`, zone: 'deliver', title: p.name, url: p.url,
+                why: 'Ready to invoice — cash on the table', score: 100,
+                action: { label: 'Open in Projects', kind: 'jump', tab: 'projects' } });
+            } else if (p.atRisk) {
+              out.push({ id: `project:${p.id}`, zone: 'deliver', title: p.name, url: p.url,
+                why: `Past deadline${p.rock ? ' · Quarterly Rock' : ''} — unblock or re-date`,
+                score: p.rock ? 78 : 62,
+                action: { label: 'Open in Projects', kind: 'jump', tab: 'projects' } });
+            }
+          }
+        } catch (e) { console.error('needle:deliver', e.message); }
+        return out;
+      })();
+
+      // ---- CONVERT: close-the-quarter deals (late stage, by value) + overdue follow-ups ----
+      const convert = await (async () => {
+        const out = [];
+        try {
+          const productMap = await fetchSalesProductMap(notion, cached).catch(() => ({}));
+          const deals = (await queryAllDeals(notion)).map((pg) => serializeDeal(pg, productMap));
+          deals
+            .filter((d) => !d.archived && NEEDLE_LATE_DEAL_STAGES.has(d.status))
+            .sort((a, b) => (b.value || 0) - (a.value || 0))
+            .slice(0, 4)
+            .forEach((d) => {
+              const v = fmtUSD(d.value);
+              const closing = d.status === 'Decision Pending';
+              out.push({ id: `deal:${d.id}`, zone: 'convert', title: d.name, url: d.url,
+                why: `${d.status}${v ? ` · ${v}` : ''}${closing ? ' — push to close' : ''}`,
+                score: (closing ? 86 : 80) + Math.min((d.value || 0) / 2000, 12),
+                action: { label: 'Open in Convert', kind: 'jump', tab: 'pipeline' } });
+            });
+        } catch (e) { console.error('needle:deals', e.message); }
+        try {
+          // Bounded overdue-contacts query, mirrors /api/convert/overdue (never-touched + oldest).
+          const relFilter = { or: PULSE_RELATIONSHIPS.map((name) => ({ property: 'Relationship', select: { equals: name } })) };
+          const baseAnd = (extra) => ({ and: [{ property: 'Archive', checkbox: { equals: false } }, relFilter, extra] });
+          const [neverRes, touchedRes] = await Promise.all([
+            notion.dataSources.query({ data_source_id: CONTACTS_DS, filter: baseAnd({ property: 'Last Touched', date: { is_empty: true } }), page_size: 20 }),
+            notion.dataSources.query({ data_source_id: CONTACTS_DS, filter: baseAnd({ property: 'Last Touched', date: { is_not_empty: true } }), sorts: [{ property: 'Last Touched', direction: 'ascending' }], page_size: 20 }),
+          ]);
+          const contacts = [...neverRes.results, ...touchedRes.results].map(serializeContactRow);
+          contacts.forEach((c) => { c.daysSince = c.lastTouched ? Math.max(0, Math.round((todayMs - Date.parse(c.lastTouched + 'T00:00:00Z')) / 864e5)) : null; });
+          contacts
+            .sort((a, b) => { if (!a.lastTouched && !b.lastTouched) return a.name.localeCompare(b.name); if (!a.lastTouched) return -1; if (!b.lastTouched) return 1; return a.lastTouched.localeCompare(b.lastTouched); })
+            .slice(0, 3)
+            .forEach((c) => {
+              const never = !c.lastTouched;
+              out.push({ id: `contact:${c.id}`, zone: 'convert', title: c.name,
+                why: never ? `${c.relationship || 'Contact'} · never contacted` : `${c.relationship || 'Contact'} · no touch in ${c.daysSince}d`,
+                score: never ? 72 : 48 + Math.min((c.daysSince || 0) / 3, 22),
+                action: { label: 'Log a touch', kind: 'touchpoint', contactId: c.id, contactName: c.name } });
+            });
+        } catch (e) { console.error('needle:overdue', e.message); }
+        return out;
+      })();
+
+      // ---- ATTRACT: content overdue to publish ----
+      const attract = await (async () => {
+        const out = [];
+        try {
+          const channelMap = await fetchMarketingChannelMap().catch(() => ({}));
+          const r = await notion.dataSources.query({
+            data_source_id: MARKETING_ASSETS_DS,
+            filter: { and: [
+              { property: 'Publish Date', date: { on_or_before: today } },
+              { property: 'Status', status: { does_not_equal: 'Published' } },
+            ] },
+            sorts: [{ property: 'Publish Date', direction: 'ascending' }],
+            page_size: 10,
+          });
+          r.results.map((pg) => serializeMarketingAsset(pg, channelMap)).forEach((a) => {
+            const dOver = a.publishDate ? Math.max(0, Math.round((todayMs - Date.parse(a.publishDate + 'T00:00:00Z')) / 864e5)) : 0;
+            const blockers = (a.needs && a.needs.length) ? ` · ${a.needs.join(', ')}` : '';
+            out.push({ id: `asset:${a.id}`, zone: 'attract', title: a.name, url: a.url,
+              why: `Overdue to publish${dOver ? ` ${dOver}d` : ''}${blockers}`,
+              score: 55 + Math.min(dOver, 20),
+              action: { label: 'Open in Attract', kind: 'jump', tab: 'marketing' } });
+          });
+        } catch (e) { console.error('needle:attract', e.message); }
+        return out;
+      })();
+
+      // ---- SCALE: behind on quarter revenue / short runway (only if Xero already cached) ----
+      const scale = (() => {
+        const out = [];
+        try {
+          const u = userContext.getStore()?.user;
+          const fin = cache.get(u ? `xero-finance::${u.id || u.email}` : 'xero-finance')?.v;
+          if (fin) {
+            const goal = fin.goals?.revenue?.qtd;
+            const actual = fin.qtdRevenue;
+            if (typeof goal === 'number' && typeof actual === 'number' && goal > 0 && actual < goal) {
+              out.push({ id: 'finance:revenue', zone: 'scale', title: 'Quarterly revenue behind goal',
+                why: `${fmtUSD(goal - actual)} to go · ${fmtUSD(actual)} of ${fmtUSD(goal)} QTD`,
+                score: 68, action: { label: 'Open in Finance', kind: 'jump', tab: 'finance' } });
+            } else if (typeof fin.runwayMonths === 'number' && fin.runwayMonths > 0 && fin.runwayMonths < 4) {
+              out.push({ id: 'finance:runway', zone: 'scale', title: 'Cash runway is short',
+                why: `${fin.runwayMonths} months of runway — tighten spend / accelerate collections`,
+                score: 66, action: { label: 'Open in Finance', kind: 'jump', tab: 'finance' } });
+            }
+          }
+        } catch (e) { console.error('needle:scale', e.message); }
+        return out;
+      })();
+
+      // ---- Merge: at most 2 per zone (keeps it cross-zone), then top 6 by score ----
+      const byZone = { attract, convert, deliver, scale };
+      let picked = [];
+      for (const z of Object.keys(byZone)) picked.push(...byZone[z].sort((a, b) => b.score - a.score).slice(0, 2));
+      picked.sort((a, b) => b.score - a.score);
+      picked = picked.slice(0, 6).map((c) => ({ ...c, zoneLabel: NEEDLE_ZONE_LABEL[c.zone] }));
+      return { asOf: new Date().toISOString(), cards: picked };
     });
     res.json(data);
   } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// GET /api/marketing/stats — OKR-shaped output: published counts for the
-// quarter / month / year, plus a per-channel breakdown for the quarter.
-app.get('/api/marketing/stats', async (req, res) => {
-  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  try {
-    if (req.query.fresh === '1') cache.delete('marketing-stats');
-    const data = await cached('marketing-stats', async () => {
-      const channelMap = await fetchMarketingChannelMap();
-      const today = chicagoTodayISODate();
-      const q = currentQuarter();
-      const yearStart = today.slice(0, 4) + '-01-01';
-      const monthStart = today.slice(0, 7) + '-01';
-      // Pull everything published since the start of the year (covers all 3 windows).
-      const pages = [];
-      let cursor;
-      do {
-        const r = await notion.dataSources.query({
-          data_source_id: MARKETING_ASSETS_DS,
-          filter: { and: [
-            { property: 'Status', status: { equals: 'Published' } },
-            { property: 'Publish Date', date: { on_or_after: yearStart } },
-          ] },
-          page_size: 100,
-          start_cursor: cursor,
-        });
-        pages.push(...r.results);
-        cursor = r.has_more ? r.next_cursor : null;
-      } while (cursor);
-      const assets = pages.map((pg) => serializeMarketingAsset(pg, channelMap));
-      let publishedYear = 0, publishedQuarter = 0, publishedMonth = 0;
-      const channelTally = {};
-      const channelPlatform = {};
-      for (const a of assets) {
-        const d = a.publishDate; if (!d) continue;
-        publishedYear++;
-        if (d >= monthStart && d <= today) publishedMonth++;
-        if (d >= q.start && d <= q.end) {
-          publishedQuarter++;
-          // Tally where it went (targeted channels ∪ channels with a live URL).
-          for (const c of a.channels) { channelTally[c.name] = (channelTally[c.name] || 0) + 1; channelPlatform[c.name] = c.platform; }
-        }
-      }
-      const byChannel = Object.entries(channelTally)
-        .map(([name, count]) => ({ name, count, platform: channelPlatform[name] || 'other' }))
-        .sort((a, b) => b.count - a.count);
-      return { quarterLabel: q.label, publishedQuarter, publishedMonth, publishedYear, byChannel };
-    });
-    res.json(data);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// GET /api/marketing/calendar?month=YYYY-MM — lightweight month grid data.
-app.get('/api/marketing/calendar', async (req, res) => {
-  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  try {
-    const month = /^\d{4}-\d{2}$/.test(req.query.month || '') ? req.query.month : chicagoTodayISODate().slice(0, 7);
-    const [y, m] = month.split('-').map(Number);
-    const start = `${month}-01`;
-    const end = `${month}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
-    const cacheKey = `marketing-cal-${month}`;
-    if (req.query.fresh === '1') cache.delete(cacheKey);
-    const data = await cached(cacheKey, async () => {
-      const channelMap = await fetchMarketingChannelMap();
-      const out = [];
-      let cursor;
-      do {
-        const r = await notion.dataSources.query({
-          data_source_id: MARKETING_ASSETS_DS,
-          filter: { and: [
-            { property: 'Publish Date', date: { on_or_after: start } },
-            { property: 'Publish Date', date: { on_or_before: end } },
-          ] },
-          sorts: [{ property: 'Publish Date', direction: 'ascending' }],
-          page_size: 100,
-          start_cursor: cursor,
-        });
-        for (const pg of r.results) {
-          const a = serializeMarketingAsset(pg, channelMap);
-          out.push({ id: a.id, url: a.url, name: a.name, status: a.status, publishDate: a.publishDate, formats: a.formats, contentType: a.contentType, hasMedia: a.media.length > 0 });
-        }
-        cursor = r.has_more ? r.next_cursor : null;
-      } while (cursor);
-      const days = {};
-      for (const a of out) { if (!a.publishDate) continue; (days[a.publishDate] = days[a.publishDate] || []).push(a); }
-      return { month, days };
-    });
-    res.json(data);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// GET /api/marketing/asset/:id — a single asset with full copy (lazy detail).
-app.get('/api/marketing/asset/:id', async (req, res) => {
-  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  try {
-    const channelMap = await fetchMarketingChannelMap();
-    const page = await notion.pages.retrieve({ page_id: dashifyId(req.params.id) });
-    const asset = serializeMarketingAsset(page, channelMap);
-    asset.copy = await fetchMarketingCopy(page.id);
-    res.json({ asset });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// PATCH /api/marketing/asset/:id — update status, publish date, per-channel URLs.
-app.patch('/api/marketing/asset/:id', async (req, res) => {
-  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  const { status, publishDate, channelUrls } = req.body || {};
-  try {
-    const properties = {};
-    if (status !== undefined && status !== null) properties.Status = { status: { name: status } };
-    if (publishDate !== undefined) properties['Publish Date'] = publishDate ? { date: { start: publishDate } } : { date: null };
-    for (const [field, url] of Object.entries(channelUrls || {})) {
-      if (MARKETING_CHANNEL_FIELDS.includes(field)) properties[field] = { url: url ? String(url) : null };
-    }
-    if (!Object.keys(properties).length) return res.status(400).json({ error: 'no supported fields to update' });
-    await notion.pages.update({ page_id: dashifyId(req.params.id), properties });
-    invalidateMarketingCaches();
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// GET /api/marketing/media?asset=<id>&idx=<n>[&dl=1] — proxy a Media file so it
-// never 404s on an expired signed URL and can be force-downloaded.
-app.get('/api/marketing/media', async (req, res) => {
-  if (!notion) return res.status(500).end('no notion');
-  try {
-    const idx = parseInt(req.query.idx || '0', 10);
-    const page = await notion.pages.retrieve({ page_id: dashifyId(req.query.asset || '') });
-    const files = page.properties?.Media?.files || [];
-    const f = files[idx];
-    if (!f) return res.status(404).end('not found');
-    const url = f.type === 'external' ? f.external?.url : f.file?.url;
-    if (!url) return res.status(404).end('no url');
-    const upstream = await fetch(url);
-    if (!upstream.ok) return res.status(502).end('upstream failed');
-    res.setHeader('Content-Type', upstream.headers.get('content-type') || 'application/octet-stream');
-    res.setHeader('Cache-Control', 'private, max-age=300');
-    const name = (f.name || 'download').replace(/["\r\n]/g, '');
-    res.setHeader('Content-Disposition', `${req.query.dl === '1' ? 'attachment' : 'inline'}; filename="${name}"`);
-    res.send(Buffer.from(await upstream.arrayBuffer()));
-  } catch (err) { res.status(500).end(err.message); }
 });
 
 const server = app.listen(PORT, () => {

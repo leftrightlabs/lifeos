@@ -193,6 +193,50 @@
   .quest-panel-caret { display: none; }
   .quest-panel-meta { font-size: 11px; color: var(--navy-dim); font-family: var(--font-body); font-weight: 500; letter-spacing: 0.06em; white-space: nowrap; }
   .quest-panel.collapsed .panel-add-btn { display: none; }
+  /* Move-the-needle panel (Phase 0): ranked cross-zone next-actions */
+  .needle-panel .needle-meta-link { background:none; border:none; color:var(--navy-dim); cursor:pointer; font-size:12px; font-family:var(--font-body); padding:0 2px; }
+  .needle-panel .needle-meta-link:hover { color:var(--lime); }
+  .needle-card { display:flex; align-items:flex-start; gap:12px; padding:11px 12px; border:1px solid var(--navy-faint); border-left-width:3px; border-radius:8px; background:var(--cream-2); margin-bottom:8px; }
+  .needle-card:last-child { margin-bottom:0; }
+  .needle-card.zone-attract { border-left-color:#5d9cec; }
+  .needle-card.zone-convert { border-left-color:var(--lime); }
+  .needle-card.zone-deliver { border-left-color:#c98bdb; }
+  .needle-card.zone-scale   { border-left-color:#ffb74d; }
+  .needle-main { flex:1; min-width:0; }
+  .needle-toprow { display:flex; align-items:center; gap:8px; margin-bottom:3px; }
+  .needle-zone { font-size:9px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; padding:2px 6px; border-radius:3px; flex-shrink:0; }
+  .needle-zone.zone-attract { background:rgba(93,156,236,0.16); color:#9cc5f5; }
+  .needle-zone.zone-convert { background:var(--lime-faint); color:var(--lime); }
+  .needle-zone.zone-deliver { background:rgba(201,139,219,0.16); color:#d7a6e6; }
+  .needle-zone.zone-scale   { background:rgba(255,183,77,0.16); color:#ffb74d; }
+  .needle-title { font-size:13.5px; font-weight:600; color:var(--navy); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .needle-why { font-size:11.5px; color:var(--navy-dim); line-height:1.35; }
+  .needle-actions { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  .needle-act { background:transparent; border:1px solid rgba(var(--edge-rgb),0.14); color:rgba(var(--ink-rgb),0.7); font-family:var(--font-body); font-size:10.5px; font-weight:700; letter-spacing:0.04em; padding:5px 10px; border-radius:999px; cursor:pointer; white-space:nowrap; transition:all .15s; }
+  .needle-act:hover { color:var(--lime); border-color:var(--lime); }
+  .needle-act:disabled { opacity:0.5; cursor:default; }
+  .needle-dismiss { background:transparent; border:none; color:var(--navy-dim); font-size:17px; line-height:1; cursor:pointer; padding:2px 5px; border-radius:6px; flex-shrink:0; }
+  .needle-dismiss:hover { color:var(--danger); }
+  /* Convert zone "Act" layer (gap / follow-ups / prune) above the pipeline board */
+  .cv-layer { display:flex; align-items:center; gap:12px; margin:24px 0 16px; }
+  .cv-line { flex:1; height:1px; background:var(--navy-faint); }
+  .cv-layer-lbl { font-size:10.5px; font-weight:800; letter-spacing:.13em; text-transform:uppercase; color:var(--navy-dim); white-space:nowrap; }
+  /* Convert "Act" sections now use the shared collapsible .mkt-section pattern (all-caps header + collapse). */
+  .cv-gap-bar { height:12px; background:var(--cream-2); border-radius:6px; overflow:hidden; margin:6px 0; }
+  .cv-gap-fill { height:100%; background:var(--lime); border-radius:6px; transition:width .5s; }
+  .cv-gap-meta { display:flex; justify-content:space-between; font-size:12.5px; color:var(--navy-dim); gap:10px; }
+  .cv-note { font-size:11.5px; color:var(--navy-dim); margin:12px 0 6px; font-weight:600; }
+  .cv-stage { font-size:8.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; padding:2px 6px; border-radius:3px; background:var(--lime-faint); color:var(--lime); white-space:nowrap; flex-shrink:0; max-width:150px; overflow:hidden; text-overflow:ellipsis; }
+  .cv-empty { color:var(--navy-dim); font-size:13px; padding:6px 0; }
+  /* Attract "What's Working" (GA4 + AI) */
+  .aw-list { margin:0; padding-left:18px; }
+  .aw-list li { font-size:13px; color:var(--navy); line-height:1.45; margin-bottom:7px; }
+  .aw-list li:last-child { margin-bottom:0; }
+  .aw-props { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; border-top:1px solid var(--navy-faint); padding-top:12px; }
+  .aw-prop { display:flex; flex-direction:column; gap:3px; background:var(--cream-2); border:1px solid var(--navy-faint); border-radius:8px; padding:8px 12px; }
+  .aw-prop-name { font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--navy-dim); }
+  .aw-prop-stat { font-size:12.5px; color:var(--navy); font-weight:600; }
+  .aw-trend { font-weight:700; } .aw-trend.up { color:var(--lime); } .aw-trend.down { color:#e57373; }
   /* Source toggle for new-task modal */
   .task-source-toggle { display: flex; gap: 6px; margin-bottom: 14px; }
   .task-source-opt { padding: 5px 16px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0.05em; cursor: pointer; border: 1.5px solid rgba(var(--edge-rgb), 0.12); background: transparent; color: rgba(var(--ink-rgb), 0.45); transition: all 0.15s; font-family: var(--font-body); }
@@ -3047,8 +3091,8 @@ window.lrl = (function(){
     <button class="tab" data-tab="projects" data-modes="all,work,personal">Projects</button>
     <button class="tab" data-tab="autofocus" data-modes="all,work,personal">Tasks</button>
     <button class="tab" data-tab="review" data-modes="all,work,personal">Review</button>
-    <button class="tab tab-ctx" data-tab="pipeline" data-modes="work">Sales</button>
-    <button class="tab tab-ctx" data-tab="marketing" data-modes="work">Marketing</button>
+    <button class="tab tab-ctx" data-tab="pipeline" data-modes="work">Convert</button>
+    <button class="tab tab-ctx" data-tab="marketing" data-modes="work">Attract</button>
     <button class="tab tab-ctx" data-tab="finance" data-modes="work">Finance</button>
     <button class="tab tab-ctx" data-tab="team" data-modes="work">Team</button>
     <button class="tab tab-ctx" data-tab="health" data-modes="personal">Health</button>
@@ -3061,6 +3105,16 @@ window.lrl = (function(){
   <div class="tab-content active" data-content="command">
     <div class="section-label">Today's Overview</div>
     <h1 class="page-title"><span>Today</span></h1>
+
+    <div class="panel quest-panel needle-panel" id="needle-panel">
+      <div class="quest-panel-head">
+        <button class="quest-panel-toggle" id="needle-panel-toggle" title="Collapse/expand">
+          <span class="quest-panel-caret" id="needle-caret">▾</span> Move the needle today
+        </button>
+        <span class="quest-panel-meta" id="needle-panel-meta"></span>
+      </div>
+      <div id="needle-body" class="quest-panel-body"><div style="color:var(--navy-dim);font-size:13px;padding:8px 0">loading…</div></div>
+    </div>
 
     <div class="daily-brief" id="daily-brief">
       <div class="daily-brief-kicker">
@@ -3398,9 +3452,11 @@ window.lrl = (function(){
 
   <!-- PIPELINE TAB -->
   <div class="tab-content" data-content="pipeline">
-    <div class="section-label">Sales Pipeline</div>
-    <h1 class="page-title"><span>Sales</span></h1>
-    <div class="page-subtitle">Every open deal by stage, what's closing, and the lead research behind each one.</div>
+    <div class="section-label">Convert</div>
+    <h1 class="page-title"><span>Convert</span></h1>
+    <div class="page-subtitle">Who to chase, what must close to hit the quarter, and what to prune — your full pipeline sits below.</div>
+    <div id="convert-act"><div style="color:var(--navy-dim);font-size:13px;padding:14px 0">loading…</div></div>
+    <div class="cv-layer"><span class="cv-line"></span><span class="cv-layer-lbl">The pipeline — full board</span><span class="cv-line"></span></div>
     <div id="sales-body"><div style="color:var(--navy-dim);font-size:13px;padding:20px 0">loading…</div></div>
   </div>
   <div class="mkt-modal" id="sales-modal"><div class="mkt-modal-content" id="sales-modal-content"></div></div>
@@ -3490,9 +3546,10 @@ window.lrl = (function(){
 
   <!-- MARKETING TAB -->
   <div class="tab-content" data-content="marketing">
-    <div class="section-label">Marketing Engine</div>
-    <h1 class="page-title"><span>Marketing</span></h1>
+    <div class="section-label">Attract</div>
+    <h1 class="page-title"><span>Attract</span></h1>
     <div class="page-subtitle">Publish today's content, track where it went live, and see what's ahead.</div>
+    <div id="attract-act"><div class="cv-empty" style="padding:14px 0">Analyzing what's working…</div></div>
     <div id="mkt-body"><div style="color:var(--navy-dim);font-size:13px;padding:20px 0">loading…</div></div>
   </div>
   <div class="mkt-modal" id="mkt-modal"><div class="mkt-modal-content" id="mkt-modal-content"></div></div>
@@ -3527,13 +3584,18 @@ window.lrl = (function(){
   <div class="tab-content" data-content="finance-personal">
     <div class="section-label">Personal Realm</div>
     <h1 class="page-title"><span>Wealth</span></h1>
-    <div class="page-subtitle">Personal income, expenses, debt paydown. (Placeholder.)</div>
+    <div class="page-subtitle">Live from YNAB — net worth, budget, savings &amp; goals.</div>
     <div class="kpi-grid">
-      <div class="kpi-card"><div class="kpi-label">Debt Paydown</div><div class="kpi-value"><span>$11K</span></div><div class="kpi-change positive">44% to $25K</div></div>
-      <div class="kpi-card"><div class="kpi-label">Emergency Fund</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending YNAB integration</div></div>
-      <div class="kpi-card"><div class="kpi-label">Monthly Budget</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending YNAB integration</div></div>
-      <div class="kpi-card"><div class="kpi-label">Net Worth</div><div class="kpi-value"><span>—</span></div><div class="kpi-change">Pending integration</div></div>
+      <div class="kpi-card"><div class="kpi-label">Net Worth</div><div class="kpi-value"><span id="w-networth">—</span></div><div class="kpi-change" id="w-networth-sub">via YNAB</div></div>
+      <div class="kpi-card"><div class="kpi-label">Monthly Budget</div><div class="kpi-value"><span id="w-budget">—</span></div><div class="kpi-change" id="w-budget-sub">this month</div></div>
+      <div class="kpi-card"><div class="kpi-label">Emergency Fund</div><div class="kpi-value"><span id="w-emergency">—</span></div><div class="kpi-change" id="w-emergency-sub">savings cushion</div></div>
+      <div class="kpi-card"><div class="kpi-label">Age of Money</div><div class="kpi-value"><span id="w-aom">—</span></div><div class="kpi-change" id="w-aom-sub">days of buffer</div></div>
+      <div class="kpi-card"><div class="kpi-label">Cash on Hand</div><div class="kpi-value"><span id="w-cash">—</span></div><div class="kpi-change" id="w-cash-sub">checking + cash</div></div>
+      <div class="kpi-card"><div class="kpi-label">Investments</div><div class="kpi-value"><span id="w-invest">—</span></div><div class="kpi-change" id="w-invest-sub">brokerage &amp; retirement</div></div>
+      <div class="kpi-card"><div class="kpi-label">Other Debt</div><div class="kpi-value"><span id="w-debt">—</span></div><div class="kpi-change" id="w-debt-sub">cards &amp; car loan</div></div>
+      <div class="kpi-card"><div class="kpi-label">Line of Credit</div><div class="kpi-value"><span id="w-loc">—</span></div><div class="kpi-change" id="w-loc-sub">against investments</div></div>
     </div>
+    <div id="w-goals" style="margin-top:16px"></div>
   </div>
 
   <!-- LEGO TAB -->
@@ -4860,6 +4922,101 @@ async function fetchTodayQuests(){
   } catch (e) { console.error('fetchTodayQuests', e); }
 }
 
+// ---- Move the needle today (Phase 0) -------------------------------------
+let NEEDLE_CARDS = [];
+let NEEDLE_DISMISSED = new Set();
+let NEEDLE_ACTION_BY_ID = {};
+function needleDismissStoreKey(){ return 'lrl-needle-dismissed-' + chicagoYMD(new Date().toISOString()); }
+function needleEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function loadNeedleDismissed(){
+  try { const r = await window.storage.get(needleDismissStoreKey()); NEEDLE_DISMISSED = new Set(JSON.parse((r && r.value) || '[]')); }
+  catch(e){ NEEDLE_DISMISSED = new Set(); }
+}
+async function saveNeedleDismissed(){
+  try { await window.storage.set(needleDismissStoreKey(), JSON.stringify([...NEEDLE_DISMISSED])); } catch(e){}
+}
+async function fetchNeedleCards(fresh){
+  try {
+    const r = await fetch('/api/needle/today' + (fresh ? '?fresh=1' : ''));
+    const data = await r.json();
+    NEEDLE_CARDS = data.cards || [];
+    window.__needleAsOf = data.asOf || null;
+  } catch(e){ console.error('fetchNeedleCards', e); NEEDLE_CARDS = []; }
+}
+function renderNeedleCards(){
+  const body = document.getElementById('needle-body');
+  const meta = document.getElementById('needle-panel-meta');
+  if (!body) return;
+  const cards = NEEDLE_CARDS.filter(c => !NEEDLE_DISMISSED.has(c.id));
+  NEEDLE_ACTION_BY_ID = {};
+  cards.forEach(c => { NEEDLE_ACTION_BY_ID[c.id] = c.action || {}; });
+  if (meta){
+    const t = window.__needleAsOf ? new Date(window.__needleAsOf).toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'}) : '';
+    meta.innerHTML = `${cards.length} ${cards.length===1?'move':'moves'}${t?` · as of ${t}`:''} <button class="needle-meta-link" id="needle-refresh" title="Refresh">↻</button>`;
+  }
+  if (!cards.length){
+    body.innerHTML = '<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">Nothing urgent — pipeline, delivery and content are current. 🎉</div>';
+  } else {
+    body.innerHTML = cards.map(c => `
+      <div class="needle-card zone-${needleEsc(c.zone)}" data-id="${needleEsc(c.id)}">
+        <div class="needle-main">
+          <div class="needle-toprow">
+            <span class="needle-zone zone-${needleEsc(c.zone)}">${needleEsc(c.zoneLabel)}</span>
+            <span class="needle-title">${needleEsc(c.title)}</span>
+          </div>
+          <div class="needle-why">${needleEsc(c.why)}</div>
+        </div>
+        <div class="needle-actions">
+          <button class="needle-act">${needleEsc((c.action && c.action.label) || 'Open')}</button>
+          <button class="needle-dismiss" title="Dismiss for today" aria-label="Dismiss">×</button>
+        </div>
+      </div>`).join('');
+  }
+  document.getElementById('needle-refresh')?.addEventListener('click', async (e)=>{ e.stopPropagation(); await fetchNeedleCards(true); renderNeedleCards(); });
+  body.querySelectorAll('.needle-card').forEach(el => {
+    const id = el.getAttribute('data-id');
+    el.querySelector('.needle-dismiss')?.addEventListener('click', async (e)=>{
+      e.stopPropagation(); NEEDLE_DISMISSED.add(id); await saveNeedleDismissed();
+      window.lrl?.haptic?.('tap'); renderNeedleCards();
+    });
+    el.querySelector('.needle-act')?.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const act = NEEDLE_ACTION_BY_ID[id] || {};
+      if (act.kind === 'jump' && act.tab){
+        document.querySelector(`.tab[data-tab="${act.tab}"]`)?.click();
+        window.scrollTo({ top:0, behavior:'smooth' });
+      } else if (act.kind === 'touchpoint' && act.contactId){
+        const btn = el.querySelector('.needle-act'); const prev = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Logging…';
+        try {
+          const r = await fetch('/api/convert/touchpoint', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ contactId: act.contactId, contactName: act.contactName, touchpointType:'👋 General Touchpoint' }) });
+          if (!r.ok) throw new Error('failed');
+          window.lrl?.haptic?.('success'); window.lrl?.toast?.('Touch logged for ' + (act.contactName || 'contact'), 'success');
+          NEEDLE_DISMISSED.add(id); await saveNeedleDismissed(); renderNeedleCards();
+        } catch(err){ btn.disabled = false; btn.textContent = prev; window.lrl?.toast?.('Could not log touch', 'error'); }
+      }
+    });
+  });
+}
+async function initNeedlePanel(){
+  const panel = document.getElementById('needle-panel');
+  const btn = document.getElementById('needle-panel-toggle');
+  if (panel && btn){
+    if (localStorage.getItem('lrl-needle-panel-collapsed') === '1') panel.classList.add('collapsed');
+    btn.addEventListener('click', ()=>{
+      panel.classList.toggle('collapsed');
+      localStorage.setItem('lrl-needle-panel-collapsed', panel.classList.contains('collapsed') ? '1' : '0');
+      window.lrl?.haptic?.('tap');
+    });
+  }
+  await loadNeedleDismissed();
+  await fetchNeedleCards();
+  renderNeedleCards();
+}
+window.refreshNeedle = async (fresh) => { await fetchNeedleCards(!!fresh); renderNeedleCards(); };
+document.addEventListener('DOMContentLoaded', () => { initNeedlePanel(); });
+
 function fmtTime(iso){
   if(!iso) return '';
   const d=new Date(iso);
@@ -6089,6 +6246,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     if (tab.dataset.tab === 'finance') maybeLoadFinance();
     if (tab.dataset.tab === 'marketing') maybeLoadMarketing();
     if (tab.dataset.tab === 'pipeline') maybeLoadSales();
+    if (tab.dataset.tab === 'finance-personal') window.maybeLoadWealth?.();
     if (tab.dataset.tab === 'projects') window.maybeLoadProjects?.();
   });
 });
@@ -7544,6 +7702,32 @@ async function fetchHealth(){
 
 // Lazy-load when the Health tab is opened (don't fetch on every page load)
 let _healthLoaded = false;
+function maybeLoadWealth(){
+  fetch('/api/wealth/summary').then(r=>r.json()).then(d=>{
+    const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const money=(n)=>(n<0?'-$':'$')+Math.abs(Math.round(n||0)).toLocaleString('en-US');
+    const set=(id,val,sub)=>{ const v=document.getElementById(id); const s=document.getElementById(id+'-sub'); if(v&&val!=null)v.textContent=val; if(s&&sub!=null)s.textContent=sub; };
+    if (d.error){ set('w-networth','—','YNAB error'); return; }
+    if (!d.configured){ set('w-networth','—','Connect YNAB'); return; }
+    const dt = d.asOf ? new Date(d.asOf).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+    const mb = d.month || {};
+    set('w-networth', money(d.netWorth), 'via YNAB · ' + dt);
+    set('w-budget', money(mb.spent), 'of ' + money(mb.budgeted) + ' budgeted' + (mb.budgeted ? (' · ' + Math.round((mb.spent/mb.budgeted)*100) + '%') : ''));
+    set('w-emergency', money(d.emergencyFund), 'savings cushion');
+    set('w-aom', (mb.ageOfMoney==null ? '—' : String(mb.ageOfMoney)), 'days of buffer');
+    set('w-cash', money(d.cash), 'checking + cash');
+    set('w-invest', money(d.investments), 'brokerage & retirement');
+    set('w-debt', money(d.otherDebt), 'cards & car loan');
+    set('w-loc', money(d.lineOfCredit), 'against investments');
+    const gEl = document.getElementById('w-goals');
+    if (gEl){
+      const goals = d.goals || [];
+      gEl.innerHTML = !goals.length ? '' : ('<div style="background:var(--white);border:1px solid var(--navy-faint);border-radius:12px;padding:16px 18px"><div style="font-size:14.5px;font-weight:700;color:var(--navy);margin-bottom:12px">Savings Goals</div>'
+        + goals.map(g=>{ const pct=Math.max(0,Math.min(100,Math.round(g.pct||0))); return '<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px;margin-bottom:4px"><span style="color:var(--navy)">'+esc(g.name)+'</span><span style="color:var(--navy-dim)">'+money(g.balance)+' / '+money(g.target)+' · '+pct+'%</span></div><div class="chapter-progress"><div class="chapter-progress-bar" style="width:'+pct+'%"></div></div></div>'; }).join('')
+        + '</div>');
+    }
+  }).catch(e=>console.error('maybeLoadWealth', e));
+}
 function maybeLoadHealth(){
   if (_healthLoaded) return;
   _healthLoaded = true;
@@ -8106,6 +8290,7 @@ document.addEventListener('keydown', (e) => {
       setTimeout(() => {
         if (saved === 'health') window.maybeLoadHealth?.();
         if (saved === 'finance') window.maybeLoadFinance?.();
+        if (saved === 'finance-personal') window.maybeLoadWealth?.();
         if (saved === 'marketing') window.maybeLoadMarketing?.();
         if (saved === 'pipeline') window.maybeLoadSales?.();
         if (saved === 'projects') window.maybeLoadProjects?.();
@@ -8892,7 +9077,7 @@ document.addEventListener('visibilitychange', async () => {
   }
 
   async function fetchMktToday(fresh){
-    const r = await fetch('/api/marketing/today' + (fresh?'?fresh=1':''));
+    const r = await fetch('/api/attract/today' + (fresh?'?fresh=1':''));
     const d = await r.json();
     if (d.error) throw new Error(d.error);
     MKT.data = d;
@@ -8901,14 +9086,14 @@ document.addEventListener('visibilitychange', async () => {
   }
   async function fetchMktCalendar(month, fresh){
     const m = month || chiMonth();
-    const r = await fetch('/api/marketing/calendar?month=' + m + (fresh?'&fresh=1':''));
+    const r = await fetch('/api/attract/calendar?month=' + m + (fresh?'&fresh=1':''));
     const d = await r.json();
     if (d.error) throw new Error(d.error);
     MKT.cal = d; MKT.calMonth = d.month || m;
     return d;
   }
   async function fetchMktStats(fresh){
-    const r = await fetch('/api/marketing/stats' + (fresh?'?fresh=1':''));
+    const r = await fetch('/api/attract/stats' + (fresh?'?fresh=1':''));
     const d = await r.json();
     if (d.error) throw new Error(d.error);
     MKT.stats = d; return d;
@@ -8930,11 +9115,50 @@ document.addEventListener('visibilitychange', async () => {
       MKT.loaded = true;
       window.lrlCache.save('marketing', { data: MKT.data, cal: MKT.cal, calMonth: MKT.calMonth, stats: MKT.stats });
       renderMktBody();
+      fetchAttractInsights().then(renderAttractInsights);
     } catch(err){
       if (body && !cached) body.innerHTML = `<div class="mkt-empty">Couldn't load marketing: ${mEsc(err.message)}</div>`;
     } finally { MKT.loading = false; }
   }
   window.maybeLoadMarketing = maybeLoadMarketing;
+
+  // ---- Attract "What's Working" — GA4 + AI suggestions (collapsible .mkt-section) ----
+  let AW_DATA = null;
+  let AW_COLLAPSED = false;
+  try { AW_COLLAPSED = localStorage.getItem('lrl-attract-aw-collapsed') === '1'; } catch(e){}
+  async function fetchAttractInsights(fresh){
+    try { const r = await fetch('/api/attract/insights' + (fresh?'?fresh=1':'')); AW_DATA = await r.json(); }
+    catch(e){ console.error('fetchAttractInsights', e); AW_DATA = null; }
+  }
+  function renderAttractInsights(){
+    const el = document.getElementById('attract-act'); if(!el) return;
+    const d = AW_DATA;
+    let body;
+    if (!d) body = '<div class="cv-empty">Couldn\'t load analytics.</div>';
+    else if (!d.configured) body = '<div class="cv-empty">Connect Google Analytics to see what\'s working.</div>';
+    else {
+      const sugg = d.suggestions || [];
+      body = sugg.length ? '<ul class="aw-list">' + sugg.map(s=>'<li>'+mEsc(s)+'</li>').join('') + '</ul>' : '<div class="cv-empty">No suggestions yet — check back after more data.</div>';
+      const props = (d.properties||[]).filter(p=>!p.error);
+      const yt = (d.youtube && !d.youtube.error) ? d.youtube : null;
+      if (props.length || yt){
+        let tiles = props.map(p=>{
+          const t = p.trend && p.trend.sessions;
+          const tt = (t==null) ? '' : ' <span class="aw-trend '+(t>=0?'up':'down')+'">'+(t>=0?'▲':'▼')+Math.abs(t)+'%</span>';
+          const topCh = (p.channels && p.channels[0]) ? p.channels[0].name : '';
+          return '<div class="aw-prop"><span class="aw-prop-name">'+mEsc(p.label)+'</span><span class="aw-prop-stat">'+Number(p.totals.sessions||0).toLocaleString()+' sessions'+tt+(topCh?' · top: '+mEsc(topCh):'')+'</span></div>';
+        }).join('');
+        if (yt){
+          const topV = (yt.topVideos && yt.topVideos[0]) ? yt.topVideos[0] : null;
+          tiles += '<div class="aw-prop"><span class="aw-prop-name">YouTube</span><span class="aw-prop-stat">'+Number(yt.subscribers||0).toLocaleString()+' subs · '+Number(yt.videoCount||0).toLocaleString()+' videos · avg '+Number(yt.recentAvgViews||0).toLocaleString()+' views'+(topV?'<br><span style="color:var(--navy-dim);font-weight:500">top: '+mEsc(topV.title.slice(0,42))+' ('+Number(topV.views).toLocaleString()+')</span>':'')+'</span></div>';
+        }
+        body += '<div class="aw-props">' + tiles + '</div>';
+      }
+    }
+    el.innerHTML = '<div class="mkt-section'+(AW_COLLAPSED?' collapsed':'')+'"><div class="mkt-sec-head" data-aw-toggle><span class="mkt-sec-caret">▾</span><span class="mkt-sec-title">What\'s Working</span><span class="mkt-sec-count zero">28d · GA</span></div><div class="mkt-sec-body">'+body+'</div></div>';
+    el.querySelector('[data-aw-toggle]')?.addEventListener('click', function(){ AW_COLLAPSED=!AW_COLLAPSED; try{localStorage.setItem('lrl-attract-aw-collapsed', AW_COLLAPSED?'1':'0');}catch(e){} this.closest('.mkt-section').classList.toggle('collapsed'); window.lrl?.haptic?.('tap'); });
+  }
+  window.refreshAttractInsights = async function(){ await fetchAttractInsights(true); renderAttractInsights(); };
 
   // ---- render ----
   function dateBadge(dateStr, today){
@@ -9095,7 +9319,7 @@ document.addEventListener('visibilitychange', async () => {
     el.innerHTML = '<button class="mkt-modal-close" data-mkt-close>×</button><div class="mkt-empty" style="padding:30px">Loading…</div>';
     modal.classList.add('open'); document.body.style.overflow='hidden';
     try {
-      const r = await fetch('/api/marketing/asset/'+id); const d = await r.json();
+      const r = await fetch('/api/attract/asset/'+id); const d = await r.json();
       if (d.error) throw new Error(d.error);
       MKT.assetsById[d.asset.id] = d.asset;
       renderMktModalCard(d.asset);
@@ -9130,7 +9354,7 @@ document.addEventListener('visibilitychange', async () => {
   }
 
   async function mktPatch(id, payload){
-    const r = await fetch('/api/marketing/asset/'+id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const r = await fetch('/api/attract/asset/'+id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
     if (!r.ok){ const j=await r.json().catch(()=>({})); throw new Error(j.error||'save failed'); }
     return r.json();
   }
@@ -9205,13 +9429,13 @@ document.addEventListener('visibilitychange', async () => {
   const dchip=(ds)=>{ if(!ds) return ''; const dt=new Date(ds+'T12:00:00'); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
   const saveCollapse=()=>{ try{localStorage.setItem(COLLAPSE_KEY,JSON.stringify(S.collapsed));}catch(_){} };
 
-  async function fetchSales(fresh){ const r=await fetch('/api/sales/pipeline'+(fresh?'?fresh=1':'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.data=d; (d.stages||[]).forEach(st=>st.deals.forEach(x=>S.dealsById[x.id]=x)); (d.recentWins||[]).forEach(x=>S.dealsById[x.id]=x); return d; }
-  async function fetchPulse(fresh){ const r=await fetch('/api/sales/pulse'+(fresh?'?fresh=1':'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.pulse=d; return d; }
-  async function fetchOverdue(fresh){ const rel=(S.reachRel&&S.reachRel!=='all')?S.reachRel:''; const qs=[fresh?'fresh=1':'', rel?('rel='+encodeURIComponent(rel)):''].filter(Boolean).join('&'); const r=await fetch('/api/sales/overdue'+(qs?'?'+qs:'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.overdue=d; return d; }
+  async function fetchSales(fresh){ const r=await fetch('/api/convert/pipeline'+(fresh?'?fresh=1':'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.data=d; (d.stages||[]).forEach(st=>st.deals.forEach(x=>S.dealsById[x.id]=x)); (d.recentWins||[]).forEach(x=>S.dealsById[x.id]=x); return d; }
+  async function fetchPulse(fresh){ const r=await fetch('/api/convert/pulse'+(fresh?'?fresh=1':'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.pulse=d; return d; }
+  async function fetchOverdue(fresh){ const rel=(S.reachRel&&S.reachRel!=='all')?S.reachRel:''; const qs=[fresh?'fresh=1':'', rel?('rel='+encodeURIComponent(rel)):''].filter(Boolean).join('&'); const r=await fetch('/api/convert/overdue'+(qs?'?'+qs:'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.overdue=d; return d; }
   async function reachSearch(q){
     if(!q || q.length<2){ S.reachResults=undefined; renderReachList(); return; }
     S.reachResults=null; renderReachList(); // "Searching…"
-    try{ const r=await fetch('/api/sales/contacts?q='+encodeURIComponent(q)); const d=await r.json(); if(q===(S.reachSearch||'')){ S.reachResults=d.contacts||[]; renderReachList(); } }catch(_){ S.reachResults=[]; renderReachList(); }
+    try{ const r=await fetch('/api/convert/contacts?q='+encodeURIComponent(q)); const d=await r.json(); if(q===(S.reachSearch||'')){ S.reachResults=d.contacts||[]; renderReachList(); } }catch(_){ S.reachResults=[]; renderReachList(); }
   }
 
   async function maybeLoadSales(){
@@ -9220,15 +9444,67 @@ document.addEventListener('visibilitychange', async () => {
     // Stale-while-revalidate: paint last-known sales data instantly, then refresh.
     const cached = window.lrlCache.read('sales');
     if (cached) { try {
-      S.data = cached.data; S.pulse = cached.pulse; S.overdue = cached.overdue;
+      S.data = cached.data; S.pulse = cached.pulse; S.overdue = cached.overdue; S.act = cached.act;
       if (cached.data) { (cached.data.stages||[]).forEach(st=>st.deals.forEach(x=>S.dealsById[x.id]=x)); (cached.data.recentWins||[]).forEach(x=>S.dealsById[x.id]=x); }
-      renderSales();
+      renderSales(); if (cached.act) renderConvertAct();
     } catch(e){} }
-    try { await Promise.all([fetchSales(true), fetchPulse(true), fetchOverdue(true)]); S.loaded=true; window.lrlCache.save('sales', { data:S.data, pulse:S.pulse, overdue:S.overdue }); renderSales(); }
+    try { await Promise.all([fetchSales(true), fetchPulse(true), fetchOverdue(true), fetchConvertAct(true)]); S.loaded=true; window.lrlCache.save('sales', { data:S.data, pulse:S.pulse, overdue:S.overdue, act:S.act }); renderSales(); renderConvertAct(); }
     catch(err){ if(body && !cached) body.innerHTML=`<div class="mkt-empty">Couldn't load sales: ${esc(err.message)}</div>`; }
     finally { S.loading=false; }
   }
   window.maybeLoadSales = maybeLoadSales;
+
+  // ---- Convert "Act" layer: gap-to-quarter, follow-ups due, prune ----
+  function cvMoney(n){ return (typeof n==='number'&&isFinite(n)) ? '$'+Math.round(n).toLocaleString('en-US') : '—'; }
+  async function fetchConvertAct(fresh){ try{ const r=await fetch('/api/convert/act'+(fresh?'?fresh=1':'')); const d=await r.json(); if(d.error) throw new Error(d.error); S.act=d; }catch(e){ console.error('fetchConvertAct',e); S.act=null; } }
+  // Collapsible-section state for the Convert "Act" layer. Uses the shared
+  // .mkt-section pattern (all-caps header + caret + persisted collapse) so it
+  // matches the pipeline board below and every future zone section.
+  let CV_COLLAPSED = {};
+  try { CV_COLLAPSED = JSON.parse(localStorage.getItem('lrl-convert-collapsed') || '{}') || {}; } catch(e){ CV_COLLAPSED = {}; }
+  function cvSaveCollapsed(){ try{ localStorage.setItem('lrl-convert-collapsed', JSON.stringify(CV_COLLAPSED)); }catch(e){} }
+  function cvSection(key, title, badge, badgeCls, bodyHtml){
+    const collapsed = CV_COLLAPSED[key] ? ' collapsed' : '';
+    const badgeHtml = (badge!=null && badge!=='') ? '<span class="mkt-sec-count '+(badgeCls||'')+'">'+badge+'</span>' : '';
+    return '<div class="mkt-section'+collapsed+'"><div class="mkt-sec-head" data-cv-toggle="'+key+'"><span class="mkt-sec-caret">▾</span><span class="mkt-sec-title">'+title+'</span>'+badgeHtml+'</div><div class="mkt-sec-body">'+bodyHtml+'</div></div>';
+  }
+  function renderConvertAct(){
+    const el=document.getElementById('convert-act'); if(!el) return;
+    const d=S.act;
+    if(!d){ el.innerHTML='<div class="cv-empty">Couldn\'t load Convert actions.</div>'; return; }
+    const g=d.gap||{}; let html='';
+    // Gap to quarter
+    let gapBody='';
+    if(g.goal){ const pct=Math.round((g.pct||0)*100);
+      gapBody+='<div class="cv-gap-bar"><div class="cv-gap-fill" style="width:'+pct+'%"></div></div>';
+      gapBody+='<div class="cv-gap-meta"><span><b style="color:var(--navy)">'+cvMoney(g.booked)+'</b> booked</span><span>'+cvMoney(g.remaining)+' to go · goal '+cvMoney(g.goal)+'</span></div>';
+    } else {
+      gapBody+='<div class="cv-gap-meta"><span><b style="color:var(--navy)">'+cvMoney(g.booked)+'</b> won this quarter</span><span>'+cvMoney(d.openValue)+' open</span></div>';
+      gapBody+='<div class="cv-empty" style="font-size:11px">Add a "Revenue" metric to your VTO Scorecard to see the gap-to-goal bar.</div>';
+    }
+    if((d.closeTheGap||[]).length){
+      gapBody+='<div class="cv-note">These close the gap'+(g.remaining?(' (need '+cvMoney(g.remaining)+')'):'')+':</div>';
+      gapBody+=d.closeTheGap.map(function(dl){ return '<div class="needle-card zone-convert"><div class="needle-main"><div class="needle-toprow"><span class="cv-stage">'+esc(dl.status||'')+'</span><span class="needle-title">'+esc(dl.name||'')+'</span></div><div class="needle-why">'+cvMoney(dl.value)+'</div></div><div class="needle-actions"><button class="needle-act" data-cvopen="'+esc(dl.url||'')+'">Open</button></div></div>'; }).join('');
+    }
+    html+=cvSection('gap','Gap to quarter', esc(d.quarterLabel||''), 'zero', gapBody);
+    // Follow-ups due
+    const fc=(d.followups||[]).length;
+    let fuBody;
+    if(fc){
+      fuBody=d.followups.map(function(c){ var stage=(c.stage||'').replace(/^\d+\.\s*/,''); var why=c.lastTouched?('No touch in '+c.daysSince+'d'):'Never logged'; if(c.relationship) why+=' · '+esc(c.relationship); return '<div class="needle-card zone-convert"><div class="needle-main"><div class="needle-toprow"><span class="cv-stage">'+esc(stage)+'</span><span class="needle-title">'+esc(c.name||'')+'</span></div><div class="needle-why">'+why+'</div></div><div class="needle-actions"><button class="needle-act" data-cvtouch="'+esc(c.id)+'" data-cvname="'+esc(c.name||'')+'">Log a touch</button></div></div>'; }).join('');
+    } else { fuBody='<div class="cv-empty">No stage-based follow-ups due right now. 🎉</div>'; }
+    html+=cvSection('followups','Follow-ups due', (fc||'0'), (fc?'':'zero'), fuBody);
+    // Prune
+    if((d.prune||[]).length){
+      const prBody=d.prune.map(function(dl){ return '<div class="needle-card zone-convert"><div class="needle-main"><div class="needle-toprow"><span class="cv-stage">On Hold</span><span class="needle-title">'+esc(dl.name||'')+'</span></div><div class="needle-why">'+cvMoney(dl.value)+'</div></div><div class="needle-actions"><button class="needle-act" data-cvopen="'+esc(dl.url||'')+'">Open</button></div></div>'; }).join('');
+      html+=cvSection('prune','Prune the pipeline', d.prune.length, '', prBody);
+    }
+    el.innerHTML=html;
+    el.querySelectorAll('[data-cv-toggle]').forEach(function(h){ h.addEventListener('click', function(){ var k=h.getAttribute('data-cv-toggle'); CV_COLLAPSED[k]=!CV_COLLAPSED[k]; cvSaveCollapsed(); h.closest('.mkt-section').classList.toggle('collapsed'); window.lrl?.haptic?.('tap'); }); });
+    el.querySelectorAll('[data-cvopen]').forEach(function(b){ b.addEventListener('click', function(e){ e.stopPropagation(); var u=b.getAttribute('data-cvopen'); if(u) window.open(u,'_blank'); }); });
+    el.querySelectorAll('[data-cvtouch]').forEach(function(b){ b.addEventListener('click', async function(e){ e.stopPropagation(); var id=b.getAttribute('data-cvtouch'), name=b.getAttribute('data-cvname'), prev=b.textContent; b.disabled=true; b.textContent='Logging…'; try{ var r=await fetch('/api/convert/touchpoint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contactId:id,contactName:name,touchpointType:'👋 General Touchpoint'})}); if(!r.ok) throw new Error('failed'); window.lrl?.haptic?.('success'); window.lrl?.toast?.('Touch logged for '+name,'success'); var card=b.closest('.needle-card'); if(card){ card.style.transition='opacity .3s'; card.style.opacity='0'; setTimeout(function(){ card.remove(); },300); } }catch(err){ b.disabled=false; b.textContent=prev; window.lrl?.toast?.('Could not log touch','error'); } }); });
+  }
+  window.refreshConvertAct = async function(){ await fetchConvertAct(true); renderConvertAct(); };
 
   // ---- Sales Pulse: weekly counters + overdue contacts + log drawer ----
   const TOUCHPOINTS = ['👋 General Touchpoint','📩 Follow-Up','🎯 Offer Sent','📋 Proposal Sent','📞 Sales Call','🙏 Thank You / Nurture','🔁 Re-Engage'];
@@ -9370,12 +9646,12 @@ document.addEventListener('visibilitychange', async () => {
     const modal=document.getElementById('sales-modal'); const el=document.getElementById('sales-modal-content');
     el.innerHTML='<button class="mkt-modal-close" data-sales-close>×</button><div class="mkt-empty" style="padding:30px">Loading…</div>';
     modal.classList.add('open'); document.body.style.overflow='hidden';
-    try { const r=await fetch('/api/sales/deal/'+id); const d=await r.json(); if(d.error) throw new Error(d.error); S.dealsById[d.deal.id]=d.deal; el.innerHTML=detailHtml(d.deal); }
+    try { const r=await fetch('/api/convert/deal/'+id); const d=await r.json(); if(d.error) throw new Error(d.error); S.dealsById[d.deal.id]=d.deal; el.innerHTML=detailHtml(d.deal); }
     catch(err){ el.innerHTML='<button class="mkt-modal-close" data-sales-close>×</button><div class="mkt-empty" style="padding:30px">'+esc(err.message)+'</div>'; }
   }
   function closeSalesModal(){ document.getElementById('sales-modal').classList.remove('open'); document.body.style.overflow=''; }
 
-  async function salesPatch(id,payload){ const r=await fetch('/api/sales/deal/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error||'save failed');} return r.json(); }
+  async function salesPatch(id,payload){ const r=await fetch('/api/convert/deal/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error||'save failed');} return r.json(); }
 
   document.addEventListener('click', async (e)=>{
     const t=e.target;
@@ -9445,7 +9721,7 @@ document.addEventListener('visibilitychange', async () => {
     document.getElementById('tp-modal').classList.add('open'); document.body.style.overflow='hidden';
     sheet.innerHTML='<div class="mkt-empty" style="padding:30px 0">Loading…</div>';
     try{
-      const r=await fetch('/api/sales/touchpoints?period='+period);
+      const r=await fetch('/api/convert/touchpoints?period='+period);
       const d=await r.json(); if(d.error) throw new Error(d.error);
       const p=S.pulse||{};
       const label=period==='quarter'?esc(p.quarterLabel||'This Quarter'):'This Month';
@@ -9475,7 +9751,7 @@ document.addEventListener('visibilitychange', async () => {
   async function drawerSearch(q){
     const box=document.getElementById('pulse-results'); if(!box) return;
     if(!q || q.length<2){ box.style.display='none'; box.innerHTML=''; return; }
-    try{ const r=await fetch('/api/sales/contacts?q='+encodeURIComponent(q)); const d=await r.json(); const list=d.contacts||[];
+    try{ const r=await fetch('/api/convert/contacts?q='+encodeURIComponent(q)); const d=await r.json(); const list=d.contacts||[];
       box.innerHTML = list.length ? list.map(c=>`<div class="pulse-results-item" data-drawer-pick="${c.id}" data-cname="${esc(c.name)}"><span>${esc(c.name)}</span><span class="rel">${esc(c.relationship||'')}</span></div>`).join('') : '<div class="pulse-results-item" style="cursor:default;color:var(--navy-dim)">No matches</div>';
       box.style.display='block';
     }catch(_){}
@@ -9491,9 +9767,9 @@ document.addEventListener('visibilitychange', async () => {
     try{
       let r;
       if(isEdit){
-        r=await fetch('/api/sales/touchpoint/'+drawer.editId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({touchpointType:type,channel,notes,loggedBy:drawer.loggedBy,timestamp:date})});
+        r=await fetch('/api/convert/touchpoint/'+drawer.editId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({touchpointType:type,channel,notes,loggedBy:drawer.loggedBy,timestamp:date})});
       } else {
-        r=await fetch('/api/sales/touchpoint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contactId:drawer.contactId,contactName:drawer.contactName,touchpointType:type,channel,notes,loggedBy:drawer.loggedBy,timestamp:date})});
+        r=await fetch('/api/convert/touchpoint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contactId:drawer.contactId,contactName:drawer.contactName,touchpointType:type,channel,notes,loggedBy:drawer.loggedBy,timestamp:date})});
       }
       const d=await r.json(); if(!r.ok||d.error) throw new Error(d.error||'failed');
       window.lrl?.haptic('success');
@@ -9548,7 +9824,7 @@ document.addEventListener('visibilitychange', async () => {
 
   document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ closeSalesModal(); closeDrawer(); closeTpModal(); } if(e.key==='Enter'&&e.target.closest&&e.target.closest('[data-sales-val]')) e.target.blur(); });
 
-  window.addEventListener('lrl-refresh', async ()=>{ if(!S.loaded) return; try{ await Promise.all([fetchSales(true), fetchPulse(true), fetchOverdue(true)]); renderSales(); }catch(_){} });
+  window.addEventListener('lrl-refresh', async ()=>{ if(!S.loaded) return; try{ await Promise.all([fetchSales(true), fetchPulse(true), fetchOverdue(true), fetchConvertAct(true)]); renderSales(); renderConvertAct(); }catch(_){} });
 })();
 </script>
 
