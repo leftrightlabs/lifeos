@@ -29,4 +29,6 @@ export const SCORECARD_SOURCES = [
   'Convert Touchpoints',
   'Convert Deals Won',
   'Speaking Stages Booked',
+  'Speaking Stages Pitched',
+  'Speaking Stages Touchpoints',
 ];
