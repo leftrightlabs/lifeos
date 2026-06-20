@@ -919,6 +919,9 @@
   .ritual-subhead { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(var(--ink-rgb), 0.4); font-weight: 700; margin: 12px 4px 6px; }
   .ritual-section:first-of-type .ritual-subhead { margin-top: 4px; }
   .ritual-card.evening { border-left-color: var(--lime); }
+  /* Morning + End-of-Day checklists nested inside the My Day panel → read as sub-sections */
+  #quest-panel > #ritual-card, #quest-panel > #evening-card { background: transparent; border: none; border-radius: 0; padding: 14px 0 0; margin: 14px 0 0; border-top: 1px solid var(--navy-faint); }
+  .quest-panel.collapsed > #ritual-card, .quest-panel.collapsed > #evening-card { display: none; }
   .ritual-card.evening.collapsed, .ritual-card.evening.done { border-left-color: transparent; }
   .ritual-card.evening.done .ritual-toggle { color: var(--lime); }
   .ritual-card.evening .ritual-status.done { color: var(--lime); }
@@ -3216,7 +3219,7 @@ window.lrl = (function(){
     <div class="ritual-card morning-only" id="ritual-card">
       <div class="ritual-head">
         <button class="ritual-toggle" id="ritual-toggle" title="Collapse/expand">
-          <span id="ritual-caret">▾</span> Morning Routine
+          <span id="ritual-caret">▾</span> Morning Checklist
         </button>
         <div class="ritual-status" id="ritual-status">0 of 4 done</div>
       </div>
@@ -3359,7 +3362,7 @@ window.lrl = (function(){
     <div class="ritual-card evening" id="evening-card">
       <div class="ritual-head">
         <button class="ritual-toggle" id="evening-toggle" title="Collapse/expand">
-          <span id="evening-caret">▾</span> Evening Routine
+          <span id="evening-caret">▾</span> End of Day Checklist
         </button>
         <div class="ritual-status" id="evening-status">0 of 6 done</div>
       </div>
@@ -3409,6 +3412,20 @@ window.lrl = (function(){
       </div>
     </div>
   </div>
+
+  <script>
+  /* Nest the Morning + End-of-Day checklists inside the My Day panel. Runs at
+     parse (before paint) so there's no flash; preserves each card's id, event
+     listeners, sortable, and class-based visibility (mode / weekend / role). */
+  (function(){
+    var myday = document.getElementById('quest-panel');
+    if (!myday) return;
+    var rit = document.getElementById('ritual-card');
+    var eve = document.getElementById('evening-card');
+    if (rit) myday.appendChild(rit);
+    if (eve) myday.appendChild(eve);
+  })();
+  </script>
 
   <!-- AUTOFOCUS TAB -->
   <div class="tab-content" data-content="autofocus">
