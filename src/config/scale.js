@@ -18,6 +18,8 @@ export const QUICK_WIN_MAX_EFFORT = 2; // Effort to Fix is a 1-5 scale
 
 // --- Scorecard off-track (VTO Scorecard scored against live systems) ---
 export const VTO_SCORECARD_DS = 'c359c68c-02bb-4fae-b4cb-3a512e5eafab';
+// Speaking engagements ("stages") — SPEAKING OUTREACH [DB]; "booked" = Booking Confirmed set.
+export const SPEAKING_OUTREACH_DS = '96f47e7e-9797-4d96-9abb-e5dcb7df13a3';
 // The "Source" select on each metric → which live actual the app computes.
 // Only these are wired; rows with any other (or empty) Source are left out.
 export const SCORECARD_SOURCES = [
@@ -26,4 +28,5 @@ export const SCORECARD_SOURCES = [
   'Xero Cash Capacity',
   'Convert Touchpoints',
   'Convert Deals Won',
+  'Speaking Stages Booked',
 ];

@@ -8,6 +8,7 @@ import {
   QUICK_WIN_MIN_IMPACT,
   QUICK_WIN_MAX_EFFORT,
   SCORECARD_SOURCES,
+  SPEAKING_OUTREACH_DS,
 } from '../config/scale.js';
 // Reuse Convert's data primitives for the sales actuals (no Convert route changes).
 import { queryAllDeals, serializeDeal, fetchSalesProductMap } from '../providers/notion/convert.js';
@@ -45,8 +46,32 @@ async function computeConvertActuals(notion, cached, monthStart, quarterStart, t
   return { dealsWonValueMonth, dealsWonValueQuarter, touchpointsMonth, touchpointsQuarter };
 }
 
+// Speaking "stages" booked (SPEAKING OUTREACH [DB]) — Booking Confirmed in the period.
+async function computeSpeakingActuals(notion, monthStart, quarterStart, today) {
+  let stagesBookedMonth = 0, stagesBookedQuarter = 0, cursor;
+  do {
+    const r = await notion.dataSources.query({
+      data_source_id: SPEAKING_OUTREACH_DS,
+      filter: { and: [
+        { property: 'Booking Confirmed', date: { on_or_after: quarterStart } },
+        { property: 'Booking Confirmed', date: { on_or_before: today } },
+      ] },
+      page_size: 100,
+      start_cursor: cursor,
+    });
+    for (const pg of r.results) {
+      const bc = pg.properties?.['Booking Confirmed']?.date?.start?.slice(0, 10);
+      if (!bc) continue;
+      stagesBookedQuarter++;
+      if (bc >= monthStart) stagesBookedMonth++;
+    }
+    cursor = r.has_more ? r.next_cursor : null;
+  } while (cursor);
+  return { stagesBookedMonth, stagesBookedQuarter };
+}
+
 // Map a metric's Source + cadence → its live actual.
-function actualFor(source, cadence, fin, conv) {
+function actualFor(source, cadence, fin, conv, speaking) {
   const q = cadence === 'Quarterly';
   switch (source) {
     case 'Xero Revenue': return fin ? (q ? fin.qtdRevenue : fin.mtdRevenue) : null;
@@ -54,6 +79,7 @@ function actualFor(source, cadence, fin, conv) {
     case 'Xero Cash Capacity': return fin?.cashCapacity ? Math.round((fin.cashCapacity.months / 3) * 100) / 100 : null;
     case 'Convert Touchpoints': return conv ? (q ? conv.touchpointsQuarter : conv.touchpointsMonth) : null;
     case 'Convert Deals Won': return conv ? (q ? conv.dealsWonValueQuarter : conv.dealsWonValueMonth) : null;
+    case 'Speaking Stages Booked': return speaking ? (q ? speaking.stagesBookedQuarter : speaking.stagesBookedMonth) : null;
     default: return null;
   }
 }
@@ -121,14 +147,18 @@ export function registerScaleRoutes(app, { notion, cached, computeXeroFinance, c
         const metrics = all.filter((mt) => SCORECARD_SOURCES.includes(mt.source));
         const needXero = metrics.some((mt) => mt.source.startsWith('Xero'));
         const needConvert = metrics.some((mt) => mt.source.startsWith('Convert'));
+        const needSpeaking = metrics.some((mt) => mt.source.startsWith('Speaking'));
 
         const fin = needXero ? await cached('xero-finance', computeXeroFinance).catch(() => null) : null;
         const conv = needConvert
           ? await computeConvertActuals(notion, cached, monthStart, quarterStart, today).catch(() => null)
           : null;
+        const speaking = needSpeaking
+          ? await computeSpeakingActuals(notion, monthStart, quarterStart, today).catch(() => null)
+          : null;
 
         const scored = metrics.map((mt) => {
-          const actual = actualFor(mt.source, mt.cadence, fin, conv);
+          const actual = actualFor(mt.source, mt.cadence, fin, conv, speaking);
           const status = scoreStatus(actual, mt.goal, mt.breakEven, mt.direction);
           const period = mt.cadence === 'Quarterly' ? 'this quarter' : (mt.cadence === 'Weekly' ? 'this week' : 'this month');
           const pct = (actual != null && mt.goal) ? Math.round((actual / mt.goal) * 100) : null;
