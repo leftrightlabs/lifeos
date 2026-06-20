@@ -9864,7 +9864,9 @@ document.addEventListener('visibilitychange', async () => {
   .dl-hl { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 14px; font-size: 13px; color: var(--navy-dim); }
   .dl-hl-item b { color: var(--navy); font-size: 15px; }
   .dl-ladder-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
-  .dl-ladder { border: 1px solid var(--navy-faint); border-radius: 10px; padding: 12px; opacity: .65; }
+  .dl-ladder { border: 1px solid var(--navy-faint); border-radius: 10px; padding: 12px; }
+  .dl-ladder.gap { border-color: rgba(255,183,77,.5); background: rgba(255,183,77,.06); }
+  .dl-ladder.gap .dl-ladder-meta { color: #e0a23c; }
   .dl-ladder-name { font-size: 11px; font-weight: 700; letter-spacing: .05em; color: var(--navy); }
   .dl-ladder-meta { font-size: 12px; color: var(--navy-dim); margin-top: 4px; }
   .dl-owner { padding: 7px 0; }
@@ -9905,13 +9907,48 @@ document.addEventListener('visibilitychange', async () => {
     }).join('');
   }
 
-  function offersPlaceholder(){
-    const ladders=['Get Clear','Get Noticed','Get Paid','Get Support'];
-    const cards=ladders.map(l=>'<div class="dl-ladder"><div class="dl-ladder-name">'+l.toUpperCase()+'</div><div class="dl-ladder-meta">— not wired —</div></div>').join('');
-    return '<div class="dl-ladder-row">'+cards+'</div><div class="cv-note" style="margin-top:11px">Connect your <b>Products</b> DB — add a <b>ladder stage</b> (Get Clear/Noticed/Paid/Support), a <b>live/draft</b> status, and a <b>landing URL</b> per offer — and this fills with which rungs are live vs missing, plus drafts to finish.</div>';
+  const DLX={ offers:null, renewals:null };
+  function loadAux(fresh){
+    fetch('/api/deliver/offers'+(fresh?'?fresh=1':'')).then(r=>r.json()).then(d=>{ DLX.offers=d; render(); }).catch(e=>{ DLX.offers={error:String((e&&e.message)||e)}; render(); });
+    fetch('/api/deliver/renewals'+(fresh?'?fresh=1':'')).then(r=>r.json()).then(d=>{ DLX.renewals=d; render(); }).catch(e=>{ DLX.renewals={error:String((e&&e.message)||e)}; render(); });
   }
-  function renewalsPlaceholder(){
-    return '<div class="cv-note">Connect your <b>Web Properties</b> DB — add each client site\'s <b>plan tier</b>, <b>renewal date</b>, and <b>auto-renew</b> flag — and this surfaces care-plans coming up for renewal and upsell paths (e.g. LITE → PLUS).</div>';
+  function actionCard(chip,name,why,url){
+    return '<div class="needle-card zone-deliver"><div class="needle-main"><div class="needle-toprow"><span class="cv-stage">'+esc(chip)+'</span><span class="needle-title">'+esc(name||'')+'</span></div><div class="needle-why">'+esc(why)+'</div></div><div class="needle-actions"><button class="needle-act" data-dlopen="'+esc(url||'')+'">Open</button></div></div>';
+  }
+  function offersHTML(){
+    const d=DLX.offers;
+    if(!d) return '<div class="cv-empty">Loading offer catalog…</div>';
+    if(d.error) return '<div class="cv-empty">Couldn\'t load offers: '+esc(d.error)+'</div>';
+    const cards=(d.ladder||[]).map(l=>{ const live=l.live>0, draftN=l.total-l.live;
+      return '<div class="dl-ladder'+(live?'':' gap')+'"><div class="dl-ladder-name">'+esc(l.name)+'</div><div class="dl-ladder-meta">'+(live?('✓ '+l.live+' live'):'⚠ none live')+(draftN>0?(' · '+draftN+' draft'):'')+'</div></div>';
+    }).join('');
+    let html='<div class="dl-ladder-row">'+cards+'</div>';
+    const drafts=d.drafts||[];
+    if(drafts.length){
+      html+='<div class="cv-note" style="margin:13px 0 8px">Finish &amp; publish ('+drafts.length+'):</div>';
+      html+=drafts.slice(0,10).map(o=>actionCard(o.status, o.name, o.status+(o.url?' · has landing URL':' · no URL yet')+(o.fillsGap?' · fills a ladder gap':''), o.url||o.notionUrl)).join('');
+      if(drafts.length>10) html+='<div class="cv-note" style="margin-top:6px">+'+(drafts.length-10)+' more drafts</div>';
+    } else html+='<div class="cv-note" style="margin-top:11px">Every offer is published. 🎉</div>';
+    return html;
+  }
+  function renewalsHTML(){
+    const d=DLX.renewals;
+    if(!d) return '<div class="cv-empty">Loading care plans…</div>';
+    if(d.error) return '<div class="cv-empty">Couldn\'t load renewals: '+esc(d.error)+'</div>';
+    const bp=d.byPlan||{};
+    let html='<div class="dl-hl">'+['PLUS','LITE','BASIC'].filter(k=>bp[k]).map(k=>'<span class="dl-hl-item"><b>'+bp[k]+'</b> '+k+'</span>').join('')+'</div>';
+    const ren=d.renewals||[];
+    if(ren.length){
+      html+='<div class="cv-note" style="margin:4px 0 8px">Renewing within '+(d.horizon||60)+' days:</div>';
+      html+=ren.map(r=>{ const when=r.daysLeft<0?('ended '+(-r.daysLeft)+'d ago'):(r.daysLeft===0?'ends today':('ends in '+r.daysLeft+'d')); return actionCard('RENEW', r.domain, (r.plan||'—')+' · '+when+(r.autoRenew?' · auto-renews':' · auto-renew off — reach out'), r.notionUrl); }).join('');
+    } else html+='<div class="cv-note">No care plans renewing in the next '+(d.horizon||60)+' days.</div>';
+    const ups=d.upsells||[];
+    if(ups.length){
+      html+='<div class="cv-note" style="margin:14px 0 8px">Upsell to PLUS ('+ups.length+'):</div>';
+      html+=ups.slice(0,10).map(u=>actionCard('UPSELL', u.domain, (u.plan||'')+' plan → offer PLUS', u.notionUrl)).join('');
+      if(ups.length>10) html+='<div class="cv-note" style="margin-top:6px">+'+(ups.length-10)+' more LITE/BASIC sites</div>';
+    }
+    return html;
   }
 
   function render(){
@@ -9927,8 +9964,8 @@ document.addEventListener('visibilitychange', async () => {
 
     const hl='<div class="dl-hl"><span class="dl-hl-item"><b>'+invoice.length+'</b> ready to invoice</span><span class="dl-hl-item"><b>'+atRisk.length+'</b> at risk</span><span class="dl-hl-item"><b>'+aw.length+'</b> active</span></div>';
     html+=shell('billship','Bill it / ship it','Active client work — invoice-ready & at-risk float to the top of each area','LIVE','live', hl+areaGroupsHTML(aw,'bs'));
-    html+=shell('offers','Offer catalog health','Products — finish, publish, and close ladder gaps','NEEDS WIRING','wire', offersPlaceholder());
-    html+=shell('renewals','Care-plan renewals','Web Properties — recurring revenue to protect','NEEDS WIRING','wire', renewalsPlaceholder());
+    html+=shell('offers','Offer catalog health','Products — finish, publish, and close ladder gaps','LIVE','live', offersHTML());
+    html+=shell('renewals','Care-plan renewals','Web Properties — recurring revenue to protect','LIVE','live', renewalsHTML());
 
     const counts={}; aw.forEach(p=>(p.owners||[]).forEach(o=>counts[o]=(counts[o]||0)+1));
     const bo=Object.entries(counts).map(([owner,n])=>({owner,n})).sort((a,b)=>b.n-a.n);
@@ -9950,6 +9987,7 @@ document.addEventListener('visibilitychange', async () => {
     el.querySelectorAll('.dl-sec-head').forEach(h=>h.addEventListener('click',()=>{ const s=h.closest('.dl-sec'); COL[s.dataset.dlSec]=!s.classList.contains('collapsed'); saveCol(); s.classList.toggle('collapsed'); }));
     el.querySelectorAll('.proj-group-head').forEach(h=>h.addEventListener('click',()=>{ const g=h.closest('.proj-group'); const now=g.classList.toggle('collapsed'); COL[g.dataset.dlGroup]=now; saveCol(); }));
     el.querySelectorAll('[data-dl-owner]').forEach(o=>o.querySelector('.dl-owner-row').addEventListener('click',()=>{ const n=o.getAttribute('data-dl-owner'); ownerOpen = ownerOpen===n ? null : n; render(); }));
+    el.querySelectorAll('[data-dlopen]').forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation(); const u=b.getAttribute('data-dlopen'); if(!u) return; if(PA()) PA().openUrl(u); else window.open(u,'_blank','noopener'); }));
     wireCards(el);
   }
 
@@ -9973,9 +10011,10 @@ document.addEventListener('visibilitychange', async () => {
     if(!booted){ booted=true;
       window.addEventListener('lrl-projects-loaded', render);
       window.addEventListener('lrl-project-updated', render);
-      window.addEventListener('lrl-refresh', ()=>{ if(PA()) PA().ensureLoaded(); });
+      window.addEventListener('lrl-refresh', ()=>{ if(PA()) PA().ensureLoaded(); loadAux(true); });
     }
     if(PA()) PA().ensureLoaded();
+    if(DLX.offers===null && DLX.renewals===null) loadAux();
     render();
   }
   window.maybeLoadDeliver=maybeLoadDeliver;
