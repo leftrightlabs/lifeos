@@ -10546,9 +10546,20 @@ document.addEventListener('visibilitychange', async () => {
     }));
     pop.querySelectorAll('.zp-item').forEach(it => it.addEventListener('click', ()=>{ setMode(zoneFilter); clickTab(it.dataset.z); closeZones(); }));
   }
-  function toggleZones(){ if(pop.classList.contains('open')) closeZones(); else { zoneFilter = curMode()==='personal' ? 'personal' : 'work'; renderZones(); pop.classList.add('open'); } }
+  function positionPop(){
+    const zi = nav.querySelector('[data-nav="zones"]');
+    if (window.innerWidth > 720 && zi) {       // desktop: drop under the Zones item (nav is the offsetParent)
+      pop.style.left = zi.offsetLeft + 'px';
+      pop.style.right = 'auto';
+    } else {                                   // mobile: fall back to the CSS bottom-sheet
+      pop.style.left = '';
+      pop.style.right = '';
+    }
+  }
+  function toggleZones(){ if(pop.classList.contains('open')) closeZones(); else { zoneFilter = curMode()==='personal' ? 'personal' : 'work'; renderZones(); positionPop(); pop.classList.add('open'); } }
   function closeZones(){ pop.classList.remove('open'); }
   document.addEventListener('click', e => { if(!e.target.closest('#zonepop') && !e.target.closest('[data-nav="zones"]')) closeZones(); });
+  window.addEventListener('resize', closeZones);
 
   const ZICON = {
     work: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
