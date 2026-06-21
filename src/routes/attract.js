@@ -268,7 +268,7 @@ app.get('/api/attract/calendar', async (req, res) => {
         });
         for (const pg of r.results) {
           const a = serializeMarketingAsset(pg, channelMap);
-          out.push({ id: a.id, url: a.url, name: a.name, status: a.status, publishDate: a.publishDate, formats: a.formats, contentType: a.contentType, hasMedia: a.media.length > 0 });
+          out.push({ id: a.id, url: a.url, name: a.name, status: a.status, publishDate: a.publishDate, formats: a.formats, contentType: a.contentType, hasMedia: a.media.length > 0, assigned: a.assigned });
         }
         cursor = r.has_more ? r.next_cursor : null;
       } while (cursor);

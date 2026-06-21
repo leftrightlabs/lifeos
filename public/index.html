@@ -2614,6 +2614,9 @@
   .mkt-kpi.okr .k-num { color: var(--lime); }
   .mkt-kpi[data-mkt-kpi] { cursor: pointer; transition: border-color 0.15s, background 0.15s; }
   .mkt-kpi[data-mkt-kpi]:hover { border-color: rgba(var(--edge-rgb), 0.22); background: rgba(var(--edge-rgb), 0.06); }
+  .mkt-scope { display: inline-flex; gap: 3px; background: rgba(var(--edge-rgb), 0.05); border: 1px solid var(--navy-faint); border-radius: 999px; padding: 3px; margin-bottom: 16px; }
+  .mkt-scope-btn { appearance: none; background: none; border: none; font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--navy-dim); padding: 6px 15px; border-radius: 999px; cursor: pointer; }
+  .mkt-scope-btn.on { background: var(--lime); color: var(--navy-accent); }
   .mkt-kpi-list-title { font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--lime); text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 16px; }
   .mkt-kpis-okr { grid-template-columns: repeat(3, 1fr); }
   .mkt-strip-label { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; margin: 4px 2px 8px; }
@@ -9538,8 +9541,16 @@ document.addEventListener('visibilitychange', async () => {
 (function(){
   const STATUSES = ['Idea','Drafting','Review','Approved','Scheduled','Published'];
   const COLLAPSE_KEY = 'lrl-mkt-collapsed-v1';
-  const MKT = { loaded:false, loading:false, data:null, cal:null, calMonth:null, calSel:null, assetsById:{}, collapsed:{} };
+  const MKT = { loaded:false, loading:false, data:null, cal:null, calMonth:null, calSel:null, assetsById:{}, collapsed:{}, scope:'all' };
   try { MKT.collapsed = JSON.parse(localStorage.getItem(COLLAPSE_KEY) || '{}'); } catch(_){}
+  try { MKT.scope = localStorage.getItem('lrl-mkt-scope') || 'all'; } catch(_){}
+  // "Me" scope filters the asset views to content assigned to the current user.
+  function mineFilter(a){
+    if (MKT.scope !== 'mine') return true;
+    const myId = window.LRL_ME && window.LRL_ME.notionUserId;
+    if (!myId) return true; // can't identify the user → don't hide anything
+    return (a.assigned||[]).some(u => u && u.id === myId);
+  }
 
   const mEsc = (s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const chiToday = ()=> new Date().toLocaleDateString('en-CA',{timeZone:'America/Chicago'});
@@ -9725,14 +9736,14 @@ document.addEventListener('visibilitychange', async () => {
     for (let i=0;i<startDow;i++) cells += '<div class="mkt-cal-cell empty"></div>';
     for (let d=1; d<=daysIn; d++){
       const ds = `${month}-${String(d).padStart(2,'0')}`;
-      const items = (c && c.days && c.days[ds]) || [];
+      const items = ((c && c.days && c.days[ds]) || []).filter(mineFilter);
       const dots = items.slice(0,6).map(it=>`<span class="mkt-cal-dot ${statusCls(it.status)}"></span>`).join('');
       const cls = (ds===today?' today':'') + (ds===MKT.calSel?' sel':'');
       cells += `<div class="mkt-cal-cell${cls}" data-mkt-day="${ds}"><span class="mkt-cal-dnum">${d}</span><div class="mkt-cal-dots">${dots}</div></div>`;
     }
     let dayList = '';
     if (MKT.calSel){
-      const items = (c && c.days && c.days[MKT.calSel]) || [];
+      const items = ((c && c.days && c.days[MKT.calSel]) || []).filter(mineFilter);
       const sel = new Date(MKT.calSel+'T12:00:00');
       dayList = `<div class="mkt-cal-daylist"><div class="mkt-cal-daylist-head">${sel.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})} — ${items.length} item${items.length===1?'':'s'}</div>`
         + (items.length? items.map(it=>`<div class="mkt-row" data-mkt-open="${it.id}"><span class="mkt-status ${statusCls(it.status)}" style="margin-right:2px">${mEsc(it.status||'—')}</span><span class="mkt-row-name">${mEsc(it.name)}</span></div>`).join('') : '<div class="mkt-empty">Nothing scheduled.</div>')
@@ -9744,20 +9755,25 @@ document.addEventListener('visibilitychange', async () => {
   function renderMktBody(){
     const body = document.getElementById('mkt-body'); if (!body) return;
     const d = MKT.data || {};
-    const q = queueAssets();
-    const week = (d.thisWeek||[]);
-    const pubToday = (d.publishedToday||[]).length;
+    const mine = MKT.scope === 'mine';
+    const q = queueAssets().filter(([,a])=>mineFilter(a));
+    const week = (d.thisWeek||[]).filter(mineFilter);
+    const pubToday = (d.publishedToday||[]).filter(mineFilter).length;
     const overdueN = q.filter(([b])=>b==='overdue').length;
     const todayN = q.filter(([b])=>b==='today').length;
     const today = chiToday();
+    const scopeToggle = `<div class="mkt-scope"><button class="mkt-scope-btn${mine?'':' on'}" data-mkt-scope="all">Everyone</button><button class="mkt-scope-btn${mine?' on':''}" data-mkt-scope="mine">Me</button></div>`;
 
     // OKR strip — published output against the quarterly lens.
     const stats = MKT.stats || {};
+    const qCount = mine ? (stats.quarterAssets||[]).filter(mineFilter).length : (stats.publishedQuarter??'—');
+    const mCount = mine ? (stats.monthAssets||[]).filter(mineFilter).length : (stats.publishedMonth??'—');
+    const yCount = mine ? (stats.yearAssets||[]).filter(mineFilter).length : (stats.publishedYear??'—');
     const okrStrip = `<div class="mkt-strip-label">Published Output${stats.quarterLabel?' · '+mEsc(stats.quarterLabel):''}</div>
     <div class="mkt-kpis mkt-kpis-okr">
-      <div class="mkt-kpi okr" data-mkt-kpi="quarter"><div class="k-num">${stats.publishedQuarter??'—'}</div><div class="k-lab">This Quarter</div></div>
-      <div class="mkt-kpi" data-mkt-kpi="month"><div class="k-num">${stats.publishedMonth??'—'}</div><div class="k-lab">This Month</div></div>
-      <div class="mkt-kpi" data-mkt-kpi="year"><div class="k-num">${stats.publishedYear??'—'}</div><div class="k-lab">This Year</div></div>
+      <div class="mkt-kpi okr" data-mkt-kpi="quarter"><div class="k-num">${qCount}</div><div class="k-lab">This Quarter</div></div>
+      <div class="mkt-kpi" data-mkt-kpi="month"><div class="k-num">${mCount}</div><div class="k-lab">This Month</div></div>
+      <div class="mkt-kpi" data-mkt-kpi="year"><div class="k-num">${yCount}</div><div class="k-lab">This Year</div></div>
     </div>`;
 
     const kpis = `<div class="mkt-kpis">
@@ -9770,10 +9786,10 @@ document.addEventListener('visibilitychange', async () => {
     const queueInner = q.length ? q.map(([b,a])=>cardHtml(a,b)).join('') : '<div class="mkt-empty">Nothing to publish right now — you\'re all caught up. 🎉</div>';
     const weekInner = week.length ? week.map(a=>`<div class="mkt-row" data-mkt-open="${a.id}"><span class="mkt-row-date">${dateChip(a.publishDate)}</span><span class="mkt-row-name">${mEsc(a.name)}</span><span class="mkt-status ${statusCls(a.status)}">${mEsc(a.status||'—')}</span></div>`).join('') : '<div class="mkt-empty">Nothing scheduled in the next 7 days.</div>';
 
-    body.innerHTML = okrStrip + kpis
+    body.innerHTML = scopeToggle + okrStrip + kpis
       + section('queue','Publish Queue', q.length, overdueN>0, queueInner)
       + section('week','This Week', week.length, false, weekInner)
-      + section('cal','Content Calendar', (MKT.cal&&MKT.cal.days)?Object.values(MKT.cal.days).reduce((n,a)=>n+a.length,0):0, false, calendarHtml());
+      + section('cal','Content Calendar', (MKT.cal&&MKT.cal.days)?Object.values(MKT.cal.days).reduce((n,a)=>n+a.filter(mineFilter).length,0):0, false, calendarHtml());
   }
   function dateChip(ds){ if(!ds) return ''; const dt=new Date(ds+'T12:00:00'); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
 
@@ -9807,6 +9823,7 @@ document.addEventListener('visibilitychange', async () => {
     else if (kpi==='quarter')   assets = s.quarterAssets||[];
     else if (kpi==='month')     assets = s.monthAssets||[];
     else if (kpi==='year')      assets = s.yearAssets||[];
+    assets = assets.filter(mineFilter);
     const rows = assets.length
       ? assets.map(a=>`<div class="mkt-row" data-mkt-open="${a.id}" style="cursor:pointer">
           <span class="mkt-row-date">${dateChip(a.publishDate)}</span>
@@ -9833,6 +9850,9 @@ document.addEventListener('visibilitychange', async () => {
   // ---- delegated events (covers body + modal) ----
   document.addEventListener('click', async (e)=>{
     const t = e.target;
+    // Scope toggle (Everyone / Me)
+    const scopeEl = t.closest('[data-mkt-scope]');
+    if (scopeEl){ MKT.scope = scopeEl.dataset.mktScope; try{localStorage.setItem('lrl-mkt-scope', MKT.scope);}catch(_){}; renderMktBody(); window.lrl?.haptic?.('tap'); return; }
     // KPI filter list
     const kpiEl = t.closest('[data-mkt-kpi]');
     if (kpiEl){ openMktKpiList(kpiEl.dataset.mktKpi); return; }

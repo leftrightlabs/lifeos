@@ -509,6 +509,7 @@ app.get('/api/me', async (req, res) => {
       const u = await dbUsers.getById(req.session.userId);
       if (u) return res.json({
         id: u.id, email: u.email, name: u.name, role: u.role,
+        notionUserId: u.notion_user_id || null,
         personalEnabled: u.personal_enabled, gmailConnected: !!u.google_refresh_token,
         slackConnected: !!u.slack_user_token || (u.role === 'owner' && !!process.env.SLACK_USER_TOKEN),
         theme: u.theme, timezone: u.timezone,
@@ -521,6 +522,7 @@ app.get('/api/me', async (req, res) => {
     email: req.session?.userEmail || ALLOWED_EMAIL,
     name: req.session?.userName || 'Gretchen',
     role: isOwner ? 'owner' : 'member',
+    notionUserId: isOwner ? GRETCHEN_USER_ID : null,
     personalEnabled: isOwner,
     gmailConnected: isOwner,
     slackConnected: isOwner && !!process.env.SLACK_USER_TOKEN,
