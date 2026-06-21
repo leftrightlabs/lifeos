@@ -102,10 +102,10 @@
 
   /* HEADER */
   .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; border-bottom: 1px solid var(--navy-faint); margin-bottom: 16px; }
-  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
   .brand-burst { width: 22px; height: 22px; }
   .brand-name { font-family: var(--font-body); font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; font-size: 12px; color: var(--navy); }
-  .header-meta { display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--navy-dim); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .header-meta { display: flex; align-items: center; justify-content: flex-end; gap: 16px; flex: 1; min-width: 0; font-size: 12px; color: var(--navy-dim); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
   .level-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--navy); color: var(--lime); border-radius: 999px; font-size: 11px; letter-spacing: 0.1em; }
   .mode-lens { display: inline-flex; gap: 0; background: rgba(var(--edge-rgb), 0.04); border: 1px solid rgba(var(--edge-rgb), 0.08); border-radius: 999px; padding: 3px; }
   .mode-btn { background: transparent; border: none; padding: 7px 14px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; color: rgba(var(--ink-rgb), 0.55); cursor: pointer; border-radius: 999px; font-family: var(--font-body); transition: all 0.15s; text-transform: uppercase; }
@@ -908,11 +908,11 @@
   /* Weather now lives in the Schedule card head (stays visible when collapsed);
      keep it a touch smaller there so it doesn't crowd the status + add button. */
   .quest-panel-head .brief-weather { font-size: 11px; }
-  /* Year/quarter + today's date sit in the top row, next to the logo. */
-  .brand-when { display: inline-flex; align-items: center; gap: 8px; padding-left: 12px; border-left: 1px solid var(--navy-faint); }
-  .brand-when .topinfo-period { color: var(--navy); font-weight: 600; font-size: 11px; letter-spacing: 0.04em; white-space: nowrap; }
-  .brand-when .topinfo-date { color: var(--navy-dim); font-weight: 500; font-size: 11px; letter-spacing: 0.02em; white-space: nowrap; }
-  @media (max-width: 480px) { .brand-when { gap: 6px; padding-left: 9px; } .brand-when .topinfo-period, .brand-when .topinfo-date { font-size: 10px; letter-spacing: 0.02em; } }
+  /* Year/quarter + today's date: centered in the top row, all normal weight. */
+  .header-when { display: flex; align-items: center; justify-content: center; gap: 8px; flex-shrink: 0; }
+  .header-when .topinfo-period, .header-when .topinfo-date { color: var(--navy-dim); font-weight: 400; font-size: 11px; letter-spacing: 0.03em; white-space: nowrap; }
+  .header-when .days-left { font-style: italic; }
+  @media (max-width: 480px) { .header-when { gap: 6px; } .header-when .topinfo-period, .header-when .topinfo-date { font-size: 10px; letter-spacing: 0.02em; } }
   #brief-collapse-caret { display: none; }
   .daily-brief-text { font-family: var(--font-body); font-size: 15px; font-weight: 400; line-height: 1.6; color: var(--navy); }
   @media (max-width: 600px) { .daily-brief-text { font-size: 14.5px; line-height: 1.55; } }
@@ -3172,10 +3172,10 @@ window.lrl = (function(){
           <svg class="mode-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         </button>
       </div>
-      <span class="brand-when">
-        <span class="topinfo-period" id="topinfo-period"></span>
-        <span class="topinfo-date" id="topinfo-date"></span>
-      </span>
+    </div>
+    <div class="header-when">
+      <span class="topinfo-date" id="topinfo-date"></span>
+      <span class="topinfo-period" id="topinfo-period"></span>
     </div>
     <div class="header-meta">
       <a href="/auth/logout" class="signout-link" title="Sign out" aria-label="Sign out">
@@ -8787,7 +8787,7 @@ document.addEventListener('keydown', (e) => {
     const q = Math.floor(tNow.getMonth() / 3);
     const qEnd = new Date(tNow.getFullYear(), q * 3 + 3, 0); // last day of the quarter
     const dLeft = Math.max(0, Math.ceil((qEnd - new Date(tNow.getFullYear(), tNow.getMonth(), tNow.getDate())) / 86400000));
-    tip.textContent = tNow.getFullYear() + ' · Q' + (q + 1) + ' · ' + dLeft + 'd left';
+    tip.innerHTML = tNow.getFullYear() + ' · Q' + (q + 1) + ' · <span class="days-left">' + dLeft + 'd left</span>';
   }
   loadWeather();
   window.addEventListener('lrl-refresh', () => loadWeather(true));
