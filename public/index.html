@@ -9631,7 +9631,7 @@ document.addEventListener('visibilitychange', async () => {
         body += '<div class="aw-props">' + tiles + '</div>';
       }
     }
-    el.innerHTML = '<div class="mkt-section'+(AW_COLLAPSED?' collapsed':'')+'"><div class="mkt-sec-head" data-aw-toggle><span class="mkt-sec-caret">▾</span><span class="mkt-sec-title">What\'s Working</span><span class="mkt-sec-count zero">28d · GA</span></div><div class="mkt-sec-body">'+body+'</div></div>';
+    el.innerHTML = '<div class="mkt-section'+(AW_COLLAPSED?' collapsed':'')+'"><div class="mkt-sec-head" data-aw-toggle><span class="mkt-sec-caret">▾</span><span class="mkt-sec-title">What\'s Working</span><span class="mkt-sec-count zero">28d · GA + YT</span></div><div class="mkt-sec-body">'+body+'</div></div>';
     el.querySelector('[data-aw-toggle]')?.addEventListener('click', function(){ AW_COLLAPSED=!AW_COLLAPSED; try{localStorage.setItem('lrl-attract-aw-collapsed', AW_COLLAPSED?'1':'0');}catch(e){} this.closest('.mkt-section').classList.toggle('collapsed'); window.lrl?.haptic?.('tap'); });
   }
   window.refreshAttractInsights = async function(){ await fetchAttractInsights(true); renderAttractInsights(); };
@@ -9755,18 +9755,11 @@ document.addEventListener('visibilitychange', async () => {
     const stats = MKT.stats || {};
     const okrStrip = `<div class="mkt-strip-label">Published Output${stats.quarterLabel?' · '+mEsc(stats.quarterLabel):''}</div>
     <div class="mkt-kpis mkt-kpis-okr">
-      <div class="mkt-kpi okr"><div class="k-num">${stats.publishedQuarter??'—'}</div><div class="k-lab">This Quarter</div></div>
-      <div class="mkt-kpi"><div class="k-num">${stats.publishedMonth??'—'}</div><div class="k-lab">This Month</div></div>
-      <div class="mkt-kpi"><div class="k-num">${stats.publishedYear??'—'}</div><div class="k-lab">This Year</div></div>
+      <div class="mkt-kpi okr" data-mkt-kpi="quarter"><div class="k-num">${stats.publishedQuarter??'—'}</div><div class="k-lab">This Quarter</div></div>
+      <div class="mkt-kpi" data-mkt-kpi="month"><div class="k-num">${stats.publishedMonth??'—'}</div><div class="k-lab">This Month</div></div>
+      <div class="mkt-kpi" data-mkt-kpi="year"><div class="k-num">${stats.publishedYear??'—'}</div><div class="k-lab">This Year</div></div>
     </div>`;
 
-    const byChan = (stats.byChannel||[]);
-    const maxCh = byChan.reduce((m,c)=>Math.max(m,c.count),0) || 1;
-    const chartInner = byChan.length
-      ? `<div class="mkt-chart">${byChan.map(c=>`<div class="mkt-chart-row"><span class="mkt-chart-label" title="${mEsc(c.name)}">${mEsc(c.name)}</span><span class="mkt-chart-track"><span class="mkt-chart-fill ${c.platform}" style="width:${Math.round(c.count/maxCh*100)}%"></span></span><span class="mkt-chart-count">${c.count}</span></div>`).join('')}</div>`
-      : '<div class="mkt-empty">Nothing published this quarter yet.</div>';
-
-    const opLabel = `<div class="mkt-strip-label">Right Now</div>`;
     const kpis = `<div class="mkt-kpis">
       <div class="mkt-kpi ${overdueN?'alert':''}" data-mkt-kpi="overdue"><div class="k-num">${overdueN}</div><div class="k-lab">Overdue</div></div>
       <div class="mkt-kpi today" data-mkt-kpi="today"><div class="k-num">${todayN}</div><div class="k-lab">Due Today</div></div>
@@ -9777,9 +9770,7 @@ document.addEventListener('visibilitychange', async () => {
     const queueInner = q.length ? q.map(([b,a])=>cardHtml(a,b)).join('') : '<div class="mkt-empty">Nothing to publish right now — you\'re all caught up. 🎉</div>';
     const weekInner = week.length ? week.map(a=>`<div class="mkt-row" data-mkt-open="${a.id}"><span class="mkt-row-date">${dateChip(a.publishDate)}</span><span class="mkt-row-name">${mEsc(a.name)}</span><span class="mkt-status ${statusCls(a.status)}">${mEsc(a.status||'—')}</span></div>`).join('') : '<div class="mkt-empty">Nothing scheduled in the next 7 days.</div>';
 
-    body.innerHTML = okrStrip
-      + section('bychannel','By Channel'+(stats.quarterLabel?' · '+mEsc(stats.quarterLabel):''), byChan.reduce((n,c)=>n+c.count,0), false, chartInner)
-      + opLabel + kpis
+    body.innerHTML = okrStrip + kpis
       + section('queue','Publish Queue', q.length, overdueN>0, queueInner)
       + section('week','This Week', week.length, false, weekInner)
       + section('cal','Content Calendar', (MKT.cal&&MKT.cal.days)?Object.values(MKT.cal.days).reduce((n,a)=>n+a.length,0):0, false, calendarHtml());
@@ -9805,13 +9796,17 @@ document.addEventListener('visibilitychange', async () => {
 
   function openMktKpiList(kpi){
     const d = MKT.data || {};
+    const s = MKT.stats || {};
     const q = queueAssets();
-    const labels = { overdue:'Overdue', today:'Due Today', week:'This Week', published:'Published Today' };
+    const labels = { overdue:'Overdue', today:'Due Today', week:'This Week', published:'Published Today', quarter:'Published · '+(s.quarterLabel||'This Quarter'), month:'Published This Month', year:'Published This Year' };
     let assets = [];
     if (kpi==='overdue')   assets = q.filter(([b])=>b==='overdue').map(([,a])=>a);
     else if (kpi==='today')     assets = q.filter(([b])=>b==='today').map(([,a])=>a);
     else if (kpi==='week')      assets = d.thisWeek||[];
     else if (kpi==='published') assets = d.publishedToday||[];
+    else if (kpi==='quarter')   assets = s.quarterAssets||[];
+    else if (kpi==='month')     assets = s.monthAssets||[];
+    else if (kpi==='year')      assets = s.yearAssets||[];
     const rows = assets.length
       ? assets.map(a=>`<div class="mkt-row" data-mkt-open="${a.id}" style="cursor:pointer">
           <span class="mkt-row-date">${dateChip(a.publishDate)}</span>

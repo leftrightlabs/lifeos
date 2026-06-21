@@ -106,6 +106,7 @@ function serializeMarketingAsset(page, channelMap, opts = {}) {
     notes: rt(p.Notes),
     media,
     channels,
+    assigned: (p.Assigned?.people || []).map((u) => ({ id: u.id, name: u.name })),
   };
 }
 
@@ -213,23 +214,28 @@ app.get('/api/attract/stats', async (req, res) => {
         cursor = r.has_more ? r.next_cursor : null;
       } while (cursor);
       const assets = pages.map((pg) => serializeMarketingAsset(pg, channelMap));
+      // Trimmed shape for the stat-card drill-down lists (and future "me" filtering).
+      const trim = (a) => ({ id: a.id, name: a.name, publishDate: a.publishDate, status: a.status, url: a.url, assigned: a.assigned || [] });
       let publishedYear = 0, publishedQuarter = 0, publishedMonth = 0;
+      const yearAssets = [], quarterAssets = [], monthAssets = [];
       const channelTally = {};
       const channelPlatform = {};
       for (const a of assets) {
         const d = a.publishDate; if (!d) continue;
-        publishedYear++;
-        if (d >= monthStart && d <= today) publishedMonth++;
+        publishedYear++; yearAssets.push(trim(a));
+        if (d >= monthStart && d <= today) { publishedMonth++; monthAssets.push(trim(a)); }
         if (d >= q.start && d <= q.end) {
-          publishedQuarter++;
+          publishedQuarter++; quarterAssets.push(trim(a));
           // Tally where it went (targeted channels ∪ channels with a live URL).
           for (const c of a.channels) { channelTally[c.name] = (channelTally[c.name] || 0) + 1; channelPlatform[c.name] = c.platform; }
         }
       }
+      // Most-recent first for the drill-down lists.
+      for (const l of [yearAssets, quarterAssets, monthAssets]) l.sort((a, b) => (b.publishDate || '').localeCompare(a.publishDate || ''));
       const byChannel = Object.entries(channelTally)
         .map(([name, count]) => ({ name, count, platform: channelPlatform[name] || 'other' }))
         .sort((a, b) => b.count - a.count);
-      return { quarterLabel: q.label, publishedQuarter, publishedMonth, publishedYear, byChannel };
+      return { quarterLabel: q.label, publishedQuarter, publishedMonth, publishedYear, byChannel, quarterAssets, monthAssets, yearAssets };
     });
     res.json(data);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -353,7 +359,7 @@ app.get('/api/attract/media', async (req, res) => {
             const ytSummary = okYt ? `YOUTUBE CHANNEL "${okYt.channelTitle}" — ${okYt.subscribers} subscribers, ${okYt.videoCount} videos, ${okYt.totalViews} lifetime views, recent uploads average ${okYt.recentAvgViews} views.\n  Top recent videos: ${okYt.topVideos.map((v) => `"${v.title}" (${v.views} views, ${v.likes} likes, ${v.comments} comments)`).join('; ')}` : '';
             const summary = [gaSummary, ytSummary].filter(Boolean).join('\n\n');
             const noConv = okGa.length && okGa.every((p) => p.totals.keyEvents === 0);
-            const prompt = `You are the marketing analyst for Left Right Labs (a brand + website design agency). Below is the last 28 days of data across web (Google Analytics: the main site + the "Toolkit" lead-gen funnels) and YouTube. Left Right Labs especially wants to GROW the YouTube channel.\n\n${summary}\n\nGive 4-6 short, specific, action-oriented insights — each ONE sentence, grounded in these exact numbers (name the page, channel, video, or property). Cover both web and YouTube, and include at least two YouTube-growth insights (e.g. which video topic/format over-performed relative to the average and to make more of it).${noConv ? ' Also: GA4 conversions/key events are not set up yet (web conversions show 0), so make ONE insight recommend marking the opt-in completions as Key Events in GA4.' : ''} Reply with ONLY a JSON array of strings, nothing else.`;
+            const prompt = `You are the marketing analyst for Left Right Labs (a brand + website design agency). Below is the last 28 days of data across web (Google Analytics: the main site + the "Toolkit" lead-gen funnels) and YouTube.\n\n${summary}\n\nGive 4-6 short, specific, action-oriented insights — each ONE sentence, grounded in these exact numbers (name the page, channel, video, or property). Balance the insights roughly evenly across web (GA) and YouTube: include at least two web/GA insights and at least two YouTube insights.${noConv ? ' Also: GA4 conversions/key events are not set up yet (web conversions show 0), so make ONE insight recommend marking the opt-in completions as Key Events in GA4.' : ''} Reply with ONLY a JSON array of strings, nothing else.`;
             const msg = await anthropic.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 600, messages: [{ role: 'user', content: prompt }] });
             const text = (msg.content?.[0]?.text) || '[]';
             const mm = text.match(/\[[\s\S]*\]/);
