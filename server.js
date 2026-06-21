@@ -3004,7 +3004,7 @@ app.get('/auth/xero', (req, res) => {
     response_type: 'code',
     client_id: process.env.XERO_CLIENT_ID,
     redirect_uri: `${originFromReq(req)}/auth/xero/callback`,
-    scope: XERO_SCOPES.join(' '),
+    scope: req.query.scope ? String(req.query.scope) : XERO_SCOPES.join(' '),  // TEMP: ?scope= override to isolate invalid_scope
     state: 'lifeos',
   });
   // Xero reads a "+" in the query-string scope as a literal char, not a space,
@@ -3012,12 +3012,21 @@ app.get('/auth/xero', (req, res) => {
   res.redirect(`https://login.xero.com/identity/connect/authorize?${params.toString().replace(/\+/g, '%20')}`);
 });
 
-// TEMP diagnostic — shows exactly what scopes/redirect prod is sending (no secrets).
-app.get('/auth/xero/debug', (req, res) => {
+// TEMP diagnostic — shows requested scopes + the scopes the CURRENT working token
+// actually has (decoded from the access-token JWT). No secrets returned.
+app.get('/auth/xero/debug', async (req, res) => {
+  let currentTokenScopes = null, tokenErr = null;
+  try {
+    const at = await getXeroAccessToken();
+    const payload = JSON.parse(Buffer.from(at.split('.')[1], 'base64').toString('utf8'));
+    currentTokenScopes = payload.scope; // the scopes the live, working token holds
+  } catch (e) { tokenErr = e.message; }
   res.json({
     commit: process.env.RAILWAY_GIT_COMMIT_SHA || 'unknown',
-    scopes: XERO_SCOPES,
-    scopeString: XERO_SCOPES.join(' '),
+    requestedScopes: XERO_SCOPES,
+    requestedScopeString: XERO_SCOPES.join(' '),
+    currentTokenScopes,   // ground truth: what this app is actually allowed to grant
+    tokenErr,
     redirectUri: `${originFromReq(req)}/auth/xero/callback`,
     clientIdSet: !!process.env.XERO_CLIENT_ID,
     tenantSet: !!process.env.XERO_TENANT_ID,
