@@ -1,0 +1,49 @@
+/* LRL OS — Design tokens. Import this on every page. */
+:root {
+  --bg: #0A0D16;
+  --surface: #111826;
+  --surface-2: #0D131F;
+  --border: #1C2536;
+  --border-soft: #161E2C;
+
+  /* Anchor — indigo */
+  --accent:       #6366F1;
+  --accent-dim:   #8183F4;
+  --accent-soft:  rgba(99,102,241,.13);
+  --accent-muted: rgba(99,102,241,.25);
+  --accent-deep:  #4F52CC;
+
+  /* Work — cobalt */
+  --work:      #2563EB;
+  --work-soft: rgba(37,99,235,.13);
+
+  /* Personal — cyan */
+  --personal:      #06B6D4;
+  --personal-soft: rgba(6,182,212,.13);
+
+  /* Legacy aliases */
+  --teal:      var(--personal);
+  --teal-soft: var(--personal-soft);
+
+  --text: #DCE3EC;
+  --text-2: #8A9BB0;
+  --text-3: #54667E;
+  --text-4: #364457;
+
+  /* Semantic */
+  --red:   #F26D6D;  --red-soft:   rgba(242,109,109,.12);
+  --amber: #EBB454;  --amber-soft: rgba(235,180,84,.12);
+  --green: #4FD6A0;  --green-soft: rgba(79,214,160,.12);
+}
+
+html.light {
+  --bg: #F0F2F8; --surface: #FFFFFF; --surface-2: #F5F6FC;
+  --border: #D8DCE9; --border-soft: #E4E8F2;
+  --text: #1A2233; --text-2: #4A5568; --text-3: #718096; --text-4: #A0AABB;
+  --accent-soft:   rgba(99,102,241,.09);
+  --work-soft:     rgba(37,99,235,.09);
+  --personal-soft: rgba(6,182,212,.09);
+  --red-soft:      rgba(242,109,109,.09);
+  --amber-soft:    rgba(235,180,84,.09);
+  --green-soft:    rgba(79,214,160,.09);
+}

@@ -542,6 +542,15 @@ function serveApp(_req, res) {
 app.get('/', serveApp);
 app.get('/today', serveApp);
 
+// Zone pages — served as static HTML; express.static would also catch these
+// but explicit routes let us set no-cache headers consistently.
+['attract','convert','deliver','scale','health','wealth','lego','relationships','messages','execute'].forEach(zone => {
+  app.get(`/${zone}`, (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store, must-revalidate');
+    res.sendFile(join(__dirname, 'public', `${zone}.html`));
+  });
+});
+
 app.use(express.static(join(__dirname, 'public'), staticOpts));
 
 app.get('/api/me', (req, res) => {

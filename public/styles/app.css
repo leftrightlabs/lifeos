@@ -1,0 +1,132 @@
+/* LRL OS — Shared shell. Import after tokens.css on every zone page. */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+a { color: inherit; text-decoration: none; }
+
+/* ── TOP BAR ── */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 22px; gap: 12px;
+  border-bottom: 1px solid var(--border-soft);
+  position: sticky; top: 0; z-index: 20;
+  background: var(--bg);
+  max-width: 1080px; margin: 0 auto;
+}
+.topbar-wrap {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border-soft);
+}
+.logo { color: var(--accent); font-weight: 800; font-size: 13px; letter-spacing: .09em; white-space: nowrap; }
+.topbar-right { display: flex; align-items: center; gap: 7px; }
+.mode-toggle { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 3px; gap: 2px; }
+.mode-btn {
+  background: none; border: none; font-size: 10px; font-weight: 700;
+  letter-spacing: .05em; padding: 5px 13px; border-radius: 16px;
+  cursor: pointer; color: var(--text-3); font-family: inherit;
+  white-space: nowrap; transition: all .2s; text-decoration: none;
+  display: inline-flex; align-items: center;
+}
+.mode-btn:hover { color: var(--text-2); }
+.mode-btn.work   { background: var(--work);     color: #fff; }
+.mode-btn.all    { background: var(--accent);   color: #fff; }
+.mode-btn.personal { background: var(--personal); color: #fff; }
+.me-pill {
+  background: var(--accent); color: #fff; font-size: 11px; font-weight: 600;
+  padding: 5px 13px; border-radius: 22px; cursor: pointer;
+}
+
+/* ── NAV ── */
+.nav-wrap {
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg);
+}
+.nav {
+  display: flex; padding: 0 22px; overflow-x: auto; scrollbar-width: none;
+  max-width: 1080px; margin: 0 auto;
+}
+.nav::-webkit-scrollbar { display: none; }
+.nav-btn {
+  background: none; border: none; border-bottom: 2px solid transparent;
+  font-size: 11px; font-weight: 600; letter-spacing: .05em;
+  padding: 11px 14px; cursor: pointer; color: var(--text-3);
+  white-space: nowrap; font-family: inherit;
+  text-decoration: none; display: inline-flex; align-items: center;
+  transition: color .15s;
+}
+.nav-btn:hover { color: var(--text-2); }
+.nav-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+.nav-sep { width: 1px; background: var(--border); margin: 9px 6px; flex-shrink: 0; }
+.nav-domain {
+  font-size: 8px; color: var(--text-4); padding: 11px 6px 11px 3px;
+  text-transform: uppercase; letter-spacing: .09em; align-self: center; white-space: nowrap;
+}
+
+/* ── ZONE SHELL ── */
+.zone-wrap { max-width: 1080px; margin: 0 auto; padding: 48px 22px; }
+
+.zone-hero {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
+  padding-bottom: 40px; border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 40px;
+}
+.zone-eyebrow {
+  font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--zone, var(--accent));
+}
+.zone-heading { display: flex; align-items: center; gap: 14px; }
+.zone-icon { font-size: 32px; line-height: 1; }
+.zone-title {
+  font-size: 32px; font-weight: 800; color: var(--text); letter-spacing: -.01em; margin: 0;
+}
+.zone-desc { font-size: 15px; color: var(--text-2); max-width: 520px; line-height: 1.6; }
+.zone-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--zone-soft, var(--accent-soft));
+  color: var(--zone, var(--accent));
+  border: 1px solid var(--zone, var(--accent));
+  border-opacity: .25;
+  font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  padding: 5px 12px; border-radius: 20px; margin-top: 4px;
+}
+
+.zone-placeholder {
+  display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+.zone-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 8px;
+}
+.zone-card-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--zone, var(--accent));
+}
+.zone-card-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.zone-card-body { font-size: 13px; color: var(--text-3); line-height: 1.5; }
+
+/* ── FAB ── */
+.fab {
+  position: fixed; bottom: 28px; right: 22px;
+  width: 50px; height: 50px; border-radius: 50%;
+  background: var(--zone, var(--accent)); color: #fff; border: none;
+  font-size: 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 18px rgba(99,102,241,.4); z-index: 80;
+  transition: transform .15s, filter .2s; text-decoration: none;
+}
+.fab:hover { filter: brightness(1.12); transform: scale(1.06); }
+
+/* ── LIGHT OVERRIDES ── */
+html.light .topbar-wrap,
+html.light .nav-wrap { background: var(--bg); }
+html.light .zone-card { background: var(--surface); }

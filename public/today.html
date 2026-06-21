@@ -75,7 +75,7 @@ body {
 /* NAV */
 .nav { display: flex; padding: 0 22px; border-bottom: 1px solid var(--border-soft); overflow-x: auto; scrollbar-width: none; }
 .nav::-webkit-scrollbar { display: none; }
-.nav-btn { background: none; border: none; font-size: 11px; padding: 11px 14px; cursor: pointer; border-bottom: 2px solid transparent; letter-spacing: .05em; color: var(--text-3); white-space: nowrap; font-family: inherit; font-weight: 600; }
+.nav-btn { display: inline-flex; align-items: center; background: none; border: none; text-decoration: none; font-size: 11px; padding: 11px 14px; cursor: pointer; border-bottom: 2px solid transparent; letter-spacing: .05em; color: var(--text-3); white-space: nowrap; font-family: inherit; font-weight: 600; }
 .nav-btn.active { color: var(--text); border-bottom-color: var(--accent); }
 .nav-sep { width: 1px; background: var(--border); margin: 9px 6px; flex-shrink: 0; }
 .nav-domain { font-size: 8px; color: var(--text-4); padding: 11px 6px 11px 3px; text-transform: uppercase; letter-spacing: .09em; align-self: center; white-space: nowrap; }
@@ -193,7 +193,7 @@ body {
 .plan-drag:active { cursor: grabbing; }
 .sortable-ghost { opacity: .35; background: var(--surface-2) !important; }
 .sortable-drag { opacity: 1; }
-.plan-row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 9px; transition: opacity .3s; }
+.plan-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 11px 14px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 9px; transition: opacity .3s; }
 .plan-row.done-row { opacity: .42; }
 .plan-num { font-size: 13px; font-weight: 800; color: var(--accent); min-width: 16px; text-align: center; }
 .plan-num.done-num { color: var(--green); }
@@ -229,8 +229,24 @@ body {
 .plan-menu-item .mi-icon { font-size: 13px; width: 16px; text-align: center; flex-shrink: 0; }
 .plan-menu-item.danger { color: var(--red); }
 .plan-menu-item.danger:hover { background: var(--red-soft); }
-.plan-reschedule-row { display: none; padding: 4px 13px 10px; }
-.plan-reschedule-row input[type="date"] { background: var(--bg); border: 1px solid var(--border); color: var(--text); font-size: 12px; padding: 5px 8px; border-radius: 6px; font-family: inherit; width: 100%; }
+/* Custom date picker */
+.dp-panel { position: fixed; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; z-index: 10001; box-shadow: 0 12px 40px rgba(0,0,0,.6); width: 252px; }
+.dp-panel.hidden { display: none; }
+.dp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.dp-month-label { font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: .01em; }
+.dp-nav { background: none; border: none; color: var(--text-3); cursor: pointer; font-size: 16px; padding: 3px 9px; border-radius: 7px; line-height: 1; }
+.dp-nav:hover { background: var(--surface-2); color: var(--text); }
+.dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.dp-dow { font-size: 10px; text-align: center; color: var(--text-4); padding: 4px 0 6px; font-weight: 600; letter-spacing: .05em; }
+.dp-day { font-size: 12px; text-align: center; padding: 7px 2px; border-radius: 7px; cursor: pointer; color: var(--text-2); line-height: 1; }
+.dp-day:hover { background: var(--surface-2); color: var(--text); }
+.dp-day.dp-today { color: var(--accent); font-weight: 700; }
+.dp-day.dp-other { color: var(--text-4); cursor: default; }
+.dp-day.dp-other:hover { background: none; }
+/* Undo toast */
+#undoToast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px; display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text-2); box-shadow: 0 8px 32px rgba(0,0,0,.4); z-index: 9999; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; white-space: nowrap; }
+#undoToast.toast-show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+#undoToast button { background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 4px 12px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; letter-spacing: .04em; }
 .plan-menu-sep { height: 1px; background: var(--border-soft); margin: 3px 0; }
 
 /* ── SIDEBAR ── */
@@ -290,6 +306,12 @@ body {
 .ritual-chip.checked .rc-box { border-color: var(--green); background: var(--green); color: #0A0D16; }
 .ritual-reward { font-size: 11px; color: var(--green); margin-top: 8px; display: none; align-items: center; gap: 5px; }
 .ritual-reward.show { display: flex; }
+.rc-input-group { display: flex; align-items: center; gap: 3px; margin-left: auto; }
+.rc-input { width: 46px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-size: 12px; padding: 2px 5px; font-family: inherit; text-align: right; -moz-appearance: textfield; }
+.rc-input::-webkit-inner-spin-button, .rc-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.rc-input:focus { outline: none; border-color: var(--accent); }
+.ritual-chip.checked .rc-input { opacity: .5; }
+.rc-unit { font-size: 10px; color: var(--text-4); min-width: 16px; }
 .ritual-link { flex-shrink: 0; font-size: 10px; color: var(--text-4); text-decoration: none; padding: 2px 5px; border-radius: 4px; border: 1px solid var(--border); line-height: 1; transition: color .15s, border-color .15s; }
 .ritual-link:hover { color: var(--text-2); border-color: var(--text-3); }
 .ritual-chip.checked .ritual-link { opacity: .45; }
@@ -617,42 +639,43 @@ const lifeWeek = [
 
 // ── MODE ──
 const NAV_WORK = [
-  { label:'TODAY', active:true },
-  { label:'MESSAGES' },
-  { label:'EXECUTE' },
+  { label:'TODAY',  href:'/',              active:true },
+  { label:'MESSAGES', href:'/messages' },
+  { label:'EXECUTE',  href:'/execute' },
   { sep: true },
   { domain:'WORK' },
-  { label:'ATTRACT' },
-  { label:'CONVERT' },
-  { label:'DELIVER' },
-  { label:'SCALE' },
+  { label:'ATTRACT',  href:'/attract' },
+  { label:'CONVERT',  href:'/convert' },
+  { label:'DELIVER',  href:'/deliver' },
+  { label:'SCALE',    href:'/scale' },
 ];
 const NAV_PERSONAL = [
-  { label:'TODAY', active:true },
-  { label:'MESSAGES' },
-  { label:'EXECUTE' },
-  { sep: true },
-  { domain:'PERSONAL' },
-  { label:'HEALTH' },
-  { label:'WEALTH' },
-  { label:'LEGO' },
-  { label:'RELATIONSHIPS' },
-];
-const NAV_ALL = [
-  { label:'TODAY', active:true },
-  { label:'MESSAGES' },
-  { label:'EXECUTE' },
-  { sep: true },
-  { domain:'WORK' },
-  { label:'ATTRACT' },
-  { label:'CONVERT' },
-  { label:'DELIVER' },
-  { label:'SCALE' },
+  { label:'TODAY',  href:'/',              active:true },
+  { label:'MESSAGES', href:'/messages' },
+  { label:'EXECUTE',  href:'/execute' },
   { sep: true },
   { domain:'LIFE' },
-  { label:'HEALTH' },
-  { label:'WEALTH' },
-  { label:'LEGO' },
+  { label:'HEALTH',        href:'/health' },
+  { label:'WEALTH',        href:'/wealth' },
+  { label:'LEGO',          href:'/lego' },
+  { label:'RELATIONSHIPS', href:'/relationships' },
+];
+const NAV_ALL = [
+  { label:'TODAY',  href:'/',              active:true },
+  { label:'MESSAGES', href:'/messages' },
+  { label:'EXECUTE',  href:'/execute' },
+  { sep: true },
+  { domain:'WORK' },
+  { label:'ATTRACT',  href:'/attract' },
+  { label:'CONVERT',  href:'/convert' },
+  { label:'DELIVER',  href:'/deliver' },
+  { label:'SCALE',    href:'/scale' },
+  { sep: true },
+  { domain:'LIFE' },
+  { label:'HEALTH',        href:'/health' },
+  { label:'WEALTH',        href:'/wealth' },
+  { label:'LEGO',          href:'/lego' },
+  { label:'RELATIONSHIPS', href:'/relationships' },
 ];
 
 function setMode(m) {
@@ -691,7 +714,7 @@ function renderNav() {
   document.getElementById('nav').innerHTML = items.map(item => {
     if (item.sep) return `<div class="nav-sep"></div>`;
     if (item.domain) return `<span class="nav-domain">${item.domain}</span>`;
-    return `<button class="nav-btn${item.active?' active':''}">${item.label}</button>`;
+    return `<a href="${item.href}" class="nav-btn${item.active?' active':''}">${item.label}</a>`;
   }).join('');
 }
 
@@ -1069,23 +1092,139 @@ function openInNotion(i) {
   else { alert('Notion link will be available once Phase 3 data wiring is complete.'); }
 }
 
-function removeFromMyDay(i) {
-  closePlanMenus();
-  if (plan[i]?.id) fetch('/api/tasks/' + plan[i].id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ myDay: false }) }).catch(() => {});
-  plan.splice(i, 1);
-  renderPlan();
+// ── UNDO TOAST ──
+let _undoTimer = null;
+function showUndo(message, undoFn) {
+  if (_undoTimer) clearTimeout(_undoTimer);
+  const toast = document.getElementById('undoToast');
+  document.getElementById('undoMsg').textContent = message;
+  toast._undoFn = undoFn;
+  toast.classList.add('toast-show');
+  _undoTimer = setTimeout(hideUndo, 6000);
+}
+function hideUndo() {
+  document.getElementById('undoToast').classList.remove('toast-show');
+  if (_undoTimer) { clearTimeout(_undoTimer); _undoTimer = null; }
+}
+function triggerUndo() {
+  const toast = document.getElementById('undoToast');
+  if (toast._undoFn) toast._undoFn();
+  hideUndo();
 }
 
+function removeFromMyDay(i) {
+  closePlanMenus();
+  const task = plan[i];
+  if (!task) return;
+  if (task.id) fetch('/api/tasks/' + task.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ myDay: false }) }).catch(() => {});
+  plan.splice(i, 1);
+  renderPlan();
+  showUndo(`Removed from Today`, () => {
+    if (task.id) fetch('/api/tasks/' + task.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ myDay: true }) }).catch(() => {});
+    plan.splice(i, 0, task);
+    renderPlan();
+  });
+}
+
+function rescheduleTask(i, newDate) {
+  const task = plan[i];
+  if (!task) return;
+  const oldDate = task.dueStart || null;
+  const oldTags = [...task.tags];
+  const today = todayISO();
+  const isFuture = newDate > today;
+
+  if (isFuture) {
+    // Remove from today's plan
+    if (task.id) fetch('/api/tasks/' + task.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dueStart: newDate, myDay: false }) }).catch(() => {});
+    plan.splice(i, 1);
+    renderPlan();
+    const label = new Date(newDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    showUndo(`Rescheduled to ${label}`, () => {
+      if (task.id) fetch('/api/tasks/' + task.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(oldDate ? { dueStart: oldDate, myDay: true } : { myDay: true }) }).catch(() => {});
+      task.dueStart = oldDate; task.tags = oldTags;
+      plan.splice(i, 0, task);
+      renderPlan();
+    });
+  } else {
+    // Keep in plan — update due date and refresh overdue tag
+    if (task.id) fetch('/api/tasks/' + task.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dueStart: newDate, myDay: true }) }).catch(() => {});
+    task.dueStart = newDate;
+    task.tags = task.tags.filter(tg => tg.t !== 'Overdue');
+    if (newDate < today) task.tags.unshift({ t: 'Overdue', c: 'pt-late' });
+    renderPlan();
+    const label = newDate === today ? 'today' : new Date(newDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    showUndo(`Due date set to ${label}`, () => {
+      if (task.id) fetch('/api/tasks/' + task.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dueStart: oldDate || null }) }).catch(() => {});
+      task.dueStart = oldDate; task.tags = oldTags;
+      renderPlan();
+    });
+  }
+}
+
+// ── CUSTOM DATE PICKER ──
+const _dp = { month: 0, year: 0, onSelect: null };
+
+function openDatePicker(anchorEl, onSelect) {
+  const now = new Date();
+  _dp.month = now.getMonth();
+  _dp.year = now.getFullYear();
+  _dp.onSelect = onSelect;
+  _renderDP();
+  const panel = document.getElementById('datePicker');
+  panel.classList.remove('hidden');
+  const rect = anchorEl.getBoundingClientRect();
+  panel.style.top = (rect.bottom + 6) + 'px';
+  panel.style.left = rect.left + 'px';
+  requestAnimationFrame(() => {
+    const pr = panel.getBoundingClientRect();
+    if (pr.right > window.innerWidth - 8) panel.style.left = (window.innerWidth - pr.width - 8) + 'px';
+    if (pr.bottom > window.innerHeight - 8) panel.style.top = (rect.top - pr.height - 6) + 'px';
+  });
+}
+
+function closeDatePicker() {
+  document.getElementById('datePicker')?.classList.add('hidden');
+}
+
+function _renderDP() {
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('dpMonthLabel').textContent = `${MONTHS[_dp.month]} ${_dp.year}`;
+  const todayStr = todayISO();
+  const firstDay = new Date(_dp.year, _dp.month, 1).getDay();
+  const daysInMonth = new Date(_dp.year, _dp.month + 1, 0).getDate();
+  const daysInPrev = new Date(_dp.year, _dp.month, 0).getDate();
+  let html = ['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => `<div class="dp-dow">${d}</div>`).join('');
+  for (let i = 0; i < firstDay; i++) {
+    html += `<div class="dp-day dp-other">${daysInPrev - firstDay + 1 + i}</div>`;
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${_dp.year}-${String(_dp.month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cls = ds === todayStr ? 'dp-day dp-today' : 'dp-day';
+    html += `<div class="${cls}" onclick="selectDPDate('${ds}')">${d}</div>`;
+  }
+  const trailing = 7 - ((firstDay + daysInMonth) % 7);
+  if (trailing < 7) for (let d = 1; d <= trailing; d++) html += `<div class="dp-day dp-other">${d}</div>`;
+  document.getElementById('dpGrid').innerHTML = html;
+}
+
+function dpPrev() { if (--_dp.month < 0) { _dp.month = 11; _dp.year--; } _renderDP(); }
+function dpNext() { if (++_dp.month > 11) { _dp.month = 0; _dp.year++; } _renderDP(); }
+
+function selectDPDate(ds) {
+  closeDatePicker();
+  if (_dp.onSelect) _dp.onSelect(ds);
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#datePicker') && !e.target.closest('.plan-menu-item')) closeDatePicker();
+});
+
 function showReschedule(i) {
+  closePlanMenus();
   const row = document.querySelector(`[data-plan-idx="${i}"]`);
   if (!row) return;
-  const dateRow = row.querySelector('.plan-reschedule-row');
-  if (!dateRow) return;
-  dateRow.style.display = dateRow.style.display === 'none' || !dateRow.style.display ? 'block' : 'none';
-  if (dateRow.style.display === 'block') {
-    const inp = dateRow.querySelector('input');
-    if (inp) { inp.focus(); inp.addEventListener('change', e => { const nd = e.target.value; if (nd && plan[i]?.id) { fetch('/api/tasks/' + plan[i].id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dueStart: nd, myDay: false }) }).catch(() => {}); plan.splice(i, 1); renderPlan(); } closePlanMenus(); dateRow.style.display = 'none'; }); }
-  }
+  openDatePicker(row, ds => rescheduleTask(i, ds));
 }
 
 function renderPlan() {
@@ -1116,7 +1255,6 @@ function renderPlan() {
           ${t.notionUrl ? `<button class="plan-menu-item" onclick="openInNotion(${origIdx})"><span class="mi-icon">↗</span>Open in Notion</button>` : `<button class="plan-menu-item" onclick="openInNotion(${origIdx})" style="opacity:.5"><span class="mi-icon">↗</span>Open in Notion</button>`}
           <div class="plan-menu-sep"></div>
           <button class="plan-menu-item" onclick="showReschedule(${origIdx})"><span class="mi-icon">📅</span>Reschedule</button>
-          <div class="plan-reschedule-row" style="display:none"><input type="date" /></div>
           <button class="plan-menu-item danger" onclick="removeFromMyDay(${origIdx})"><span class="mi-icon">✕</span>Remove from My Day</button>
         </div>
       </div>
@@ -1320,7 +1458,7 @@ function backToRest() {
 // ── RITUALS ──
 const rituals = {
   morning: {
-    icon: '🌅', title: 'Morning Startup', rewarded: false,
+    icon: '🌅', title: 'Morning Startup', rewarded: false, collapsed: false,
     items: [
       { key:'birthdays',        label:'Wish birthdays',                       href:'https://www.facebook.com/events/birthdays/', external:true,  done:false },
       { key:'inboxes',          label:'Clear inboxes',                        href:'/?tab=comms',                               external:false, done:false },
@@ -1336,14 +1474,15 @@ const rituals = {
     ],
   },
   evening: {
-    icon: '🌙', title: 'End of Day Checklist', rewarded: false,
+    icon: '🌙', title: 'End of Day Checklist', rewarded: false, collapsed: false,
     items: [
       { key:'sales',       label:'Log sales activity',              type:'work',     done:false },
       { key:'projectTime', label:'Log project time',                type:'work',     done:false },
       { key:'captures',    label:'Capture new tasks from meetings', type:'work',     done:false },
-      { key:'meals',       label:'Log meals',                       type:'personal', done:false },
-      { key:'journal',     label:'Log journal entry',               type:'personal', done:false },
-      { key:'exercise',    label:'Log exercise',                    type:'personal', done:false },
+      { key:'protein',     label:'Protein',    type:'personal', input:true, unit:'g',   apiKey:'protein',     value:'', done:false },
+      { key:'walk',        label:'Walk',       type:'personal', input:true, unit:'min', apiKey:'walkMinutes', value:'', done:false },
+      { key:'swim',        label:'Swim',       type:'personal', input:true, unit:'min', apiKey:'swimMinutes', value:'', done:false },
+      { key:'journal',     label:'Journal entry', type:'personal', notionJournal:true, done:false },
     ],
   },
 };
@@ -1354,7 +1493,10 @@ function renderRitual(which) {
   if (!el) return;
 
   // Morning only shows in work / all mode
-  if (which === 'morning' && state.mode === 'personal') { el.innerHTML = ''; return; }
+  if (which === 'morning' && state.mode === 'personal') {
+    el.innerHTML = ''; el.style.display = 'none'; return;
+  }
+  el.style.display = '';
 
   // Evening: filter items by mode (all shows everything)
   const items = which === 'evening' && state.mode !== 'all'
@@ -1365,28 +1507,78 @@ function renderRitual(which) {
   const allDone = items.length > 0 && doneCt === items.length;
 
   el.innerHTML = `
-    <div class="ritual-head">
+    <div class="ritual-head" onclick="toggleRitualCollapse('${which}')" style="cursor:pointer;user-select:none">
       <span class="ritual-title">${r.icon} ${r.title}</span>
-      <span class="ritual-progress ${allDone ? 'complete' : ''}">${allDone ? 'Complete ✓' : doneCt + ' / ' + items.length}</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <span class="ritual-progress ${allDone ? 'complete' : ''}">${allDone ? 'Complete ✓' : doneCt + ' / ' + items.length}</span>
+        <span style="font-size:10px;color:var(--text-4);line-height:1">${r.collapsed ? '▶' : '▼'}</span>
+      </span>
     </div>
-    <div class="ritual-chips">
-      ${items.map(({ it, origIdx }) => `
-        <div class="ritual-chip ${it.done ? 'checked' : ''}" onclick="toggleRitual('${which}',${origIdx})">
-          <span class="rc-box">${it.done ? '✓' : ''}</span>
-          <span>${it.label}</span>
-          ${it.href ? `<a class="ritual-link" href="${it.href}" ${it.external ? 'target="_blank" rel="noopener"' : ''} onclick="event.stopPropagation()" title="Open">↗</a>` : it.modal === 'checkin' ? `<a class="ritual-link" href="#" onclick="openCheckinModal(); return false;" title="Compose check-in">↗</a>` : ''}
-        </div>
-      `).join('')}
+    <div class="ritual-chips" style="${r.collapsed ? 'display:none' : ''}">
+      ${items.map(({ it, origIdx }) => {
+        if (it.input) {
+          return `
+            <div class="ritual-chip ${it.done ? 'checked' : ''}">
+              <span class="rc-box" onclick="toggleRitual('${which}',${origIdx})" style="cursor:pointer">${it.done ? '✓' : ''}</span>
+              <span>${it.label}</span>
+              <div class="rc-input-group">
+                <input class="rc-input" type="number" min="0" value="${it.value || ''}" placeholder="—"
+                  onkeydown="if(event.key==='Enter'&&this.value)saveRitualInput('${which}',${origIdx},this.value)"
+                  onblur="if(this.value)saveRitualInput('${which}',${origIdx},this.value)">
+                <span class="rc-unit">${it.unit}</span>
+              </div>
+            </div>`;
+        }
+        const link = it.notionJournal && _journalTodayUrl
+          ? `<a class="ritual-link" href="${_journalTodayUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open in Notion">↗</a>`
+          : it.href
+            ? `<a class="ritual-link" href="${it.href}" ${it.external ? 'target="_blank" rel="noopener"' : ''} onclick="event.stopPropagation()">↗</a>`
+            : it.modal === 'checkin'
+              ? `<a class="ritual-link" href="#" onclick="openCheckinModal();return false;">↗</a>`
+              : '';
+        return `
+          <div class="ritual-chip ${it.done ? 'checked' : ''}" onclick="toggleRitual('${which}',${origIdx})">
+            <span class="rc-box">${it.done ? '✓' : ''}</span>
+            <span>${it.label}</span>
+            ${link}
+          </div>`;
+      }).join('')}
     </div>
-    <div class="ritual-reward ${allDone && which === 'morning' ? 'show' : ''}">
+    <div class="ritual-reward ${allDone && which === 'morning' && !r.collapsed ? 'show' : ''}">
       ⚡ Morning routine done — you're cleared to dive into deep work.
     </div>
   `;
 }
 
+let _journalTodayUrl = null;
+
+function toggleRitualCollapse(which) {
+  rituals[which].collapsed = !rituals[which].collapsed;
+  renderRitual(which);
+}
+
 function toggleRitual(which, i) {
   const r = rituals[which];
-  r.items[i].done = !r.items[i].done;
+  const it = r.items[i];
+  it.done = !it.done;
+  // Unchecking an input chip clears its logged value
+  if (!it.done && it.input) {
+    it.value = '';
+    if (it.apiKey) fetch('/api/journal/today', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ [it.apiKey]: null }) }).catch(() => {});
+  }
+  renderRitual(which);
+  syncRitualToServer(which);
+}
+
+function saveRitualInput(which, i, rawValue) {
+  const it = rituals[which]?.items[i];
+  if (!it || !it.input) return;
+  const v = parseFloat(rawValue);
+  if (isNaN(v) || v < 0) return;
+  if (it.done && it.value == v) return; // no change
+  it.value = v;
+  it.done = true;
+  if (it.apiKey) fetch('/api/journal/today', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ [it.apiKey]: v }) }).catch(() => {});
   renderRitual(which);
   syncRitualToServer(which);
 }
@@ -1744,7 +1936,20 @@ async function loadTodayData() {
     _oneThingTask = pickOneThing(wt, _loadedGoals, 'work');
     _personalOneThingTask = pickOneThing(lt, _loadedGoals, 'personal');
   }
-  if (ok(ringsR)) applyStreaks(ringsR.value);
+  if (ok(ringsR)) {
+    applyStreaks(ringsR.value);
+    // Pre-populate EOD input chips from today's logged journal values
+    const jt = ringsR.value.today;
+    if (jt) {
+      if (jt.id) _journalTodayUrl = 'https://www.notion.so/' + jt.id.replace(/-/g, '');
+      rituals.evening.items.forEach(it => {
+        if (it.input && it.apiKey && jt[it.apiKey] != null && jt[it.apiKey] > 0) {
+          it.value = jt[it.apiKey];
+          it.done = true;
+        }
+      });
+    }
+  }
   if (ok(ritualR)) applyRitual(ritualR.value);
   if (ok(briefR)) applyBrief(briefR.value.brief);
   if (ok(calR)) applyCalendar(calR.value.events || []);
@@ -1903,6 +2108,18 @@ init();
       </div>
     </div>
   </div>
+</div>
+<div id="datePicker" class="dp-panel hidden">
+  <div class="dp-head">
+    <button class="dp-nav" onclick="dpPrev()">‹</button>
+    <span class="dp-month-label" id="dpMonthLabel"></span>
+    <button class="dp-nav" onclick="dpNext()">›</button>
+  </div>
+  <div class="dp-grid" id="dpGrid"></div>
+</div>
+<div id="undoToast">
+  <span id="undoMsg"></span>
+  <button onclick="triggerUndo()">UNDO</button>
 </div>
 </body>
 </html>
