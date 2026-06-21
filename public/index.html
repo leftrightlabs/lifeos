@@ -146,7 +146,7 @@
   .navitem .ni-ic { display: inline-flex; }
   .navitem .ni-ic svg { width: 16px; height: 16px; }
   .navitem .ni-caret { font-size: 9px; opacity: 0.55; }
-  .zonesub { display: none; gap: 6px; margin: 0 0 16px; flex-wrap: wrap; }
+  .zonesub { display: none; gap: 6px; flex-wrap: wrap; align-items: center; }  /* desktop: sits inline in the nav row's middle space */
   .zonesub-item { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-dim); padding: 8px 15px; border-radius: 999px; background: rgba(148,163,184,0.06); border: none; cursor: pointer; font-family: var(--font-body); white-space: nowrap; }
   .zonesub-item:hover { color: var(--navy); }
   .zonesub-item.on { color: var(--navy-accent); background: var(--lime); }
@@ -157,15 +157,21 @@
   .execsub-item { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-dim); padding: 8px 15px; border-radius: 999px; background: rgba(148,163,184,0.06); border: none; cursor: pointer; font-family: var(--font-body); }
   .execsub-item:hover { color: var(--navy); }
   .execsub-item.on { color: var(--navy-accent); background: var(--lime); }
+  /* Tablet portrait / narrow desktop: the zone strip drops to its own second row. */
+  @media (max-width: 1100px) and (min-width: 721px) {
+    .navrow { flex-wrap: wrap; }
+    .lensbar { order: 1; }
+    .zonesub { order: 2; flex-basis: 100%; margin: 12px 0 0; }
+  }
   @media (max-width: 720px) {
-    .navrow { display: contents; }
+    .navrow { display: flex; flex-direction: column; align-items: stretch; gap: 0; border-bottom: none; margin: 0; }
     .mainnav { position: fixed; bottom: 0; left: 0; right: 0; margin: 0; z-index: 150; background: var(--white); border-top: 1px solid var(--navy-faint); border-bottom: none; padding: 0 2px; box-shadow: 0 -4px 22px rgba(0,0,0,0.3); }
     .navitem { flex: 1; flex-direction: column; gap: 3px; padding: 8px 2px 10px; border-bottom: none; font-size: 9px; letter-spacing: 0.03em; }
     .navitem.on { border-bottom: none; color: var(--lime); }
     .navitem .ni-ic svg { width: 21px; height: 21px; }
     .navitem .ni-caret { display: none; }
-    .lensbar { gap: 7px; flex-wrap: wrap; margin: 2px 0 14px; }
-    .zonesub { margin: 0 0 14px; flex-wrap: nowrap; overflow-x: auto; }
+    .lensbar { order: 1; margin: 2px 0 12px; gap: 7px; flex-wrap: wrap; }
+    .zonesub { order: 2; flex-basis: auto; margin: 0 0 14px; flex-wrap: nowrap; overflow-x: auto; }
     .execsub { margin: 0 0 14px; }
     body { padding-bottom: 80px; }
     .app-footer { bottom: 74px !important; }
@@ -3213,9 +3219,9 @@ window.lrl = (function(){
 
   <div class="navrow">
     <nav class="mainnav" id="mainnav"></nav>
+    <div class="zonesub" id="zonesub"></div>
     <div class="lensbar" id="lensbar"></div>
   </div>
-  <div class="zonesub" id="zonesub"></div>
   <div class="execsub" id="execsub"></div>
 
   <!-- COMMAND TAB -->
