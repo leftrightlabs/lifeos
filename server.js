@@ -2927,6 +2927,7 @@ const XERO_SCOPES = [
   'accounting.reports.balancesheet.read',
   'accounting.contacts.read',
   'accounting.banktransactions.read',
+  'accounting.transactions.read',   // invoices + bills (for the Scale overdue nudges)
 ];
 
 let _xeroAccess = { token: null, exp: 0 };
@@ -3713,8 +3714,8 @@ app.get('/api/needle/today', async (req, res) => {
         return out;
       })();
 
-      // ---- SCALE: behind on quarter revenue / short runway (only if Xero already cached) ----
-      const scale = (() => {
+      // ---- SCALE: revenue/runway + scorecard (cached peeks) + overdue invoices/bills (Xero) ----
+      const scale = await (async () => {
         const out = [];
         try {
           const u = userContext.getStore()?.user;
@@ -3747,6 +3748,30 @@ app.get('/api/needle/today', async (req, res) => {
               action: { label: 'Open in Scale', kind: 'jump', tab: 'finance' } });
           });
         } catch (e) { console.error('needle:scorecard', e.message); }
+        // Overdue invoices (AR) + bills (AP) from Xero — needs accounting.transactions scope.
+        try {
+          const parseXDate = (xd) => { const m = /\/Date\((\d+)/.exec(String(xd || '')); return m ? new Date(+m[1]).toISOString().slice(0, 10) : null; };
+          const d = await xeroGet('/api.xro/2.0/Invoices', { Statuses: 'AUTHORISED', order: 'DueDate' });
+          const overdue = (d.Invoices || [])
+            .map((inv) => ({ id: inv.InvoiceID, number: inv.InvoiceNumber || '', contact: inv.Contact?.Name || '', due: parseXDate(inv.DueDate), amountDue: inv.AmountDue || 0, type: inv.Type }))
+            .filter((i) => i.amountDue > 0 && i.due && i.due < today);
+          overdue.filter((i) => i.type === 'ACCREC').slice(0, 2).forEach((inv) => {
+            const dOver = Math.round((todayMs - Date.parse(inv.due + 'T00:00:00Z')) / 864e5);
+            out.push({ id: `xinv:${inv.id}`, zone: 'scale',
+              title: `${inv.contact || 'Customer'} — ${fmtUSD(inv.amountDue)} overdue`,
+              why: `Invoice ${inv.number} · ${dOver}d overdue — chase payment`,
+              score: 62 + Math.min(dOver / 3, 18),
+              action: { label: 'Open', kind: 'link', url: `https://go.xero.com/app/invoicing/view/${inv.id}` } });
+          });
+          overdue.filter((i) => i.type === 'ACCPAY').slice(0, 1).forEach((bill) => {
+            const dOver = Math.round((todayMs - Date.parse(bill.due + 'T00:00:00Z')) / 864e5);
+            out.push({ id: `xbill:${bill.id}`, zone: 'scale',
+              title: `Bill overdue — ${fmtUSD(bill.amountDue)} to ${bill.contact || 'supplier'}`,
+              why: `Bill ${bill.number} · ${dOver}d overdue — pay or schedule`,
+              score: 58 + Math.min(dOver / 4, 12),
+              action: { label: 'Open', kind: 'link', url: `https://go.xero.com/app/bills/view/${bill.id}` } });
+          });
+        } catch (e) { console.error('needle:xero-overdue', e.message); }
         return out;
       })();
 
