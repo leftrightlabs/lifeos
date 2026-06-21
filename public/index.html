@@ -5106,35 +5106,17 @@ async function saveNeedleDismissed(){
 }
 async function fetchNeedleCards(fresh){
   try {
-    // "Move the Needle" = the quarterly rocks that need progress, by lens (Work/Personal).
-    if (fresh || !GOALS_DATA.length) await fetchGoals({ fresh: !!fresh });
-    NEEDLE_CARDS = buildRockNeedleCards();
-    window.__needleAsOf = new Date().toISOString();
+    const r = await fetch('/api/needle/today' + (fresh ? '?fresh=1' : ''));
+    const data = await r.json();
+    // Cross-zone work nudges. Tag the lens, and turn "open in <tab>" jumps into
+    // "open the item" (its Notion page) where the card has a url.
+    NEEDLE_CARDS = (data.cards || []).map(c => {
+      c.mode = 'work';
+      if (c.action && c.action.kind === 'jump' && c.url) c.action = { kind: 'link', url: c.url, label: 'Open' };
+      return c;
+    });
+    window.__needleAsOf = data.asOf || null;
   } catch(e){ console.error('fetchNeedleCards', e); NEEDLE_CARDS = []; }
-}
-function buildRockNeedleCards(){
-  const fmtD = ds => { if(!ds) return ''; const dt=new Date(ds+'T12:00:00'); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
-  const today = new Date(); today.setHours(0,0,0,0);
-  return (GOALS_DATA || [])
-    .map(g => {
-      const total = (g.progress && g.progress.total) || 0;
-      const done  = (g.progress && g.progress.done) || 0;
-      const pct = total ? Math.round(done/total*100) : 0;
-      if (pct >= 100 || (g.status||'').toLowerCase() === 'done') return null; // rock already there
-      const dl = g.targetDeadline ? new Date(g.targetDeadline+'T12:00:00') : null;
-      const daysLeft = dl ? Math.round((dl - today)/864e5) : null;
-      const overdue = daysLeft != null && daysLeft < 0;
-      let why = total === 0 ? 'No milestones yet — define the first step' : `${pct}% · ${done}/${total} milestones`;
-      if (dl) why += ` · ${overdue ? `${Math.abs(daysLeft)}d overdue` : `due ${fmtD(g.targetDeadline)}`}`;
-      // Attention: lower progress + nearer/overdue deadline = higher rank.
-      let score = (100 - pct);
-      if (total === 0) score += 25;
-      if (overdue) score += 40; else if (daysLeft != null && daysLeft <= 14) score += 20;
-      return { id: 'rock:'+g.id, mode: g.source, zone: 'rock', zoneLabel: 'Rock',
-               title: g.name, why, score, action: { label: 'Open', kind: 'link', url: g.url } };
-    })
-    .filter(Boolean)
-    .sort((a,b) => b.score - a.score);
 }
 function renderNeedleCards(){
   const body = document.getElementById('needle-body');
@@ -5148,16 +5130,19 @@ function renderNeedleCards(){
   if (panel){ if (!modeCards.length){ panel.style.display='none'; return; } panel.style.display=''; }
   const cards = modeCards.filter(c => !NEEDLE_DISMISSED.has(c.id)).slice(0, 6);
   NEEDLE_ACTION_BY_ID = {};
-  cards.forEach(c => { NEEDLE_ACTION_BY_ID[c.id] = c.action || {}; });
+  cards.forEach(c => { NEEDLE_ACTION_BY_ID[c.id] = c; });
   if (meta){
     const t = window.__needleAsOf ? new Date(window.__needleAsOf).toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit'}) : '';
-    meta.innerHTML = `${cards.length} ${cards.length===1?'move':'moves'}${t?` · as of ${t}`:''} <button class="needle-meta-link" id="needle-refresh" title="Refresh">↻</button>`;
+    meta.innerHTML = `${cards.length} ${cards.length===1?'nudge':'nudges'}${t?` · as of ${t}`:''} <button class="needle-meta-link" id="needle-refresh" title="Refresh">↻</button>`;
   }
   if (!cards.length){
-    body.innerHTML = '<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">Every rock is on track. 🎉</div>';
+    body.innerHTML = '<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">Nothing pressing across the zones — you\'re current. 🎉</div>';
   } else {
-    body.innerHTML = cards.map(c => `
-      <div class="needle-card zone-${needleEsc(c.zone)}" data-id="${needleEsc(c.id)}">
+    body.innerHTML = cards.map(c => {
+      const check = c.kind === 'milestone' ? '<div class="quest-check" data-act="complete" title="Mark done"></div>' : '';
+      const actBtn = c.kind === 'milestone' ? '' : '<button class="needle-act">'+needleEsc((c.action && c.action.label) || 'Open')+'</button>';
+      return `<div class="needle-card zone-${needleEsc(c.zone)}" data-id="${needleEsc(c.id)}">
+        ${check}
         <div class="needle-main">
           <div class="needle-toprow">
             <span class="needle-zone zone-${needleEsc(c.zone)}">${needleEsc(c.zoneLabel)}</span>
@@ -5165,11 +5150,9 @@ function renderNeedleCards(){
           </div>
           <div class="needle-why">${needleEsc(c.why)}</div>
         </div>
-        <div class="needle-actions">
-          <button class="needle-act">${needleEsc((c.action && c.action.label) || 'Open')}</button>
-          <button class="needle-dismiss" title="Dismiss for today" aria-label="Dismiss">×</button>
-        </div>
-      </div>`).join('');
+        <div class="needle-actions">${actBtn}<button class="needle-dismiss" title="Dismiss for today" aria-label="Dismiss">×</button></div>
+      </div>`;
+    }).join('');
   }
   document.getElementById('needle-refresh')?.addEventListener('click', async (e)=>{ e.stopPropagation(); await fetchNeedleCards(true); renderNeedleCards(); });
   body.querySelectorAll('.needle-card').forEach(el => {
@@ -5180,12 +5163,12 @@ function renderNeedleCards(){
     });
     el.querySelector('.needle-act')?.addEventListener('click', async (e)=>{
       e.stopPropagation();
-      const act = NEEDLE_ACTION_BY_ID[id] || {};
-      if (act.kind === 'jump' && act.tab){
+      const act = (NEEDLE_ACTION_BY_ID[id] || {}).action || {};
+      if (act.kind === 'link' && act.url){
+        window.open(window.toNotionLink ? window.toNotionLink(act.url) : act.url, '_blank', 'noopener');
+      } else if (act.kind === 'jump' && act.tab){
         document.querySelector(`.tab[data-tab="${act.tab}"]`)?.click();
         window.scrollTo({ top:0, behavior:'smooth' });
-      } else if (act.kind === 'link' && act.url){
-        window.open(window.toNotionLink ? window.toNotionLink(act.url) : act.url, '_blank', 'noopener');
       } else if (act.kind === 'touchpoint' && act.contactId){
         const btn = el.querySelector('.needle-act'); const prev = btn.textContent;
         btn.disabled = true; btn.textContent = 'Logging…';
