@@ -3010,6 +3010,18 @@ app.get('/auth/xero', (req, res) => {
   res.redirect(`https://login.xero.com/identity/connect/authorize?${params}`);
 });
 
+// TEMP diagnostic — shows exactly what scopes/redirect prod is sending (no secrets).
+app.get('/auth/xero/debug', (req, res) => {
+  res.json({
+    commit: process.env.RAILWAY_GIT_COMMIT_SHA || 'unknown',
+    scopes: XERO_SCOPES,
+    scopeString: XERO_SCOPES.join(' '),
+    redirectUri: `${originFromReq(req)}/auth/xero/callback`,
+    clientIdSet: !!process.env.XERO_CLIENT_ID,
+    tenantSet: !!process.env.XERO_TENANT_ID,
+  });
+});
+
 app.get('/auth/xero/callback', async (req, res) => {
   const code = req.query.code;
   if (!code) return res.status(400).send('No code received');
