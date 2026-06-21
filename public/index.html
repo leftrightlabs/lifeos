@@ -127,37 +127,46 @@
   .tab-content.active { display: block; }
   /* ===== Unified nav: Today · Messages · Execute · Zones (replaces the scrolling tab bar) ===== */
   #tabs { display: none; }
-  .mainnav { display: flex; align-items: stretch; gap: 2px; border-bottom: 1px solid var(--navy-faint); margin-bottom: 28px; position: relative; }
+  .navrow { display: flex; align-items: center; gap: 16px; border-bottom: 1px solid var(--navy-faint); margin-bottom: 14px; }
+  .mainnav { display: flex; align-items: stretch; gap: 2px; }
+  .lensbar { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .nav-mode, .nav-me { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-dim); padding: 8px 14px; border-radius: 999px; background: rgba(148,163,184,0.06); border: 1px solid transparent; cursor: pointer; white-space: nowrap; }
+  .nav-mode:hover, .nav-me:hover { color: var(--navy); }
+  .nav-mode .nm-ic { display: inline-flex; }
+  .nav-mode .nm-ic svg { width: 14px; height: 14px; }
+  .nav-mode.work.on { background: #5d9cec; color: var(--navy-accent); }
+  .nav-mode.personal.on { background: #8fb3e6; color: var(--navy-accent); }
+  .nav-me .nme-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--navy-faint); }
+  .nav-me.on { color: var(--lime); border-color: var(--lime); background: var(--lime-faint); }
+  .nav-me.on .nme-dot { background: var(--lime); }
+  body.role-member .nav-mode { display: none; }
   .navitem { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 18px; cursor: pointer; font-weight: 600; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--navy-dim); border: none; border-bottom: 2px solid transparent; background: none; font-family: var(--font-body); white-space: nowrap; }
   .navitem:hover { color: var(--navy); }
   .navitem.on { color: var(--navy); border-bottom-color: var(--lime); font-weight: 800; }
   .navitem .ni-ic { display: inline-flex; }
   .navitem .ni-ic svg { width: 16px; height: 16px; }
   .navitem .ni-caret { font-size: 9px; opacity: 0.55; }
-  .zonepop { display: none; position: absolute; top: 100%; right: 0; margin-top: 6px; z-index: 200; background: var(--white); border: 1px solid var(--navy-faint); border-radius: 14px; padding: 8px; box-shadow: 0 16px 44px rgba(0,0,0,0.45); min-width: 260px; }
-  .zonepop.open { display: block; }
-  .zonepop .zp-group-label { font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; padding: 9px 8px 5px; }
-  .zonepop .zp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-  .zonepop .zp-item { padding: 11px 13px; border-radius: 9px; cursor: pointer; color: var(--navy); font-size: 13px; font-weight: 600; background: rgba(148,163,184,0.05); }
-  .zonepop .zp-item:hover { background: var(--lime-faint); color: var(--lime); }
-  .zonepop .zp-item.on { background: var(--lime); color: var(--navy-accent); }
-  .zonepop .zp-modes { display: flex; gap: 4px; padding: 2px 2px 9px; margin-bottom: 5px; border-bottom: 1px solid var(--navy-faint); }
-  .zonepop .zp-mode { flex: 1; padding: 8px 6px; border-radius: 8px; border: none; background: rgba(148,163,184,0.06); color: var(--navy-dim); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; font-family: var(--font-body); }
-  .zonepop .zp-mode:hover:not(.on) { color: var(--navy); }
-  .zonepop .zp-mode.on { background: var(--lime); color: var(--navy-accent); }
+  .zonesub { display: none; gap: 6px; margin: 0 0 16px; flex-wrap: wrap; }
+  .zonesub-item { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-dim); padding: 8px 15px; border-radius: 999px; background: rgba(148,163,184,0.06); border: none; cursor: pointer; font-family: var(--font-body); white-space: nowrap; }
+  .zonesub-item:hover { color: var(--navy); }
+  .zonesub-item.on { color: var(--navy-accent); background: var(--lime); }
+  .zonesub.work .zonesub-item.on { background: #5d9cec; }
+  .zonesub.personal .zonesub-item.on { background: #8fb3e6; }
   #mode-lens { display: none; }  /* mode control folded into the Zones popup */
-  .execsub { display: none; gap: 6px; margin: -14px 0 22px; flex-wrap: wrap; }
+  .execsub { display: none; gap: 6px; margin: 0 0 18px; flex-wrap: wrap; }
   .execsub-item { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-dim); padding: 8px 15px; border-radius: 999px; background: rgba(148,163,184,0.06); border: none; cursor: pointer; font-family: var(--font-body); }
   .execsub-item:hover { color: var(--navy); }
   .execsub-item.on { color: var(--navy-accent); background: var(--lime); }
   @media (max-width: 720px) {
+    .navrow { display: contents; }
     .mainnav { position: fixed; bottom: 0; left: 0; right: 0; margin: 0; z-index: 150; background: var(--white); border-top: 1px solid var(--navy-faint); border-bottom: none; padding: 0 2px; box-shadow: 0 -4px 22px rgba(0,0,0,0.3); }
     .navitem { flex: 1; flex-direction: column; gap: 3px; padding: 8px 2px 10px; border-bottom: none; font-size: 9px; letter-spacing: 0.03em; }
     .navitem.on { border-bottom: none; color: var(--lime); }
     .navitem .ni-ic svg { width: 21px; height: 21px; }
     .navitem .ni-caret { display: none; }
-    .zonepop { position: fixed; left: 10px; right: 10px; bottom: 70px; top: auto; margin: 0; border-radius: 16px; min-width: 0; }
-    .execsub { margin: 0 0 16px; }
+    .lensbar { gap: 7px; flex-wrap: wrap; margin: 2px 0 14px; }
+    .zonesub { margin: 0 0 14px; flex-wrap: nowrap; overflow-x: auto; }
+    .execsub { margin: 0 0 14px; }
     body { padding-bottom: 80px; }
     .app-footer { bottom: 74px !important; }
     .triage-fab { bottom: 84px !important; }
@@ -2614,9 +2623,6 @@
   .mkt-kpi.okr .k-num { color: var(--lime); }
   .mkt-kpi[data-mkt-kpi] { cursor: pointer; transition: border-color 0.15s, background 0.15s; }
   .mkt-kpi[data-mkt-kpi]:hover { border-color: rgba(var(--edge-rgb), 0.22); background: rgba(var(--edge-rgb), 0.06); }
-  .mkt-scope { display: inline-flex; gap: 3px; background: rgba(var(--edge-rgb), 0.05); border: 1px solid var(--navy-faint); border-radius: 999px; padding: 3px; margin-bottom: 16px; }
-  .mkt-scope-btn { appearance: none; background: none; border: none; font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--navy-dim); padding: 6px 15px; border-radius: 999px; cursor: pointer; }
-  .mkt-scope-btn.on { background: var(--lime); color: var(--navy-accent); }
   .mkt-kpi-list-title { font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--lime); text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 16px; }
   .mkt-kpis-okr { grid-template-columns: repeat(3, 1fr); }
   .mkt-strip-label { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; margin: 4px 2px 8px; }
@@ -3205,8 +3211,11 @@ window.lrl = (function(){
     <button class="tab tab-ctx" data-tab="relationships" data-modes="personal">Relationships</button>
   </div>
 
-  <nav class="mainnav" id="mainnav"></nav>
-  <div class="zonepop" id="zonepop"></div>
+  <div class="navrow">
+    <nav class="mainnav" id="mainnav"></nav>
+    <div class="lensbar" id="lensbar"></div>
+  </div>
+  <div class="zonesub" id="zonesub"></div>
   <div class="execsub" id="execsub"></div>
 
   <!-- COMMAND TAB -->
@@ -9541,16 +9550,16 @@ document.addEventListener('visibilitychange', async () => {
 (function(){
   const STATUSES = ['Idea','Drafting','Review','Approved','Scheduled','Published'];
   const COLLAPSE_KEY = 'lrl-mkt-collapsed-v1';
-  const MKT = { loaded:false, loading:false, data:null, cal:null, calMonth:null, calSel:null, assetsById:{}, collapsed:{}, scope:'all' };
+  const MKT = { loaded:false, loading:false, data:null, cal:null, calMonth:null, calSel:null, assetsById:{}, collapsed:{} };
   try { MKT.collapsed = JSON.parse(localStorage.getItem(COLLAPSE_KEY) || '{}'); } catch(_){}
-  try { MKT.scope = localStorage.getItem('lrl-mkt-scope') || 'all'; } catch(_){}
-  // "Me" scope filters the asset views to content assigned to the current user.
+  // Global "Me" filter (nav toggle → body.me-on): show only assets assigned to me.
   function mineFilter(a){
-    if (MKT.scope !== 'mine') return true;
+    if (!document.body.classList.contains('me-on')) return true;
     const myId = window.LRL_ME && window.LRL_ME.notionUserId;
     if (!myId) return true; // can't identify the user → don't hide anything
     return (a.assigned||[]).some(u => u && u.id === myId);
   }
+  window.addEventListener('lrl-memode-changed', ()=>{ if (MKT.data || MKT.loaded) renderMktBody(); });
 
   const mEsc = (s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const chiToday = ()=> new Date().toLocaleDateString('en-CA',{timeZone:'America/Chicago'});
@@ -9755,14 +9764,13 @@ document.addEventListener('visibilitychange', async () => {
   function renderMktBody(){
     const body = document.getElementById('mkt-body'); if (!body) return;
     const d = MKT.data || {};
-    const mine = MKT.scope === 'mine';
+    const mine = document.body.classList.contains('me-on');
     const q = queueAssets().filter(([,a])=>mineFilter(a));
     const week = (d.thisWeek||[]).filter(mineFilter);
     const pubToday = (d.publishedToday||[]).filter(mineFilter).length;
     const overdueN = q.filter(([b])=>b==='overdue').length;
     const todayN = q.filter(([b])=>b==='today').length;
     const today = chiToday();
-    const scopeToggle = `<div class="mkt-scope"><button class="mkt-scope-btn${mine?'':' on'}" data-mkt-scope="all">Everyone</button><button class="mkt-scope-btn${mine?' on':''}" data-mkt-scope="mine">Me</button></div>`;
 
     // OKR strip — published output against the quarterly lens.
     const stats = MKT.stats || {};
@@ -9786,7 +9794,7 @@ document.addEventListener('visibilitychange', async () => {
     const queueInner = q.length ? q.map(([b,a])=>cardHtml(a,b)).join('') : '<div class="mkt-empty">Nothing to publish right now — you\'re all caught up. 🎉</div>';
     const weekInner = week.length ? week.map(a=>`<div class="mkt-row" data-mkt-open="${a.id}"><span class="mkt-row-date">${dateChip(a.publishDate)}</span><span class="mkt-row-name">${mEsc(a.name)}</span><span class="mkt-status ${statusCls(a.status)}">${mEsc(a.status||'—')}</span></div>`).join('') : '<div class="mkt-empty">Nothing scheduled in the next 7 days.</div>';
 
-    body.innerHTML = scopeToggle + okrStrip + kpis
+    body.innerHTML = okrStrip + kpis
       + section('queue','Publish Queue', q.length, overdueN>0, queueInner)
       + section('week','This Week', week.length, false, weekInner)
       + section('cal','Content Calendar', (MKT.cal&&MKT.cal.days)?Object.values(MKT.cal.days).reduce((n,a)=>n+a.filter(mineFilter).length,0):0, false, calendarHtml());
@@ -9850,9 +9858,6 @@ document.addEventListener('visibilitychange', async () => {
   // ---- delegated events (covers body + modal) ----
   document.addEventListener('click', async (e)=>{
     const t = e.target;
-    // Scope toggle (Everyone / Me)
-    const scopeEl = t.closest('[data-mkt-scope]');
-    if (scopeEl){ MKT.scope = scopeEl.dataset.mktScope; try{localStorage.setItem('lrl-mkt-scope', MKT.scope);}catch(_){}; renderMktBody(); window.lrl?.haptic?.('tap'); return; }
     // KPI filter list
     const kpiEl = t.closest('[data-mkt-kpi]');
     if (kpiEl){ openMktKpiList(kpiEl.dataset.mktKpi); return; }
@@ -10507,12 +10512,10 @@ document.addEventListener('visibilitychange', async () => {
     {g:'today',    label:'Today',    icon:'<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'},
     {g:'messages', label:'Messages', icon:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/>'},
     {g:'execute',  label:'Execute',  icon:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="m9 13 2 2 4-4"/>'},
-    {g:'zones',    label:'Zones', caret:true, icon:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'},
   ];
   const EXEC = [ {k:'projects',label:'Projects'}, {k:'autofocus',label:'Tasks'}, {k:'review',label:'Review'} ];
   const WORK_Z = [ {k:'marketing',label:'Attract'},{k:'pipeline',label:'Convert'},{k:'deliver',label:'Deliver'},{k:'finance',label:'Scale'},{k:'team',label:'Team'} ];
   const PERS_Z = [ {k:'health',label:'Health'},{k:'finance-personal',label:'Wealth'},{k:'lego',label:'LEGO'},{k:'relationships',label:'Relationships'} ];
-  const ALL_Z = [...WORK_Z, ...PERS_Z];
   const EXEC_KEYS = EXEC.map(e=>e.k);
   const GROUP = { command:'today', comms:'messages', projects:'execute', autofocus:'execute', review:'execute' };
   let lastExec = 'autofocus';
@@ -10522,76 +10525,74 @@ document.addEventListener('visibilitychange', async () => {
   const curContent = () => { const a=document.querySelector('.tab-content.active'); return a ? a.dataset.content : 'command'; };
   const groupOf = dc => GROUP[dc] || 'zones';
   const curMode = () => document.body.dataset.mode || 'all';
+  const setMode = m => { const b=document.querySelector('.mode-btn[data-mode="'+m+'"]'); if(b) b.click(); };
 
-  const nav = document.getElementById('mainnav');
-  const pop = document.getElementById('zonepop');
-  const es  = document.getElementById('execsub');
-  if (!nav || !pop || !es) return;
+  const nav  = document.getElementById('mainnav');
+  const lens = document.getElementById('lensbar');
+  const zs   = document.getElementById('zonesub');
+  const es   = document.getElementById('execsub');
+  if (!nav || !lens || !zs || !es) return;
 
-  nav.innerHTML = NAV.map(n => '<button class="navitem" data-nav="'+n.g+'"><span class="ni-ic">'+svg(n.icon)+'</span><span class="ni-lb">'+n.label+'</span>'+(n.caret?'<span class="ni-caret">▾</span>':'')+'</button>').join('');
-  nav.appendChild(pop); // keep the popup inside the (positioned) nav so the desktop dropdown anchors under it
-  nav.querySelectorAll('.navitem').forEach(b => b.addEventListener('click', e => {
+  // Core destinations
+  nav.innerHTML = NAV.map(n => '<button class="navitem" data-nav="'+n.g+'"><span class="ni-ic">'+svg(n.icon)+'</span><span class="ni-lb">'+n.label+'</span></button>').join('');
+  nav.querySelectorAll('.navitem').forEach(b => b.addEventListener('click', () => {
     const g = b.dataset.nav;
-    if (g==='zones'){ e.stopPropagation(); toggleZones(); return; }
-    closeZones();
     if (g==='today') clickTab('command');
     else if (g==='messages') clickTab('comms');
     else if (g==='execute') clickTab(EXEC_KEYS.indexOf(curContent())>=0 ? curContent() : lastExec);
   }));
 
+  // Lens bar: Work / Personal lens toggles + global Me filter. Modes act like
+  // filters — tapping the active one turns it off (back to All).
+  const MODE_IC = {
+    work: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+    personal: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  };
+  lens.innerHTML =
+    '<button class="nav-mode work" data-mode-toggle="work"><span class="nm-ic">'+svg(MODE_IC.work)+'</span>Work</button>'
+    + '<button class="nav-mode personal" data-mode-toggle="personal"><span class="nm-ic">'+svg(MODE_IC.personal)+'</span>Personal</button>'
+    + '<button class="nav-me" data-me-toggle aria-label="Show only my items"><span class="nme-dot"></span>Me</button>';
+  lens.querySelector('[data-mode-toggle="work"]').addEventListener('click', ()=> setMode(curMode()==='work' ? 'all' : 'work'));
+  lens.querySelector('[data-mode-toggle="personal"]').addEventListener('click', ()=> setMode(curMode()==='personal' ? 'all' : 'personal'));
+  lens.querySelector('[data-me-toggle]').addEventListener('click', toggleMe);
+
+  // Execute sub-nav (Projects / Tasks / Review)
   es.innerHTML = EXEC.map(x=>'<button class="execsub-item" data-k="'+x.k+'">'+x.label+'</button>').join('');
   es.querySelectorAll('.execsub-item').forEach(b => b.addEventListener('click', ()=>clickTab(b.dataset.k)));
 
-  let zoneFilter = 'work'; // which group the popup shows (popup-local; the app lens only changes on commit)
-  const setMode = m => { const b=document.querySelector('.mode-btn[data-mode="'+m+'"]'); if(b) b.click(); };
-  function renderZones(){
-    const dc = curContent();
-    const isMember = document.body.classList.contains('role-member');
-    if (isMember) zoneFilter = 'work';
-    const labels = { all:'All', work:'Work', personal:'Personal' };
-    const modeRow = isMember ? '' : '<div class="zp-modes">'+['all','work','personal'].map(k=>'<button class="zp-mode'+(k!=='all'&&zoneFilter===k?' on':'')+'" data-m="'+k+'">'+labels[k]+'</button>').join('')+'</div>';
-    // One group at a time (less overwhelming): Work/Personal re-filter in place; a zone commits its lens.
-    const zones = zoneFilter==='personal' ? PERS_Z : WORK_Z;
-    const tiles = '<div class="zp-grid">'+zones.map(z=>'<div class="zp-item'+(z.k===dc?' on':'')+'" data-z="'+z.k+'">'+z.label+'</div>').join('')+'</div>';
-    pop.innerHTML = modeRow + tiles;
-    pop.querySelectorAll('.zp-mode').forEach(b => b.addEventListener('click', e => {
-      e.stopPropagation(); const k = b.dataset.m;
-      if (k==='all'){ setMode('all'); closeZones(); }   // All → combined dashboard + close
-      else { zoneFilter = k; renderZones(); }            // Work/Personal → re-filter in place, stay open
-    }));
-    pop.querySelectorAll('.zp-item').forEach(it => it.addEventListener('click', ()=>{ setMode(zoneFilter); clickTab(it.dataset.z); closeZones(); }));
+  // Zone sub-strip — visible whenever a Work/Personal lens is on (even on Execute)
+  function renderZoneSub(){
+    const m = curMode(), dc = curContent();
+    if (m!=='work' && m!=='personal'){ zs.style.display='none'; zs.innerHTML=''; return; }
+    const zones = m==='work' ? WORK_Z : PERS_Z;
+    zs.className = 'zonesub ' + m;
+    zs.style.display = 'flex';
+    zs.innerHTML = zones.map(z=>'<button class="zonesub-item'+(z.k===dc?' on':'')+'" data-z="'+z.k+'">'+z.label+'</button>').join('');
+    zs.querySelectorAll('.zonesub-item').forEach(b=>b.addEventListener('click', ()=>clickTab(b.dataset.z)));
   }
-  function positionPop(){
-    const zi = nav.querySelector('[data-nav="zones"]');
-    if (window.innerWidth > 720 && zi) {       // desktop: drop under the Zones item (nav is the offsetParent)
-      pop.style.left = zi.offsetLeft + 'px';
-      pop.style.right = 'auto';
-    } else {                                   // mobile: fall back to the CSS bottom-sheet
-      pop.style.left = '';
-      pop.style.right = '';
-    }
-  }
-  function toggleZones(){ if(pop.classList.contains('open')) closeZones(); else { zoneFilter = curMode()==='personal' ? 'personal' : 'work'; renderZones(); positionPop(); pop.classList.add('open'); } }
-  function closeZones(){ pop.classList.remove('open'); }
-  document.addEventListener('click', e => { if(!e.target.closest('#zonepop') && !e.target.closest('[data-nav="zones"]')) closeZones(); });
-  window.addEventListener('resize', closeZones);
 
-  const ZICON = {
-    work: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
-    personal: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
-    all: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
-  };
+  // Global "Me" filter — persists across tabs + reloads via body.me-on; tabs with
+  // a me-filter read the class and re-render on lrl-memode-changed.
+  function applyMeFromStore(){ let on=false; try{ on = localStorage.getItem('lrl-me-mode')==='1'; }catch(e){} document.body.classList.toggle('me-on', on); }
+  function toggleMe(){
+    const on = !document.body.classList.contains('me-on');
+    document.body.classList.toggle('me-on', on);
+    try{ localStorage.setItem('lrl-me-mode', on?'1':'0'); }catch(e){}
+    window.dispatchEvent(new Event('lrl-memode-changed'));
+    window.lrl?.haptic?.('tap');
+    syncNav();
+  }
+  applyMeFromStore();
+
   window.syncNav = function(){
     const dc = curContent(), g = groupOf(dc), m = curMode();
     nav.querySelectorAll('.navitem').forEach(n => n.classList.toggle('on', n.dataset.nav===g));
+    lens.querySelector('[data-mode-toggle="work"]').classList.toggle('on', m==='work');
+    lens.querySelector('[data-mode-toggle="personal"]').classList.toggle('on', m==='personal');
+    lens.querySelector('[data-me-toggle]').classList.toggle('on', document.body.classList.contains('me-on'));
     es.style.display = (g==='execute') ? 'flex' : 'none';
     if (g==='execute'){ lastExec = dc; es.querySelectorAll('.execsub-item').forEach(b=>b.classList.toggle('on', b.dataset.k===dc)); }
-    const zItem = nav.querySelector('[data-nav="zones"]');
-    const zlb = zItem.querySelector('.ni-lb'), zic = zItem.querySelector('.ni-ic');
-    const z = ALL_Z.find(z=>z.k===dc);
-    if (zlb) zlb.textContent = z ? z.label : 'Zones';
-    if (zic) zic.innerHTML = svg(ZICON[m] || ZICON.all);          // icon reflects the current lens
-    zItem.style.color = m==='work' ? '#5d9cec' : (m==='personal' ? '#8fb3e6' : '');
+    renderZoneSub();
   };
   window.addEventListener('lrl-mode-changed', syncNav);
   syncNav();
