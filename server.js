@@ -2919,10 +2919,10 @@ app.post('/api/checkin/send', async (req, res) => {
 
 // =================== XERO (Finance tab) ===================
 
-// This Xero app grants a fixed, granular scope set (confirmed by decoding the
-// live token). The broad `accounting.reports.read` is NOT recognized and was
-// causing invalid_scope — so we request the proven-working granular scopes and
-// add only `accounting.transactions.read` (needed for /Invoices overdue nudges).
+// This Xero app uses the NEW granular scopes (Xero is phasing out broad ones).
+// Confirmed against the app's allowed-scope list in the developer portal:
+// there is no `accounting.transactions.read` (superseded) — invoices/bills are
+// now read via `accounting.invoices.read`. Request only scopes in that list.
 const XERO_SCOPES = [
   'offline_access',
   'accounting.reports.aged.read',
@@ -2931,7 +2931,7 @@ const XERO_SCOPES = [
   'accounting.reports.balancesheet.read',
   'accounting.contacts.read',
   'accounting.banktransactions.read',
-  'accounting.transactions.read',   // NEW: invoices/bills — Scale overdue nudges
+  'accounting.invoices.read',   // NEW: invoices + bills (Type=ACCPAY) — Scale overdue nudges
 ];
 
 let _xeroAccess = { token: null, exp: 0 };
