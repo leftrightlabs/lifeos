@@ -3645,6 +3645,28 @@ app.get('/api/needle/today', async (req, res) => {
                 action: { label: 'Log a touch', kind: 'touchpoint', contactId: c.id, contactName: c.name } });
             });
         } catch (e) { console.error('needle:overdue', e.message); }
+        // Speaking stages pitched but not booked → follow up to lock the booking.
+        try {
+          const r = await notion.dataSources.query({
+            data_source_id: '96f47e7e-9797-4d96-9abb-e5dcb7df13a3',
+            filter: { or: [
+              { property: 'Status', status: { equals: 'Pitched' } },
+              { property: 'Status', status: { equals: 'Following Up' } },
+            ] },
+            sorts: [{ property: 'Last Touched', direction: 'ascending' }],
+            page_size: 10,
+          });
+          r.results.slice(0, 3).forEach((p) => {
+            const name = p.properties?.Name?.title?.[0]?.plain_text || '(opportunity)';
+            const status = p.properties?.Status?.status?.name || 'Pitched';
+            const lt = p.properties?.['Last Touched']?.date?.start || null;
+            const dSince = lt ? Math.max(0, Math.round((todayMs - Date.parse(lt + 'T00:00:00Z')) / 864e5)) : null;
+            out.push({ id: `speak:${p.id}`, zone: 'convert', title: name, url: p.url,
+              why: `${status} — follow up to book${dSince != null ? ` · ${dSince}d since touch` : ''}`,
+              score: 56 + (dSince != null ? Math.min(dSince / 5, 14) : 6),
+              action: { label: 'Open', kind: 'jump', tab: 'pipeline' } });
+          });
+        } catch (e) { console.error('needle:speaking', e.message); }
         return out;
       })();
 
@@ -3711,13 +3733,30 @@ app.get('/api/needle/today', async (req, res) => {
             }
           }
         } catch (e) { console.error('needle:scale', e.message); }
+        // Scorecard metrics off-track (peek the cached Scale scorecard, if loaded).
+        try {
+          const u = userContext.getStore()?.user;
+          const sc = cache.get(u ? `scale-scorecard::${u.id || u.email}` : 'scale-scorecard')?.v;
+          (sc?.offTrack || []).slice(0, 2).forEach((mt) => {
+            const fmtN = (n) => (typeof n === 'number' ? Math.round(n).toLocaleString('en-US') : n);
+            const vs = (mt.actual != null && mt.goal != null) ? ` · ${fmtN(mt.actual)} of ${fmtN(mt.goal)} ${mt.period || ''}`.trimEnd() : '';
+            out.push({ id: `metric:${mt.id || mt.metric}`, zone: 'scale',
+              title: mt.metric || 'Scorecard metric',
+              why: `${mt.status === 'red' ? 'Behind goal' : 'At risk'}${vs}`,
+              score: mt.status === 'red' ? 67 : 57,
+              action: { label: 'Open in Scale', kind: 'jump', tab: 'finance' } });
+          });
+        } catch (e) { console.error('needle:scorecard', e.message); }
         return out;
       })();
 
-      // ---- Merge: at most 2 per zone (keeps it cross-zone), then top 6 by score ----
+      // ---- Merge: guarantee each zone's top nudge (cross-zone mix), then fill to 6, max 2/zone ----
       const byZone = { attract, convert, deliver, scale };
-      let picked = [];
-      for (const z of Object.keys(byZone)) picked.push(...byZone[z].sort((a, b) => b.score - a.score).slice(0, 2));
+      const ranked = {};
+      for (const z of Object.keys(byZone)) ranked[z] = byZone[z].slice().sort((a, b) => b.score - a.score).slice(0, 2);
+      let picked = Object.keys(byZone).map((z) => ranked[z][0]).filter(Boolean);
+      const rest = Object.keys(byZone).map((z) => ranked[z][1]).filter(Boolean).sort((a, b) => b.score - a.score);
+      picked.push(...rest.slice(0, Math.max(0, 6 - picked.length)));
       picked.sort((a, b) => b.score - a.score);
       picked = picked.slice(0, 6).map((c) => ({ ...c, zoneLabel: NEEDLE_ZONE_LABEL[c.zone] }));
       return { asOf: new Date().toISOString(), cards: picked };
