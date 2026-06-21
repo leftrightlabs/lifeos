@@ -136,6 +136,7 @@ const CACHE_TTL_OVERRIDES = {
   'projects-board': 5 * 60_000,  // Projects tab board (area/system maps + paginated projects)
   'weather': 20 * 60_000,        // current conditions change slowly
   'lego-summary': 10 * 60_000,   // LEGO collection/build rollups change slowly
+  'needle-prod-projects': 30 * 60_000, // which projects are in the Production area changes slowly
 };
 async function cached(key, fn) {
   // Namespace per signed-in user so one person's cached data is never served to
@@ -837,6 +838,30 @@ async function fetchRelationNameMap(dsId) {
     cursor = r.has_more ? r.next_cursor : null;
   } while (cursor);
   return map;
+}
+
+// Project ids whose AREA is "Production" — where all client (billable) projects
+// live. Used to scope the needle's "closed without time logged" nudge to billable
+// work. Returns a Set of WORK_PROJECTS page ids.
+async function productionProjectIds() {
+  if (!notion) return new Set();
+  const norm = (s) => (s || '').replace(/[^a-z]/gi, '').toLowerCase();
+  const areaMap = await fetchRelationNameMap(PROJECT_AREA_DS);
+  const prodAreaId = Object.keys(areaMap).find((id) => norm(areaMap[id]) === 'production');
+  const ids = new Set();
+  if (!prodAreaId) return ids;
+  let cursor;
+  do {
+    const r = await notion.dataSources.query({
+      data_source_id: WORK_PROJECTS_DS,
+      filter: { property: 'AREA', relation: { contains: prodAreaId } },
+      page_size: 100,
+      start_cursor: cursor,
+    }).catch(() => ({ results: [], has_more: false }));
+    for (const p of r.results) ids.add(p.id);
+    cursor = r.has_more ? r.next_cursor : null;
+  } while (cursor);
+  return ids;
 }
 
 // Resolve a single page's title directly (cached). Fallback for relation ids the
@@ -3609,6 +3634,41 @@ app.get('/api/needle/today', async (req, res) => {
               action: { label: 'Done', kind: 'complete-task', taskId: t.id } };
           }).sort((a, b) => b.score - a.score).slice(0, 3));
         } catch (e) { console.error('needle:tasks', e.message); }
+        // Client/project work closed recently with NO time logged — billing-leak nudge (TIME LOG [DB] rollup).
+        // Window on the COMPLETED date (not last-edited) so the Notion-transition backlog — old tasks
+        // bulk-edited during migration but completed long ago — doesn't get falsely flagged.
+        try {
+          const sinceDone = chicagoDateNDaysAgo(7); // completed within the last week
+          const prodIds = await cached('needle-prod-projects', productionProjectIds); // billable = task's project is in the Production area
+          const dn = await notion.dataSources.query({
+            data_source_id: WORK_TASKS_DS,
+            filter: { and: [
+              { property: 'Status', status: { equals: 'Done' } },
+              { property: 'Completed', date: { on_or_after: sinceDone } },
+            ] },
+            sorts: [{ property: 'Completed', direction: 'descending' }],
+            page_size: 40,
+          });
+          const cards = [];
+          for (const p of dn.results) {
+            const props = p.properties || {};
+            const manual = props['Manual Time (Hours)']?.rollup?.number || 0;
+            const ext = props['External Logged (hrs)']?.number || 0;
+            const trackedMins = props['Time Tracked (Mins)']?.formula?.number || 0;
+            if (manual + ext + trackedMins / 60 > 0.001) continue;             // time recorded — skip
+            if (!(props['Project']?.relation || []).some((r) => prodIds.has(r.id))) continue; // Production-area (client/billable) work only
+            const t = simplifyTask(p, 'work');
+            const comp = props['Completed']?.date?.start || null;
+            const compMs = comp ? Date.parse(comp.slice(0, 10) + 'T00:00:00Z') : null;
+            const ago = compMs != null ? Math.round((todayMs - compMs) / 864e5) : null;
+            const when = ago == null ? '' : ago <= 0 ? 'today' : ago === 1 ? 'yesterday' : `${ago}d ago`;
+            cards.push({ id: `notime:${t.id}`, zone: 'deliver', title: t.name, url: t.url,
+              why: `Closed ${when} · no time logged — log to bill`,
+              score: 60 - Math.min(ago || 0, 7),   // freshest closes rank highest; below urgent due/overdue
+              action: { label: 'Log time', kind: 'link', url: t.url } });
+          }
+          out.push(...cards.sort((a, b) => b.score - a.score).slice(0, 2));
+        } catch (e) { console.error('needle:notime', e.message); }
         return out;
       })();
 
