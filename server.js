@@ -3007,7 +3007,9 @@ app.get('/auth/xero', (req, res) => {
     scope: XERO_SCOPES.join(' '),
     state: 'lifeos',
   });
-  res.redirect(`https://login.xero.com/identity/connect/authorize?${params}`);
+  // Xero reads a "+" in the query-string scope as a literal char, not a space,
+  // so a multi-scope request fails with invalid_scope. Force %20-encoded spaces.
+  res.redirect(`https://login.xero.com/identity/connect/authorize?${params.toString().replace(/\+/g, '%20')}`);
 });
 
 // TEMP diagnostic — shows exactly what scopes/redirect prod is sending (no secrets).
