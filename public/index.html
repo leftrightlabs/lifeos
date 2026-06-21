@@ -157,25 +157,29 @@
   .execsub-item { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-dim); padding: 8px 15px; border-radius: 999px; background: rgba(148,163,184,0.06); border: none; cursor: pointer; font-family: var(--font-body); }
   .execsub-item:hover { color: var(--navy); }
   .execsub-item.on { color: var(--navy-accent); background: var(--lime); }
-  /* Tablet portrait / narrow desktop: the zone strip drops to its own second row. */
-  @media (max-width: 1100px) and (min-width: 721px) {
+  /* Tablet & mobile: nav stays a single top row; the zone strip drops below it. */
+  @media (max-width: 1100px) {
     .navrow { flex-wrap: wrap; }
     .lensbar { order: 1; }
     .zonesub { order: 2; flex-basis: 100%; margin: 12px 0 0; }
   }
+  /* Mobile: one unified top nav (no bottom bar). Core tabs = compact icon+label
+     (thumb-nav style); mode toggles collapse to icons; Me drops its dot. */
   @media (max-width: 720px) {
-    .navrow { display: flex; flex-direction: column; align-items: stretch; gap: 0; border-bottom: none; margin: 0; }
-    .mainnav { position: fixed; bottom: 0; left: 0; right: 0; margin: 0; z-index: 150; background: var(--white); border-top: 1px solid var(--navy-faint); border-bottom: none; padding: 0 2px; box-shadow: 0 -4px 22px rgba(0,0,0,0.3); }
-    .navitem { flex: 1; flex-direction: column; gap: 3px; padding: 8px 2px 10px; border-bottom: none; font-size: 9px; letter-spacing: 0.03em; }
-    .navitem.on { border-bottom: none; color: var(--lime); }
-    .navitem .ni-ic svg { width: 21px; height: 21px; }
+    .navrow { gap: 8px; }
+    .mainnav { gap: 4px; }
+    .navitem { flex-direction: column; gap: 2px; padding: 5px 5px; border-bottom: none; font-size: 8.5px; letter-spacing: 0.02em; }
+    .navitem.on { color: var(--lime); }
+    .navitem .ni-ic svg { width: 20px; height: 20px; }
     .navitem .ni-caret { display: none; }
-    .lensbar { order: 1; margin: 2px 0 12px; gap: 7px; flex-wrap: wrap; }
-    .zonesub { order: 2; flex-basis: auto; margin: 0 0 14px; flex-wrap: nowrap; overflow-x: auto; }
+    .lensbar { gap: 5px; }
+    .nav-mode { padding: 7px 8px; gap: 0; }
+    .nav-mode .nm-lb { display: none; }
+    .nav-mode .nm-ic svg { width: 18px; height: 18px; }
+    .nav-me { padding: 7px 9px; }
+    .nav-me .nme-dot { display: none; }
+    .zonesub { margin: 10px 0 14px; flex-wrap: nowrap; overflow-x: auto; }
     .execsub { margin: 0 0 14px; }
-    body { padding-bottom: 80px; }
-    .app-footer { bottom: 74px !important; }
-    .triage-fab { bottom: 84px !important; }
     .version-tag { display: none; }
   }
 
@@ -10591,8 +10595,8 @@ document.addEventListener('visibilitychange', async () => {
     personal: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   };
   lens.innerHTML =
-    '<button class="nav-mode work" data-mode-toggle="work"><span class="nm-ic">'+svg(MODE_IC.work)+'</span>Work</button>'
-    + '<button class="nav-mode personal" data-mode-toggle="personal"><span class="nm-ic">'+svg(MODE_IC.personal)+'</span>Personal</button>'
+    '<button class="nav-mode work" data-mode-toggle="work" aria-label="Work" title="Work"><span class="nm-ic">'+svg(MODE_IC.work)+'</span><span class="nm-lb">Work</span></button>'
+    + '<button class="nav-mode personal" data-mode-toggle="personal" aria-label="Personal" title="Personal"><span class="nm-ic">'+svg(MODE_IC.personal)+'</span><span class="nm-lb">Personal</span></button>'
     + '<button class="nav-me" data-me-toggle aria-label="Show only my items"><span class="nme-dot"></span>Me</button>';
   lens.querySelector('[data-mode-toggle="work"]').addEventListener('click', ()=> setMode(curMode()==='work' ? 'all' : 'work'));
   lens.querySelector('[data-mode-toggle="personal"]').addEventListener('click', ()=> setMode(curMode()==='personal' ? 'all' : 'personal'));
