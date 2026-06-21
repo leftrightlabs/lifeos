@@ -5169,6 +5169,14 @@ function renderNeedleCards(){
       } else if (act.kind === 'jump' && act.tab){
         document.querySelector(`.tab[data-tab="${act.tab}"]`)?.click();
         window.scrollTo({ top:0, behavior:'smooth' });
+      } else if (act.kind === 'complete-task' && act.taskId){
+        const btn = el.querySelector('.needle-act'); const prev = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Done ✓';
+        try {
+          await patchTask(act.taskId, { status: 'Done' });
+          window.lrl?.haptic?.('success'); window.lrl?.toast?.('Task marked done ✓', 'success');
+          NEEDLE_DISMISSED.add(id); await saveNeedleDismissed(); renderNeedleCards();
+        } catch(err){ btn.disabled = false; btn.textContent = prev; window.lrl?.toast?.('Could not update', 'error'); }
       } else if (act.kind === 'touchpoint' && act.contactId){
         const btn = el.querySelector('.needle-act'); const prev = btn.textContent;
         btn.disabled = true; btn.textContent = 'Logging…';

@@ -3577,6 +3577,31 @@ app.get('/api/needle/today', async (req, res) => {
             }
           }
         } catch (e) { console.error('needle:deliver', e.message); }
+        // Upcoming high-priority tasks (mine, due soon or overdue) — check off inline.
+        try {
+          const nid = currentNotionUserId();
+          const soon = chicagoDateNDaysAgo(-3); // 3 days ahead
+          const tr = await notion.dataSources.query({
+            data_source_id: WORK_TASKS_DS,
+            filter: { and: [
+              { property: 'Status', status: { does_not_equal: 'Done' } },
+              { property: 'Assigned', people: { contains: nid || '00000000-0000-0000-0000-000000000000' } },
+              { property: 'Due', date: { on_or_before: soon } },
+            ] },
+            sorts: [{ property: 'Due', direction: 'ascending' }],
+            page_size: 25,
+          });
+          out.push(...tr.results.map((p) => simplifyTask(p, 'work')).map((t) => {
+            const dueMs = t.dueStart ? Date.parse(t.dueStart + 'T00:00:00Z') : null;
+            const dd = dueMs != null ? Math.round((dueMs - todayMs) / 864e5) : 99;
+            const pri = (t.priority || '').toLowerCase();
+            const score = (dd < 0 ? 76 : dd === 0 ? 70 : dd === 1 ? 64 : dd <= 3 ? 58 : 50) + (/urgent|high/.test(pri) ? 12 : /low/.test(pri) ? -8 : 0);
+            const when = dd < 0 ? `${Math.abs(dd)}d overdue` : dd === 0 ? 'due today' : `due in ${dd}d`;
+            return { id: `task:${t.id}`, zone: 'deliver', title: t.name, url: t.url,
+              why: `${t.priority || 'Task'} · ${when}`, score,
+              action: { label: 'Done', kind: 'complete-task', taskId: t.id } };
+          }).sort((a, b) => b.score - a.score).slice(0, 3));
+        } catch (e) { console.error('needle:tasks', e.message); }
         return out;
       })();
 
@@ -3646,6 +3671,23 @@ app.get('/api/needle/today', async (req, res) => {
               action: { label: 'Open in Attract', kind: 'jump', tab: 'marketing' } });
           });
         } catch (e) { console.error('needle:attract', e.message); }
+        // Finished content with no publish date → schedule it.
+        try {
+          const cmap = await fetchMarketingChannelMap().catch(() => ({}));
+          const rNS = await notion.dataSources.query({
+            data_source_id: MARKETING_ASSETS_DS,
+            filter: { and: [
+              { property: 'Status', status: { equals: 'Approved' } },
+              { property: 'Publish Date', date: { is_empty: true } },
+            ] },
+            page_size: 10,
+          });
+          rNS.results.map((pg) => serializeMarketingAsset(pg, cmap)).forEach((a) => {
+            out.push({ id: `asset-ns:${a.id}`, zone: 'attract', title: a.name, url: a.url,
+              why: 'Approved — needs a publish date', score: 52,
+              action: { label: 'Open', kind: 'jump', tab: 'marketing' } });
+          });
+        } catch (e) { console.error('needle:attract-ns', e.message); }
         return out;
       })();
 
