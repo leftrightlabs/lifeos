@@ -3021,12 +3021,32 @@ app.get('/auth/xero/debug', async (req, res) => {
     const payload = JSON.parse(Buffer.from(at.split('.')[1], 'base64').toString('utf8'));
     currentTokenScopes = payload.scope; // the scopes the live, working token holds
   } catch (e) { tokenErr = e.message; }
+
+  // Probe: can the current token read per-contact overdue balances? (No re-auth.)
+  let contactsProbe = null, contactsErr = null;
+  try {
+    const d = await xeroGet('/api.xro/2.0/Contacts', { page: '1', includeArchived: 'false' });
+    const cs = d.Contacts || [];
+    const arOverdue = cs
+      .map(c => ({ name: c.Name, overdue: c.Balances?.AccountsReceivable?.Overdue || 0 }))
+      .filter(x => x.overdue > 0).sort((a, b) => b.overdue - a.overdue).slice(0, 5);
+    const apOverdue = cs
+      .map(c => ({ name: c.Name, overdue: c.Balances?.AccountsPayable?.Overdue || 0 }))
+      .filter(x => x.overdue > 0).sort((a, b) => b.overdue - a.overdue).slice(0, 5);
+    contactsProbe = {
+      count: cs.length,
+      hasBalancesField: cs[0] ? typeof cs[0].Balances : 'no-contacts',
+      arOverdue, apOverdue,
+    };
+  } catch (e) { contactsErr = e.message; }
+
   res.json({
     commit: process.env.RAILWAY_GIT_COMMIT_SHA || 'unknown',
     requestedScopes: XERO_SCOPES,
     requestedScopeString: XERO_SCOPES.join(' '),
     currentTokenScopes,   // ground truth: what this app is actually allowed to grant
     tokenErr,
+    contactsProbe, contactsErr,
     redirectUri: `${originFromReq(req)}/auth/xero/callback`,
     clientIdSet: !!process.env.XERO_CLIENT_ID,
     tenantSet: !!process.env.XERO_TENANT_ID,
