@@ -2921,13 +2921,9 @@ app.post('/api/checkin/send', async (req, res) => {
 
 const XERO_SCOPES = [
   'offline_access',
-  'accounting.reports.aged.read',
-  'accounting.reports.banksummary.read',
-  'accounting.reports.profitandloss.read',
-  'accounting.reports.balancesheet.read',
+  'accounting.reports.read',        // all reports: P&L, balance sheet, aged AR/AP, bank summary
+  'accounting.transactions.read',   // invoices, bills, bank transactions (Scale overdue nudges)
   'accounting.contacts.read',
-  'accounting.banktransactions.read',
-  'accounting.transactions.read',   // invoices + bills (for the Scale overdue nudges)
 ];
 
 let _xeroAccess = { token: null, exp: 0 };
