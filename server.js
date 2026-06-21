@@ -3030,23 +3030,21 @@ app.get('/auth/xero/debug', async (req, res) => {
     currentTokenScopes = payload.scope; // the scopes the live, working token holds
   } catch (e) { tokenErr = e.message; }
 
-  // Probe: can the current token read per-contact overdue balances? (No re-auth.)
-  let contactsProbe = null, contactsErr = null;
+  // Probe: overdue invoices (AR) + bills (AP) — the data accounting.invoices.read unlocks.
+  let invoicesProbe = null, invoicesErr = null;
   try {
-    const d = await xeroGet('/api.xro/2.0/Contacts', { page: '1', includeArchived: 'false' });
-    const cs = d.Contacts || [];
-    const arOverdue = cs
-      .map(c => ({ name: c.Name, overdue: c.Balances?.AccountsReceivable?.Overdue || 0 }))
-      .filter(x => x.overdue > 0).sort((a, b) => b.overdue - a.overdue).slice(0, 5);
-    const apOverdue = cs
-      .map(c => ({ name: c.Name, overdue: c.Balances?.AccountsPayable?.Overdue || 0 }))
-      .filter(x => x.overdue > 0).sort((a, b) => b.overdue - a.overdue).slice(0, 5);
-    contactsProbe = {
-      count: cs.length,
-      hasBalancesField: cs[0] ? typeof cs[0].Balances : 'no-contacts',
-      arOverdue, apOverdue,
+    const parseXDate = (xd) => { const m = /\/Date\((\d+)/.exec(String(xd || '')); return m ? new Date(+m[1]).toISOString().slice(0, 10) : null; };
+    const d = await xeroGet('/api.xro/2.0/Invoices', { Statuses: 'AUTHORISED', order: 'DueDate' });
+    const todayISO = chicagoTodayISODate();
+    const all = (d.Invoices || []).map(inv => ({ contact: inv.Contact?.Name || '', number: inv.InvoiceNumber || '', due: parseXDate(inv.DueDate), amountDue: inv.AmountDue || 0, type: inv.Type }));
+    const overdue = all.filter(i => i.amountDue > 0 && i.due && i.due < todayISO);
+    invoicesProbe = {
+      totalAuthorised: all.length,
+      overdueCount: overdue.length,
+      overdueAR: overdue.filter(i => i.type === 'ACCREC').slice(0, 5),
+      overdueAP: overdue.filter(i => i.type === 'ACCPAY').slice(0, 5),
     };
-  } catch (e) { contactsErr = e.message; }
+  } catch (e) { invoicesErr = e.message; }
 
   res.json({
     commit: process.env.RAILWAY_GIT_COMMIT_SHA || 'unknown',
@@ -3054,7 +3052,7 @@ app.get('/auth/xero/debug', async (req, res) => {
     requestedScopeString: XERO_SCOPES.join(' '),
     currentTokenScopes,   // ground truth: what this app is actually allowed to grant
     tokenErr,
-    contactsProbe, contactsErr,
+    invoicesProbe, invoicesErr,
     redirectUri: `${originFromReq(req)}/auth/xero/callback`,
     clientIdSet: !!process.env.XERO_CLIENT_ID,
     tenantSet: !!process.env.XERO_TENANT_ID,
