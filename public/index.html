@@ -257,6 +257,7 @@
   .needle-card.zone-convert { border-left-color:var(--lime); }
   .needle-card.zone-deliver { border-left-color:#c98bdb; }
   .needle-card.zone-scale   { border-left-color:#ffb74d; }
+  .needle-card.zone-rock    { border-left-color:var(--lime); }
   .needle-main { flex:1; min-width:0; }
   .needle-toprow { display:flex; align-items:center; gap:8px; margin-bottom:3px; }
   .needle-zone { font-size:9px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; padding:2px 6px; border-radius:3px; flex-shrink:0; }
@@ -264,6 +265,7 @@
   .needle-zone.zone-convert { background:var(--lime-faint); color:var(--lime); }
   .needle-zone.zone-deliver { background:rgba(201,139,219,0.16); color:#d7a6e6; }
   .needle-zone.zone-scale   { background:rgba(255,183,77,0.16); color:#ffb74d; }
+  .needle-zone.zone-rock    { background:var(--lime-faint); color:var(--lime); }
   .needle-title { font-size:13.5px; font-weight:600; color:var(--navy); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .needle-why { font-size:11.5px; color:var(--navy-dim); line-height:1.35; }
   .needle-actions { display:flex; align-items:center; gap:6px; flex-shrink:0; }
@@ -5100,17 +5102,47 @@ async function saveNeedleDismissed(){
 }
 async function fetchNeedleCards(fresh){
   try {
-    const r = await fetch('/api/needle/today' + (fresh ? '?fresh=1' : ''));
-    const data = await r.json();
-    NEEDLE_CARDS = data.cards || [];
-    window.__needleAsOf = data.asOf || null;
+    // "Move the Needle" = the quarterly rocks that need progress, by lens (Work/Personal).
+    if (fresh || !GOALS_DATA.length) await fetchGoals({ fresh: !!fresh });
+    NEEDLE_CARDS = buildRockNeedleCards();
+    window.__needleAsOf = new Date().toISOString();
   } catch(e){ console.error('fetchNeedleCards', e); NEEDLE_CARDS = []; }
+}
+function buildRockNeedleCards(){
+  const fmtD = ds => { if(!ds) return ''; const dt=new Date(ds+'T12:00:00'); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
+  const today = new Date(); today.setHours(0,0,0,0);
+  return (GOALS_DATA || [])
+    .map(g => {
+      const total = (g.progress && g.progress.total) || 0;
+      const done  = (g.progress && g.progress.done) || 0;
+      const pct = total ? Math.round(done/total*100) : 0;
+      if (pct >= 100 || (g.status||'').toLowerCase() === 'done') return null; // rock already there
+      const dl = g.targetDeadline ? new Date(g.targetDeadline+'T12:00:00') : null;
+      const daysLeft = dl ? Math.round((dl - today)/864e5) : null;
+      const overdue = daysLeft != null && daysLeft < 0;
+      let why = total === 0 ? 'No milestones yet — define the first step' : `${pct}% · ${done}/${total} milestones`;
+      if (dl) why += ` · ${overdue ? `${Math.abs(daysLeft)}d overdue` : `due ${fmtD(g.targetDeadline)}`}`;
+      // Attention: lower progress + nearer/overdue deadline = higher rank.
+      let score = (100 - pct);
+      if (total === 0) score += 25;
+      if (overdue) score += 40; else if (daysLeft != null && daysLeft <= 14) score += 20;
+      return { id: 'rock:'+g.id, mode: g.source, zone: 'rock', zoneLabel: 'Rock',
+               title: g.name, why, score, action: { label: 'Open', kind: 'link', url: g.url } };
+    })
+    .filter(Boolean)
+    .sort((a,b) => b.score - a.score);
 }
 function renderNeedleCards(){
   const body = document.getElementById('needle-body');
   const meta = document.getElementById('needle-panel-meta');
+  const panel = document.getElementById('needle-panel');
   if (!body) return;
-  const cards = NEEDLE_CARDS.filter(c => !NEEDLE_DISMISSED.has(c.id));
+  // Lens-aware: show only the current mode's zones (All = everything). The needle
+  // is work-only for now, so it hides in Personal mode until personal sources exist.
+  const m = document.body.dataset.mode || 'all';
+  const modeCards = NEEDLE_CARDS.filter(c => m==='all' || c.mode===m);
+  if (panel){ if (!modeCards.length){ panel.style.display='none'; return; } panel.style.display=''; }
+  const cards = modeCards.filter(c => !NEEDLE_DISMISSED.has(c.id)).slice(0, 6);
   NEEDLE_ACTION_BY_ID = {};
   cards.forEach(c => { NEEDLE_ACTION_BY_ID[c.id] = c.action || {}; });
   if (meta){
@@ -5118,7 +5150,7 @@ function renderNeedleCards(){
     meta.innerHTML = `${cards.length} ${cards.length===1?'move':'moves'}${t?` · as of ${t}`:''} <button class="needle-meta-link" id="needle-refresh" title="Refresh">↻</button>`;
   }
   if (!cards.length){
-    body.innerHTML = '<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">Nothing urgent — pipeline, delivery and content are current. 🎉</div>';
+    body.innerHTML = '<div style="color:var(--navy-dim);font-size:13px;padding:8px 0">Every rock is on track. 🎉</div>';
   } else {
     body.innerHTML = cards.map(c => `
       <div class="needle-card zone-${needleEsc(c.zone)}" data-id="${needleEsc(c.id)}">
@@ -5148,6 +5180,8 @@ function renderNeedleCards(){
       if (act.kind === 'jump' && act.tab){
         document.querySelector(`.tab[data-tab="${act.tab}"]`)?.click();
         window.scrollTo({ top:0, behavior:'smooth' });
+      } else if (act.kind === 'link' && act.url){
+        window.open(window.toNotionLink ? window.toNotionLink(act.url) : act.url, '_blank', 'noopener');
       } else if (act.kind === 'touchpoint' && act.contactId){
         const btn = el.querySelector('.needle-act'); const prev = btn.textContent;
         btn.disabled = true; btn.textContent = 'Logging…';
@@ -5175,6 +5209,8 @@ async function initNeedlePanel(){
   await loadNeedleDismissed();
   await fetchNeedleCards();
   renderNeedleCards();
+  window.addEventListener('lrl-mode-changed', renderNeedleCards); // re-filter when the lens changes
+  window.addEventListener('lrl-refresh', () => window.refreshNeedle(true)); // rebuild rocks on global refresh
 }
 window.refreshNeedle = async (fresh) => { await fetchNeedleCards(!!fresh); renderNeedleCards(); };
 document.addEventListener('DOMContentLoaded', () => { initNeedlePanel(); });
