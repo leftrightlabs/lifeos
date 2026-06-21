@@ -1,0 +1,1908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>LRL OS · Today</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<meta name="theme-color" content="#0A0D16">
+<style>
+:root {
+  --bg: #0A0D16;
+  --surface: #111826;
+  --surface-2: #0D131F;
+  --border: #1C2536;
+  --border-soft: #161E2C;
+
+  /* Anchor color ramp — indigo */
+  --accent:       #6366F1;
+  --accent-dim:   #8183F4;
+  --accent-soft:  rgba(99,102,241,.13);
+  --accent-muted: rgba(99,102,241,.25);
+  --accent-deep:  #4F52CC;
+
+  /* Work = cobalt blue — serious, corporate */
+  --work:      #2563EB;
+  --work-soft: rgba(37,99,235,.13);
+
+  /* Personal = cyan-teal — bright, energetic, clearly not work */
+  --personal:      #06B6D4;
+  --personal-soft: rgba(6,182,212,.13);
+
+  /* Legacy aliases */
+  --teal:      var(--personal);
+  --teal-soft: var(--personal-soft);
+
+  --text: #DCE3EC;
+  --text-2: #8A9BB0;
+  --text-3: #54667E;
+  --text-4: #364457;
+
+  /* Semantic */
+  --red:   #F26D6D;  --red-soft:   rgba(242,109,109,.12);
+  --amber: #EBB454;  --amber-soft: rgba(235,180,84,.12);
+  --green: #4FD6A0;  --green-soft: rgba(79,214,160,.12);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── APP ── */
+.app { max-width: 1080px; margin: 0 auto; position: relative; }
+
+/* TOP BAR */
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 13px 22px; gap: 12px; border-bottom: 1px solid var(--border-soft); }
+.logo { color: var(--accent); font-weight: 800; font-size: 13px; letter-spacing: .09em; white-space: nowrap; }
+.topbar-right { display: flex; align-items: center; gap: 7px; }
+.mode-toggle { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 3px; gap: 2px; }
+.mode-btn { background: none; border: none; font-size: 10px; font-weight: 700; letter-spacing: .05em; padding: 5px 13px; border-radius: 16px; cursor: pointer; color: var(--text-3); font-family: inherit; white-space: nowrap; transition: all .2s; }
+.mode-btn.active { background: var(--work); color: #fff; }
+.mode-btn.active.personal { background: var(--personal); color: #fff; }
+.mode-btn.active.all { background: var(--accent); color: #fff; }
+.me-pill { background: var(--accent); color: #fff; font-size: 11px; font-weight: 600; padding: 5px 13px; border-radius: 22px; white-space: nowrap; cursor: pointer; }
+
+/* NAV */
+.nav { display: flex; padding: 0 22px; border-bottom: 1px solid var(--border-soft); overflow-x: auto; scrollbar-width: none; }
+.nav::-webkit-scrollbar { display: none; }
+.nav-btn { background: none; border: none; font-size: 11px; padding: 11px 14px; cursor: pointer; border-bottom: 2px solid transparent; letter-spacing: .05em; color: var(--text-3); white-space: nowrap; font-family: inherit; font-weight: 600; }
+.nav-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+.nav-sep { width: 1px; background: var(--border); margin: 9px 6px; flex-shrink: 0; }
+.nav-domain { font-size: 8px; color: var(--text-4); padding: 11px 6px 11px 3px; text-transform: uppercase; letter-spacing: .09em; align-self: center; white-space: nowrap; }
+
+/* GREETING */
+.greeting-zone { padding: 24px 22px 20px; border-bottom: 1px solid var(--border-soft); background: radial-gradient(120% 100% at 0% 0%, rgba(99,102,241,.05) 0%, transparent 55%); }
+.greeting-top { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.greeting { font-size: 23px; font-weight: 700; letter-spacing: -.01em; }
+.greeting .name { color: var(--accent); }
+.greeting-meta { font-size: 11px; color: var(--text-3); letter-spacing: .04em; }
+.brief-lines { display: flex; flex-direction: column; gap: 9px; max-width: 760px; }
+.brief-line { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; line-height: 1.5; color: var(--text-2); }
+.brief-line strong { color: var(--text); font-weight: 600; }
+.brief-marker { width: 7px; height: 7px; border-radius: 50%; margin-top: 7px; flex-shrink: 0; }
+
+/* ── STREAK STRIP ── */
+.streak-strip { display: flex; gap: 10px; padding: 16px 22px 0; flex-wrap: wrap; }
+.streak-card { flex: 1; min-width: 220px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; position: relative; overflow: hidden; }
+.streak-card.work { border-left: 3px solid var(--work); }
+.streak-card.life { border-left: 3px solid var(--teal); }
+.streak-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; }
+.streak-name { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); }
+.streak-count { display: flex; align-items: baseline; gap: 6px; }
+.streak-flame { font-size: 26px; line-height: 1; }
+.streak-num { font-size: 30px; font-weight: 800; line-height: 1; }
+.streak-unit { font-size: 12px; color: var(--text-3); font-weight: 600; }
+.streak-savable { font-size: 11px; color: var(--amber); margin-top: 8px; display: flex; align-items: center; gap: 5px; }
+.streak-safe { font-size: 11px; color: var(--green); margin-top: 8px; display: flex; align-items: center; gap: 5px; }
+.streak-week { display: flex; gap: 5px; margin-top: 11px; }
+.day-pip { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.day-letter { font-size: 9px; color: var(--text-4); font-weight: 600; }
+.day-dot { width: 100%; height: 6px; border-radius: 3px; background: var(--border); position: relative; }
+.day-dot.hit { background: var(--accent); }
+.day-dot.hit.life { background: var(--teal); }
+.day-dot.frozen { background: var(--teal-soft); }
+.day-dot.weekend { background: repeating-linear-gradient(45deg, var(--border-soft), var(--border-soft) 2px, transparent 2px, transparent 4px); }
+.day-dot.today { box-shadow: 0 0 0 2px var(--amber); }
+.day-icon { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); font-size: 9px; }
+.freeze-btn { background: var(--teal-soft); border: 1px solid rgba(56,189,248,.2); color: var(--teal); font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 5px; cursor: pointer; font-family: inherit; }
+.streak-rule { font-size: 10px; color: var(--text-4); margin-top: 9px; line-height: 1.4; }
+
+/* ── LAYOUT ── */
+.layout { display: grid; grid-template-columns: 1fr 264px; }
+.main-col { padding: 22px; border-right: 1px solid var(--border-soft); display: flex; flex-direction: column; gap: 24px; }
+.side-col { padding: 22px 16px; background: var(--surface-2); display: flex; flex-direction: column; gap: 24px; }
+.sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; }
+.sec-title { font-size: 11px; font-weight: 700; color: var(--text-3); letter-spacing: .09em; text-transform: uppercase; }
+.sec-title .count { color: var(--text-4); font-weight: 500; margin-left: 4px; }
+.mini-btn { background: none; border: 1px solid var(--border); border-radius: 5px; font-size: 10px; font-weight: 600; color: var(--text-3); padding: 4px 9px; cursor: pointer; font-family: inherit; letter-spacing: .03em; }
+.mini-btn.on { background: var(--accent-soft); color: var(--accent); border-color: rgba(99,102,241,.3); }
+
+/* ── THE ONE THING ── */
+.onething { border-radius: 14px; padding: 24px; position: relative; overflow: hidden; background: linear-gradient(135deg, #161C2E 0%, #1A2138 100%); border: 1px solid #28304A; border-left: 4px solid var(--work); transition: all .4s; }
+.onething.completed { border-left-color: var(--green); background: linear-gradient(135deg, #14241E 0%, #16291F 100%); }
+.onething-label { font-size: 10px; font-weight: 700; color: var(--accent); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 7px; }
+.onething.completed .onething-label { color: var(--green); }
+.pulse-ring { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 rgba(99,102,241,.6); animation: pulsering 2.2s infinite; }
+@keyframes pulsering { 0% { box-shadow: 0 0 0 0 rgba(99,102,241,.5);} 70% { box-shadow: 0 0 0 8px rgba(99,102,241,0);} 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0);} }
+.onething-meta { display: flex; gap: 7px; margin-bottom: 11px; flex-wrap: wrap; align-items: center; }
+.ot-chip { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 4px; letter-spacing: .04em; }
+.ot-rocklink { font-size: 11px; color: var(--text-3); }
+.ot-rocklink b { color: var(--text-2); }
+.onething-title { font-size: 21px; font-weight: 700; color: #F1F5FB; line-height: 1.3; margin-bottom: 8px; letter-spacing: -.01em; }
+.onething-why { font-size: 13px; color: var(--text-2); line-height: 1.5; margin-bottom: 18px; max-width: 560px; }
+.onething-actions { display: flex; gap: 9px; flex-wrap: wrap; align-items: center; }
+.btn-go { border: none; padding: 11px 22px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; color: #fff; background: var(--accent); transition: transform .12s, filter .2s; }
+.btn-go:hover { filter: brightness(1.1); }
+.btn-go:active { transform: scale(.97); }
+.btn-done { border: none; padding: 11px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; color: var(--green); background: var(--green-soft); border: 1px solid rgba(79,214,160,.25); }
+.btn-ghost { background: rgba(255,255,255,.04); color: var(--text-2); border: 1px solid #28304A; padding: 11px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit; }
+.onething-orb { position: absolute; right: -40px; top: -40px; width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle, rgba(99,102,241,.1) 0%, transparent 70%); pointer-events: none; }
+
+/* Snooze flow */
+.snooze-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; animation: slideIn .25s ease; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-4px);} to { opacity: 1; transform: translateY(0);} }
+.snooze-prompt { font-size: 12px; color: var(--text-2); width: 100%; margin-bottom: 2px; }
+.snooze-opt { background: rgba(255,255,255,.04); border: 1px solid #28304A; color: var(--text-2); font-size: 12px; padding: 8px 13px; border-radius: 7px; cursor: pointer; font-family: inherit; transition: all .15s; }
+.snooze-opt:hover { border-color: var(--accent); color: var(--text); }
+.snooze-opt.blocked:hover { border-color: var(--amber); }
+
+/* Completion payoff */
+.payoff { display: flex; align-items: center; gap: 14px; }
+.payoff-check { width: 44px; height: 44px; border-radius: 50%; background: var(--green-soft); border: 2px solid var(--green); display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--green); flex-shrink: 0; animation: pop .4s cubic-bezier(.2,1.4,.4,1); }
+@keyframes pop { 0% { transform: scale(0);} 70% { transform: scale(1.15);} 100% { transform: scale(1);} }
+.payoff-text { display: flex; flex-direction: column; gap: 2px; }
+.payoff-title { font-size: 17px; font-weight: 700; color: var(--green); }
+.payoff-sub { font-size: 13px; color: var(--text-2); }
+.confetti { position: absolute; width: 7px; height: 7px; border-radius: 1px; pointer-events: none; opacity: 0; }
+
+/* ── ROCKS ── */
+.rocks-list { display: flex; flex-direction: column; gap: 6px; }
+.rock-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 10px; padding: 13px 15px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; cursor: pointer; border-left: 3px solid var(--border); transition: transform .12s; }
+.rock-card:hover { transform: translateX(2px); }
+.rock-card.risk { border-left-color: var(--red); }
+.rock-card.track { border-left-color: var(--green); }
+.rock-card.done { border-left-color: var(--text-4); opacity: .55; }
+.rock-title-row { display: flex; align-items: center; gap: 9px; }
+.rock-name { font-size: 14px; font-weight: 600; }
+.rock-name.struck { color: var(--text-3); text-decoration: line-through; }
+.rock-status-tag { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 4px; letter-spacing: .04em; }
+.rst-risk { background: var(--red-soft); color: var(--red); }
+.rst-track { background: var(--green-soft); color: var(--green); }
+.rst-done { background: rgba(84,102,126,.12); color: var(--text-3); }
+.rock-next { font-size: 12px; color: var(--text-3); grid-column: 1; }
+.rock-next .arr { color: var(--text-4); margin-right: 5px; }
+.rock-right { grid-row: 1 / span 2; grid-column: 2; display: flex; flex-direction: column; align-items: flex-end; gap: 7px; justify-content: center; }
+.rock-owner { font-size: 10px; font-weight: 700; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--border); color: var(--text-2); }
+.rock-mini-bar { width: 64px; height: 4px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.rock-mini-fill { height: 100%; border-radius: 3px; }
+.rock-frac { font-size: 10px; color: var(--text-3); }
+
+/* ── PLAN ── */
+.plan-list { display: flex; flex-direction: column; gap: 5px; }
+.plan-drag { cursor: grab; color: var(--text-4); font-size: 13px; flex-shrink: 0; padding: 0 2px; user-select: none; }
+.plan-drag:active { cursor: grabbing; }
+.sortable-ghost { opacity: .35; background: var(--surface-2) !important; }
+.sortable-drag { opacity: 1; }
+.plan-row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 9px; transition: opacity .3s; }
+.plan-row.done-row { opacity: .42; }
+.plan-num { font-size: 13px; font-weight: 800; color: var(--accent); min-width: 16px; text-align: center; }
+.plan-num.done-num { color: var(--green); }
+.plan-check { width: 19px; height: 19px; border: 2px solid var(--text-4); border-radius: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; transition: all .2s; }
+.plan-check:hover { border-color: var(--accent); }
+.plan-check.checked { border-color: var(--green); background: var(--green-soft); color: var(--green); }
+.plan-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.plan-name { font-size: 14px; }
+.plan-name.struck { color: var(--text-3); text-decoration: line-through; }
+.plan-project { font-size: 11px; color: var(--text-3); display: flex; align-items: center; gap: 6px; }
+.plan-src { font-size: 9px; font-weight: 700; letter-spacing: .03em; padding: 1px 5px; border-radius: 3px; }
+.plan-src.convert { background: var(--accent-soft); color: #A99EFF; }
+.plan-src.task { background: rgba(84,102,126,.14); color: var(--text-2); }
+.plan-tags { display: flex; gap: 5px; flex-wrap: wrap; flex-shrink: 0; }
+.plan-tag { font-size: 10px; padding: 2px 7px; border-radius: 4px; white-space: nowrap; font-weight: 600; }
+.pt-rock { background: var(--accent-soft); color: #A99EFF; }
+.pt-money { background: var(--green-soft); color: var(--green); }
+.pt-late { background: var(--amber-soft); color: var(--amber); }
+.pt-area { background: rgba(84,102,126,.13); color: var(--text-2); }
+.pt-personal { background: var(--personal-soft); color: var(--personal); }
+.pt-work     { background: var(--work-soft);     color: var(--work); }
+
+/* Plan row actions */
+.plan-menu-wrap { position: relative; flex-shrink: 0; }
+.plan-menu-btn { background: none; border: none; color: var(--text-4); font-size: 16px; line-height: 1; cursor: pointer; padding: 2px 6px; border-radius: 5px; transition: color .15s, background .15s; flex-shrink: 0; opacity: 0; }
+.plan-row:hover .plan-menu-btn, .plan-row.menu-open .plan-menu-btn { opacity: 1; }
+.plan-row.menu-open .plan-menu-btn { color: var(--text-2); background: var(--border); }
+@media (hover: none) { .plan-menu-btn { opacity: 1; } }
+.plan-menu-drop { position: absolute; right: 0; top: calc(100% + 4px); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; min-width: 175px; z-index: 50; overflow: hidden; box-shadow: 0 8px 28px rgba(0,0,0,.4); }
+.plan-menu-drop.hidden { display: none; }
+.plan-menu-item { display: flex; align-items: center; gap: 9px; padding: 9px 13px; font-size: 12.5px; color: var(--text-2); cursor: pointer; transition: background .1s; border: none; background: none; width: 100%; text-align: left; font-family: inherit; }
+.plan-menu-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
+.plan-menu-item .mi-icon { font-size: 13px; width: 16px; text-align: center; flex-shrink: 0; }
+.plan-menu-item.danger { color: var(--red); }
+.plan-menu-item.danger:hover { background: var(--red-soft); }
+.plan-reschedule-row { display: none; padding: 4px 13px 10px; }
+.plan-reschedule-row input[type="date"] { background: var(--bg); border: 1px solid var(--border); color: var(--text); font-size: 12px; padding: 5px 8px; border-radius: 6px; font-family: inherit; width: 100%; }
+.plan-menu-sep { height: 1px; background: var(--border-soft); margin: 3px 0; }
+
+/* ── SIDEBAR ── */
+.side-sec-title { font-size: 10px; font-weight: 700; color: var(--text-3); letter-spacing: .09em; text-transform: uppercase; margin-bottom: 12px; }
+.rings { display: flex; gap: 10px; justify-content: center; margin-bottom: 12px; }
+.ring-wrap { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.ring-lbl { font-size: 10px; color: var(--text-3); text-align: center; }
+.next-rock-box { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 8px; padding: 10px 12px; }
+.nr-label { font-size: 9px; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; }
+.nr-text { font-size: 12px; color: var(--text-2); line-height: 1.45; }
+.vcal { display: flex; flex-direction: column; }
+.vcal-row { display: flex; align-items: stretch; min-height: 30px; }
+.vcal-time { width: 42px; font-size: 10px; color: var(--text-4); text-align: right; padding-right: 9px; flex-shrink: 0; }
+.vcal-line { width: 2px; background: var(--border-soft); flex-shrink: 0; }
+.vcal-content { flex: 1; padding-left: 10px; padding-bottom: 7px; }
+.vcal-event { border-radius: 7px; padding: 7px 11px; font-size: 12px; font-weight: 600; border-left: 3px solid; }
+.vcal-event .sub { font-size: 10px; font-weight: 500; opacity: .65; display: block; margin-top: 1px; }
+.vcal-now { display: flex; align-items: center; position: relative; margin: 2px 0; }
+.vcal-now-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--amber); margin-left: 38px; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(235,180,84,.18); }
+.vcal-now-line { flex: 1; height: 2px; background: linear-gradient(90deg, var(--amber), transparent); }
+.vcal-now-lbl { font-size: 10px; color: var(--amber); font-weight: 700; position: absolute; right: 0; top: -7px; }
+.snap-grid { display: flex; flex-direction: column; gap: 5px; }
+.wx-chip { font-size: 10px; font-weight: 600; color: var(--amber); background: var(--amber-soft); padding: 3px 9px; border-radius: 12px; letter-spacing: .02em; }
+.snap-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 11px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 7px; }
+.snap-lbl { font-size: 12px; color: var(--text-3); }
+.snap-val { font-size: 13px; font-weight: 700; }
+
+/* ── WEEKEND SCREEN ── */
+.weekend-screen { position: fixed; inset: 0; z-index: 100; background: linear-gradient(160deg, #0A0D16 0%, #141029 45%, #1A1433 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; overflow: hidden; }
+.weekend-screen.hidden { display: none; }
+.wk-glow { position: absolute; width: 600px; height: 600px; border-radius: 50%; background: radial-gradient(circle, rgba(99,102,241,.12) 0%, transparent 60%); top: -150px; pointer-events: none; }
+.wk-glow.two { background: radial-gradient(circle, rgba(56,189,248,.1) 0%, transparent 60%); bottom: -200px; right: -100px; top: auto; }
+.wk-emoji { font-size: 64px; margin-bottom: 20px; animation: float 4s ease-in-out infinite; }
+@keyframes float { 0%,100% { transform: translateY(0);} 50% { transform: translateY(-10px);} }
+.wk-day { font-size: 12px; font-weight: 700; color: var(--teal); letter-spacing: .18em; text-transform: uppercase; margin-bottom: 14px; }
+.wk-message { font-size: 34px; font-weight: 800; color: #F1F5FB; line-height: 1.25; max-width: 620px; letter-spacing: -.01em; margin-bottom: 16px; }
+.wk-sub { font-size: 15px; color: var(--text-2); max-width: 440px; line-height: 1.6; margin-bottom: 32px; }
+.wk-streak-note { font-size: 13px; color: var(--text-3); margin-bottom: 28px; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.03); padding: 9px 16px; border-radius: 20px; border: 1px solid var(--border-soft); }
+.wk-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: center; }
+.wk-enter { background: rgba(255,255,255,.05); border: 1px solid var(--border); color: var(--text-3); font-size: 12px; font-weight: 600; padding: 9px 18px; border-radius: 8px; cursor: pointer; font-family: inherit; letter-spacing: .03em; transition: all .2s; }
+.wk-enter:hover { color: var(--text-2); border-color: var(--text-4); background: rgba(255,255,255,.07); }
+.wk-working { background: none; border: none; color: var(--text-4); font-size: 11px; cursor: pointer; font-family: inherit; text-decoration: underline; text-underline-offset: 3px; transition: color .2s; }
+.wk-working:hover { color: var(--amber); }
+
+/* ── RITUAL BARS ── */
+.ritual { background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: 10px; padding: 11px 13px; margin-bottom: 8px; }
+.ritual.evening { margin-bottom: 0; margin-top: 8px; }
+.ritual-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+.ritual-title { font-size: 11px; font-weight: 700; color: var(--text-2); display: flex; align-items: center; gap: 7px; }
+.ritual-progress { font-size: 10px; color: var(--text-3); font-weight: 600; }
+.ritual-progress.complete { color: var(--green); }
+.ritual-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ritual-chip { display: flex; align-items: center; gap: 7px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 18px; padding: 5px 11px 5px 8px; cursor: pointer; transition: all .15s; font-size: 12px; color: var(--text-2); }
+.ritual-chip:hover { border-color: var(--text-4); }
+.ritual-chip.checked { background: var(--green-soft); border-color: rgba(79,214,160,.25); color: var(--green); }
+.ritual-chip .rc-box { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--text-4); display: flex; align-items: center; justify-content: center; font-size: 9px; flex-shrink: 0; }
+.ritual-chip.checked .rc-box { border-color: var(--green); background: var(--green); color: #0A0D16; }
+.ritual-reward { font-size: 11px; color: var(--green); margin-top: 8px; display: none; align-items: center; gap: 5px; }
+.ritual-reward.show { display: flex; }
+.ritual-link { flex-shrink: 0; font-size: 10px; color: var(--text-4); text-decoration: none; padding: 2px 5px; border-radius: 4px; border: 1px solid var(--border); line-height: 1; transition: color .15s, border-color .15s; }
+.ritual-link:hover { color: var(--text-2); border-color: var(--text-3); }
+.ritual-chip.checked .ritual-link { opacity: .45; }
+
+/* Check-in Modal */
+.ci-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.ci-overlay.hidden { display: none; }
+.ci-modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 560px; overflow: hidden; }
+.ci-head { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid var(--border-soft); }
+.ci-title { font-size: 12px; font-weight: 700; letter-spacing: .07em; color: var(--text); text-transform: uppercase; }
+.ci-close { background: none; border: none; color: var(--text-3); font-size: 22px; cursor: pointer; padding: 2px 6px; border-radius: 6px; line-height: 1; transition: color .15s; }
+.ci-close:hover { color: var(--text-2); }
+.ci-body { padding: 16px 20px 20px; }
+.ci-loading { color: var(--text-3); font-style: italic; font-size: 13px; padding: 4px 0 8px; }
+.ci-textarea { width: 100%; min-height: 200px; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12.5px; line-height: 1.55; padding: 12px 14px; border-radius: 8px; resize: vertical; }
+.ci-textarea:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+.ci-meta { font-size: 11px; color: var(--text-3); margin-top: 7px; }
+.ci-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.ci-btn { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 8px 16px; border-radius: 999px; cursor: pointer; border: none; font-family: inherit; transition: opacity .15s; }
+.ci-btn.send { background: var(--accent); color: #fff; }
+.ci-btn.send:hover { opacity: .88; }
+.ci-btn.send:disabled { opacity: .35; cursor: not-allowed; }
+.ci-btn.copy { background: transparent; border: 1px solid var(--border); color: var(--text-2); }
+.ci-btn.copy:hover { border-color: var(--text-3); }
+.ci-status { font-size: 11px; color: var(--text-3); margin-left: auto; }
+.ci-status.sent { color: var(--green); font-weight: 600; }
+
+/* Weekend close button */
+.wk-close { position: absolute; top: 20px; right: 24px; background: none; border: none; color: var(--text-3); font-size: 22px; line-height: 1; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: color .15s; }
+.wk-close:hover { color: var(--text-2); }
+
+/* Peek banner */
+.peek-banner { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 90; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 8px 16px; font-size: 12px; color: var(--text-2); box-shadow: 0 8px 30px rgba(0,0,0,.4); display: flex; align-items: center; gap: 8px; }
+.peek-banner button { background: var(--teal-soft); border: 1px solid rgba(56,189,248,.25); color: var(--teal); font-size: 11px; font-weight: 600; padding: 4px 11px; border-radius: 14px; cursor: pointer; font-family: inherit; }
+
+/* ── PLAN INLINE ADD ── */
+.plan-add-wrap { padding: 8px 0 0; }
+.plan-add-form { display: none; gap: 8px; align-items: center; margin-top: 8px; }
+.plan-add-form.show { display: flex; }
+.plan-add-input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 13px; padding: 8px 12px; border-radius: 8px; min-width: 0; }
+.plan-add-input::placeholder { color: var(--text-4); }
+.plan-add-input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+.plan-add-src { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); font-size: 11px; font-weight: 600; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
+.plan-add-submit { background: var(--accent); color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0; }
+.plan-add-submit:disabled { opacity: .4; cursor: not-allowed; }
+.plan-add-msg { font-size: 11px; color: var(--text-4); margin-top: 4px; }
+
+/* ── FAB ── */
+.fab { position: fixed; bottom: 72px; right: 22px; width: 50px; height: 50px; border-radius: 50%; background: var(--accent); color: #fff; border: none; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 18px rgba(99,102,241,.45); z-index: 80; transition: transform .15s, filter .2s; }
+.fab:hover { filter: brightness(1.12); transform: scale(1.06); }
+.fab:active { transform: scale(.93); }
+
+/* ── FOOTER ── */
+.today-footer { display: flex; align-items: center; justify-content: flex-start; gap: 4px; padding: 10px 18px 20px; border-top: 1px solid var(--border-soft); }
+.footer-btn { background: none; border: none; color: var(--text-4); font-size: 17px; cursor: pointer; padding: 7px 9px; border-radius: 9px; transition: color .15s, background .15s; line-height: 1; font-family: inherit; }
+.footer-btn:hover { color: var(--text-2); background: var(--surface); }
+.footer-btn.active { color: var(--accent); background: var(--accent-soft); }
+.footer-stamp { font-size: 11px; font-weight: 600; color: var(--text-4); letter-spacing: .05em; text-transform: uppercase; margin-left: 6px; white-space: nowrap; }
+
+/* ── QUICK CAPTURE SHEET ── */
+.qc-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
+.qc-overlay.hidden { display: none; }
+.qc-sheet { background: var(--surface); border: 1px solid var(--border); border-bottom: none; border-radius: 20px 20px 0 0; width: 100%; max-width: 720px; padding: 28px 28px 36px; animation: slideUp .22s cubic-bezier(.4,0,.2,1); }
+@keyframes slideUp { from { transform: translateY(40px); opacity: .5; } to { transform: translateY(0); opacity: 1; } }
+.qc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.qc-label { font-size: 22px; font-weight: 700; color: var(--text); }
+.qc-close { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-3); font-size: 18px; cursor: pointer; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.qc-close:hover { color: var(--text-2); }
+.qc-body { display: flex; gap: 12px; align-items: flex-start; }
+.qc-input { flex: 1; background: var(--bg); border: 1.5px solid var(--accent); color: var(--text); font-family: inherit; font-size: 15px; padding: 14px 16px; border-radius: 12px; resize: none; min-height: 88px; line-height: 1.5; }
+.qc-input:focus { outline: none; }
+.qc-actions { display: flex; gap: 8px; margin-top: 0; align-items: flex-start; }
+.qc-submit { background: var(--accent); color: #fff; border: none; padding: 11px 26px; border-radius: 22px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; letter-spacing: .05em; white-space: nowrap; }
+.qc-submit:disabled { opacity: .4; }
+.qc-status { font-size: 11px; color: var(--text-3); margin-top: 8px; }
+.qc-status.ok { color: var(--green); font-weight: 600; }
+.qc-status.err { color: var(--red); }
+
+/* ── PRIVACY MODE ── */
+body.privacy .snap-val,
+body.privacy .streak-num { filter: blur(5px); user-select: none; }
+
+/* ── REFRESH SPIN ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin .7s linear infinite; display: inline-block; }
+
+/* ── LIGHT THEME ── */
+html.light {
+  --bg: #F0F2F8; --surface: #FFFFFF; --surface-2: #F5F6FC;
+  --border: #D8DCE9; --border-soft: #E4E8F2;
+  --text: #1A2233; --text-2: #4A5568; --text-3: #718096; --text-4: #A0AABB;
+  /* Soften transparencies on white */
+  --accent-soft:   rgba(99,102,241,.09);
+  --work-soft:     rgba(37,99,235,.09);
+  --personal-soft: rgba(6,182,212,.09);
+  --red-soft:      rgba(242,109,109,.09);
+  --amber-soft:    rgba(235,180,84,.09);
+  --green-soft:    rgba(79,214,160,.09);
+}
+/* One Thing card — replace hardcoded dark gradient */
+html.light .onething { background: linear-gradient(135deg, #EEF2FF 0%, #F0F4FF 100%); border-color: #C7D2FE; }
+html.light .onething-orb { background: radial-gradient(circle, rgba(99,102,241,.07) 0%, transparent 70%); }
+/* Weekend screen */
+html.light .weekend-screen { background: linear-gradient(160deg, #EEF2FF 0%, #E8EDFF 45%, #EDF4FF 100%); }
+html.light .wk-glow { background: radial-gradient(circle, rgba(99,102,241,.08) 0%, transparent 60%); }
+html.light .wk-date { color: var(--text-3); }
+html.light .wk-heading { color: var(--text); }
+/* Plan item rows — give a subtle card lift on white bg */
+html.light .plan-row { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 10px; margin-bottom: 2px; }
+/* Menu drop shadow — softer on light */
+html.light .plan-menu-drop { box-shadow: 0 8px 28px rgba(0,0,0,.12); }
+/* Quick capture input border */
+html.light .qc-input { border-color: var(--accent); background: var(--bg); }
+/* Ritual items */
+html.light .ritual-item { color: var(--text-2); }
+/* Snapshot values */
+html.light .snap-val { color: var(--text); }
+/* Footer stamp */
+html.light .footer-stamp { color: var(--text-3); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 720px) {
+  .layout { grid-template-columns: 1fr; }
+  .main-col { border-right: none; padding: 18px; }
+  .side-col { border-top: 1px solid var(--border-soft); }
+  .greeting { font-size: 20px; }
+  .onething-title { font-size: 19px; }
+  .btn-go, .btn-ghost, .btn-done { width: 100%; }
+  .onething-actions { flex-direction: column; align-items: stretch; }
+  .streak-strip { padding: 14px 18px 0; }
+  .nav-domain { display: none; }
+  .wk-message { font-size: 26px; }
+  .wk-emoji { font-size: 52px; }
+}
+@media (max-width: 420px) {
+  .topbar { padding: 11px 14px; }
+  .main-col { padding: 14px; }
+  .greeting-zone { padding: 18px 14px 14px; }
+  .streak-strip { padding: 12px 14px 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- Weekend screen: shown on Sat/Sun in Work mode. Use ?demo=weekend for local testing. -->
+<div class="weekend-screen hidden" id="weekendScreen">
+  <button class="wk-close" onclick="dismissWeekend()" title="Back to Personal">×</button>
+  <div class="wk-glow"></div>
+  <div class="wk-glow two"></div>
+  <div class="wk-emoji" id="wkEmoji">🌿</div>
+  <div class="wk-day" id="wkDay">SATURDAY · JUNE 21</div>
+  <div class="wk-message" id="wkMessage">Hey, it's the weekend.<br>Go touch some grass.</div>
+  <div class="wk-sub" id="wkSub">The business will still be here Monday. Your rocks are on track. Rest is part of the work.</div>
+  <div class="wk-streak-note">🔥 Your work streak is safe — weekends never break it</div>
+  <div class="wk-actions">
+    <button class="wk-enter" onclick="peekWeekend()">👀 Just a peek</button>
+    <button class="wk-working" onclick="workingWeekend()">Unfortunately, I'm working today →</button>
+  </div>
+</div>
+
+<div class="app" id="app">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="logo">◆ LRL OS</div>
+    <div class="topbar-right">
+      <div class="mode-toggle" id="modeToggle">
+        <button class="mode-btn active" data-mode="work" onclick="setMode('work')">WORK</button>
+        <button class="mode-btn" data-mode="all" onclick="setMode('all')">ALL</button>
+        <button class="mode-btn" data-mode="personal" onclick="setMode('personal')">PERSONAL</button>
+      </div>
+      <div class="me-pill" onclick="window.location='/'">ME</div>
+    </div>
+  </div>
+
+  <!-- NAV -->
+  <div class="nav" id="nav"></div>
+
+  <!-- GREETING -->
+  <div class="greeting-zone">
+    <div class="greeting-top">
+      <div class="greeting" id="greeting">Morning, <span class="name">Gretchen</span> ☕</div>
+      <div class="greeting-meta" id="greetingMeta">SUN JUN 21 · Q2 · 9 DAYS LEFT</div>
+    </div>
+    <div class="brief-lines" id="briefLines">
+      <div class="brief-line"><span class="brief-marker" style="background:var(--red);"></span><span><strong>$0 revenue this month and runway is tight.</strong> The fastest lever today is the $9,450 Hardaway decision — it's been waiting since April.</span></div>
+      <div class="brief-line"><span class="brief-marker" style="background:var(--amber);"></span><span>6 leads have gone cold (11+ days). One focused outreach block clears the whole backlog.</span></div>
+      <div class="brief-line"><span class="brief-marker" style="background:var(--green);"></span><span>Clean stretch from 2–6pm between swimming and dinner. <strong>That's your deep-work window.</strong></span></div>
+    </div>
+  </div>
+
+  <!-- STREAK STRIP -->
+  <div class="streak-strip" id="streakStrip"></div>
+
+  <!-- LAYOUT -->
+  <div class="layout">
+    <div class="main-col">
+
+      <div id="oneThingArea"></div>
+
+      <div>
+        <div class="sec-head">
+          <div class="sec-title"><span id="rocksTitle">Q2 Rocks</span> <span class="count" id="rocksCount">· 3 at risk · 9 days left</span></div>
+          <button class="mini-btn" id="rocksBtn" onclick="toggleRocks()">Collapse</button>
+        </div>
+        <div id="rocksBody"><div class="rocks-list" id="rocksList"></div></div>
+      </div>
+
+      <div>
+        <div class="sec-head">
+          <div class="sec-title">Today's Plan <span class="count" id="planCount">· 0 of 4 done</span></div>
+          <div style="display:flex;gap:6px;">
+            <button class="mini-btn" id="planAddBtn" onclick="toggleAddTask()" title="Add task" style="font-size:16px;padding:3px 11px;line-height:1;">+</button>
+            <button class="mini-btn" id="planHideBtn" onclick="toggleHideDone()">Hide done</button>
+          </div>
+        </div>
+        <div class="ritual" id="morningRitual"></div>
+        <div class="plan-list" id="planList"></div>
+        <div class="plan-add-wrap">
+          <div class="plan-add-form" id="planAddForm">
+            <select id="planAddSrc" class="plan-add-src">
+              <option value="work">Work</option>
+              <option value="personal">Personal</option>
+            </select>
+            <input type="text" id="planAddInput" class="plan-add-input" placeholder="Task name…"
+              onkeydown="if(event.key==='Enter')submitAddTask();if(event.key==='Escape')toggleAddTask()"/>
+            <button id="planAddSubmit" class="plan-add-submit" onclick="submitAddTask()">Add</button>
+          </div>
+          <div class="plan-add-msg" id="planAddMsg" style="display:none;"></div>
+        </div>
+        <div class="ritual evening" id="eveningRitual"></div>
+      </div>
+
+    </div>
+
+    <div class="side-col">
+      <div>
+        <div class="side-sec-title" id="progressTitle">Campaign Progress</div>
+        <div class="rings" id="rings"></div>
+        <div class="next-rock-box" id="nextRockBox">
+          <div class="nr-label">Most urgent rock</div>
+          <div class="nr-text" id="nextRockText">Tier 2 Journey — only 1 of 5 milestones done with 9 days left</div>
+        </div>
+      </div>
+      <div>
+        <div class="side-sec-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>Today's Schedule</span>
+          <span class="wx-chip" id="wxChip">☀️ 82° · Clear</span>
+        </div>
+        <div class="vcal" id="vcal"></div>
+      </div>
+      <div>
+        <div class="side-sec-title">Snapshot</div>
+        <div class="snap-grid" id="snapGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="today-footer">
+    <button class="footer-btn" data-action="privacy" onclick="togglePrivacy()" title="Privacy mode">👁</button>
+    <button class="footer-btn" data-action="theme"   onclick="toggleTheme()"   title="Toggle theme">🌙</button>
+    <button class="footer-btn" data-action="refresh" onclick="refreshData()"   title="Refresh data">↻</button>
+    <span class="footer-stamp" id="footerStamp"></span>
+  </div>
+</div>
+
+<!-- Brain dump FAB -->
+<button class="fab" onclick="openCapture()" title="Quick capture">⚡</button>
+
+<!-- Quick Capture Sheet -->
+<div class="qc-overlay hidden" id="qcOverlay" onclick="if(event.target===this)closeCapture()">
+  <div class="qc-sheet">
+    <div class="qc-head">
+      <span class="qc-label">Quick Capture</span>
+      <button class="qc-close" onclick="closeCapture()">×</button>
+    </div>
+    <div class="qc-body">
+      <textarea class="qc-input" id="qcInput" placeholder="Capture a task, find a project, or ask anything…"
+        onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey))submitCapture()"></textarea>
+      <div class="qc-actions">
+        <button class="qc-submit" id="qcSubmit" onclick="submitCapture()">SEND</button>
+        <span class="qc-status" id="qcStatus"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+const IS_WEEKEND = [0, 6].includes(new Date().getDay()); // 0=Sun, 6=Sat
+const state = {
+  mode: IS_WEEKEND ? 'personal' : 'all', // default: ALL on weekdays, PERSONAL on weekends
+  oneThing: 'active',         // work one thing: active | snoozing | done
+  personalOneThing: 'active', // personal one thing: active | done
+  hideDone: false,
+  rocksOpen: true,
+  workStreak: 3,
+  lifeStreak: 7,
+  workSatisfied: false,
+  lifeSatisfied: false,
+  freezeAvailable: true,
+  privacyMode: false,
+};
+
+// Week: Sun Jun 21 is "today" (index 6 = Sunday).
+const workWeek = [
+  { d:'M', state:'hit' },
+  { d:'T', state:'hit' },
+  { d:'W', state:'frozen', icon:'❄️' },
+  { d:'T', state:'hit' },
+  { d:'F', state:'hit' },
+  { d:'S', state:'weekend' },
+  { d:'S', state:'today' },
+];
+const lifeWeek = [
+  { d:'M', state:'hit' },
+  { d:'T', state:'hit' },
+  { d:'W', state:'hit' },
+  { d:'T', state:'hit' },
+  { d:'F', state:'hit' },
+  { d:'S', state:'hit' },
+  { d:'S', state:'today' },
+];
+
+// ── MODE ──
+const NAV_WORK = [
+  { label:'TODAY', active:true },
+  { label:'MESSAGES' },
+  { label:'EXECUTE' },
+  { sep: true },
+  { domain:'WORK' },
+  { label:'ATTRACT' },
+  { label:'CONVERT' },
+  { label:'DELIVER' },
+  { label:'SCALE' },
+];
+const NAV_PERSONAL = [
+  { label:'TODAY', active:true },
+  { label:'MESSAGES' },
+  { label:'EXECUTE' },
+  { sep: true },
+  { domain:'PERSONAL' },
+  { label:'HEALTH' },
+  { label:'WEALTH' },
+  { label:'LEGO' },
+  { label:'RELATIONSHIPS' },
+];
+const NAV_ALL = [
+  { label:'TODAY', active:true },
+  { label:'MESSAGES' },
+  { label:'EXECUTE' },
+  { sep: true },
+  { domain:'WORK' },
+  { label:'ATTRACT' },
+  { label:'CONVERT' },
+  { label:'DELIVER' },
+  { label:'SCALE' },
+  { sep: true },
+  { domain:'LIFE' },
+  { label:'HEALTH' },
+  { label:'WEALTH' },
+  { label:'LEGO' },
+];
+
+function setMode(m) {
+  // Clicking WORK on a weekend shows the screen instead of switching immediately.
+  // The user confirms intent via "Just a peek" or "Unfortunately, I'm working today".
+  if (m === 'work' && IS_WEEKEND) {
+    showWeekendScreen();
+    return;
+  }
+  state.mode = m;
+  syncModeButtons(m);
+  renderNav();
+  renderStreaks();
+  _reRenderAll();
+}
+
+function syncModeButtons(m) {
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === m);
+    b.classList.remove('personal', 'all');
+    if (b.dataset.mode === m) {
+      if (m === 'personal') b.classList.add('personal');
+      if (m === 'all') b.classList.add('all');
+    }
+  });
+  const fab = document.querySelector('.fab');
+  if (fab) {
+    const c = m === 'work' ? 'var(--work)' : m === 'personal' ? 'var(--personal)' : 'var(--accent)';
+    fab.style.background = c;
+    fab.style.boxShadow = `0 4px 18px ${m === 'work' ? 'rgba(37,99,235,.4)' : m === 'personal' ? 'rgba(6,182,212,.4)' : 'rgba(99,102,241,.4)'}`;
+  }
+}
+
+function renderNav() {
+  const items = state.mode === 'personal' ? NAV_PERSONAL : state.mode === 'all' ? NAV_ALL : NAV_WORK;
+  document.getElementById('nav').innerHTML = items.map(item => {
+    if (item.sep) return `<div class="nav-sep"></div>`;
+    if (item.domain) return `<span class="nav-domain">${item.domain}</span>`;
+    return `<button class="nav-btn${item.active?' active':''}">${item.label}</button>`;
+  }).join('');
+}
+
+// ── STREAKS ──
+function renderStreaks() {
+  const strip = document.getElementById('streakStrip');
+  const showWork = state.mode !== 'personal';
+  const showLife = state.mode !== 'work';
+  strip.innerHTML = (showWork ? streakCard('work') : '') + (showLife ? streakCard('life') : '');
+}
+
+function streakCard(type) {
+  const isWork = type === 'work';
+  const num = isWork ? state.workStreak : state.lifeStreak;
+  const week = isWork ? workWeek : lifeWeek;
+
+  let statusLine;
+  if (isWork) {
+    statusLine = state.workSatisfied
+      ? `<div class="streak-safe">✓ Locked in for today</div>`
+      : `<div class="streak-savable">⏳ Complete The One Thing to keep it alive</div>`;
+  } else {
+    statusLine = state.lifeSatisfied
+      ? `<div class="streak-safe">✓ Locked in for today</div>`
+      : num === 0
+        ? `<div class="streak-savable">Start your streak — advance a personal goal today</div>`
+        : `<div class="streak-savable">⏳ Complete your One Thing to keep it alive</div>`;
+  }
+
+  const pips = week.map(day => {
+    let cls = 'day-dot';
+    if (day.state === 'hit') cls += isWork ? ' hit' : ' hit life';
+    if (day.state === 'frozen') cls += ' frozen';
+    if (day.state === 'weekend') cls += ' weekend';
+    if (day.state === 'today') cls += ' today';
+    const icon = day.icon ? `<span class="day-icon">${day.icon}</span>` : '';
+    return `<div class="day-pip"><div class="${cls}">${icon}</div><span class="day-letter">${day.d}</span></div>`;
+  }).join('');
+
+  const freezeBtn = (isWork && state.freezeAvailable)
+    ? `<button class="freeze-btn" onclick="useFreeze()">❄️ Freeze (1 left)</button>`
+    : (isWork ? `<span style="font-size:10px;color:var(--text-4);">❄️ Freeze used</span>` : '');
+
+  const rule = isWork
+    ? 'Counts when you complete The One Thing or any rock-linked task. Weekends never break it.'
+    : 'Counts when you advance a LEGO, health, or personal goal.';
+
+  return `
+    <div class="streak-card ${type}">
+      <div class="streak-head">
+        <span class="streak-name">${isWork ? '💼 Work Streak' : '🌱 Life Streak'}</span>
+        ${freezeBtn}
+      </div>
+      <div class="streak-count">
+        <span class="streak-flame">🔥</span>
+        <span class="streak-num" style="color:${isWork?'var(--work)':'var(--personal)'};">${num}</span>
+        <span class="streak-unit">day${num===1?'':'s'}</span>
+      </div>
+      ${statusLine}
+      <div class="streak-week">${pips}</div>
+      <div class="streak-rule">${rule}</div>
+    </div>
+  `;
+}
+
+function useFreeze() {
+  state.freezeAvailable = false;
+  const todayIdx = workWeek.findIndex(d => d.state === 'today');
+  if (todayIdx >= 0) workWeek[todayIdx] = { ...workWeek[todayIdx], state: 'frozen', icon: '❄️' };
+  state.workSatisfied = true; // freeze counts as the day protected
+  renderStreaks();
+}
+
+// ── THE ONE THING ──
+function renderOneThing() {
+  const area = document.getElementById('oneThingArea');
+
+  if (state.mode === 'personal') {
+    if (state.personalOneThing === 'done') {
+      area.innerHTML = `
+        <div class="onething completed" id="otCard" style="border-left-color:var(--teal);">
+          <div class="onething-label" style="color:var(--teal);">✦ Done — that was the big one</div>
+          <div class="payoff">
+            <div class="payoff-check" style="background:var(--teal-soft);color:var(--teal);">✓</div>
+            <div class="payoff-text">
+              <div class="payoff-title">Swim logged 🎉</div>
+              <div class="payoff-sub">Life streak → <strong style="color:var(--teal);">${state.lifeStreak} days</strong> · Swim 3×/week moved forward · Life streak locked in.</div>
+            </div>
+          </div>
+          <div class="onething-orb" style="background:radial-gradient(circle,rgba(56,189,248,.1) 0%,transparent 70%);"></div>
+        </div>`;
+      return;
+    }
+    let ptTitle = "Log today's swim and close out the week";
+    let ptMeta = `<span class="ot-chip" style="background:var(--teal-soft);color:var(--teal);">HEALTH</span><span class="ot-rocklink">Advances <b>Swim 3×/week</b></span>`;
+    let ptWhy = "You're 8 of 13 sessions in for Q2. One session today keeps Swim 3×/week on track and locks in the life streak. Everything else can wait — this one takes 30 minutes.";
+    if (_personalOneThingTask) {
+      const t = _personalOneThingTask;
+      const rock = _loadedGoals.find(g => g.id === t.projectId);
+      ptTitle = t.name;
+      ptMeta = `<span class="ot-chip" style="background:var(--teal-soft);color:var(--teal);">PERSONAL</span>${rock ? `<span class="ot-rocklink">Advances <b>${rock.name}</b></span>` : ''}`;
+      ptWhy = rock
+        ? `Completing this advances "${rock.name}" (${rock.progress?.done}/${rock.progress?.total} milestones). Lock in the life streak.`
+        : 'Your top personal task for today. Getting this done locks in the life streak.';
+    }
+    area.innerHTML = `
+      <div class="onething" id="otCard" style="border-left-color:var(--teal);background:linear-gradient(135deg,rgba(56,189,248,.06) 0%,rgba(10,13,22,0) 60%);">
+        <div class="onething-label"><span class="pulse-ring" style="background:var(--teal);box-shadow:0 0 0 6px rgba(56,189,248,.18);"></span>The one thing</div>
+        <div class="onething-meta">${ptMeta}</div>
+        <div class="onething-title">${ptTitle}</div>
+        <div class="onething-why">${ptWhy}</div>
+        <div class="onething-actions">
+          <button class="btn-go" style="background:var(--teal);color:#0A0D16;" onclick="markPersonalDone()">✓ I did this</button>
+          <button class="btn-ghost" onclick="state.personalOneThing='skipped';renderOneThing()">Not today</button>
+        </div>
+        <div class="onething-orb" style="background:radial-gradient(circle,rgba(56,189,248,.1) 0%,transparent 70%);"></div>
+      </div>`;
+    return;
+  }
+
+  if (state.oneThing === 'done') {
+    area.innerHTML = `
+      <div class="onething completed" id="otCard">
+        <div class="onething-label">✦ Done — that was the big one</div>
+        <div class="payoff">
+          <div class="payoff-check">✓</div>
+          <div class="payoff-text">
+            <div class="payoff-title">Hardaway decision sent 🎉</div>
+            <div class="payoff-sub">Work streak → <strong style="color:var(--work);">${state.workStreak} days</strong> · Rock 1 moved forward · This was your highest-leverage move today.</div>
+          </div>
+        </div>
+        <div class="onething-actions" style="margin-top:18px;">
+          <button class="btn-go" style="background:var(--green);" onclick="nextOneThing()">→ Show my next priority</button>
+        </div>
+        <div class="onething-orb" style="background:radial-gradient(circle,rgba(79,214,160,.12) 0%,transparent 70%);"></div>
+      </div>
+    `;
+    fireConfetti();
+    return;
+  }
+
+  const snoozeUI = state.oneThing === 'snoozing' ? `
+    <div class="snooze-row">
+      <span class="snooze-prompt">No problem — what's going on?</span>
+      <button class="snooze-opt" onclick="resolveSnooze('next')">Do #2 instead, resurface this later</button>
+      <button class="snooze-opt blocked" onclick="resolveSnooze('blocked')">I'm blocked — move to "waiting on"</button>
+      <button class="snooze-opt" onclick="resolveSnooze('2hr')">Snooze 2 hours</button>
+      <button class="snooze-opt" onclick="cancelSnooze()">Never mind</button>
+    </div>
+  ` : `
+    <div class="onething-actions">
+      <button class="btn-go" onclick="markDone()">✓ I did this</button>
+      <button class="btn-go" style="background:rgba(99,102,241,.2);color:#A99EFF;" onclick="alert('Opens the deal in Convert →')">→ Open the deal</button>
+      <button class="btn-ghost" onclick="startSnooze()">Not now</button>
+    </div>
+  `;
+
+  let otTitle = 'Push Jason Hardaway to a decision today';
+  let otMeta = `<span class="ot-chip" style="background:var(--accent-soft);color:#A99EFF;">CONVERT</span><span class="ot-chip" style="background:var(--green-soft);color:var(--green);">$9,450</span><span class="ot-rocklink">Advances <b>Rock 1 · Tier 2 Journey</b></span>`;
+  let otWhy = 'This is the single highest-value move available to you. Closing it changes your whole month — and it directly feeds your at-risk Q2 rock. Everything else can wait until this is sent.';
+  if (_oneThingTask) {
+    const t = _oneThingTask, today = todayISO();
+    const rock = _loadedGoals.find(g => g.id === t.projectId);
+    const isOverdue = t.dueStart && t.dueStart < today;
+    const prio = (t.priority || '').toLowerCase();
+    const chips = [];
+    if (isOverdue) chips.push(`<span class="ot-chip" style="background:var(--red-soft);color:var(--red);">OVERDUE</span>`);
+    if (prio === 'urgent' || prio === 'high') chips.push(`<span class="ot-chip" style="background:var(--amber-soft);color:var(--amber);">${prio.toUpperCase()}</span>`);
+    if (!chips.length) chips.push(`<span class="ot-chip" style="background:var(--accent-soft);color:#A99EFF;">TASK</span>`);
+    if (rock) chips.push(`<span class="ot-rocklink">Advances <b>${rock.name}</b></span>`);
+    otTitle = t.name;
+    otMeta = chips.join('');
+    otWhy = rock
+      ? (/risk/i.test(rock.cls || '') || (rock.progress?.total > 0 && rock.progress?.done === 0)
+          ? `This feeds "${rock.name}" which is at risk. Completing this is the highest-leverage move available.`
+          : `Completing this advances "${rock.name}" (${rock.progress?.done}/${rock.progress?.total} milestones done). Everything else can wait.`)
+      : (isOverdue ? 'This task is overdue and scored highest for today. Get it done first.' : 'Your highest-scored task for today based on priority, urgency, and impact. Everything else can wait.');
+  }
+  area.innerHTML = `
+    <div class="onething" id="otCard">
+      <div class="onething-label"><span class="pulse-ring"></span>The one thing</div>
+      <div class="onething-meta">${otMeta}</div>
+      <div class="onething-title">${otTitle}</div>
+      <div class="onething-why">${otWhy}</div>
+      ${snoozeUI}
+      <div class="onething-orb"></div>
+    </div>
+  `;
+}
+
+function markDone() {
+  state.oneThing = 'done';
+  state.workStreak += 1;
+  state.workSatisfied = true;
+  workStreakSave(state.workStreak);
+  if (_oneThingTask?.id) fetch('/api/tasks/' + _oneThingTask.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'Done' }) }).catch(() => {});
+  renderOneThing();
+  renderStreaks();
+}
+
+function markPersonalDone() {
+  state.personalOneThing = 'done';
+  state.lifeStreak += 1;
+  state.lifeSatisfied = true;
+  if (_personalOneThingTask?.id) fetch('/api/tasks/' + _personalOneThingTask.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'Done' }) }).catch(() => {});
+  renderOneThing();
+  renderStreaks();
+  fireConfetti();
+}
+function startSnooze()  { state.oneThing = 'snoozing'; renderOneThing(); }
+function cancelSnooze() { state.oneThing = 'active';   renderOneThing(); }
+
+function resolveSnooze(kind) {
+  const area = document.getElementById('oneThingArea');
+  const msgs = {
+    next:    { t:'Swapped to your #2 priority',   s:"The Hardaway deal is still your top item — it'll resurface this afternoon with a \"still waiting\" flag so it can't quietly disappear." },
+    blocked: { t:'Moved to "Waiting on"',          s:"Logged as blocked. It leaves your active queue but stays visible in the Convert pipeline. Tip: note who you're waiting on so it can nudge them later." },
+    '2hr':   { t:'Snoozed until later this morning', s:"It'll pop back to the top after your routine. The streak is still savable — this just moves it, it doesn't skip it." },
+  };
+  const m = msgs[kind];
+  area.innerHTML = `
+    <div class="onething" style="border-left-color:var(--amber);">
+      <div class="onething-label" style="color:var(--amber);">↺ Deferred — not dismissed</div>
+      <div class="onething-title" style="font-size:18px;">${m.t}</div>
+      <div class="onething-why" style="margin-bottom:14px;">${m.s}</div>
+      <div class="onething-actions"><button class="btn-ghost" onclick="cancelSnooze()">↩ Actually, bring it back</button></div>
+    </div>
+  `;
+}
+
+function nextOneThing() {
+  const area = document.getElementById('oneThingArea');
+  area.innerHTML = `
+    <div class="onething" id="otCard">
+      <div class="onething-label"><span class="pulse-ring"></span>The one thing</div>
+      <div class="onething-meta">
+        <span class="ot-chip" style="background:var(--accent-soft);color:#A99EFF;">CONVERT</span>
+        <span class="ot-rocklink">Clears your cold-lead backlog</span>
+      </div>
+      <div class="onething-title">Run one outreach block — clear 6 cold leads</div>
+      <div class="onething-why">With Hardaway sent, this is now your highest-leverage move. 30 focused minutes resets six relationships that have gone quiet for 11+ days.</div>
+      <div class="onething-actions">
+        <button class="btn-go" onclick="alert('Streak already locked for today — nice work.')">✓ I did this</button>
+        <button class="btn-ghost" onclick="startSnooze()">Not now</button>
+      </div>
+      <div class="onething-orb"></div>
+    </div>
+  `;
+}
+
+function fireConfetti() {
+  const card = document.getElementById('otCard');
+  if (!card) return;
+  const colors = ['#7C6CF6','#4FD6A0','#EBB454','#38BDF8'];
+  for (let i = 0; i < 18; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.style.background = colors[i % colors.length];
+    c.style.left = (30 + Math.random() * 40) + '%';
+    c.style.top = '20%';
+    card.appendChild(c);
+    const dx = (Math.random() - 0.5) * 260;
+    const dy = 120 + Math.random() * 160;
+    const rot = Math.random() * 540;
+    c.animate([
+      { transform: 'translate(0,0) rotate(0)', opacity: 1 },
+      { transform: `translate(${dx}px,${dy}px) rotate(${rot}deg)`, opacity: 0 },
+    ], { duration: 900 + Math.random() * 500, easing: 'cubic-bezier(.2,.7,.3,1)' });
+    setTimeout(() => c.remove(), 1500);
+  }
+}
+
+// ── ROCKS ──
+const rocks = [
+  { name:'Tier 2 Journey',    type:'work',     cls:'risk',  tag:'AT RISK',  tagCls:'rst-risk',  next:'Set up Tier 2 offer page',         owner:'G', done:1, total:5,  barC:'var(--red)' },
+  { name:'Partner Program',   type:'work',     cls:'risk',  tag:'AT RISK',  tagCls:'rst-risk',  next:'Draft partner outreach email',      owner:'T', done:0, total:4,  barC:'var(--red)' },
+  { name:'Content Engine',    type:'work',     cls:'track', tag:'ON TRACK', tagCls:'rst-track', next:'Publish 2 posts this week',         owner:'G', done:3, total:5,  barC:'var(--green)' },
+  { name:'Workshop Launch',   type:'work',     cls:'risk',  tag:'AT RISK',  tagCls:'rst-risk',  next:'Create workshop landing page',      owner:'N', done:0, total:5,  barC:'var(--red)' },
+  { name:'Swim 3×/week',      type:'personal', cls:'track', tag:'ON TRACK', tagCls:'rst-track', next:'Log today\'s swim',                 owner:'G', done:8, total:13, barC:'var(--teal)' },
+  { name:'LEGO Technic build', type:'personal', cls:'track', tag:'ON TRACK', tagCls:'rst-track', next:'Finish Stage 2 assembly',           owner:'G', done:2, total:5,  barC:'var(--teal)' },
+];
+
+function renderRocks() {
+  const isPersonal = state.mode === 'personal';
+  const isWork     = state.mode === 'work';
+  const visible    = rocks.filter(r => state.mode === 'all' || r.type === state.mode);
+
+  // Section title + count
+  const titleEl = document.getElementById('rocksTitle');
+  if (titleEl) titleEl.textContent = isPersonal ? 'Personal Goals' : 'Q2 Rocks';
+  const countEl = document.getElementById('rocksCount');
+
+  // Dynamic days-left in quarter
+  const _qMonth = (Math.floor(new Date().getMonth() / 3) + 1) * 3;
+  const _qEnd = new Date(new Date().getFullYear(), _qMonth, 0);
+  const _daysLeft = Math.max(0, Math.ceil((_qEnd - new Date()) / 86400000));
+
+  if (countEl) {
+    const atRisk = visible.filter(r => r.cls === 'risk').length;
+    countEl.textContent = atRisk > 0 ? `· ${atRisk} at risk · ${_daysLeft} days left` : `· on track · ${_daysLeft} days left`;
+  }
+
+  // Next-rock urgency box
+  const workRisks = rocks.filter(r => r.type === 'work' && r.cls === 'risk');
+  const nrt = document.getElementById('nextRockText');
+  if (nrt) {
+    if (isPersonal) {
+      const firstPersonal = visible[0];
+      if (firstPersonal) nrt.textContent = `${firstPersonal.name} — ${firstPersonal.done}/${firstPersonal.total} milestones done this quarter`;
+    } else if (workRisks.length) {
+      nrt.textContent = `${workRisks[0].name} — only ${workRisks[0].done} of ${workRisks[0].total} milestones done with ${_daysLeft} days left`;
+    }
+  }
+
+  document.getElementById('rocksList').innerHTML = visible.map(r => {
+    const pct = Math.round((r.done / r.total) * 100);
+    return `<div class="rock-card ${r.cls}">
+      <div class="rock-title-row"><span class="rock-name${r.cls==='done'?' struck':''}">${r.name}</span><span class="rock-status-tag ${r.tagCls}">${r.tag}</span></div>
+      <div class="rock-next"><span class="arr">→</span>${r.next}</div>
+      <div class="rock-right">
+        <div style="display:flex;align-items:center;gap:7px;"><span class="rock-frac">${r.done}/${r.total}</span><div class="rock-owner">${r.owner}</div></div>
+        <div class="rock-mini-bar"><div class="rock-mini-fill" style="width:${pct}%;background:${r.barC};"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── PLAN ──
+const plan = [
+  { n:1, name:'Follow up Jason Hardaway — push for decision', project:'Hardaway · ABM Marketing', source:'convert', tags:[{t:'ROCK 1',c:'pt-rock'},{t:'$9,450',c:'pt-money'}],   done:false, rockLinked:true,  type:'work',     notionUrl:null },
+  { n:2, name:'Outreach block — clear 6 cold leads',           project:'Convert · Pipeline',        source:'convert', tags:[{t:'CONVERT',c:'pt-area'}],                             done:false, rockLinked:false, type:'work',     notionUrl:null },
+  { n:3, name:"Draft copy: Don't Rebrand for Aesthetics",      project:'LRL Marketing · Content Engine', source:'task', tags:[{t:'ROCK 3',c:'pt-rock'},{t:'Overdue',c:'pt-late'}], done:false, rockLinked:true,  type:'work',     notionUrl:null },
+  { n:4, name:"Review Trina's Partner Program progress",       project:'Partner Program',            source:'task', tags:[{t:'ROCK 2',c:'pt-rock'}],                                done:false, rockLinked:true,  type:'work',     notionUrl:null },
+  { n:5, name:'Log 30 min swim',                               project:'Health · Exercise',          source:'task', tags:[{t:'HEALTH',c:'pt-personal'}],                            done:false, rockLinked:false, type:'personal', notionUrl:null },
+  { n:6, name:'Read 20 minutes',                               project:'Personal · Learning',        source:'task', tags:[{t:'PERSONAL',c:'pt-personal'}],                          done:false, rockLinked:false, type:'personal', notionUrl:null },
+];
+
+// Track which plan row has its menu open
+let _openMenuIdx = null;
+
+function togglePlanMenu(i, event) {
+  event.stopPropagation();
+  const rows = document.querySelectorAll('[data-plan-idx]');
+  rows.forEach(r => {
+    const idx = parseInt(r.dataset.planIdx);
+    const drop = r.querySelector('.plan-menu-drop');
+    if (idx === i && _openMenuIdx !== i) {
+      r.classList.add('menu-open');
+      if (drop) drop.classList.remove('hidden');
+      _openMenuIdx = i;
+    } else {
+      r.classList.remove('menu-open');
+      if (drop) drop.classList.add('hidden');
+    }
+  });
+  if (_openMenuIdx === i && document.querySelector(`[data-plan-idx="${i}"]`)?.classList.contains('menu-open') === false) {
+    _openMenuIdx = null;
+  }
+}
+
+function closePlanMenus() {
+  _openMenuIdx = null;
+  document.querySelectorAll('[data-plan-idx]').forEach(r => {
+    r.classList.remove('menu-open');
+    r.querySelector('.plan-menu-drop')?.classList.add('hidden');
+  });
+}
+
+document.addEventListener('click', closePlanMenus);
+
+function openInNotion(i) {
+  closePlanMenus();
+  const t = plan[i];
+  if (t.notionUrl) { window.open(t.notionUrl, '_blank'); }
+  else { alert('Notion link will be available once Phase 3 data wiring is complete.'); }
+}
+
+function removeFromMyDay(i) {
+  closePlanMenus();
+  if (plan[i]?.id) fetch('/api/tasks/' + plan[i].id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ myDay: false }) }).catch(() => {});
+  plan.splice(i, 1);
+  renderPlan();
+}
+
+function showReschedule(i) {
+  const row = document.querySelector(`[data-plan-idx="${i}"]`);
+  if (!row) return;
+  const dateRow = row.querySelector('.plan-reschedule-row');
+  if (!dateRow) return;
+  dateRow.style.display = dateRow.style.display === 'none' || !dateRow.style.display ? 'block' : 'none';
+  if (dateRow.style.display === 'block') {
+    const inp = dateRow.querySelector('input');
+    if (inp) { inp.focus(); inp.addEventListener('change', e => { const nd = e.target.value; if (nd && plan[i]?.id) { fetch('/api/tasks/' + plan[i].id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dueStart: nd, myDay: false }) }).catch(() => {}); plan.splice(i, 1); renderPlan(); } closePlanMenus(); dateRow.style.display = 'none'; }); }
+  }
+}
+
+function renderPlan() {
+  const visible = state.mode === 'all' ? plan : plan.filter(t => t.type === state.mode || !t.type);
+  const doneCt  = visible.filter(p => p.done).length;
+  let num = 1;
+  document.getElementById('planCount').textContent = `· ${doneCt} of ${visible.length} done`;
+  document.getElementById('planList').innerHTML = visible.map((t, i) => {
+    const origIdx = plan.indexOf(t);
+    const srcIcon = t.source === 'convert'
+      ? `<span class="plan-src convert">◆ Sales</span>`
+      : `<span class="plan-src task">▪ Task</span>`;
+    const hide = t.done && state.hideDone ? 'style="display:none;"' : '';
+    const displayNum = t.done ? '✓' : num++;
+    return `
+    <div class="plan-row ${t.done ? 'done-row' : ''}" data-plan-idx="${origIdx}" ${hide}>
+      <span class="plan-drag" title="Drag to reorder">⠿</span>
+      <span class="plan-num ${t.done ? 'done-num' : ''}">${displayNum}</span>
+      <div class="plan-check ${t.done ? 'checked' : ''}" onclick="togglePlan(${origIdx})">${t.done ? '✓' : ''}</div>
+      <div class="plan-body">
+        <span class="plan-name ${t.done ? 'struck' : ''}">${t.name}</span>
+        <span class="plan-project">${srcIcon} ${t.project}</span>
+      </div>
+      <div class="plan-tags">${t.tags.map(tg => `<span class="plan-tag ${tg.c}">${tg.t}</span>`).join('')}</div>
+      <div class="plan-menu-wrap">
+        <button class="plan-menu-btn" onclick="togglePlanMenu(${origIdx}, event)" title="Task options">⋯</button>
+        <div class="plan-menu-drop hidden">
+          ${t.notionUrl ? `<button class="plan-menu-item" onclick="openInNotion(${origIdx})"><span class="mi-icon">↗</span>Open in Notion</button>` : `<button class="plan-menu-item" onclick="openInNotion(${origIdx})" style="opacity:.5"><span class="mi-icon">↗</span>Open in Notion</button>`}
+          <div class="plan-menu-sep"></div>
+          <button class="plan-menu-item" onclick="showReschedule(${origIdx})"><span class="mi-icon">📅</span>Reschedule</button>
+          <div class="plan-reschedule-row" style="display:none"><input type="date" /></div>
+          <button class="plan-menu-item danger" onclick="removeFromMyDay(${origIdx})"><span class="mi-icon">✕</span>Remove from My Day</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  initSortable();
+}
+
+function togglePlan(i) {
+  plan[i].done = !plan[i].done;
+  if (plan[i].id) {
+    fetch('/api/tasks/' + plan[i].id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status: plan[i].done ? 'Done' : 'In Progress' }) }).catch(() => {});
+  }
+  if (plan[i].done && plan[i].rockLinked) {
+    state.workSatisfied = true;
+    renderStreaks();
+  }
+  renderPlan();
+}
+
+let _sortable = null;
+function initSortable() {
+  const list = document.getElementById('planList');
+  if (!list || typeof Sortable === 'undefined') return;
+  if (_sortable) { _sortable.destroy(); _sortable = null; }
+  _sortable = Sortable.create(list, {
+    animation: 150,
+    handle: '.plan-drag',
+    ghostClass: 'sortable-ghost',
+    dragClass: 'sortable-drag',
+    onEnd() {
+      // Rebuild plan array to match new DOM order
+      const rows = list.querySelectorAll('[data-plan-idx]');
+      const reordered = Array.from(rows).map(row => plan[parseInt(row.dataset.planIdx)]);
+      plan.length = 0;
+      reordered.forEach(t => plan.push(t));
+      renderPlan();
+    },
+  });
+}
+
+function toggleHideDone() {
+  state.hideDone = !state.hideDone;
+  const b = document.getElementById('planHideBtn');
+  b.textContent = state.hideDone ? 'Show done' : 'Hide done';
+  b.classList.toggle('on', state.hideDone);
+  renderPlan();
+}
+
+function toggleRocks() {
+  state.rocksOpen = !state.rocksOpen;
+  document.getElementById('rocksBody').style.display = state.rocksOpen ? '' : 'none';
+  document.getElementById('rocksBtn').textContent = state.rocksOpen ? 'Collapse' : 'Expand';
+}
+
+// ── SIDEBAR ──
+const rings = [
+  { type:'work',     pct:16, c:'var(--work)',     lbl:'Business', val:'3/19', track:'var(--border)' },
+  { type:'personal', pct:41, c:'var(--personal)', lbl:'Life',   val:'9/22', track:'var(--border)' },
+];
+function renderRings() {
+  const circ = 2 * Math.PI * 28;
+  const visible = rings.filter(r => state.mode === 'all' || r.type === state.mode);
+  const ptEl = document.getElementById('progressTitle');
+  if (ptEl) {
+    ptEl.textContent = state.mode === 'personal' ? 'Personal Progress'
+                     : state.mode === 'work'     ? 'Campaign Progress'
+                     : 'Campaign Progress';
+  }
+  document.getElementById('rings').innerHTML = visible.map(r => {
+    const lbl = state.mode === 'personal' ? 'Personal' : r.lbl;
+    const off = circ * (1 - r.pct / 100);
+    return `<div class="ring-wrap">
+      <svg width="80" height="80" viewBox="0 0 80 80">
+        <circle cx="40" cy="40" r="28" fill="none" stroke="${r.track}" stroke-width="6"/>
+        <circle cx="40" cy="40" r="28" fill="none" stroke="${r.c}" stroke-width="6"
+          stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"
+          stroke-linecap="round" transform="rotate(-90 40 40)"/>
+        <text x="40" y="38" text-anchor="middle" fill="#DCE3EC" font-size="15" font-weight="700" font-family="system-ui">${r.pct}%</text>
+        <text x="40" y="50" text-anchor="middle" fill="#54667E" font-size="9" font-family="system-ui">${r.val}</text>
+      </svg>
+      <div class="ring-lbl">${lbl}</div>
+    </div>`;
+  }).join('');
+}
+
+const vcalItems = [
+  { now: true, lbl: 'NOW · 10:44a' },
+  { time:'1p',  name:'Swimming',          sub:'1h · Personal',        c:'var(--accent)', bg:'var(--accent-soft)' },
+  { time:'2p',  name:'Deep work window',  sub:'4h open — protect it', c:'var(--text-4)', bg:'rgba(84,102,126,.08)', italic:true },
+  { time:'6p',  name:'Dinner',            sub:'1h · Personal',        c:'var(--green)',  bg:'var(--green-soft)' },
+];
+function renderVcal() {
+  document.getElementById('vcal').innerHTML = vcalItems.map(e => {
+    if (e.now) return `<div class="vcal-now"><div class="vcal-now-dot"></div><div class="vcal-now-line"></div><span class="vcal-now-lbl">${e.lbl}</span></div>`;
+    return `<div class="vcal-row">
+      <div class="vcal-time">${e.time}</div>
+      <div class="vcal-line"></div>
+      <div class="vcal-content"><div class="vcal-event" style="background:${e.bg};border-left-color:${e.c};${e.italic?'font-style:italic;color:var(--text-3);':''}">${e.name}<span class="sub">${e.sub}</span></div></div>
+    </div>`;
+  }).join('');
+}
+
+const workSnap = [
+  { lbl:'Cash on hand',  val:'$68.4k',  c:'var(--green)' },
+  { lbl:'MTD revenue',   val:'$0',      c:'var(--red)' },
+  { lbl:'Open pipeline', val:'$23.9k',  c:'var(--text)' },
+  { lbl:'Runway',        val:'0.2 mo',  c:'var(--red)' },
+];
+const personalSnap = [
+  { lbl:'Net worth',        val:'—',  c:'var(--text)' },
+  { lbl:'Spent this month', val:'—',  c:'var(--text)' },
+  { lbl:'Savings rate',     val:'—',  c:'var(--text)' },
+  { lbl:'Debt payoff ETA',  val:'—',  c:'var(--text)' },
+];
+function renderSnap() {
+  const data = state.mode === 'personal' ? personalSnap : workSnap;
+  document.getElementById('snapGrid').innerHTML = data.map(s =>
+    `<div class="snap-row"><span class="snap-lbl">${s.lbl}</span><span class="snap-val" style="color:${s.c};">${s.val}</span></div>`
+  ).join('');
+}
+
+// ── GREETING: time-of-day word ──
+function renderGreeting() {
+  const h = new Date().getHours();
+  const word = h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening';
+  const emoji = h < 12 ? '☕' : h < 17 ? '👋' : '🌙';
+  document.getElementById('greeting').innerHTML = `${word}, <span class="name">Gretchen</span> ${emoji}`;
+}
+
+// ── WEEKEND ──
+const weekendMessages = [
+  { emoji:'🌿', msg:"Hey, it's the weekend.<br>Go touch some grass.",         sub:"The business will still be here Monday. Your rocks are on track. Rest is part of the work." },
+  { emoji:'🧱', msg:"Permission granted:<br>build something with no ROI.",   sub:"Bluebonnets aren't going to assemble themselves. Go play." },
+  { emoji:'☀️', msg:"You closed the week.<br>Now close the laptop.",         sub:"The best founders protect their recovery as fiercely as their revenue." },
+  { emoji:'🐈', msg:"Sundae needs you<br>more than the inbox does.",         sub:"Two days off won't undo a quarter of momentum. Go be a person." },
+  { emoji:'🌊', msg:"Rest isn't a reward<br>for finishing the work.",        sub:"It's what makes the work possible. You earned this — take it." },
+];
+
+function showWeekendScreen() {
+  const idx = Math.floor(Math.random() * weekendMessages.length);
+  const m = weekendMessages[idx];
+  document.getElementById('wkEmoji').textContent = m.emoji;
+  document.getElementById('wkMessage').innerHTML = m.msg;
+  document.getElementById('wkSub').textContent = m.sub;
+  const now = new Date();
+  const dayName = now.toLocaleDateString('en-US', { weekday:'long' }).toUpperCase();
+  const dateStr = now.toLocaleDateString('en-US', { month:'long', day:'numeric' }).toUpperCase();
+  document.getElementById('wkDay').textContent = `${dayName} · ${dateStr}`;
+  document.getElementById('weekendScreen').classList.remove('hidden');
+}
+
+function dismissWeekend() {
+  document.getElementById('weekendScreen').classList.add('hidden');
+  state.mode = 'personal';
+  syncModeButtons('personal');
+  renderNav();
+  renderStreaks();
+  _reRenderAll();
+}
+
+function peekWeekend() {
+  document.getElementById('weekendScreen').classList.add('hidden');
+  state.mode = 'work';
+  syncModeButtons('work');
+  renderNav();
+  renderStreaks();
+  _reRenderAll();
+  showPeekBanner();
+}
+function workingWeekend() {
+  const pb = document.getElementById('peekBanner');
+  if (pb) pb.remove();
+  document.getElementById('weekendScreen').classList.add('hidden');
+  state.mode = 'work';
+  syncModeButtons('work');
+  renderNav();
+  renderStreaks();
+  _reRenderAll();
+}
+
+function showPeekBanner() {
+  if (document.getElementById('peekBanner')) return;
+  const b = document.createElement('div');
+  b.id = 'peekBanner';
+  b.className = 'peek-banner';
+  b.innerHTML = `👀 Peeking · <button onclick="backToRest()">back to weekend</button>`;
+  document.body.appendChild(b);
+}
+function backToRest() {
+  const pb = document.getElementById('peekBanner');
+  if (pb) pb.remove();
+  state.mode = 'personal';
+  syncModeButtons('personal');
+  renderNav();
+  renderStreaks();
+  _reRenderAll();
+  showWeekendScreen();
+}
+
+// ── RITUALS ──
+const rituals = {
+  morning: {
+    icon: '🌅', title: 'Morning Startup', rewarded: false,
+    items: [
+      { key:'birthdays',        label:'Wish birthdays',                       href:'https://www.facebook.com/events/birthdays/', external:true,  done:false },
+      { key:'inboxes',          label:'Clear inboxes',                        href:'/?tab=comms',                               external:false, done:false },
+      { key:'notionComments',   label:'Respond to Notion comments',           href:'https://www.notion.so',                     external:true,  done:false },
+      { key:'slackMessages',    label:'Respond to Slack messages',            href:'https://slack.com/app_redirect',            external:true,  done:false },
+      { key:'reviewCalendar',   label:'Review calendar',                      href:'/?tab=command',                             external:false, done:false },
+      { key:'braindump',        label:'Submit braindump',                     href:'/?tab=autofocus',                           external:false, done:false },
+      { key:'sequence',         label:"Sequence today's tasks",               href:'/?tab=autofocus',                           external:false, done:false },
+      { key:'checkin',          label:'Send daily check-in',                  modal:'checkin',                                              done:false },
+      { key:'linkedinComments', label:'Submit at least 10 LinkedIn comments', href:'https://www.linkedin.com/feed/',            external:true,  done:false },
+      { key:'marketing',        label:'Post marketing content for the day',   href:'/?tab=marketing',                           external:false, done:false },
+      { key:'salesTouchpoints', label:'Sales touch points',                   href:'/?tab=pipeline',                            external:false, done:false },
+    ],
+  },
+  evening: {
+    icon: '🌙', title: 'End of Day Checklist', rewarded: false,
+    items: [
+      { key:'sales',       label:'Log sales activity',              type:'work',     done:false },
+      { key:'projectTime', label:'Log project time',                type:'work',     done:false },
+      { key:'captures',    label:'Capture new tasks from meetings', type:'work',     done:false },
+      { key:'meals',       label:'Log meals',                       type:'personal', done:false },
+      { key:'journal',     label:'Log journal entry',               type:'personal', done:false },
+      { key:'exercise',    label:'Log exercise',                    type:'personal', done:false },
+    ],
+  },
+};
+
+function renderRitual(which) {
+  const r = rituals[which];
+  const el = document.getElementById(which + 'Ritual');
+  if (!el) return;
+
+  // Morning only shows in work / all mode
+  if (which === 'morning' && state.mode === 'personal') { el.innerHTML = ''; return; }
+
+  // Evening: filter items by mode (all shows everything)
+  const items = which === 'evening' && state.mode !== 'all'
+    ? r.items.map((it, origIdx) => ({ it, origIdx })).filter(({ it }) => it.type === state.mode || !it.type)
+    : r.items.map((it, origIdx) => ({ it, origIdx }));
+
+  const doneCt = items.filter(({ it }) => it.done).length;
+  const allDone = items.length > 0 && doneCt === items.length;
+
+  el.innerHTML = `
+    <div class="ritual-head">
+      <span class="ritual-title">${r.icon} ${r.title}</span>
+      <span class="ritual-progress ${allDone ? 'complete' : ''}">${allDone ? 'Complete ✓' : doneCt + ' / ' + items.length}</span>
+    </div>
+    <div class="ritual-chips">
+      ${items.map(({ it, origIdx }) => `
+        <div class="ritual-chip ${it.done ? 'checked' : ''}" onclick="toggleRitual('${which}',${origIdx})">
+          <span class="rc-box">${it.done ? '✓' : ''}</span>
+          <span>${it.label}</span>
+          ${it.href ? `<a class="ritual-link" href="${it.href}" ${it.external ? 'target="_blank" rel="noopener"' : ''} onclick="event.stopPropagation()" title="Open">↗</a>` : it.modal === 'checkin' ? `<a class="ritual-link" href="#" onclick="openCheckinModal(); return false;" title="Compose check-in">↗</a>` : ''}
+        </div>
+      `).join('')}
+    </div>
+    <div class="ritual-reward ${allDone && which === 'morning' ? 'show' : ''}">
+      ⚡ Morning routine done — you're cleared to dive into deep work.
+    </div>
+  `;
+}
+
+function toggleRitual(which, i) {
+  const r = rituals[which];
+  r.items[i].done = !r.items[i].done;
+  renderRitual(which);
+  syncRitualToServer(which);
+}
+
+// ── BRIEF ──
+const workBrief = [
+  { c:'var(--red)',   html:'<strong>$0 revenue this month and runway is tight.</strong> The fastest lever today is the $9,450 Hardaway decision — it\'s been waiting since April.' },
+  { c:'var(--amber)', html:'6 leads have gone cold (11+ days). One focused outreach block clears the whole backlog.' },
+  { c:'var(--green)', html:'Clean stretch from 2–6pm between swimming and dinner. <strong>That\'s your deep-work window.</strong>' },
+];
+const personalBrief = [
+  { c:'var(--teal)',  html:'<strong>7-day life streak — keep it alive today.</strong> Log a workout or advance the LEGO build to lock it in.' },
+  { c:'var(--green)', html:'Q2 closes in 9 days. Swim 3×/week is on track. LEGO build at Stage 2.' },
+  { c:'var(--amber)', html:'4h open 2–6pm. Good window for personal deep work.' },
+];
+function renderBrief() {
+  const lines = state.mode === 'personal' ? personalBrief : workBrief;
+  document.getElementById('briefLines').innerHTML = lines.map(l =>
+    `<div class="brief-line"><span class="brief-marker" style="background:${l.c};"></span><span>${l.html}</span></div>`
+  ).join('');
+}
+
+function _reRenderAll() {
+  renderBrief();
+  renderOneThing();
+  renderRocks();
+  renderPlan();
+  renderRings();
+  renderSnap();
+  renderRitual('morning');
+  renderRitual('evening');
+}
+
+// ── PHASE 3: DATA WIRING ──
+const WORK_STREAK_KEY = 'lrl-today-work-streak';
+let _projectMap = {};
+let _oneThingTask = null;
+let _personalOneThingTask = null;
+let _loadedGoals = [];
+
+function todayISO() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
+}
+function workStreakLoad() {
+  try { return JSON.parse(localStorage.getItem(WORK_STREAK_KEY) || 'null'); } catch(e) { return null; }
+}
+function workStreakSave(days) {
+  try { localStorage.setItem(WORK_STREAK_KEY, JSON.stringify({ days, lastDate: todayISO() })); } catch(e) {}
+}
+function fmt$(n) {
+  if (n == null) return '—';
+  const abs = Math.abs(n), sign = n < 0 ? '-' : '';
+  if (abs >= 1_000_000) return sign + '$' + (abs/1_000_000).toFixed(1) + 'M';
+  if (abs >= 1_000) return sign + '$' + (abs/1_000).toFixed(1) + 'k';
+  return sign + '$' + abs;
+}
+
+// One Thing scoring: value×0.35 + rockImpact×0.30 + urgency×0.25 + staleness×0.10
+function scoreTask(t, rockProjectIds) {
+  const today = todayISO();
+  const prio = (t.priority || '').toLowerCase();
+  const value = prio === 'urgent' ? 1.0 : prio === 'high' ? 0.75 : prio === 'low' ? 0.25 : 0.5;
+  const rockImpact = (t.projectId && rockProjectIds.has(t.projectId)) ? 1.0 : 0.0;
+  let urgency = 0.25;
+  if (t.dueStart) {
+    if (t.dueStart < today) urgency = 1.0;
+    else if (t.dueStart === today) urgency = 0.75;
+    else if ((new Date(t.dueStart) - new Date(today)) / 86400000 <= 3) urgency = 0.5;
+  }
+  const staleness = t.edited ? Math.min(1.0, (Date.now() - new Date(t.edited).getTime()) / (14 * 86400000)) : 0.5;
+  return value * 0.35 + rockImpact * 0.30 + urgency * 0.25 + staleness * 0.10;
+}
+function pickOneThing(tasks, goals, type) {
+  const rockProjectIds = new Set(goals.filter(g => g.source === type).map(g => g.id));
+  return tasks.filter(t => t.status !== 'Done')
+    .map(t => ({ ...t, _score: scoreTask(t, rockProjectIds) }))
+    .sort((a, b) => b._score - a._score)[0] || null;
+}
+
+// Map API task → plan array shape
+function taskToPlanItem(t) {
+  const today = todayISO();
+  const rockProjectIds = new Set(_loadedGoals.map(g => g.id));
+  const rockLinked = !!(t.projectId && rockProjectIds.has(t.projectId));
+  const tags = [];
+  if (rockLinked) tags.push({ t: 'ROCK', c: 'pt-rock' });
+  if (t.dueStart && t.dueStart < today) tags.push({ t: 'Overdue', c: 'pt-late' });
+  const prio = (t.priority || '').toLowerCase();
+  if (!tags.length && (prio === 'urgent' || prio === 'high')) tags.push({ t: prio.toUpperCase(), c: 'pt-late' });
+  if (t.source === 'personal') tags.push({ t: 'PERSONAL', c: 'pt-personal' });
+  const proj = _projectMap[t.projectId];
+  return {
+    id: t.id, n: 0,
+    name: t.name,
+    project: proj ? proj.name : '',
+    source: 'task',
+    tags, done: t.status === 'Done', rockLinked,
+    type: t.source === 'personal' ? 'personal' : 'work',
+    notionUrl: t.url || null,
+  };
+}
+
+// Map API goal → rock array shape
+function goalToRock(g) {
+  const isDone = /done|complete/i.test(g.status || '');
+  const atRisk = !isDone && (/risk/i.test(g.status || '') || (g.progress.total > 0 && g.progress.done === 0));
+  const cls = isDone ? 'done' : atRisk ? 'risk' : 'track';
+  const tag = isDone ? 'DONE' : atRisk ? 'AT RISK' : 'ON TRACK';
+  const tagCls = isDone ? 'rst-done' : atRisk ? 'rst-risk' : 'rst-track';
+  const nextM = g.milestones.find(m => !m.done);
+  const next = nextM ? nextM.name : isDone ? 'All milestones complete' : 'No milestones defined';
+  const barC = g.source === 'personal' ? 'var(--teal)' : atRisk ? 'var(--red)' : 'var(--green)';
+  return { id: g.id, name: g.name, type: g.source, cls, tag, tagCls, next, owner: 'G', done: g.progress.done, total: g.progress.total, barC, url: g.url };
+}
+
+// Apply YNAB wealth to personalSnap
+function applyWealth(data) {
+  if (!data?.configured) return;
+  const { netWorth, otherDebt, month } = data;
+  const income = month?.income || 0, spent = month?.spent || 0;
+  const savingsRate = income > 0 ? Math.round(((income - spent) / income) * 100) : null;
+  const surplus = income - spent;
+  let debtETA = '—';
+  if ((otherDebt || 0) > 0 && surplus > 0) {
+    const mo = Math.ceil(otherDebt / surplus);
+    debtETA = mo <= 12 ? mo + ' mo' : Math.ceil(mo / 12) + ' yr';
+  } else if ((otherDebt || 0) === 0) debtETA = 'Debt free';
+  personalSnap[0] = { lbl: 'Net worth',        val: fmt$(netWorth), c: (netWorth || 0) > 0 ? 'var(--green)' : 'var(--red)' };
+  personalSnap[1] = { lbl: 'Spent this month', val: fmt$(spent),    c: 'var(--text)' };
+  personalSnap[2] = { lbl: 'Savings rate',     val: savingsRate != null ? savingsRate + '%' : '—', c: (savingsRate || 0) > 20 ? 'var(--green)' : (savingsRate || 0) > 0 ? 'var(--amber)' : 'var(--text)' };
+  personalSnap[3] = { lbl: 'Debt payoff ETA',  val: debtETA,        c: 'var(--text)' };
+  if (state.mode === 'personal') renderSnap();
+}
+
+// Apply server ritual state to local items
+function applyRitual(data) {
+  if (!data) return;
+  ['morning', 'evening'].forEach(which => {
+    const s = data[which] || {};
+    rituals[which].items.forEach(it => { if (it.key in s) it.done = !!s[it.key]; });
+  });
+  renderRitual('morning');
+  renderRitual('evening');
+}
+
+// Debounced PATCH to persist ritual state
+let _ritualSyncTimer = null;
+function syncRitualToServer(which) {
+  clearTimeout(_ritualSyncTimer);
+  _ritualSyncTimer = setTimeout(async () => {
+    const s = {};
+    rituals[which].items.forEach(it => { s[it.key] = it.done; });
+    try {
+      await fetch('/api/ritual/today?ritual=' + which, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: s }),
+      });
+    } catch(e) {}
+  }, 1200);
+}
+
+// Apply rings/streaks data
+function applyStreaks(data) {
+  const s = data.streaks || {};
+  state.lifeStreak = Math.max(s.swimming || 0, s.walking || 0, s.journal || 0);
+  const series = (data.quarter?.series || []).slice(-7);
+  if (series.length >= 7) {
+    const DAYS = ['S','M','T','W','T','F','S'];
+    const today = todayISO();
+    series.forEach((d, i) => {
+      const hit = (d.swimMinutes || 0) > 0 || (d.walkMinutes || 0) > 0 || d.hasBody;
+      lifeWeek[i] = { d: DAYS[new Date(d.date + 'T12:00:00').getDay()], state: d.date === today ? 'today' : hit ? 'hit' : 'miss' };
+    });
+  }
+  const saved = workStreakLoad();
+  if (saved?.days != null) state.workStreak = saved.days;
+  renderStreaks();
+}
+
+// Apply AI brief text → brief-lines
+function applyBrief(text) {
+  if (!text) return;
+  const sentences = (text.match(/[^.!?]+[.!?]*/g) || [text]).map(s => s.trim()).filter(Boolean).slice(0, 4);
+  const colors = ['var(--red)', 'var(--amber)', 'var(--green)', 'var(--teal)'];
+  workBrief.length = 0;
+  sentences.forEach((s, i) => workBrief.push({ c: colors[i % colors.length], html: s }));
+  if (state.mode !== 'personal') renderBrief();
+}
+
+// Apply calendar events to vcal
+function applyCalendar(events) {
+  const tz = 'America/Chicago';
+  const nowStr = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(new Date());
+  const items = [{ now: true, lbl: 'NOW · ' + nowStr }];
+  for (const e of (events || [])) {
+    if (e.allDay) continue;
+    const d = new Date(e.start);
+    const time = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(d)
+      .toLowerCase().replace(' ', '').replace(':00', '');
+    let c = 'var(--text-4)', bg = 'rgba(84,102,126,.08)';
+    if (/swim|workout|gym|exercise|walk|run/i.test(e.title))   { c = 'var(--teal)';   bg = 'var(--teal-soft)'; }
+    else if (/dinner|lunch|breakfast|coffee/i.test(e.title))   { c = 'var(--green)';  bg = 'var(--green-soft)'; }
+    else if (/meeting|call|sync|standup|review/i.test(e.title)){ c = 'var(--accent)'; bg = 'var(--accent-soft)'; }
+    const mins = e.end ? Math.round((new Date(e.end) - new Date(e.start)) / 60000) : 0;
+    const sub = mins >= 60 ? (mins/60) + 'h' : mins ? mins + 'min' : '';
+    items.push({ time, name: e.title, sub, c, bg });
+  }
+  vcalItems.length = 0;
+  items.forEach(i => vcalItems.push(i));
+  renderVcal();
+}
+
+// ── INLINE ADD TASK ──
+function toggleAddTask() {
+  const form = document.getElementById('planAddForm');
+  const btn  = document.getElementById('planAddBtn');
+  if (!form) return;
+  const open = form.classList.toggle('show');
+  if (btn) btn.textContent = open ? '✕' : '+';
+  if (open) {
+    const src = document.getElementById('planAddSrc');
+    if (src) src.value = state.mode === 'personal' ? 'personal' : 'work';
+    document.getElementById('planAddInput')?.focus();
+  }
+}
+
+async function submitAddTask() {
+  const input = document.getElementById('planAddInput');
+  const srcEl = document.getElementById('planAddSrc');
+  const msgEl = document.getElementById('planAddMsg');
+  const btn   = document.getElementById('planAddSubmit');
+  const name  = input?.value.trim();
+  if (!name) return;
+  const source = srcEl?.value || (state.mode === 'personal' ? 'personal' : 'work');
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const r = await fetch('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source, name, myDay: true, status: 'Planned' }),
+    });
+    const d = await r.json();
+    if (!r.ok || d.error) throw new Error(d.error || 'Failed to add task');
+    plan.push({ id: d.id, n: 0, name, project: '', source: 'task', tags: [], done: false, rockLinked: false, type: source === 'personal' ? 'personal' : 'work', notionUrl: null });
+    renderPlan();
+    input.value = '';
+    if (msgEl) { msgEl.style.display = ''; msgEl.style.color = 'var(--green)'; msgEl.textContent = '✓ Added to today'; setTimeout(() => { msgEl.style.display = 'none'; }, 2000); }
+  } catch(e) {
+    if (msgEl) { msgEl.style.display = ''; msgEl.style.color = 'var(--red)'; msgEl.textContent = e.message; setTimeout(() => { msgEl.style.display = 'none'; }, 3500); }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Add'; }
+  }
+}
+
+// ── QUICK CAPTURE (FAB) ──
+function openCapture() {
+  document.getElementById('qcOverlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('qcInput')?.focus(), 80);
+}
+
+function closeCapture() {
+  document.getElementById('qcOverlay').classList.add('hidden');
+  const st = document.getElementById('qcStatus');
+  if (st) { st.textContent = ''; st.className = 'qc-status'; }
+}
+
+async function submitCapture() {
+  const input  = document.getElementById('qcInput');
+  const btn    = document.getElementById('qcSubmit');
+  const st     = document.getElementById('qcStatus');
+  const name   = input?.value.trim();
+  if (!name) return;
+  const source = state.mode === 'personal' ? 'personal' : 'work';
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const r = await fetch('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source, name, myDay: true, status: 'Planned' }),
+    });
+    const d = await r.json();
+    if (!r.ok || d.error) throw new Error(d.error || 'Failed');
+    plan.push({ id: d.id, n: 0, name, project: '', source: 'task', tags: [], done: false, rockLinked: false, type: source, notionUrl: null });
+    renderPlan();
+    input.value = '';
+    if (st) { st.className = 'qc-status ok'; st.textContent = '✓ Added'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'SEND'; }
+    setTimeout(closeCapture, 900);
+  } catch(e) {
+    if (st) { st.className = 'qc-status err'; st.textContent = e.message; }
+    if (btn) { btn.disabled = false; btn.textContent = 'SEND'; }
+  }
+}
+
+// ── FOOTER ACTIONS ──
+function togglePrivacy() {
+  state.privacyMode = !state.privacyMode;
+  document.body.classList.toggle('privacy', state.privacyMode);
+  document.querySelector('.footer-btn[data-action="privacy"]')?.classList.toggle('active', state.privacyMode);
+}
+
+function toggleTheme() {
+  const isLight = document.documentElement.classList.toggle('light');
+  const btn = document.querySelector('.footer-btn[data-action="theme"]');
+  if (btn) { btn.textContent = isLight ? '☀️' : '🌙'; btn.classList.toggle('active', isLight); }
+}
+
+function _updateRefreshStamp() {
+  const el = document.getElementById('footerStamp');
+  if (!el) return;
+  const now = new Date();
+  const mo = now.toLocaleString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+  const ti = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  el.textContent = `Refreshed ${mo} · ${ti}`;
+}
+
+async function refreshData() {
+  const btn = document.querySelector('.footer-btn[data-action="refresh"]');
+  if (btn) { btn.innerHTML = '<span class="spin">↻</span>'; btn.disabled = true; }
+  try { await loadTodayData(); _updateRefreshStamp(); } finally {
+    if (btn) { btn.innerHTML = '↻'; btn.disabled = false; }
+  }
+}
+
+// Master loader — all API calls in parallel, each applied gracefully on success
+async function loadTodayData() {
+  const [workTR, lifeTR, goalsR, ringsR, ritualR, briefR, calR, wealthR, projR] = await Promise.allSettled([
+    fetch('/api/tasks/work-myday').then(r => r.json()),
+    fetch('/api/tasks/life-myday').then(r => r.json()),
+    fetch('/api/goals').then(r => r.json()),
+    fetch('/api/journal/rings').then(r => r.json()),
+    fetch('/api/ritual/today').then(r => r.json()),
+    fetch('/api/ai/daily-focus').then(r => r.json()),
+    fetch('/api/calendar/today').then(r => r.json()),
+    fetch('/api/wealth/summary').then(r => r.json()),
+    fetch('/api/projects').then(r => r.json()),
+  ]);
+  const ok = r => r.status === 'fulfilled' && !r.value?.error;
+
+  if (ok(projR)) {
+    _projectMap = {};
+    (projR.value.projects || []).forEach(p => { _projectMap[p.id] = p; });
+  }
+  if (ok(goalsR)) {
+    _loadedGoals = goalsR.value.goals || [];
+    rocks.length = 0;
+    _loadedGoals.forEach(g => rocks.push(goalToRock(g)));
+  }
+  if (ok(workTR) || ok(lifeTR)) {
+    const wt = ok(workTR) ? (workTR.value.tasks || []) : [];
+    const lt = ok(lifeTR) ? (lifeTR.value.tasks || []) : [];
+    plan.length = 0;
+    [...wt, ...lt].forEach(t => plan.push(taskToPlanItem(t)));
+    _oneThingTask = pickOneThing(wt, _loadedGoals, 'work');
+    _personalOneThingTask = pickOneThing(lt, _loadedGoals, 'personal');
+  }
+  if (ok(ringsR)) applyStreaks(ringsR.value);
+  if (ok(ritualR)) applyRitual(ritualR.value);
+  if (ok(briefR)) applyBrief(briefR.value.brief);
+  if (ok(calR)) applyCalendar(calR.value.events || []);
+  if (ok(wealthR)) applyWealth(wealthR.value);
+
+  _reRenderAll();
+}
+
+// ── INIT ──
+function init() {
+  // Sync mode toggle buttons to match computed default
+  syncModeButtons(state.mode);
+
+  renderGreeting();
+  renderNav();
+  renderStreaks();
+  _reRenderAll();
+  renderVcal();
+
+  // Restore work streak from localStorage immediately (before API returns)
+  const _saved = workStreakLoad();
+  if (_saved?.days != null) { state.workStreak = _saved.days; renderStreaks(); }
+
+  // Weekend screen only shows when the user explicitly clicks WORK on a weekend.
+  // The ?demo=weekend param is available for local testing.
+  if (new URLSearchParams(location.search).get('demo') === 'weekend') showWeekendScreen();
+
+  loadTodayData().then(_updateRefreshStamp);
+}
+
+// ── Daily Check-in Modal ──
+const CI_SENT_KEY = 'lrl-checkin-last-sent';
+let _ciSlackEnabled = false;
+
+function _ciToday() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+}
+
+function openCheckinModal() {
+  document.getElementById('ciOverlay').classList.remove('hidden');
+  updateCiStatus();
+  fetchCheckinModal();
+}
+
+function closeCheckinModal() {
+  document.getElementById('ciOverlay').classList.add('hidden');
+}
+
+function updateCiStatus() {
+  const el = document.getElementById('ciStatus');
+  if (!el) return;
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem(CI_SENT_KEY) || 'null'); } catch(e){}
+  if (data && data.date === _ciToday()) {
+    const t = new Date(data.ts).toLocaleTimeString('en-US', { timeZone:'America/Chicago', hour:'numeric', minute:'2-digit' });
+    const link = data.permalink ? ` <a href="${data.permalink}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">view ↗</a>` : '';
+    el.className = 'ci-status sent';
+    el.innerHTML = `Sent ✓ ${t}${link}`;
+  } else {
+    el.className = 'ci-status';
+    el.textContent = '';
+  }
+}
+
+async function fetchCheckinModal() {
+  const loading = document.getElementById('ciLoading');
+  const text    = document.getElementById('ciText');
+  const actions = document.getElementById('ciActions');
+  const meta    = document.getElementById('ciMeta');
+  if (loading) { loading.style.display = ''; loading.textContent = "Composing today's check-in…"; }
+  if (text)    text.style.display = 'none';
+  if (actions) actions.style.display = 'none';
+  try {
+    const r = await fetch('/api/checkin/compose');
+    const d = await r.json();
+    if (d.error) {
+      if (loading) loading.textContent = 'Error: ' + d.error;
+      return;
+    }
+    _ciSlackEnabled = !!d.slackEnabled;
+    if (text)    { text.value = d.message || ''; text.style.display = ''; }
+    if (loading) loading.style.display = 'none';
+    if (actions) actions.style.display = 'flex';
+    if (meta) {
+      const c = d.counts || {};
+      meta.textContent = `${c.events||0} meetings · ${c.doing||0} in progress · ${c.waiting||0} waiting`;
+    }
+    const sendBtn = document.getElementById('ciSend');
+    if (sendBtn) {
+      sendBtn.disabled = !_ciSlackEnabled;
+      sendBtn.title = _ciSlackEnabled ? 'Post to #lrl_team' : 'SLACK_BOT_TOKEN not configured';
+    }
+  } catch (err) {
+    if (loading) loading.textContent = 'Error: ' + err.message;
+  }
+}
+
+async function sendCheckinModal() {
+  const text = document.getElementById('ciText');
+  const btn  = document.getElementById('ciSend');
+  if (!text?.value.trim()) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  try {
+    const r = await fetch('/api/checkin/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text.value }),
+    });
+    const d = await r.json();
+    if (r.status === 409 && d.error === 'slack_not_connected') {
+      window.location.href = d.connectUrl || '/auth/slack';
+      return;
+    }
+    if (!r.ok || d.error) throw new Error(d.error || 'send failed');
+    try { localStorage.setItem(CI_SENT_KEY, JSON.stringify({ date: _ciToday(), ts: Date.now(), permalink: d.permalink || null })); } catch(e){}
+    updateCiStatus();
+    const ci = rituals.morning.items.find(it => it.key === 'checkin');
+    if (ci && !ci.done) { ci.done = true; renderRitual('morning'); }
+    if (btn) { btn.disabled = false; btn.textContent = 'Send to Slack'; }
+  } catch (err) {
+    if (btn) { btn.disabled = !_ciSlackEnabled; btn.textContent = 'Send to Slack'; }
+    const st = document.getElementById('ciStatus');
+    if (st) { st.className = 'ci-status'; st.style.color = 'var(--red)'; st.textContent = err.message; }
+  }
+}
+
+async function copyCheckinModal() {
+  const text = document.getElementById('ciText');
+  if (!text?.value) return;
+  try {
+    await navigator.clipboard.writeText(text.value);
+  } catch(e) {
+    text.select();
+    document.execCommand('copy');
+  }
+}
+
+init();
+</script>
+
+<!-- Daily Check-in Modal -->
+<div class="ci-overlay hidden" id="ciOverlay" onclick="if(event.target===this)closeCheckinModal()">
+  <div class="ci-modal">
+    <div class="ci-head">
+      <span class="ci-title">Daily Check-in</span>
+      <button class="ci-close" onclick="closeCheckinModal()" title="Close">×</button>
+    </div>
+    <div class="ci-body">
+      <div class="ci-loading" id="ciLoading">Composing today's check-in…</div>
+      <textarea class="ci-textarea" id="ciText" style="display:none" spellcheck="false"></textarea>
+      <div class="ci-meta" id="ciMeta"></div>
+      <div class="ci-actions" id="ciActions" style="display:none">
+        <button class="ci-btn send" id="ciSend" onclick="sendCheckinModal()">Send to Slack</button>
+        <button class="ci-btn copy" onclick="copyCheckinModal()">Copy</button>
+        <span class="ci-status" id="ciStatus"></span>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

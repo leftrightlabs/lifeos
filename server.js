@@ -536,6 +536,12 @@ app.get('/api/me', async (req, res) => {
 
 app.use(express.static(join(__dirname, 'public'), staticOpts));
 
+// Clean URL for the redesigned TODAY view (public/today.html).
+app.get('/today', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store, must-revalidate');
+  res.sendFile(join(__dirname, 'public', 'today.html'));
+});
+
 app.get('/api/me', (req, res) => {
   res.json({ email: req.session.userEmail, name: req.session.userName });
 });
