@@ -534,13 +534,15 @@ app.get('/api/me', async (req, res) => {
 
 // ----- PROTECTED ROUTES (below this point require login) -----
 
-app.use(express.static(join(__dirname, 'public'), staticOpts));
-
-// Clean URL for the redesigned TODAY view (public/today.html).
-app.get('/today', (_req, res) => {
+// Root route must come BEFORE express.static so it wins over index.html.
+function serveApp(_req, res) {
   res.setHeader('Cache-Control', 'no-store, must-revalidate');
   res.sendFile(join(__dirname, 'public', 'today.html'));
-});
+}
+app.get('/', serveApp);
+app.get('/today', serveApp);
+
+app.use(express.static(join(__dirname, 'public'), staticOpts));
 
 app.get('/api/me', (req, res) => {
   res.json({ email: req.session.userEmail, name: req.session.userName });
