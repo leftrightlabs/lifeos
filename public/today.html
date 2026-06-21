@@ -1353,7 +1353,7 @@ function renderVcal() {
     return `<div class="vcal-row">
       <div class="vcal-time">${e.time}</div>
       <div class="vcal-line"></div>
-      <div class="vcal-content"><div class="vcal-event" style="background:${e.bg};border-left-color:${e.c};${e.italic?'font-style:italic;color:var(--text-3);':''}">${e.name}<span class="sub">${e.sub}</span></div></div>
+      <div class="vcal-content"><div class="vcal-event" style="background:${e.bg};border-left-color:${e.c};${e.isPast?'opacity:.4;':''}${e.italic?'font-style:italic;color:var(--text-3);':''}">${e.name}<span class="sub">${e.sub}</span></div></div>
     </div>`;
   }).join('');
 }
@@ -1772,21 +1772,37 @@ function applyBrief(text) {
 // Apply calendar events to vcal
 function applyCalendar(events) {
   const tz = 'America/Chicago';
-  const nowStr = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(new Date());
-  const items = [{ now: true, lbl: 'NOW · ' + nowStr }];
+  const now = new Date();
+  const nowStr = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(now);
+  const timed = [];
   for (const e of (events || [])) {
     if (e.allDay) continue;
     const d = new Date(e.start);
     const time = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(d)
       .toLowerCase().replace(' ', '').replace(':00', '');
+    const isPast = d < now;
     let c = 'var(--text-4)', bg = 'rgba(84,102,126,.08)';
-    if (/swim|workout|gym|exercise|walk|run/i.test(e.title))   { c = 'var(--teal)';   bg = 'var(--teal-soft)'; }
-    else if (/dinner|lunch|breakfast|coffee/i.test(e.title))   { c = 'var(--green)';  bg = 'var(--green-soft)'; }
-    else if (/meeting|call|sync|standup|review/i.test(e.title)){ c = 'var(--accent)'; bg = 'var(--accent-soft)'; }
+    if (!isPast) {
+      if (/swim|workout|gym|exercise|walk|run/i.test(e.title))   { c = 'var(--teal)';   bg = 'var(--teal-soft)'; }
+      else if (/dinner|lunch|breakfast|coffee/i.test(e.title))   { c = 'var(--green)';  bg = 'var(--green-soft)'; }
+      else if (/meeting|call|sync|standup|review/i.test(e.title)){ c = 'var(--accent)'; bg = 'var(--accent-soft)'; }
+    }
     const mins = e.end ? Math.round((new Date(e.end) - new Date(e.start)) / 60000) : 0;
     const sub = mins >= 60 ? (mins/60) + 'h' : mins ? mins + 'min' : '';
-    items.push({ time, name: e.title, sub, c, bg });
+    timed.push({ time, name: e.title, sub, c, bg, isPast, _start: d });
   }
+  timed.sort((a, b) => a._start - b._start);
+  // Insert NOW indicator between past and upcoming events
+  const items = [];
+  let nowInserted = false;
+  for (const e of timed) {
+    if (!nowInserted && !e.isPast) {
+      items.push({ now: true, lbl: 'NOW · ' + nowStr });
+      nowInserted = true;
+    }
+    items.push(e);
+  }
+  if (!nowInserted) items.push({ now: true, lbl: 'NOW · ' + nowStr });
   vcalItems.length = 0;
   items.forEach(i => vcalItems.push(i));
   renderVcal();
