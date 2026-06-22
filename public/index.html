@@ -2952,6 +2952,8 @@
   .pulse-toggle button.on { background: var(--lime); color: var(--navy-accent); font-weight: 700; }
   .pulse-submit { width: 100%; background: var(--lime); color: var(--navy-accent); border: none; border-radius: 10px; padding: 13px; font-size: 14px; font-weight: 800; cursor: pointer; margin-top: 4px; }
   .pulse-submit:disabled { opacity: 0.5; cursor: default; }
+  /* Desktop UI scale — ~125% on large screens so type reads larger; mobile 1×. */
+  @media (min-width: 1024px) { body { zoom: var(--ui-scale, 1.25); } }
 </style>
 </head>
 <body>

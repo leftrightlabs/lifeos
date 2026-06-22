@@ -465,6 +465,8 @@ body.app-loading #briefLines { display: none !important; }
 body.app-loading #appLoading { display: flex; }
 .app-loading-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: appLoadingPulse 1s ease-in-out infinite; }
 @keyframes appLoadingPulse { 0%, 100% { opacity: .3; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
+/* Desktop UI scale — see app.css. ~125% on large screens; mobile stays 1×. */
+@media (min-width: 1024px) { body { zoom: var(--ui-scale, 1.25); } }
 </style>
 </head>
 <body class="app-loading">

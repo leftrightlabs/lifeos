@@ -130,3 +130,11 @@ a { color: inherit; text-decoration: none; }
 html.light .topbar-wrap,
 html.light .nav-wrap { background: var(--bg); }
 html.light .zone-card { background: var(--surface); }
+
+/* ── DESKTOP UI SCALE ──
+   Bump the whole interface to ~125% on large screens so type reads larger
+   (matches viewing at 125% browser zoom). Mobile/tablet are left at 1×.
+   Tweak --ui-scale to taste. */
+@media (min-width: 1024px) {
+  body { zoom: var(--ui-scale, 1.25); }
+}
