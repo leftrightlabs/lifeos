@@ -456,9 +456,18 @@ html.light .footer-stamp { color: var(--text-3); }
   .greeting-zone { padding: 18px 14px 14px; }
   .streak-strip { padding: 12px 14px 0; }
 }
+/* Loading gate — hide every live-data panel until the first data load resolves,
+   so no seed/sample data flashes before the real data arrives. */
+body.app-loading .streak-strip,
+body.app-loading .layout,
+body.app-loading #briefLines { display: none !important; }
+#appLoading { display: none; padding: 56px 22px; align-items: center; justify-content: center; gap: 10px; color: var(--text-3); font-size: 14px; }
+body.app-loading #appLoading { display: flex; }
+.app-loading-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: appLoadingPulse 1s ease-in-out infinite; }
+@keyframes appLoadingPulse { 0%, 100% { opacity: .3; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
 </style>
 </head>
-<body>
+<body class="app-loading">
 
 <!-- Weekend screen: shown on Sat/Sun in Work mode. Use ?demo=weekend for local testing. -->
 <div class="weekend-screen hidden" id="weekendScreen">
@@ -500,12 +509,11 @@ html.light .footer-stamp { color: var(--text-3); }
       <div class="greeting" id="greeting"></div>
       <div class="greeting-meta" id="greetingMeta">SUN JUN 21 · Q2 · 9 DAYS LEFT</div>
     </div>
-    <div class="brief-lines" id="briefLines">
-      <div class="brief-line"><span class="brief-marker" style="background:var(--red);"></span><span><strong>$0 revenue this month and runway is tight.</strong> The fastest lever today is the $9,450 Hardaway decision — it's been waiting since April.</span></div>
-      <div class="brief-line"><span class="brief-marker" style="background:var(--amber);"></span><span>6 leads have gone cold (11+ days). One focused outreach block clears the whole backlog.</span></div>
-      <div class="brief-line"><span class="brief-marker" style="background:var(--green);"></span><span>Clean stretch from 2–6pm between swimming and dinner. <strong>That's your deep-work window.</strong></span></div>
-    </div>
+    <div class="brief-lines" id="briefLines"></div>
   </div>
+
+  <!-- LOADING GATE (shown until first data load resolves) -->
+  <div id="appLoading"><span class="app-loading-dot"></span> Loading your day…</div>
 
   <!-- STREAK STRIP -->
   <div class="streak-strip" id="streakStrip"></div>
@@ -621,8 +629,8 @@ const state = {
   personalOneThing: 'active', // personal one thing: active | done
   hideDone: false,
   rocksOpen: true,
-  workStreak: 3,
-  lifeStreak: 7,
+  workStreak: 0,
+  lifeStreak: 0,
   workSatisfied: false,
   lifeSatisfied: false,
   freezeAvailable: true,
@@ -722,7 +730,10 @@ function syncModeButtons(m) {
 }
 
 function renderNav() {
-  const items = state.mode === 'personal' ? NAV_PERSONAL : state.mode === 'all' ? NAV_ALL : NAV_WORK;
+  let items = state.mode === 'personal' ? NAV_PERSONAL : state.mode === 'all' ? NAV_ALL : NAV_WORK;
+  // Team members only have work zones — the domain labels/separators have
+  // nothing left to divide, so drop them.
+  if (!CAN_PERSONAL) items = items.filter(item => !item.sep && !item.domain);
   document.getElementById('nav').innerHTML = items.map(item => {
     if (item.sep) return `<div class="nav-sep"></div>`;
     if (item.domain) return `<span class="nav-domain">${item.domain}</span>`;
@@ -801,6 +812,21 @@ function useFreeze() {
 }
 
 // ── THE ONE THING ──
+// Empty-state card shown when there's no qualifying task (no sample fallback).
+function oneThingEmpty(kind) {
+  const personal = kind === 'personal';
+  const accent = personal ? 'var(--teal)' : 'var(--accent)';
+  const msg = personal
+    ? 'No personal priority flagged for today. Star a task as “My Day” to set one.'
+    : 'No work priority flagged for today. Star a task as “My Day” to set one.';
+  return `
+    <div class="onething" id="otCard" style="border-left-color:${accent};">
+      <div class="onething-label" style="color:${accent};">The one thing</div>
+      <div class="onething-why" style="margin:6px 0 0;">${msg}</div>
+      <div class="onething-orb"></div>
+    </div>`;
+}
+
 function renderOneThing() {
   const area = document.getElementById('oneThingArea');
 
@@ -820,10 +846,9 @@ function renderOneThing() {
         </div>`;
       return;
     }
-    let ptTitle = "Log today's swim and close out the week";
-    let ptMeta = `<span class="ot-chip" style="background:var(--teal-soft);color:var(--teal);">HEALTH</span><span class="ot-rocklink">Advances <b>Swim 3×/week</b></span>`;
-    let ptWhy = "You're 8 of 13 sessions in for Q2. One session today keeps Swim 3×/week on track and locks in the life streak. Everything else can wait — this one takes 30 minutes.";
-    if (_personalOneThingTask) {
+    if (!_personalOneThingTask) { area.innerHTML = oneThingEmpty('personal'); return; }
+    let ptTitle, ptMeta, ptWhy;
+    {
       const t = _personalOneThingTask;
       const rock = _loadedGoals.find(g => g.id === t.projectId);
       ptTitle = t.name;
@@ -846,6 +871,8 @@ function renderOneThing() {
       </div>`;
     return;
   }
+
+  if (!_oneThingTask && state.oneThing !== 'done') { area.innerHTML = oneThingEmpty('work'); return; }
 
   if (state.oneThing === 'done') {
     area.innerHTML = `
@@ -1000,14 +1027,8 @@ function fireConfetti() {
 }
 
 // ── ROCKS ──
-const rocks = [
-  { name:'Tier 2 Journey',    type:'work',     cls:'risk',  tag:'AT RISK',  tagCls:'rst-risk',  next:'Set up Tier 2 offer page',         owner:'G', done:1, total:5,  barC:'var(--red)' },
-  { name:'Partner Program',   type:'work',     cls:'risk',  tag:'AT RISK',  tagCls:'rst-risk',  next:'Draft partner outreach email',      owner:'T', done:0, total:4,  barC:'var(--red)' },
-  { name:'Content Engine',    type:'work',     cls:'track', tag:'ON TRACK', tagCls:'rst-track', next:'Publish 2 posts this week',         owner:'G', done:3, total:5,  barC:'var(--green)' },
-  { name:'Workshop Launch',   type:'work',     cls:'risk',  tag:'AT RISK',  tagCls:'rst-risk',  next:'Create workshop landing page',      owner:'N', done:0, total:5,  barC:'var(--red)' },
-  { name:'Swim 3×/week',      type:'personal', cls:'track', tag:'ON TRACK', tagCls:'rst-track', next:'Log today\'s swim',                 owner:'G', done:8, total:13, barC:'var(--teal)' },
-  { name:'LEGO Technic build', type:'personal', cls:'track', tag:'ON TRACK', tagCls:'rst-track', next:'Finish Stage 2 assembly',           owner:'G', done:2, total:5,  barC:'var(--teal)' },
-];
+// Seeded empty — filled by loadTodayData() from /api/goals. No sample data.
+const rocks = [];
 
 function renderRocks() {
   const isPersonal = state.mode === 'personal';
@@ -1055,14 +1076,8 @@ function renderRocks() {
 }
 
 // ── PLAN ──
-const plan = [
-  { n:1, name:'Follow up Jason Hardaway — push for decision', project:'Hardaway · ABM Marketing', source:'convert', tags:[{t:'ROCK 1',c:'pt-rock'},{t:'$9,450',c:'pt-money'}],   done:false, rockLinked:true,  type:'work',     notionUrl:null },
-  { n:2, name:'Outreach block — clear 6 cold leads',           project:'Convert · Pipeline',        source:'convert', tags:[{t:'CONVERT',c:'pt-area'}],                             done:false, rockLinked:false, type:'work',     notionUrl:null },
-  { n:3, name:"Draft copy: Don't Rebrand for Aesthetics",      project:'LRL Marketing · Content Engine', source:'task', tags:[{t:'ROCK 3',c:'pt-rock'},{t:'Overdue',c:'pt-late'}], done:false, rockLinked:true,  type:'work',     notionUrl:null },
-  { n:4, name:"Review Trina's Partner Program progress",       project:'Partner Program',            source:'task', tags:[{t:'ROCK 2',c:'pt-rock'}],                                done:false, rockLinked:true,  type:'work',     notionUrl:null },
-  { n:5, name:'Log 30 min swim',                               project:'Health · Exercise',          source:'task', tags:[{t:'HEALTH',c:'pt-personal'}],                            done:false, rockLinked:false, type:'personal', notionUrl:null },
-  { n:6, name:'Read 20 minutes',                               project:'Personal · Learning',        source:'task', tags:[{t:'PERSONAL',c:'pt-personal'}],                          done:false, rockLinked:false, type:'personal', notionUrl:null },
-];
+// Seeded empty — filled by loadTodayData() from /api/tasks. No sample data.
+const plan = [];
 
 // Track which plan row has its menu open
 let _openMenuIdx = null;
@@ -1604,16 +1619,9 @@ function saveRitualInput(which, i, rawValue) {
 }
 
 // ── BRIEF ──
-const workBrief = [
-  { c:'var(--red)',   html:'<strong>$0 revenue this month and runway is tight.</strong> The fastest lever today is the $9,450 Hardaway decision — it\'s been waiting since April.' },
-  { c:'var(--amber)', html:'6 leads have gone cold (11+ days). One focused outreach block clears the whole backlog.' },
-  { c:'var(--green)', html:'Clean stretch from 2–6pm between swimming and dinner. <strong>That\'s your deep-work window.</strong>' },
-];
-const personalBrief = [
-  { c:'var(--teal)',  html:'<strong>7-day life streak — keep it alive today.</strong> Log a workout or advance the LEGO build to lock it in.' },
-  { c:'var(--green)', html:'Q2 closes in 9 days. Swim 3×/week is on track. LEGO build at Stage 2.' },
-  { c:'var(--amber)', html:'4h open 2–6pm. Good window for personal deep work.' },
-];
+// Seeded empty — workBrief is filled by applyBrief() from /api/ai/daily-focus.
+const workBrief = [];
+const personalBrief = [];
 function renderBrief() {
   const lines = state.mode === 'personal' ? personalBrief : workBrief;
   document.getElementById('briefLines').innerHTML = lines.map(l =>
@@ -1638,6 +1646,7 @@ let _projectMap = {};
 let _oneThingTask = null;
 let _personalOneThingTask = null;
 let _loadedGoals = [];
+let _dataLoaded = false; // gates the loading overlay; flips true after first load
 
 function todayISO() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
@@ -2008,7 +2017,10 @@ async function loadTodayData() {
   if (ok(wealthR)) applyWealth(wealthR.value);
   if (ok(finR) || ok(pipeR)) applyFinance(ok(finR) ? finR.value : null, ok(pipeR) ? pipeR.value : null);
 
+  _dataLoaded = true;
   _reRenderAll();
+  // Reveal the dashboard now that real data is in — no sample-data flash.
+  document.body.classList.remove('app-loading');
 }
 
 // ── INIT ──
@@ -2060,7 +2072,12 @@ function init() {
   // The ?demo=weekend param is available for local testing.
   if (new URLSearchParams(location.search).get('demo') === 'weekend') showWeekendScreen();
 
-  loadTodayData().then(_updateRefreshStamp);
+  // Always lift the loading gate once the load settles, even on error, so the
+  // dashboard never gets stuck behind the overlay.
+  loadTodayData()
+    .then(_updateRefreshStamp)
+    .catch(() => {})
+    .finally(() => { _dataLoaded = true; document.body.classList.remove('app-loading'); _reRenderAll(); });
 }
 
 // ── Daily Check-in Modal ──

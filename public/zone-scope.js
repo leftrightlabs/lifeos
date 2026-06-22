@@ -14,17 +14,15 @@
         if ((b.textContent || '').trim().toUpperCase() !== 'WORK') b.style.display = 'none';
       });
 
-      // LIFE nav zones: hide the personal-domain links + their label + leading separator.
+      // LIFE nav zones: hide the personal-domain links.
       const LIFE = ['/health', '/wealth', '/lego', '/relationships'];
       document.querySelectorAll('.nav .nav-btn').forEach((a) => {
         if (LIFE.includes(a.getAttribute('href'))) a.style.display = 'none';
       });
-      document.querySelectorAll('.nav .nav-domain').forEach((s) => {
-        if ((s.textContent || '').trim().toUpperCase() === 'LIFE') {
-          s.style.display = 'none';
-          const prev = s.previousElementSibling;
-          if (prev && prev.classList.contains('nav-sep')) prev.style.display = 'none';
-        }
+      // With only work zones left, the domain labels (LIFE / WORK) and the
+      // separators have nothing to divide — hide them all.
+      document.querySelectorAll('.nav .nav-domain, .nav .nav-sep').forEach((e) => {
+        e.style.display = 'none';
       });
     })
     .catch(() => {});

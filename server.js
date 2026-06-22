@@ -545,12 +545,33 @@ app.get('/today', (_req, res) => {
   res.sendFile(join(__dirname, 'public', 'today.html'));
 });
 
-// Zone pages — served as static HTML; express.static would also catch these
-// but explicit routes let us set no-cache headers consistently.
-['attract','convert','deliver','scale','health','wealth','lego','relationships','messages','execute'].forEach(zone => {
-  app.get(`/${zone}`, (_req, res) => {
+// Whether the signed-in request belongs to a personal-enabled user (the owner).
+// Mirrors /api/me so server-side gating matches what the client sees.
+async function reqPersonalEnabled(req) {
+  if (!IS_PROD && req.query.as === 'member') return false; // dev test hook
+  if (dbEnabled() && req.session?.userId) {
+    try { const u = await dbUsers.getById(req.session.userId); if (u) return !!u.personal_enabled; } catch (e) { /* fall through */ }
+  }
+  return (req.session?.userEmail || ALLOWED_EMAIL).toLowerCase() === ALLOWED_EMAIL;
+}
+
+function serveZone(zone) {
+  return (_req, res) => {
     res.setHeader('Cache-Control', 'no-store, must-revalidate');
     res.sendFile(join(__dirname, 'public', `${zone}.html`));
+  };
+}
+
+// Work zones — available to every authenticated team member.
+['attract','convert','deliver','scale','messages','execute'].forEach(zone => {
+  app.get(`/${zone}`, serveZone(zone));
+});
+
+// Personal (LIFE) zones — owner only. Team members are redirected to Today.
+['health','wealth','lego','relationships'].forEach(zone => {
+  app.get(`/${zone}`, async (req, res) => {
+    if (!(await reqPersonalEnabled(req))) return res.redirect('/today');
+    serveZone(zone)(req, res);
   });
 });
 
