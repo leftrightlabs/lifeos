@@ -30,6 +30,17 @@
   --text-3: #54667E;
   --text-4: #364457;
 
+  /* Type scale — one normalized ladder (~1.25 ratio, 4px-aligned). Reference a
+     token for every font-size; never hardcode px. */
+  --fs-caption: 12px;  /* micro labels, pills, meta */
+  --fs-body-sm: 14px;  /* secondary text */
+  --fs-body:    16px;  /* default body */
+  --fs-title:   20px;  /* card titles */
+  --fs-heading: 24px;  /* section headings */
+  --fs-display: 32px;  /* large numbers / page titles */
+  --fs-hero:    40px;  /* hero text */
+  --fs-giant:   52px;  /* oversized hero */
+
   /* Semantic */
   --red:   #F26D6D;  --red-soft:   rgba(242,109,109,.12);
   --amber: #EBB454;  --amber-soft: rgba(235,180,84,.12);

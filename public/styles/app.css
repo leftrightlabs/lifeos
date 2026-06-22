@@ -6,7 +6,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
-  font-size: 14px;
+  font-size: var(--fs-body);
   line-height: 1.5;
   min-height: 100vh;
 }
@@ -27,11 +27,11 @@ a { color: inherit; text-decoration: none; }
   background: var(--bg);
   border-bottom: 1px solid var(--border-soft);
 }
-.logo { color: var(--accent); font-weight: 800; font-size: 13px; letter-spacing: .09em; white-space: nowrap; }
+.logo { color: var(--accent); font-weight: 800; font-size: var(--fs-body-sm); letter-spacing: .09em; white-space: nowrap; }
 .topbar-right { display: flex; align-items: center; gap: 7px; }
 .mode-toggle { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 3px; gap: 2px; }
 .mode-btn {
-  background: none; border: none; font-size: 10px; font-weight: 700;
+  background: none; border: none; font-size: var(--fs-caption); font-weight: 700;
   letter-spacing: .05em; padding: 5px 13px; border-radius: 16px;
   cursor: pointer; color: var(--text-3); font-family: inherit;
   white-space: nowrap; transition: all .2s; text-decoration: none;
@@ -42,7 +42,7 @@ a { color: inherit; text-decoration: none; }
 .mode-btn.all    { background: var(--accent);   color: #fff; }
 .mode-btn.personal { background: var(--personal); color: #fff; }
 .me-pill {
-  background: var(--accent); color: #fff; font-size: 11px; font-weight: 600;
+  background: var(--accent); color: #fff; font-size: var(--fs-caption); font-weight: 600;
   padding: 5px 13px; border-radius: 22px; cursor: pointer;
 }
 
@@ -58,7 +58,7 @@ a { color: inherit; text-decoration: none; }
 .nav::-webkit-scrollbar { display: none; }
 .nav-btn {
   background: none; border: none; border-bottom: 2px solid transparent;
-  font-size: 11px; font-weight: 600; letter-spacing: .05em;
+  font-size: var(--fs-caption); font-weight: 600; letter-spacing: .05em;
   padding: 11px 14px; cursor: pointer; color: var(--text-3);
   white-space: nowrap; font-family: inherit;
   text-decoration: none; display: inline-flex; align-items: center;
@@ -68,7 +68,7 @@ a { color: inherit; text-decoration: none; }
 .nav-btn.active { color: var(--text); border-bottom-color: var(--accent); }
 .nav-sep { width: 1px; background: var(--border); margin: 9px 6px; flex-shrink: 0; }
 .nav-domain {
-  font-size: 8px; color: var(--text-4); padding: 11px 6px 11px 3px;
+  font-size: var(--fs-caption); color: var(--text-4); padding: 11px 6px 11px 3px;
   text-transform: uppercase; letter-spacing: .09em; align-self: center; white-space: nowrap;
 }
 
@@ -81,22 +81,22 @@ a { color: inherit; text-decoration: none; }
   margin-bottom: 40px;
 }
 .zone-eyebrow {
-  font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  font-size: var(--fs-caption); font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
   color: var(--zone, var(--accent));
 }
 .zone-heading { display: flex; align-items: center; gap: 14px; }
-.zone-icon { font-size: 32px; line-height: 1; }
+.zone-icon { font-size: var(--fs-display); line-height: 1; }
 .zone-title {
-  font-size: 32px; font-weight: 800; color: var(--text); letter-spacing: -.01em; margin: 0;
+  font-size: var(--fs-display); font-weight: 800; color: var(--text); letter-spacing: -.01em; margin: 0;
 }
-.zone-desc { font-size: 15px; color: var(--text-2); max-width: 520px; line-height: 1.6; }
+.zone-desc { font-size: var(--fs-body); color: var(--text-2); max-width: 520px; line-height: 1.6; }
 .zone-badge {
   display: inline-flex; align-items: center; gap: 6px;
   background: var(--zone-soft, var(--accent-soft));
   color: var(--zone, var(--accent));
   border: 1px solid var(--zone, var(--accent));
   border-opacity: .25;
-  font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  font-size: var(--fs-caption); font-weight: 700; letter-spacing: .06em;
   padding: 5px 12px; border-radius: 20px; margin-top: 4px;
 }
 
@@ -108,18 +108,18 @@ a { color: inherit; text-decoration: none; }
   border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 8px;
 }
 .zone-card-label {
-  font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  font-size: var(--fs-caption); font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
   color: var(--zone, var(--accent));
 }
-.zone-card-title { font-size: 15px; font-weight: 600; color: var(--text); }
-.zone-card-body { font-size: 13px; color: var(--text-3); line-height: 1.5; }
+.zone-card-title { font-size: var(--fs-body); font-weight: 600; color: var(--text); }
+.zone-card-body { font-size: var(--fs-body-sm); color: var(--text-3); line-height: 1.5; }
 
 /* ── FAB ── */
 .fab {
   position: fixed; bottom: 28px; right: 22px;
   width: 50px; height: 50px; border-radius: 50%;
   background: var(--zone, var(--accent)); color: #fff; border: none;
-  font-size: 20px; cursor: pointer;
+  font-size: var(--fs-title); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 4px 18px rgba(99,102,241,.4); z-index: 80;
   transition: transform .15s, filter .2s; text-decoration: none;
@@ -136,5 +136,5 @@ html.light .zone-card { background: var(--surface); }
    (matches viewing at 125% browser zoom). Mobile/tablet are left at 1×.
    Tweak --ui-scale to taste. */
 @media (min-width: 1024px) {
-  body { zoom: var(--ui-scale, 1.25); }
+  body { zoom: var(--ui-scale, 1.1); }
 }
