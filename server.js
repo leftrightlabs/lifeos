@@ -534,13 +534,16 @@ app.get('/api/me', async (req, res) => {
 
 // ----- PROTECTED ROUTES (below this point require login) -----
 
-// Root route must come BEFORE express.static so it wins over index.html.
-function serveApp(_req, res) {
+// Root route must come BEFORE express.static so it sets no-cache headers
+// consistently (express.static would otherwise serve index.html for "/").
+app.get('/', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store, must-revalidate');
+  res.sendFile(join(__dirname, 'public', 'index.html'));
+});
+app.get('/today', (_req, res) => {
   res.setHeader('Cache-Control', 'no-store, must-revalidate');
   res.sendFile(join(__dirname, 'public', 'today.html'));
-}
-app.get('/', serveApp);
-app.get('/today', serveApp);
+});
 
 // Zone pages — served as static HTML; express.static would also catch these
 // but explicit routes let us set no-cache headers consistently.
