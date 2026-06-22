@@ -372,5 +372,116 @@ app.get('/api/attract/media', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  // ── ISO-week math on YYYY-MM-DD strings (UTC-noon to dodge TZ drift) ──
+  const _monday = (iso) => { const [y,m,d]=iso.split('-').map(Number); const dt=new Date(Date.UTC(y,m-1,d,12)); dt.setUTCDate(dt.getUTCDate()-((dt.getUTCDay()+6)%7)); return dt; };
+  const _ymd = (dt) => dt.toISOString().slice(0,10);
+  const _add = (dt,n) => { const x=new Date(dt); x.setUTCDate(x.getUTCDate()+n); return x; };
+  const _dow = (iso) => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(iso+'T12:00:00Z').getUTCDay()];
+  const _mon = (iso) => new Date(iso+'T12:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'});
+  const PUB='Published', SCHED='Scheduled';
+  const _ready = (s) => s===SCHED || s===PUB;
+  const _plat  = (a) => (a.channels?.[0]?.platform) || marketingPlatform(a.name);
+  const _platLabel = { linkedin:'LinkedIn', instagram:'Instagram', facebook:'Facebook', youtube:'YouTube', email:'Email', blog:'Blog', other:'Post' };
+  const _slotState = (a, today) => a.status===PUB ? 'done' : (a.publishDate && a.publishDate < today) ? 'overdue' : a.status===SCHED ? 'scheduled' : 'needs-copy';
+
+  // GET /api/attract — full page payload (weekly pulse, featured post, queue,
+  // 6-week runway, ahead-of-schedule, pageState) derived live from MARKETING
+  // ASSETS. In-memory cached (15 min) like the rest of this domain — no DB cache.
+  app.get('/api/attract', async (req, res) => {
+    if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+    try {
+      if (req.query.fresh === '1') cache.delete('attract-page');
+      const data = await cached('attract-page', async () => {
+        const channelMap = await fetchMarketingChannelMap();
+        const today = chicagoTodayISODate();
+        const wk = _monday(today);
+        const rangeStart = _ymd(_add(wk, -28));   // 4 wks back (overdue context)
+        const rangeEnd   = _ymd(_add(wk, 41));     // 6 wks ahead (incl. this week)
+        const pages = []; let cursor;
+        do {
+          const r = await notion.dataSources.query({ data_source_id: MARKETING_ASSETS_DS, filter: { and: [
+            { property: 'Publish Date', date: { on_or_after: rangeStart } },
+            { property: 'Publish Date', date: { on_or_before: rangeEnd } },
+          ] }, sorts: [{ property: 'Publish Date', direction: 'ascending' }], page_size: 100, start_cursor: cursor });
+          pages.push(...r.results); cursor = r.has_more ? r.next_cursor : null;
+        } while (cursor);
+        const assets = pages.map((pg) => serializeMarketingAsset(pg, channelMap)).filter((a) => a.publishDate);
+
+        const weekStart = _ymd(wk), weekEnd = _ymd(_add(wk, 6));
+        const thisWeek = assets.filter((a) => a.publishDate >= weekStart && a.publishDate <= weekEnd);
+        const postedThisWeek = thisWeek.filter((a) => a.status === PUB).length;
+
+        // Weekly pulse slots (this week, chronological)
+        const slots = thisWeek.slice().sort((a, b) => a.publishDate.localeCompare(b.publishDate))
+          .map((a) => ({ title: a.name, channel: _platLabel[_plat(a)] || 'Post', day: _dow(a.publishDate), state: _slotState(a, today), url: a.url }));
+
+        // 6-week runway coverage
+        const runwayWeeks = [];
+        for (let i = 0; i < 6; i++) {
+          const s = _ymd(_add(wk, i * 7)), e = _ymd(_add(wk, i * 7 + 6));
+          const wa = assets.filter((a) => a.publishDate >= s && a.publishDate <= e);
+          const ready = wa.filter((a) => _ready(a.status)).length;
+          runwayWeeks.push({ label: `${_mon(s)}–${_mon(e)}`, weekStart: s, isThisWeek: i === 0,
+            planned: wa.length, ready, covered: ready >= 3,
+            slots: wa.slice(0, 3).map((a) => ({ state: _slotState(a, today), channel: _plat(a), day: _dow(a.publishDate), title: a.name })) });
+        }
+        const weeksCovered = runwayWeeks.filter((w) => w.covered).length;
+        const runwayStatus = weeksCovered >= 4 ? 'good' : weeksCovered >= 2 ? 'warn' : 'bad';
+
+        // Featured post: overdue → due today → due this week → needs copy
+        const open = assets.filter((a) => a.status !== PUB);
+        const featuredAsset =
+          open.filter((a) => a.publishDate < today).sort((a, b) => a.publishDate.localeCompare(b.publishDate))[0] ||
+          open.filter((a) => a.publishDate === today)[0] ||
+          open.filter((a) => a.publishDate > today && a.publishDate <= weekEnd).sort((a, b) => a.publishDate.localeCompare(b.publishDate))[0] ||
+          open.filter((a) => a.status === 'Drafting' || a.status === 'Review')[0] || open[0] || null;
+
+        const toFeatured = async (a) => {
+          if (!a) return null;
+          const copy = await fetchMarketingCopy(a.id).catch(() => []);
+          const od = a.publishDate < today, isToday = a.publishDate === today, sched = a.status === SCHED;
+          const daysOver = od ? Math.round((Date.parse(today) - Date.parse(a.publishDate)) / 86400000) : 0;
+          return {
+            id: a.id, url: a.url, title: a.name,
+            series: a.primaryTopic || a.contentType || 'Marketing',
+            channel: _platLabel[_plat(a)] || 'Post',
+            tags: [_platLabel[_plat(a)] || 'Post', ...(a.formats || []).slice(0, 1), a.primaryTopic].filter(Boolean),
+            urgency: od ? 'red' : (a.status === 'Drafting' || a.status === 'Review') ? 'amber' : sched ? 'green' : 'purple',
+            statusClass: od ? 'overdue' : sched ? 'scheduled' : 'needs-copy',
+            statusText: od ? `Overdue · ${daysOver} day${daysOver === 1 ? '' : 's'}` : isToday ? 'Due today' : sched ? `Scheduled · ${_mon(a.publishDate)}` : a.status,
+            caption: (copy.find((s) => s.text)?.text) || a.notes || '',
+            image: (a.media || []).length === 0,
+            goal: a.primaryTopic ? `Campaign · ${a.primaryTopic}` : null,
+          };
+        };
+        const featuredPost = await toFeatured(featuredAsset);
+
+        // Queue: this week, open, excluding the featured post (priority order)
+        const order = { overdue: 0, 'needs-copy': 1, scheduled: 2, done: 3 };
+        const queue = thisWeek.filter((a) => a.status !== PUB && (!featuredAsset || a.id !== featuredAsset.id))
+          .map((a) => ({ id: a.id, url: a.url, title: a.name, channel: _platLabel[_plat(a)] || 'Post',
+            state: _slotState(a, today), statusText: a.status === SCHED ? `Scheduled · ${_mon(a.publishDate)}` : a.status,
+            caption: '', tags: [_platLabel[_plat(a)] || 'Post', a.primaryTopic].filter(Boolean) }))
+          .sort((a, b) => (order[a.state] ?? 9) - (order[b.state] ?? 9));
+
+        // Ahead-of-schedule: next 3 scheduled, in the future
+        const aheadPosts = assets.filter((a) => a.status === SCHED && a.publishDate > today)
+          .sort((a, b) => a.publishDate.localeCompare(b.publishDate)).slice(0, 3)
+          .map((a) => ({ id: a.id, url: a.url, title: a.name, day: _dow(a.publishDate), date: _mon(a.publishDate).toUpperCase(),
+            channel: _platLabel[_plat(a)] || 'Post', platform: _plat(a), meta: [a.primaryTopic, a.contentType].filter(Boolean).join(' · ') }));
+
+        const pageState = (postedThisWeek >= 3 && weeksCovered >= 4) ? 'healthy' : postedThisWeek > 0 ? 'in-progress' : 'stressed';
+
+        return {
+          asOf: new Date().toISOString(), pageState,
+          weeklyPulse: { weekLabel: `${_mon(weekStart)}–${_mon(weekEnd)}`, slots, postedCount: postedThisWeek, targetCount: 3,
+            runway: { weeksCovered, totalWeeks: 6, gaugePct: Math.round((weeksCovered / 6) * 100), status: runwayStatus } },
+          featuredPost, queue, runwayWeeks, aheadPosts,
+        };
+      });
+      res.json(data);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   return { MARKETING_ASSETS_DS, fetchMarketingChannelMap, serializeMarketingAsset };
 }

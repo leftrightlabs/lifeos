@@ -701,10 +701,10 @@
     <div class="urgency-bar red"></div>
 
     <!-- Goal chip -->
-    <div class="goal-chip">
+    <div class="goal-chip" id="goal-chip">
       <span class="goal-dot"></span>
-      Q2 Rock · AI Assessment Opt-Ins
-      <span class="goal-progress-inline">23 / 50 completions</span>
+      <span id="goal-label">Q2 Rock · AI Assessment Opt-Ins</span>
+      <span class="goal-progress-inline" id="goal-progress">23 / 50 completions</span>
     </div>
 
     <div class="card-header">
@@ -1579,26 +1579,13 @@ What changed is the entire system sitting in front of all that evidence. AI now 
 
 The expertise was the hard part. This last piece is mostly translation. We built a free tool that gives you instant answers on how AI is reading your site right now. Comment VISIBLE for the link. Hard cap on this round. When it's gone, it's gone.`;
 
-  // Phase 2 fixtures: the 3 weekly posts the featured card cycles through as you
-  // mark each published. Phase 3 replaces these with live data from /api/attract.
-  const CAPTION_IG = `They didn't open a search tab. They asked an assistant — and it came back with three names. If yours isn't one of them, the work that earned the reputation never gets seen. Here's what decides that shortlist, and how to get on it.`;
-  const CAPTION_EMAIL = `Quick follow-up: the AI Visibility Assessment is open for a few more days. Two minutes, plain-language answers on how AI is reading your site right now — and the one change that moves you up the list. Reply "SEND" and I'll get you the link.`;
-
-  const FEATURED_POSTS = [
-    { urgency:'red',   goalProgress:'23 / 50 completions', statusClass:'overdue',    statusText:'Overdue · 4 days',
-      tags:['LinkedIn','Social Post','AI Visibility · #6 of 7'], series:'AI Visibility Opt-In Series',
-      title:'AI Decides Who Finds You', headline:'Your expertise built the reputation. AI decides who gets to find it.',
-      caption: CAPTION, image:true, slot:0, toast:'LinkedIn ✓ · 2 posts left this week' },
-    { urgency:'green', goalProgress:'23 / 50 completions', statusClass:'scheduled',  statusText:'Scheduled · Jun 23',
-      tags:['Instagram','Carousel','AI Visibility · #2'], series:'AI Visibility Opt-In Series',
-      title:'They Stopped Googling', headline:'Your buyers stopped Googling. Now they ask AI — and it picks the shortlist.',
-      caption: CAPTION_IG, image:false, slot:1, toast:'Instagram ✓ · 1 post left this week' },
-    { urgency:'amber', goalProgress:'23 / 50 completions', statusClass:'needs-copy', statusText:'Needs Copy',
-      tags:['Email','Re-engagement','AI Readiness'], series:'AI Readiness Re-engagement',
-      title:'AI Readiness Opt-In — Follow-Up', headline:'Still curious how AI reads your site? The door is open one more time.',
-      caption: CAPTION_EMAIL, image:false, slot:2, toast:'Email ✓ · Week complete' },
-  ];
+  // Phase 3: featured card + click-through are populated live from /api/attract
+  // by hydrate(). WEEK_POSTS holds this week's open posts in priority order
+  // (featured first, then queue) for the Mark-Published click-through.
+  let WEEK_POSTS = [];
+  let weeksCovered = 0;        // live runway coverage (drives the healthy threshold)
   let featuredIndex = 0, postedThisWeek = 0, currentCaption = CAPTION;
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 
   let captionExpanded = false, whyOpen = false, campaignOpen = false, queueOpen = false, runwayOpen = true, funnelOpen = true;
 
@@ -1644,34 +1631,118 @@ The expertise was the hard part. This last piece is mostly translation. We built
     setTimeout(() => { btn.textContent = 'Copy Caption'; btn.classList.remove('copied'); }, 2500);
   }
 
-  // ── Featured card: re-render core fields for the post at index i ──
+  // ── Featured card: re-render core fields for WEEK_POSTS[i] (live shape) ──
   function loadFeatured(i) {
-    const p = FEATURED_POSTS[i]; if (!p) return;
-    document.querySelector('.featured-card .urgency-bar').className = 'urgency-bar ' + p.urgency;
-    document.querySelector('.goal-progress-inline').textContent = p.goalProgress;
+    const p = WEEK_POSTS[i]; if (!p) return;
+    document.querySelector('.featured-card .urgency-bar').className = 'urgency-bar ' + (p.urgency || 'purple');
+    const gc = document.getElementById('goal-chip');
+    if (p.goal) { gc.style.display = ''; document.getElementById('goal-label').textContent = p.goal; document.getElementById('goal-progress').style.display = 'none'; }
+    else gc.style.display = 'none';
     const pill = document.querySelector('.card-header .status-pill');
-    pill.className = 'status-pill ' + p.statusClass; pill.textContent = p.statusText;
-    document.querySelector('.card-tags').innerHTML = p.tags.map(t => `<span class="tag">${t}</span>`).join('');
-    document.querySelector('.card-series').textContent = p.series;
-    document.querySelector('.card-title span').textContent = p.title;
-    document.querySelector('.card-headline-preview').textContent = p.headline;
-    document.getElementById('card-caption').innerHTML = p.caption.replace(/\n\n/g, '<br><br>');
+    pill.className = 'status-pill ' + (p.statusClass || 'scheduled'); pill.textContent = p.statusText || '';
+    document.querySelector('.card-tags').innerHTML = (p.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('');
+    document.querySelector('.card-series').textContent = p.series || '';
+    document.querySelector('.card-title span').textContent = p.title || '';
+    const hl = document.querySelector('.card-headline-preview');
+    if (p.headline) { hl.style.display = ''; hl.textContent = p.headline; } else hl.style.display = 'none';
+    document.getElementById('card-caption').innerHTML = esc(p.caption || '').replace(/\n\n+/g, '<br><br>').replace(/\n/g, '<br>') || '<span style="color:var(--text-3)">Copy lives in Notion — open to draft it.</span>';
     document.getElementById('image-blocker').style.display = p.image ? 'flex' : 'none';
-    currentCaption = p.caption;
+    currentCaption = p.caption || '';
   }
   function resetFooter() {
     const copy = document.getElementById('copy-btn');
     copy.textContent = 'Copy Caption'; copy.classList.remove('copied');
     document.getElementById('mark-pub').classList.remove('visible');
   }
-  function greenPulseSlot(idx) {
-    const s = document.querySelectorAll('.pulse-slots .pulse-slot')[idx];
-    if (s) { s.classList.remove('overdue', 'needs-copy', 'scheduled'); s.classList.add('done'); }
-  }
   function updatePulseStatus(n) {
     const ps = document.getElementById('pulse-status');
     ps.textContent = n + ' of 3 posted';
-    ps.className = 'pulse-status ' + (n >= 3 ? 'good' : 'ok');
+    ps.className = 'pulse-status ' + (n >= 3 ? 'good' : n > 0 ? 'ok' : 'bad');
+  }
+
+  // ── Live render helpers (Phase 3) ──
+  function renderPulse(wp) {
+    document.querySelector('.pulse-week').textContent = wp.weekLabel;
+    document.querySelector('.pulse-slots').innerHTML = wp.slots.length
+      ? wp.slots.map(s => `<div class="pulse-slot ${s.state}" title="${esc(s.title)}"><div class="slot-dot"></div><span class="slot-label">${esc(s.channel)} <span class="slot-day">${esc(s.day)}</span></span></div>`).join('')
+      : '<span style="font-size:12px;color:var(--text-3)">No posts scheduled this week</span>';
+    const sub = document.querySelector('.pulse-compact-sub'); if (sub) sub.textContent = wp.slots.map(s => `${s.channel} ${s.day}`).join(' · ');
+    updatePulseStatus(wp.postedCount);
+    const r = wp.runway, col = r.status === 'good' ? 'var(--green)' : r.status === 'warn' ? 'var(--amber)' : 'var(--red)';
+    document.querySelectorAll('.runway-gauge-fill').forEach(f => { f.style.width = r.gaugePct + '%'; f.style.background = col; });
+    const rst = document.querySelector('.runway-status-text');
+    if (rst) { rst.className = 'runway-status-text ' + r.status; rst.textContent = r.weeksCovered + 'w ' + (r.status === 'good' ? '✓' : '⚠'); }
+  }
+  function renderRunway(weeks, runway) {
+    const stat = document.getElementById('runway-stat'), need = Math.max(0, 4 - runway.weeksCovered);
+    stat.className = 'runway-header-stat' + (runway.weeksCovered >= 4 ? ' good' : '');
+    stat.innerHTML = `${runway.weeksCovered} of 6<span class="stat-sub">weeks fully covered${need ? ` · need ${need} more at 3+ posts` : " · you're ahead of target"}</span>`;
+    const rwh = document.querySelector('.rwh-gauge-fill');
+    if (rwh) { rwh.style.width = runway.gaugePct + '%'; rwh.style.background = runway.status === 'good' ? 'var(--green)' : runway.status === 'warn' ? 'var(--amber)' : 'var(--red)'; }
+    const chCls = (c) => c === 'linkedin' ? 'li' : c === 'instagram' ? 'ig' : c === 'email' ? 'email' : '';
+    const chAbbr = (c) => ({ linkedin: 'LI', instagram: 'IG', email: 'Em', facebook: 'FB', youtube: 'YT' }[c] || 'Post');
+    document.querySelector('.rw-list').innerHTML = weeks.map(w => {
+      const dots = [0, 1, 2].map(j => { const s = w.slots[j]; return `<span class="rw-dot ${s ? s.state : 'empty'}"></span>`; }).join('');
+      const chips = w.slots.length
+        ? w.slots.map(s => `<span class="rw-chip ${chCls(s.channel)} ${s.state === 'overdue' ? 'overdue' : s.state === 'needs-copy' ? 'needs-copy' : ''}">${chAbbr(s.channel)} · ${esc(s.day)}</span>`).join('')
+        : `<span class="rw-chip empty" onclick="showToast('Start a new post for this week…')">+ Write</span>`;
+      const cnt = w.ready >= 3 ? `<span class="rw-count green">${w.ready} ready</span>` : w.ready > 0 ? `<span class="rw-count amber">${w.ready} of 3</span>` : `<span class="rw-count red">0 of 3</span>`;
+      const sub = w.ready >= 3 ? 'On track' : w.ready > 0 ? `Need ${3 - w.ready} more` : 'Gap week';
+      return `<div class="rw-week ${w.isThisWeek ? 'this-week' : ''} ${w.ready === 0 ? 'gap' : ''}"><div class="rw-left"><span class="rw-label">${esc(w.label)} ${w.isThisWeek ? '<span class="rw-current-badge">This week</span>' : ''}</span><div class="rw-dots">${dots}</div></div><div class="rw-mid">${chips}</div><div class="rw-right">${cnt}<span class="rw-sub">${sub}</span></div></div>`;
+    }).join('');
+  }
+  function renderAhead(ahead) {
+    const body = document.querySelector('.ahead-card-body'); if (!body) return;
+    const rows = ahead.length ? ahead.map(a => {
+      const tagCls = a.platform === 'linkedin' ? 'li' : a.platform === 'instagram' ? 'ig' : '';
+      const tagStyle = tagCls ? '' : 'style="background:var(--amber-soft);color:var(--amber)"';
+      return `<div class="ahead-next"><div class="ahead-next-date">${esc(a.day.toUpperCase())}<br>${esc(a.date)}</div><div class="ahead-next-divider"></div><div class="ahead-next-content"><div class="ahead-next-title">${esc(a.title)}</div><div class="ahead-next-meta">${esc(a.meta || '')}</div></div><span class="ahead-next-tag ${tagCls}" ${tagStyle}>${esc(a.channel)}</span></div>`;
+    }).join('') : '<div style="font-size:12px;color:var(--text-3);padding:8px 0">No upcoming scheduled posts.</div>';
+    body.innerHTML = `<div class="ahead-eyebrow">You're ahead of schedule — no action needed today</div>${rows}<div class="ahead-actions"><button class="btn-quiet" onclick="toggleQueue()">See all queued posts</button><button class="btn-quiet" onclick="showToast('Opening Notion content calendar…')">Open content calendar ↗</button></div>`;
+  }
+  function renderQueue(queue) {
+    document.querySelector('.queue-peek-label').textContent = `${queue.length} more post${queue.length === 1 ? '' : 's'} in queue this week`;
+    const st = new Set(queue.map(q => q.state));
+    document.querySelector('.queue-peek-badges').innerHTML =
+      (st.has('scheduled') ? '<span class="queue-badge scheduled">Scheduled</span>' : '') +
+      (st.has('needs-copy') ? '<span class="queue-badge needs-copy">Needs Copy</span>' : '') +
+      (st.has('overdue') ? '<span class="queue-badge needs-copy">Overdue</span>' : '');
+    document.getElementById('queue-drawer').innerHTML = queue.map(q => {
+      const bar = q.state === 'scheduled' ? 'green' : 'amber';
+      const pillCls = q.state === 'scheduled' ? 'scheduled' : 'needs-copy';
+      const btn = q.state === 'scheduled'
+        ? `<button class="qi-btn qi-open" onclick="window.open('${esc(q.url)}','_blank','noopener')">Open in Notion</button>`
+        : `<button class="qi-btn qi-write" onclick="showToast('Opening copy workflow…')">Write Copy →</button>`;
+      return `<div class="queue-item"><div class="qi-bar ${bar}"></div><div class="qi-inner"><span class="status-pill ${pillCls}" style="flex-shrink:0">${esc(q.statusText)}</span><div class="qi-meta"><h4>${esc(q.title)}</h4><div class="qi-tags">${(q.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div></div><div class="qi-actions">${btn}</div></div></div>`;
+    }).join('');
+  }
+  function normalizePost(p) {
+    return {
+      title: p.title, series: p.series || (p.tags && p.tags[1]) || (p.tags && p.tags[0]) || '',
+      channel: p.channel, tags: p.tags || [],
+      urgency: p.urgency || (p.state === 'overdue' ? 'red' : p.state === 'scheduled' ? 'green' : 'amber'),
+      statusClass: p.statusClass || p.state || 'scheduled',
+      statusText: p.statusText || '', caption: p.caption || '',
+      image: !!p.image, goal: p.goal || null, headline: p.headline || '', url: p.url,
+    };
+  }
+  async function hydrate() {
+    let data;
+    try { data = await fetch('/api/attract').then(r => r.json()); }
+    catch (e) { console.error('attract hydrate failed', e); return; }
+    if (!data || data.error) { console.error('attract', data && data.error); return; }
+    weeksCovered = data.weeklyPulse.runway.weeksCovered;
+    renderPulse(data.weeklyPulse);
+    renderRunway(data.runwayWeeks, data.weeklyPulse.runway);
+    renderAhead(data.aheadPosts);
+    renderQueue(data.queue);
+    WEEK_POSTS = [];
+    if (data.featuredPost) WEEK_POSTS.push(normalizePost(data.featuredPost));
+    (data.queue || []).forEach(q => WEEK_POSTS.push(normalizePost(q)));
+    featuredIndex = 0; postedThisWeek = data.weeklyPulse.postedCount || 0;
+    if (data.featuredPost) loadFeatured(0);
+    const override = new URLSearchParams(location.search).get('state');
+    applyPageState(['stressed', 'in-progress', 'healthy'].includes(override) ? override : data.pageState);
   }
 
   // ── Three-state system ──
@@ -1717,14 +1788,26 @@ The expertise was the hard part. This last piece is mostly translation. We built
   }
 
   function markPublished() {
-    const p = FEATURED_POSTS[featuredIndex];
-    greenPulseSlot(p.slot);
+    const p = WEEK_POSTS[featuredIndex]; if (!p) return;
+    // green the first not-yet-done pulse slot (left → right)
+    const slot = [...document.querySelectorAll('.pulse-slots .pulse-slot')].find(s => !s.classList.contains('done'));
+    if (slot) { slot.classList.remove('overdue', 'needs-copy', 'scheduled'); slot.classList.add('done'); }
     postedThisWeek++;
     updatePulseStatus(postedThisWeek);
-    if (postedThisWeek >= 3) { triggerHealthyTransition(); return; }   // last post → healthy
-    showToast(p.toast, 2600);
+    const moreOpen = featuredIndex < WEEK_POSTS.length - 1;
+    // Healthy requires BOTH the week complete (3+) AND a covered runway (live).
+    if (postedThisWeek >= 3 && weeksCovered >= 4) { triggerHealthyTransition(); return; }
+    if (!moreOpen) {
+      // published everything available, but runway's still short → in-progress
+      applyPageState('in-progress');
+      const card = document.getElementById('featured-card');
+      card.style.transition = 'opacity .3s'; card.style.opacity = '0';
+      setTimeout(() => { card.style.display = 'none'; document.getElementById('done-state').classList.add('visible'); }, 300);
+      showToast("Published ✓ · this week's queue is clear", 2800);
+      return;
+    }
+    showToast(`${p.channel} ✓ · ${WEEK_POSTS.length - 1 - featuredIndex} left this week`, 2600);
     applyPageState('in-progress');
-    // advance the featured card to the next post
     featuredIndex++;
     const card = document.getElementById('featured-card');
     card.style.transition = 'opacity .25s, transform .25s';
@@ -1754,14 +1837,12 @@ The expertise was the hard part. This last piece is mostly translation. We built
     if (panel) panel.classList.add('active');
   }
 
-  // ── Page state on load ──
-  // Phase 3 replaces the ?state param with pageState from GET /api/attract.
-  // applyPageState only sets the body class — it never plays the flash or the
-  // transition. Those fire only from triggerHealthyTransition() on a live
-  // publish, so a page that loads already-healthy renders quietly (no flash).
-  (function initState() {
-    const s = new URLSearchParams(location.search).get('state');
-    applyPageState(['stressed', 'in-progress', 'healthy'].includes(s) ? s : 'stressed');
-  })();
+  // ── Load ──
+  // Default to stressed immediately (matches the static skeleton), then hydrate
+  // from GET /api/attract — which renders live data and applies the real
+  // pageState. ?state=… still overrides for testing. The flash/transition only
+  // fire from triggerHealthyTransition() on a live publish, never on load.
+  applyPageState('stressed');
+  hydrate();
 </script>
 </body></html>
