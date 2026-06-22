@@ -1507,6 +1507,10 @@ function renderRitual(which) {
   const el = document.getElementById(which + 'Ritual');
   if (!el) return;
 
+  // The morning/evening checklists are the owner's personal rituals — team
+  // members don't have them, so hide both entirely.
+  if (!CAN_PERSONAL) { el.innerHTML = ''; el.style.display = 'none'; return; }
+
   // Morning only shows in work / all mode
   if (which === 'morning' && state.mode === 'personal') {
     el.innerHTML = ''; el.style.display = 'none'; return;
