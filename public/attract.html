@@ -1719,18 +1719,16 @@ The expertise was the hard part. This last piece is mostly translation. We built
   function normalizePost(p) {
     return {
       title: p.title, series: p.series || (p.tags && p.tags[1]) || (p.tags && p.tags[0]) || '',
-      channel: p.channel, tags: p.tags || [],
+      id: p.id, channel: p.channel, tags: p.tags || [],
       urgency: p.urgency || (p.state === 'overdue' ? 'red' : p.state === 'scheduled' ? 'green' : 'amber'),
       statusClass: p.statusClass || p.state || 'scheduled',
       statusText: p.statusText || '', caption: p.caption || '',
       image: !!p.image, goal: p.goal || null, headline: p.headline || '', url: p.url,
     };
   }
-  async function hydrate() {
-    let data;
-    try { data = await fetch('/api/attract').then(r => r.json()); }
-    catch (e) { console.error('attract hydrate failed', e); return; }
-    if (!data || data.error) { console.error('attract', data && data.error); return; }
+  // Render every dynamic section from an /api/attract payload (shared by load
+  // and by the post-action responses). Returns the payload's pageState.
+  function applyPayload(data) {
     weeksCovered = data.weeklyPulse.runway.weeksCovered;
     renderPulse(data.weeklyPulse);
     renderRunway(data.runwayWeeks, data.weeklyPulse.runway);
@@ -1741,20 +1739,24 @@ The expertise was the hard part. This last piece is mostly translation. We built
     (data.queue || []).forEach(q => WEEK_POSTS.push(normalizePost(q)));
     featuredIndex = 0; postedThisWeek = data.weeklyPulse.postedCount || 0;
     if (data.featuredPost) loadFeatured(0);
+    return data.pageState;
+  }
+  async function hydrate() {
+    let data;
+    try { data = await fetch('/api/attract').then(r => r.json()); }
+    catch (e) { console.error('attract hydrate failed', e); return; }
+    if (!data || data.error) { console.error('attract', data && data.error); return; }
+    const st = applyPayload(data);
     const override = new URLSearchParams(location.search).get('state');
-    applyPageState(['stressed', 'in-progress', 'healthy'].includes(override) ? override : data.pageState);
+    applyPageState(['stressed', 'in-progress', 'healthy'].includes(override) ? override : st);
   }
 
   // ── Three-state system ──
   // Apply the calm healthy presentation (data + tone) WITHOUT any flash or
   // animation — used both on a quiet healthy load and inside the transition.
   function renderHealthyVisuals() {
-    updatePulseStatus(3);
-    document.querySelectorAll('.pulse-slots .pulse-slot').forEach(s => { s.classList.remove('overdue', 'needs-copy', 'scheduled'); s.classList.add('done'); });
-    document.querySelectorAll('.runway-gauge-fill').forEach(f => { f.style.background = 'var(--green)'; f.style.width = '87%'; });
-    const rt = document.querySelector('.runway-status-text'); if (rt) { rt.className = 'runway-status-text healthy'; rt.textContent = '5w ✓'; }
-    const rwh = document.querySelector('.rwh-gauge-fill'); if (rwh) { rwh.style.background = 'var(--green)'; rwh.style.width = '87%'; }
-    const stat = document.getElementById('runway-stat'); if (stat) { stat.classList.add('good'); stat.innerHTML = "5 of 6<span class=\"stat-sub\">weeks fully covered · you're ahead of target</span>"; }
+    // Tone only — the actual numbers (pulse status, gauges, runway stat) are
+    // rendered from live data by renderPulse()/renderRunway().
     const rh = document.querySelector('.runway-header'); if (rh) rh.classList.add('healthy');
     const nh = document.querySelector('.nudge-heading'); if (nh) { nh.classList.add('healthy'); nh.textContent = 'Queue is healthy — create when inspired, not because you have to'; }
   }
@@ -1780,45 +1782,55 @@ The expertise was the hard part. This last piece is mostly translation. We built
         await sleep(180);
       }
     }
-    applyPageState('healthy');                                   // swaps layout + healthy visuals
-    document.querySelectorAll('.runway-gauge-fill').forEach(f => f.classList.add('healthy')); // animate the fill
+    applyPageState('healthy');                                   // swaps layout + healthy tone
     const flash = document.getElementById('achievement-flash');
     if (flash) { flash.style.display = 'flex'; flash.classList.remove('settled'); flash.style.animation = 'none'; void flash.offsetWidth; flash.style.animation = ''; setTimeout(() => flash.classList.add('settled'), 3600); }
     showToast('Content is covered. Go build something. ✓', 3500);
   }
 
-  function markPublished() {
-    const p = WEEK_POSTS[featuredIndex]; if (!p) return;
-    // green the first not-yet-done pulse slot (left → right)
+  // Publish the featured post in Notion, then re-render from the fresh payload.
+  // If the server reports the week crossed into healthy, play the transition.
+  async function markPublished() {
+    const p = WEEK_POSTS[featuredIndex]; if (!p || !p.id) return;
+    const card = document.getElementById('featured-card');
+    const btn = document.getElementById('mark-pub'); if (btn) btn.disabled = true;
+    // optimistic: green the next pulse slot + slide the card out
     const slot = [...document.querySelectorAll('.pulse-slots .pulse-slot')].find(s => !s.classList.contains('done'));
     if (slot) { slot.classList.remove('overdue', 'needs-copy', 'scheduled'); slot.classList.add('done'); }
-    postedThisWeek++;
-    updatePulseStatus(postedThisWeek);
-    const moreOpen = featuredIndex < WEEK_POSTS.length - 1;
-    // Healthy requires BOTH the week complete (3+) AND a covered runway (live).
-    if (postedThisWeek >= 3 && weeksCovered >= 4) { triggerHealthyTransition(); return; }
-    if (!moreOpen) {
-      // published everything available, but runway's still short → in-progress
-      applyPageState('in-progress');
-      const card = document.getElementById('featured-card');
-      card.style.transition = 'opacity .3s'; card.style.opacity = '0';
-      setTimeout(() => { card.style.display = 'none'; document.getElementById('done-state').classList.add('visible'); }, 300);
-      showToast("Published ✓ · this week's queue is clear", 2800);
-      return;
-    }
-    showToast(`${p.channel} ✓ · ${WEEK_POSTS.length - 1 - featuredIndex} left this week`, 2600);
-    applyPageState('in-progress');
-    featuredIndex++;
-    const card = document.getElementById('featured-card');
-    card.style.transition = 'opacity .25s, transform .25s';
-    card.style.opacity = '0'; card.style.transform = 'translateY(-8px)';
-    setTimeout(() => {
-      loadFeatured(featuredIndex); resetFooter();
+    card.style.transition = 'opacity .3s, transform .3s'; card.style.opacity = '0'; card.style.transform = 'translateY(-8px)';
+    let data;
+    try { data = await fetch(`/api/attract/posts/${encodeURIComponent(p.id)}/publish`, { method: 'PATCH' }).then(r => r.json()); }
+    catch (e) { card.style.opacity = '1'; card.style.transform = 'none'; if (btn) btn.disabled = false; showToast('Publish failed — check connection', 3000); return; }
+    if (!data || data.error) { card.style.opacity = '1'; card.style.transform = 'none'; if (btn) btn.disabled = false; showToast('Publish failed' + (data && data.error ? ': ' + data.error : ''), 3000); return; }
+    showToast(`${p.channel || 'Post'} ✓ published`, 2600);
+    if (data.pageState === 'healthy') {
+      applyPayload(data);            // render the healthy numbers/components…
+      triggerHealthyTransition();    // …then play the reward
+    } else {
       card.style.opacity = '1'; card.style.transform = 'none';
-    }, 260);
+      resetFooter();
+      applyPageState(applyPayload(data));   // re-render + advance to next featured
+    }
+    if (btn) btn.disabled = false;
   }
 
-  function skipPost() { showToast('Skipped — resurfaces tomorrow morning'); }
+  // Snooze the featured post to tomorrow in Notion, then surface the next one.
+  async function skipPost() {
+    const p = WEEK_POSTS[featuredIndex]; if (!p || !p.id) { showToast('Nothing to skip'); return; }
+    showToast('Snoozing to tomorrow…', 1500);
+    let data;
+    try { data = await fetch(`/api/attract/posts/${encodeURIComponent(p.id)}/snooze`, { method: 'POST' }).then(r => r.json()); }
+    catch (e) { showToast('Snooze failed — check connection', 2500); return; }
+    if (!data || data.error) { showToast('Snooze failed' + (data && data.error ? ': ' + data.error : ''), 2500); return; }
+    const card = document.getElementById('featured-card');
+    card.style.transition = 'opacity .25s, transform .25s'; card.style.opacity = '0'; card.style.transform = 'translateY(-8px)';
+    setTimeout(() => {
+      resetFooter();
+      applyPageState(applyPayload(data));
+      card.style.opacity = '1'; card.style.transform = 'none';
+      showToast('Skipped — moved to tomorrow', 2500);
+    }, 260);
+  }
 
   let toastTimer;
   function showToast(msg, duration=2000) {

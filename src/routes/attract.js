@@ -387,11 +387,7 @@ app.get('/api/attract/media', async (req, res) => {
   // GET /api/attract — full page payload (weekly pulse, featured post, queue,
   // 6-week runway, ahead-of-schedule, pageState) derived live from MARKETING
   // ASSETS. In-memory cached (15 min) like the rest of this domain — no DB cache.
-  app.get('/api/attract', async (req, res) => {
-    if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-    try {
-      if (req.query.fresh === '1') cache.delete('attract-page');
-      const data = await cached('attract-page', async () => {
+  async function buildAttractPayload() {
         const channelMap = await fetchMarketingChannelMap();
         const today = chicagoTodayISODate();
         const wk = _monday(today);
@@ -478,8 +474,36 @@ app.get('/api/attract/media', async (req, res) => {
             runway: { weeksCovered, totalWeeks: 6, gaugePct: Math.round((weeksCovered / 6) * 100), status: runwayStatus } },
           featuredPost, queue, runwayWeeks, aheadPosts,
         };
-      });
-      res.json(data);
+  }
+
+  app.get('/api/attract', async (req, res) => {
+    if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+    try {
+      if (req.query.fresh === '1') cache.delete('attract-page');
+      res.json(await cached('attract-page', buildAttractPayload));
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // ── POST ACTIONS (Phase 4) — write to Notion, bust caches, return fresh payload ──
+  const _refreshAttract = () => { cache.delete('attract-page'); invalidateMarketingCaches(); };
+
+  // PATCH /api/attract/posts/:id/publish — mark the asset Published.
+  app.patch('/api/attract/posts/:id/publish', async (req, res) => {
+    if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+    try {
+      await notion.pages.update({ page_id: dashifyId(req.params.id), properties: { Status: { status: { name: 'Published' } } } });
+      _refreshAttract();
+      res.json(await buildAttractPayload());
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // POST /api/attract/posts/:id/snooze — push the Publish Date to tomorrow.
+  app.post('/api/attract/posts/:id/snooze', async (req, res) => {
+    if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+    try {
+      await notion.pages.update({ page_id: dashifyId(req.params.id), properties: { 'Publish Date': { date: { start: chicagoDateNDaysAgo(-1) } } } });
+      _refreshAttract();
+      res.json(await buildAttractPayload());
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
