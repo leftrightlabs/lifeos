@@ -124,6 +124,7 @@ async function resolveNotionUserId(email) {
 const cache = new Map();
 const CACHE_TTL_OVERRIDES = {
   'attract-page': 15 * 60_000, // Attract page payload (Notion-derived): refresh every 15m
+  'convert-page': 15 * 60_000, // Convert page payload (Notion + Xero): refresh every 15m
   'attract-next-focus': 6 * 60 * 60_000, // AI "what to focus on next" (healthy state): 6h
   'attract-insights': 6 * 60 * 60_000, // GA4 + AI analysis: refresh every 6h
   'ynab-networth': 60 * 60_000, // YNAB net worth: refresh hourly
@@ -3597,7 +3598,7 @@ app.post('/api/ai/triage/apply', async (req, res) => {
 });
 
 // ===== Convert / Sales domain — routes in src/routes/convert.js; data in src/providers/notion/convert.js =====
-registerConvertRoutes(app, { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID });
+registerConvertRoutes(app, { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID, computeXeroFinance, anthropic });
 
 function dashifyId(id) {
   const s = String(id || '').replace(/-/g, '');

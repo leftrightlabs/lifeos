@@ -5,7 +5,194 @@
 <link rel="stylesheet" href="/styles/tokens.css">
 <link rel="stylesheet" href="/styles/app.css">
 <script defer src="/zone-scope.js"></script>
-<style>:root { --zone: var(--work); --zone-soft: var(--work-soft); }</style>
+<style>
+@import url('https://use.typekit.net/uwk2elu.css');
+:root {
+  --zone: var(--work); --zone-soft: var(--work-soft);
+  --font-display: 'scotch-display','Playfair Display',Georgia,serif;
+  --font-body: 'sweet-sans-pro','Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --radius: 10px; --radius-sm: 6px; --radius-xs: 4px;
+}
+.convert-page { max-width:880px; margin:0 auto; padding:24px 28px 80px; font-family:var(--font-body); font-size:14px; line-height:1.5; color:var(--text); }
+
+/* ─── PAGE HEADER ─── */
+.cv-head { display:flex; align-items:flex-end; gap:16px; margin-bottom:18px; flex-wrap:wrap; }
+.cv-head-left { flex:1; min-width:200px; }
+.cv-eyebrow { font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--text-2); margin-bottom:5px; }
+.cv-title { font-family:var(--font-display); font-weight:700; font-size:32px; line-height:1; color:var(--text); display:inline-block; transform:scaleY(1.12); transform-origin:top left; }
+.cv-head-right { display:flex; align-items:center; gap:10px; }
+.me-mode { display:inline-flex; background:var(--surface-2); border:1px solid var(--border); border-radius:20px; padding:3px; }
+.me-mode button { background:none; border:none; font-family:var(--font-body); font-size:11px; font-weight:700; letter-spacing:.04em; color:var(--text-3); padding:5px 13px; border-radius:16px; cursor:pointer; transition:all .15s; }
+.me-mode button:hover { color:var(--text-2); }
+.me-mode button.active { background:var(--zone); color:#fff; }
+.data-badge { display:inline-flex; align-items:center; gap:6px; font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); padding:5px 11px; border:1px solid var(--border); border-radius:20px; background:var(--surface-2); }
+.data-badge .dot { width:7px; height:7px; border-radius:50%; background:var(--green); }
+.data-badge.demo .dot { background:var(--amber); }
+.data-badge.demo { color:var(--amber); border-color:rgba(235,180,84,.25); }
+
+/* ─── CALM CONDITIONS ─── */
+.calm-block { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; margin-bottom:18px; }
+.calm-head { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.calm-head-title { font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--text-2); }
+.calm-head-score { margin-left:auto; font-size:12px; font-weight:700; }
+.calm-head-score.calm { color:var(--green); }
+.calm-head-score.busy { color:var(--amber); }
+.calm-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+@media (max-width:640px){ .calm-grid { grid-template-columns:1fr 1fr; } }
+.calm-cell { display:flex; align-items:flex-start; gap:9px; padding:11px 12px; background:var(--surface-2); border:1px solid var(--border-soft); border-radius:var(--radius-sm); }
+.calm-cell.met { border-color:rgba(79,214,160,.25); background:var(--green-soft); }
+.calm-mark { width:18px; height:18px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; background:var(--surface); border:1.5px solid var(--text-3); color:var(--text-3); margin-top:1px; }
+.calm-cell.met .calm-mark { background:var(--green); border-color:var(--green); color:#06231a; }
+.calm-cell.unmet .calm-mark { border-color:var(--amber); color:var(--amber); }
+.calm-cell-text { flex:1; }
+.calm-cell-label { font-size:12px; font-weight:700; color:var(--text); line-height:1.25; }
+.calm-cell.met .calm-cell-label { color:var(--green); }
+.calm-cell-sub { font-size:11px; color:var(--text-3); margin-top:2px; line-height:1.35; }
+
+/* Calm hero banner (all conditions met) */
+.calm-hero { display:none; align-items:center; gap:16px; background:linear-gradient(135deg, rgba(79,214,160,.16) 0%, rgba(79,214,160,.06) 100%); border:1px solid rgba(79,214,160,.35); border-radius:var(--radius); padding:18px 22px; margin-bottom:18px; }
+.calm-hero .ch-tick { width:38px; height:38px; border-radius:50%; background:var(--green); display:flex; align-items:center; justify-content:center; font-size:19px; flex-shrink:0; box-shadow:0 0 22px rgba(79,214,160,.35); }
+.calm-hero h2 { font-family:var(--font-display); font-size:18px; font-weight:700; color:var(--green); display:inline-block; transform:scaleY(1.18); transform-origin:top left; line-height:1.1; margin-bottom:3px; }
+.calm-hero p { font-size:13px; color:var(--text-2); }
+body.state-calm .calm-hero { display:flex; }
+
+/* ─── SECTION LABEL ─── */
+.section-label { display:flex; align-items:center; gap:8px; margin-bottom:10px; margin-top:24px; }
+.section-label h3 { font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--text-2); }
+.section-label .sl-meta { margin-left:auto; font-size:11px; color:var(--text-3); }
+
+/* ─── DO THIS NEXT ─── */
+.dtn-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:8px; }
+.dtn-bar { height:3px; }
+.dtn-bar.red { background:var(--red); } .dtn-bar.amber { background:var(--amber); } .dtn-bar.zone { background:var(--zone); } .dtn-bar.green { background:var(--green); }
+.dtn-body { padding:16px 18px; }
+.dtn-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
+.dtn-pill { padding:3px 9px; border-radius:20px; font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; }
+.dtn-pill.red { background:var(--red-soft); color:var(--red); }
+.dtn-pill.amber { background:var(--amber-soft); color:var(--amber); }
+.dtn-pill.zone { background:var(--zone-soft); color:var(--zone); }
+.dtn-tag { padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; background:var(--surface-2); color:var(--text-3); }
+.dtn-name { font-family:var(--font-display); font-weight:700; font-size:22px; line-height:1.15; color:var(--text); margin-bottom:5px; }
+.dtn-why { font-size:13px; color:var(--text-2); line-height:1.55; margin-bottom:14px; }
+.dtn-why strong { color:var(--text); }
+.dtn-actions { display:flex; gap:8px; flex-wrap:wrap; }
+
+/* ─── BUTTONS ─── */
+.btn-primary { padding:9px 18px; background:var(--zone); color:#fff; border:none; border-radius:var(--radius-sm); font-family:var(--font-body); font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; cursor:pointer; transition:all .15s; white-space:nowrap; }
+.btn-primary:hover { background:#3b7bff; transform:translateY(-1px); }
+.btn-secondary { padding:9px 15px; background:var(--surface-2); color:var(--text); border:1px solid var(--border); border-radius:var(--radius-sm); font-family:var(--font-body); font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; white-space:nowrap; }
+.btn-secondary:hover { border-color:var(--text-2); }
+.btn-ghost { padding:9px 12px; background:none; color:var(--text-3); border:none; font-family:var(--font-body); font-size:12px; cursor:pointer; transition:color .15s; white-space:nowrap; }
+.btn-ghost:hover { color:var(--text-2); }
+
+/* ─── REVENUE BAR ─── */
+.rev-block { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; }
+.rev-top { display:flex; align-items:baseline; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+.rev-amount { font-family:var(--font-display); font-size:28px; font-weight:700; color:var(--text); line-height:1; display:inline-block; transform:scaleY(1.12); transform-origin:top left; }
+.rev-goal { font-size:13px; color:var(--text-3); }
+.rev-status { margin-left:auto; font-size:12px; font-weight:700; }
+.rev-status.good { color:var(--green); } .rev-status.warn { color:var(--amber); }
+.rev-track { height:14px; background:var(--surface-2); border-radius:7px; overflow:hidden; display:flex; }
+.rev-seg { height:100%; }
+.rev-seg.collected { background:var(--green); }
+.rev-seg.invoiced { background:var(--amber); }
+.rev-seg.quotes { background:var(--zone); opacity:.7; }
+.rev-legend { display:flex; gap:16px; margin-top:10px; flex-wrap:wrap; }
+.rev-leg { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-2); }
+.rev-leg .sw { width:10px; height:10px; border-radius:3px; }
+.rev-leg .sw.collected { background:var(--green); }
+.rev-leg .sw.invoiced { background:var(--amber); }
+.rev-leg .sw.quotes { background:var(--zone); opacity:.7; }
+.rev-leg b { color:var(--text); font-weight:700; }
+.rev-demo { font-size:11px; color:var(--amber); margin-top:10px; display:flex; gap:7px; align-items:center; }
+
+/* ─── FOLLOW-UPS TABS ─── */
+.fu-block { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.fu-tabs { display:flex; border-bottom:1px solid var(--border); background:var(--surface-2); }
+.fu-tab { flex:1; padding:12px 10px; background:none; border:none; border-bottom:2px solid transparent; margin-bottom:-1px; font-family:var(--font-body); font-size:12px; font-weight:700; letter-spacing:.04em; color:var(--text-3); cursor:pointer; transition:all .15s; display:flex; align-items:center; justify-content:center; gap:7px; }
+.fu-tab:hover { color:var(--text-2); }
+.fu-tab.active { color:var(--zone); border-bottom-color:var(--zone); background:var(--surface); }
+.fu-count { font-size:10px; font-weight:700; padding:1px 7px; border-radius:10px; background:var(--border); color:var(--text-3); }
+.fu-tab.active .fu-count { background:var(--zone-soft); color:var(--zone); }
+.fu-panel { display:none; padding:8px; }
+.fu-panel.active { display:block; }
+.fu-empty { padding:28px 16px; text-align:center; color:var(--text-3); font-size:13px; }
+.fu-row { display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:var(--radius-sm); transition:background .15s; }
+.fu-row:hover { background:var(--surface-2); }
+.fu-row + .fu-row { border-top:1px solid var(--border-soft); }
+.fu-main { flex:1; min-width:0; }
+.fu-name { font-size:13px; font-weight:600; color:var(--text); display:flex; align-items:center; gap:8px; }
+.fu-name a { color:inherit; text-decoration:none; }
+.fu-name a:hover { color:var(--zone); }
+.fu-who { font-size:9px; font-weight:700; letter-spacing:.05em; padding:1px 6px; border-radius:8px; background:var(--surface-2); color:var(--text-3); text-transform:uppercase; }
+.fu-meta { font-size:11px; color:var(--text-3); margin-top:2px; }
+.fu-when { font-size:11px; font-weight:700; white-space:nowrap; }
+.fu-when.ok { color:var(--text-3); } .fu-when.warn { color:var(--amber); } .fu-when.bad { color:var(--red); }
+.fu-log { padding:6px 12px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-xs); font-family:var(--font-body); font-size:11px; font-weight:600; color:var(--text-2); cursor:pointer; white-space:nowrap; transition:all .15s; }
+.fu-log:hover { border-color:var(--zone); color:var(--zone); }
+
+/* ─── PIPELINE KANBAN ─── */
+.kanban { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+@media (max-width:760px){ .kanban { grid-template-columns:1fr 1fr; } }
+.kan-col { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:10px; min-height:80px; }
+.kan-col-head { display:flex; align-items:center; gap:7px; margin-bottom:9px; }
+.kan-col-title { font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-2); line-height:1.2; }
+.kan-col-count { font-size:10px; font-weight:700; color:var(--text-3); margin-left:auto; }
+.kan-card { background:var(--surface-2); border:1px solid var(--border-soft); border-radius:var(--radius-sm); padding:9px 11px; margin-bottom:7px; text-decoration:none; display:block; transition:border-color .15s; }
+.kan-card:hover { border-color:var(--zone); }
+.kan-card-name { font-size:12px; font-weight:600; color:var(--text); line-height:1.3; margin-bottom:5px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.kan-card-foot { display:flex; align-items:center; justify-content:space-between; gap:6px; }
+.kan-card-val { font-size:12px; font-weight:700; color:var(--zone); }
+.kan-card-age { font-size:10px; font-weight:600; }
+.kan-card-age.ok { color:var(--text-3); } .kan-card-age.warn { color:var(--amber); } .kan-card-age.bad { color:var(--red); }
+.kan-empty { font-size:11px; color:var(--text-3); padding:6px 2px; }
+
+/* ─── WEEKLY PULSE ─── */
+.pulse-block { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+.pulse-stat { display:flex; flex-direction:column; gap:2px; }
+.pulse-stat-num { font-family:var(--font-display); font-size:26px; font-weight:700; line-height:1; display:inline-block; transform:scaleY(1.12); transform-origin:top left; }
+.pulse-stat-num.good { color:var(--green); } .pulse-stat-num.warn { color:var(--amber); } .pulse-stat-num.neutral { color:var(--text); }
+.pulse-stat-label { font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--text-3); }
+.pulse-divider { width:1px; align-self:stretch; background:var(--border); }
+.pulse-bar-wrap { flex:1; min-width:160px; }
+.pulse-bar-top { display:flex; justify-content:space-between; font-size:11px; color:var(--text-2); margin-bottom:6px; }
+.pulse-bar { height:8px; background:var(--surface-2); border-radius:4px; overflow:hidden; }
+.pulse-bar-fill { height:100%; border-radius:4px; background:var(--zone); transition:width .4s ease; }
+.pulse-bar-fill.good { background:var(--green); }
+.pulse-streak { font-size:11px; color:var(--text-3); }
+.pulse-streak b { color:var(--green); }
+
+/* ─── MODAL ─── */
+.modal-overlay { position:fixed; inset:0; background:rgba(5,8,14,.7); display:none; align-items:flex-start; justify-content:center; padding:60px 16px; z-index:200; }
+.modal-overlay.open { display:flex; }
+.modal { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); width:100%; max-width:460px; overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,.5); }
+.modal-head { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+.modal-head h3 { font-family:var(--font-display); font-size:18px; font-weight:700; color:var(--text); }
+.modal-close { margin-left:auto; background:none; border:none; color:var(--text-3); font-size:20px; cursor:pointer; line-height:1; }
+.modal-close:hover { color:var(--text); }
+.modal-body { padding:16px 18px; }
+.modal-field { margin-bottom:13px; }
+.modal-label { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-2); margin-bottom:6px; display:block; }
+.modal-input, .modal-select, .modal-textarea { width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:9px 11px; font-family:var(--font-body); font-size:13px; color:var(--text); }
+.modal-input:focus, .modal-select:focus, .modal-textarea:focus { outline:none; border-color:var(--zone); }
+.modal-textarea { resize:vertical; min-height:80px; line-height:1.5; }
+.modal-search-results { margin-top:6px; max-height:180px; overflow-y:auto; border:1px solid var(--border-soft); border-radius:var(--radius-sm); display:none; }
+.modal-search-results.show { display:block; }
+.msr-item { padding:8px 11px; font-size:13px; color:var(--text-2); cursor:pointer; }
+.msr-item:hover { background:var(--surface-2); color:var(--text); }
+.msr-item + .msr-item { border-top:1px solid var(--border-soft); }
+.modal-foot { padding:13px 18px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
+.gen-output { background:var(--surface-2); border:1px solid var(--border-soft); border-left:2px solid var(--zone); border-radius:0 var(--radius-sm) var(--radius-sm) 0; padding:12px 14px; font-size:13px; color:var(--text); line-height:1.6; white-space:pre-wrap; margin-top:6px; min-height:60px; }
+.gen-loading { color:var(--text-3); font-style:italic; }
+
+/* ─── TOAST + SKELETON ─── */
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--surface-2); border:1px solid var(--border); color:var(--text); padding:10px 18px; border-radius:8px; font-size:13px; font-weight:600; z-index:999; transition:transform .25s ease,opacity .25s ease; opacity:0; pointer-events:none; display:flex; align-items:center; gap:8px; }
+.toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+.toast .toast-dot { width:7px; height:7px; border-radius:50%; background:var(--zone); }
+.skeleton { color:transparent !important; background:linear-gradient(90deg,var(--surface-2) 25%,var(--border) 50%,var(--surface-2) 75%); background-size:200% 100%; animation:sk 1.3s ease infinite; border-radius:4px; }
+@keyframes sk { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+#load-error { display:none; background:var(--red-soft); border:1px solid rgba(242,109,109,.25); color:var(--red); border-radius:var(--radius); padding:14px 18px; font-size:13px; margin-bottom:18px; }
+</style>
 </head><body>
 <div class="topbar-wrap"><div class="topbar">
   <a href="/" class="logo">◆ LRL OS</a>
@@ -34,21 +221,551 @@
   <a href="/wealth" class="nav-btn">WEALTH</a>
   <a href="/lego" class="nav-btn">LEGO</a>
 </nav></div>
-<div class="zone-wrap">
-  <div class="zone-hero">
-    <div class="zone-eyebrow">Work · Convert</div>
-    <div class="zone-heading">
-      <div class="zone-icon">🎯</div>
-      <h1 class="zone-title">Convert</h1>
+
+<div class="convert-page">
+
+  <!-- HEADER -->
+  <div class="cv-head">
+    <div class="cv-head-left">
+      <div class="cv-eyebrow">Work · Convert</div>
+      <span class="cv-title">Convert</span>
     </div>
-    <p class="zone-desc">Pipeline, deals, and proposals. Move prospects from interested to invoiced.</p>
-    <span class="zone-badge">⚙ Building this zone</span>
+    <div class="cv-head-right">
+      <div class="me-mode" id="me-mode">
+        <button data-me="gretchen">G</button>
+        <button data-me="trina">T</button>
+        <button data-me="all" class="active">All</button>
+      </div>
+      <span class="data-badge" id="data-badge"><span class="dot"></span><span id="data-badge-text">Live</span></span>
+    </div>
   </div>
-  <div class="zone-placeholder">
-    <div class="zone-card"><div class="zone-card-label">Pipeline</div><div class="zone-card-title">Active Deals</div><div class="zone-card-body">Prospects, proposals out, and deals closing this quarter.</div></div>
-    <div class="zone-card"><div class="zone-card-label">Outreach</div><div class="zone-card-title">Cold Leads</div><div class="zone-card-body">Sequence status, follow-up cadence, and response rates.</div></div>
-    <div class="zone-card"><div class="zone-card-label">Revenue</div><div class="zone-card-title">MTD Bookings</div><div class="zone-card-body">Closed won this month vs. target, pipeline coverage ratio.</div></div>
+
+  <!-- CALM HERO (all conditions met) -->
+  <div class="calm-hero">
+    <div class="ch-tick">✓</div>
+    <div>
+      <h2>Pipeline's healthy.</h2>
+      <p id="calm-hero-sub">Everyone in motion is followed up, decisions are moving, revenue's on track. Go build.</p>
+    </div>
+  </div>
+
+  <div id="load-error">Couldn't load Convert data. <span id="load-error-msg"></span></div>
+
+  <!-- CALM CONDITIONS -->
+  <div class="calm-block">
+    <div class="calm-head">
+      <span class="calm-head-title">Pipeline Health</span>
+      <span class="calm-head-score" id="calm-score">— / 6</span>
+    </div>
+    <div class="calm-grid" id="calm-grid">
+      <!-- rendered -->
+    </div>
+  </div>
+
+  <!-- DO THIS NEXT -->
+  <div class="section-label"><h3>Do This Next</h3><span class="sl-meta" id="dtn-meta"></span></div>
+  <div id="dtn-mount"></div>
+
+  <!-- REVENUE -->
+  <div class="section-label"><h3>Revenue · <span id="rev-quarter">This Quarter</span></h3></div>
+  <div class="rev-block" id="rev-block">
+    <div class="rev-top">
+      <span class="rev-amount" id="rev-amount">$—</span>
+      <span class="rev-goal">of $120k goal</span>
+      <span class="rev-status" id="rev-status"></span>
+    </div>
+    <div class="rev-track" id="rev-track"></div>
+    <div class="rev-legend" id="rev-legend"></div>
+    <div class="rev-demo" id="rev-demo" style="display:none">⚠ <span>Xero not connected — revenue unavailable</span></div>
+  </div>
+
+  <!-- FOLLOW-UPS -->
+  <div class="section-label"><h3>Follow-Ups</h3><span class="sl-meta" id="fu-meta"></span></div>
+  <div class="fu-block">
+    <div class="fu-tabs" id="fu-tabs">
+      <button class="fu-tab active" data-fu="warm">Warm <span class="fu-count" id="fc-warm">0</span></button>
+      <button class="fu-tab" data-fu="cold">Cold <span class="fu-count" id="fc-cold">0</span></button>
+      <button class="fu-tab" data-fu="client">Clients <span class="fu-count" id="fc-client">0</span></button>
+    </div>
+    <div class="fu-panel active" id="fp-warm"></div>
+    <div class="fu-panel" id="fp-cold"></div>
+    <div class="fu-panel" id="fp-client"></div>
+  </div>
+
+  <!-- PIPELINE -->
+  <div class="section-label"><h3>Pipeline</h3><span class="sl-meta" id="pipe-meta"></span></div>
+  <div class="kanban" id="kanban"></div>
+
+  <!-- WEEKLY PULSE -->
+  <div class="section-label"><h3>Weekly Pulse</h3></div>
+  <div class="pulse-block" id="pulse-block">
+    <div class="pulse-stat">
+      <span class="pulse-stat-num neutral" id="pulse-num">—</span>
+      <span class="pulse-stat-label">Touchpoints</span>
+    </div>
+    <div class="pulse-divider"></div>
+    <div class="pulse-bar-wrap">
+      <div class="pulse-bar-top"><span id="pulse-bar-label">This week</span><span id="pulse-bar-goal"></span></div>
+      <div class="pulse-bar"><div class="pulse-bar-fill" id="pulse-bar-fill" style="width:0%"></div></div>
+      <div class="pulse-streak" id="pulse-streak"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- LOG TOUCHPOINT MODAL -->
+<div class="modal-overlay" id="log-modal">
+  <div class="modal">
+    <div class="modal-head"><h3>Log Touchpoint</h3><button class="modal-close" onclick="closeLog()">×</button></div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label class="modal-label">Contact</label>
+        <input class="modal-input" id="log-contact" placeholder="Search contacts…" autocomplete="off">
+        <div class="modal-search-results" id="log-results"></div>
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Type</label>
+        <select class="modal-select" id="log-type">
+          <option>Email</option><option>Call</option><option>Text</option>
+          <option>LinkedIn</option><option>Meeting</option><option>Other</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Note (optional)</label>
+        <textarea class="modal-textarea" id="log-note" placeholder="What happened?"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeLog()">Cancel</button>
+      <button class="btn-primary" id="log-submit" onclick="submitLog()">Log it</button>
+    </div>
   </div>
 </div>
+
+<!-- GENERATE MESSAGE MODAL -->
+<div class="modal-overlay" id="gen-modal">
+  <div class="modal">
+    <div class="modal-head"><h3>Draft a Message</h3><button class="modal-close" onclick="closeGen()">×</button></div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label class="modal-label">For</label>
+        <input class="modal-input" id="gen-for" readonly>
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Draft</label>
+        <div class="gen-output" id="gen-output">Click Generate to draft a follow-up.</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeGen()">Close</button>
+      <button class="btn-secondary" id="gen-copy" onclick="copyGen()" style="display:none">Copy</button>
+      <button class="btn-primary" id="gen-go" onclick="runGen()">Generate</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="toast-dot"></span><span id="toast-text"></span></div>
 <a href="/" class="fab" title="Back to Today">⚡</a>
+
+<script>
+// ─── Constants (ported from the Convert design reference) ───────────────────
+const GOAL = 120000;          // quarterly revenue goal
+const PULSE_TARGET = 85;      // weekly touchpoint goal
+const REC_MONTHLY = 4000;     // assumed monthly recurring (2 months counted toward "on track")
+const OVERDUE_DAYS = 7;       // active-conversation contact considered overdue
+const WARM_STALE = 14;        // warm lead considered stale
+const DP_STALE = 7;           // decision-pending deal considered stalled
+const WARM_SOURCES = ['Partner Referral', 'Client Referral', 'LM: Brand Advantage'];
+const PIPE_COLS = ['Consult Scheduled', 'Consult Completed', 'Build Scope', 'Decision Pending'];
+
+let DATA = null;        // /api/convert payload
+let PULSE = null;       // /api/convert/pulse payload
+let ME = 'all';         // me-mode: gretchen | trina | all
+let TODAY = null;       // ISO date (Chicago) — taken from payload asOf
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+const fmtMoney = (n) => '$' + Math.round(n).toLocaleString();
+const fmtMoneyK = (n) => n >= 1000 ? '$' + (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'k' : '$' + Math.round(n);
+function isoToday() { return (DATA?.asOf || new Date().toISOString()).slice(0, 10); }
+function daysSince(iso) {
+  if (!iso) return Infinity;
+  const a = new Date(isoToday() + 'T00:00:00Z'), b = new Date(iso.slice(0, 10) + 'T00:00:00Z');
+  return Math.round((a - b) / 86400000);
+}
+function classify(c) {
+  if (c.relationship === 'Active Client') return 'client';
+  if (c.relationship === 'Referral' || WARM_SOURCES.includes(c.source)) return 'warm';
+  return 'cold';
+}
+// Me-mode filter: keep items for the selected person; unassigned items show in every mode.
+function mineContact(c) { return ME === 'all' || c.assignedTo === ME || !c.assignedTo; }
+function mineDeal(d) { return ME === 'all' || d.assignedTo === ME || !d.assignedTo; }
+
+// ─── Calm conditions ──────────────────────────────────────────────────────────
+function computeConditions() {
+  const today = isoToday();
+  const weekAgo = (() => { const d = new Date(today + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 7); return d.toISOString().slice(0, 10); })();
+  const contacts = (DATA.contacts || []).filter(mineContact);
+  const active = contacts.filter((c) => c.activeConvo);   // active sales conversations (the working set)
+  const deals = (DATA.deals || []).filter(mineDeal);
+  const rev = DATA.revenue;
+
+  // 1. Everyone in an active conversation has been touched today.
+  const allTouchedToday = active.length > 0 && active.every((c) => c.lastTouched && c.lastTouched >= today);
+  // 2. No active conversation has gone cold (>7 days untouched).
+  const noneOverdue = active.length > 0 && !active.some((c) => !c.lastTouched || c.lastTouched < weekAgo);
+  // 3. Weekly pulse hit.
+  const pulseHit = (DATA.touchpointsThisWeek || 0) >= PULSE_TARGET;
+  // 4. At least one deal genuinely in motion.
+  const hasActiveDeal = deals.some((d) => !['On Hold'].includes(d.stage));
+  // 5. Revenue on track for the quarter.
+  const booked = rev ? (rev.collected || 0) + (rev.invoiced || 0) + (rev.acceptedQuotes || 0) : 0;
+  const onTrack = !!rev && (booked + REC_MONTHLY * 2) >= GOAL;
+  // 6. Decisions are moving — every decision-pending deal touched within 7 days.
+  const dp = deals.filter((d) => d.stage === 'Decision Pending');
+  const decisionsMoving = dp.length === 0 ? hasActiveDeal : dp.every((d) => d.lastTouched && d.lastTouched >= weekAgo);
+
+  return [
+    { key: 'touched', met: allTouchedToday, label: 'Everyone touched today',
+      sub: active.length ? (allTouchedToday ? `All ${active.length} active conversations` : `${active.filter((c) => !c.lastTouched || c.lastTouched < today).length} still waiting`) : 'No active conversations' },
+    { key: 'overdue', met: noneOverdue, label: 'No one gone cold',
+      sub: noneOverdue ? 'Nothing past 7 days' : `${active.filter((c) => !c.lastTouched || c.lastTouched < weekAgo).length} past 7 days` },
+    { key: 'pulse', met: pulseHit, label: 'Weekly pulse hit',
+      sub: `${DATA.touchpointsThisWeek || 0} / ${PULSE_TARGET} touchpoints` },
+    { key: 'deal', met: hasActiveDeal, label: 'Deals in motion',
+      sub: `${deals.length} open ${deals.length === 1 ? 'deal' : 'deals'}` },
+    { key: 'revenue', met: onTrack, label: 'Revenue on track',
+      sub: rev ? `${fmtMoneyK(booked)} booked of ${fmtMoneyK(GOAL)}` : 'Xero not connected' },
+    { key: 'decisions', met: decisionsMoving, label: 'Decisions moving',
+      sub: dp.length ? `${dp.length} pending · ${dp.filter((d) => d.lastTouched && d.lastTouched >= weekAgo).length} fresh` : 'None pending' },
+  ];
+}
+
+function renderCalm() {
+  const conds = computeConditions();
+  const met = conds.filter((c) => c.met).length;
+  const grid = document.getElementById('calm-grid');
+  grid.innerHTML = conds.map((c) => `
+    <div class="calm-cell ${c.met ? 'met' : 'unmet'}">
+      <div class="calm-mark">${c.met ? '✓' : '!'}</div>
+      <div class="calm-cell-text">
+        <div class="calm-cell-label">${c.label}</div>
+        <div class="calm-cell-sub">${c.sub}</div>
+      </div>
+    </div>`).join('');
+  const score = document.getElementById('calm-score');
+  score.textContent = `${met} / 6`;
+  score.className = 'calm-head-score ' + (met === 6 ? 'calm' : 'busy');
+  document.body.classList.toggle('state-calm', met === 6);
+}
+
+// ─── Do This Next ─────────────────────────────────────────────────────────────
+function computeDoNext() {
+  const weekAgo = (() => { const d = new Date(isoToday() + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 7); return d.toISOString().slice(0, 10); })();
+  const contacts = (DATA.contacts || []).filter(mineContact);
+  const active = contacts.filter((c) => c.activeConvo);
+  const deals = (DATA.deals || []).filter(mineDeal);
+
+  // 1. A decision-pending deal stalled ≥7 days.
+  const dp = deals.filter((d) => d.stage === 'Decision Pending' && daysSince(d.lastTouched) >= DP_STALE)
+    .sort((a, b) => daysSince(b.lastTouched) - daysSince(a.lastTouched));
+  if (dp.length) {
+    const d = dp[0];
+    return { kind: 'deal', urgency: 'red', pill: 'Decision Pending', tags: [fmtMoney(d.value || 0)],
+      name: d.name, url: d.url,
+      why: `This deal has been waiting on a decision for <strong>${daysSince(d.lastTouched)} days</strong>. A nudge now keeps it from going cold.` };
+  }
+  // 2. A warm lead stale ≥14 days.
+  const warm = active.filter((c) => classify(c) === 'warm' && daysSince(c.lastTouched) >= WARM_STALE)
+    .sort((a, b) => daysSince(b.lastTouched) - daysSince(a.lastTouched));
+  if (warm.length) {
+    const c = warm[0];
+    return { kind: 'contact', urgency: 'amber', pill: 'Warm Lead', tags: [c.relationship || 'Lead', c.source].filter(Boolean),
+      name: c.name, url: c.url, contactId: c.id,
+      why: `A warm lead you haven't touched in <strong>${daysSince(c.lastTouched)} days</strong>. Warm leads cool fast — reach out today.` };
+  }
+  // 3. Any active conversation overdue ≥7 days.
+  const overdue = active.filter((c) => daysSince(c.lastTouched) >= OVERDUE_DAYS)
+    .sort((a, b) => daysSince(b.lastTouched) - daysSince(a.lastTouched));
+  if (overdue.length) {
+    const c = overdue[0];
+    return { kind: 'contact', urgency: 'amber', pill: 'Overdue', tags: [c.relationship || 'Lead'],
+      name: c.name, url: c.url, contactId: c.id,
+      why: `Last touched <strong>${daysSince(c.lastTouched)} days ago</strong>. Keep the conversation warm with a quick check-in.` };
+  }
+  // 4. All clear.
+  return { kind: 'clear' };
+}
+
+function renderDoNext() {
+  const n = computeDoNext();
+  const mount = document.getElementById('dtn-mount');
+  const meta = document.getElementById('dtn-meta');
+  if (n.kind === 'clear') {
+    meta.textContent = '';
+    mount.innerHTML = `<div class="dtn-card"><div class="dtn-bar green"></div><div class="dtn-body">
+      <div class="dtn-name" style="font-size:18px;color:var(--green)">Nothing's overdue.</div>
+      <div class="dtn-why">Every active conversation is current and no decisions are stalled. Spend the time prospecting or building.</div>
+    </div></div>`;
+    return;
+  }
+  meta.textContent = n.pill;
+  const tags = (n.tags || []).map((t) => `<span class="dtn-tag">${t}</span>`).join('');
+  const logBtn = n.kind === 'contact'
+    ? `<button class="btn-primary" onclick="openLog('${esc(n.name)}','${n.contactId}')">Log Touchpoint</button>
+       <button class="btn-secondary" onclick="openGen('${esc(n.name)}','${n.contactId}')">Draft Message</button>`
+    : `<button class="btn-secondary" onclick="window.open('${n.url}','_blank')">Open Deal</button>`;
+  mount.innerHTML = `<div class="dtn-card"><div class="dtn-bar ${n.urgency}"></div><div class="dtn-body">
+    <div class="dtn-head">
+      <span class="dtn-pill ${n.urgency === 'red' ? 'red' : 'amber'}">${n.pill}</span>
+      ${tags}
+    </div>
+    <div class="dtn-name">${esc(n.name)}</div>
+    <div class="dtn-why">${n.why}</div>
+    <div class="dtn-actions">
+      ${logBtn}
+      <a class="btn-ghost" href="${n.url}" target="_blank" style="text-decoration:none">Open in Notion ↗</a>
+    </div>
+  </div></div>`;
+}
+
+// ─── Revenue ──────────────────────────────────────────────────────────────────
+function renderRevenue() {
+  const rev = DATA.revenue;
+  const block = document.getElementById('rev-block');
+  document.getElementById('rev-quarter').textContent = DATA.quarterLabel || 'This Quarter';
+  if (!rev) {
+    document.getElementById('rev-amount').textContent = '—';
+    document.getElementById('rev-track').innerHTML = '';
+    document.getElementById('rev-legend').innerHTML = '';
+    document.getElementById('rev-status').textContent = '';
+    document.getElementById('rev-demo').style.display = 'flex';
+    return;
+  }
+  document.getElementById('rev-demo').style.display = 'none';
+  const collected = rev.collected || 0, invoiced = rev.invoiced || 0, quotes = rev.acceptedQuotes || 0;
+  const booked = collected + invoiced + quotes;
+  const projected = booked + REC_MONTHLY * 2;
+  const pct = (v) => Math.min(100, (v / GOAL) * 100);
+  document.getElementById('rev-amount').textContent = fmtMoney(booked);
+  document.getElementById('rev-track').innerHTML =
+    `<div class="rev-seg collected" style="width:${pct(collected)}%"></div>
+     <div class="rev-seg invoiced" style="width:${pct(invoiced)}%"></div>
+     <div class="rev-seg quotes" style="width:${pct(quotes)}%"></div>`;
+  const legend = [['collected', 'Collected', collected], ['invoiced', 'Invoiced', invoiced]];
+  if (rev.quotesAvailable) legend.push(['quotes', 'Accepted quotes', quotes]);
+  document.getElementById('rev-legend').innerHTML = legend
+    .map(([cls, label, v]) => `<span class="rev-leg"><span class="sw ${cls}"></span>${label} <b>${fmtMoney(v)}</b></span>`).join('');
+  const status = document.getElementById('rev-status');
+  const onTrack = projected >= GOAL;
+  status.textContent = onTrack ? 'On track ✓' : `${fmtMoneyK(GOAL - booked)} to go`;
+  status.className = 'rev-status ' + (onTrack ? 'good' : 'warn');
+}
+
+// ─── Follow-Ups ────────────────────────────────────────────────────────────────
+function renderFollowUps() {
+  const contacts = (DATA.contacts || []).filter(mineContact);
+  const buckets = { warm: [], cold: [], client: [] };
+  for (const c of contacts) buckets[classify(c)].push(c);
+  // Sort each bucket by most overdue first.
+  for (const k of Object.keys(buckets)) buckets[k].sort((a, b) => daysSince(b.lastTouched) - daysSince(a.lastTouched));
+  for (const k of ['warm', 'cold', 'client']) {
+    document.getElementById('fc-' + k).textContent = buckets[k].length;
+    const panel = document.getElementById('fp-' + k);
+    if (!buckets[k].length) { panel.innerHTML = `<div class="fu-empty">No ${k === 'client' ? 'clients' : k + ' contacts'} in this view.</div>`; continue; }
+    panel.innerHTML = buckets[k].slice(0, 40).map((c) => {
+      const d = daysSince(c.lastTouched);
+      const when = c.lastTouched ? (d === 0 ? 'Today' : d === 1 ? 'Yesterday' : d + 'd ago') : 'Never';
+      const cls = !c.lastTouched || d >= 14 ? 'bad' : d >= 7 ? 'warn' : 'ok';
+      const who = c.assignedTo && c.assignedTo !== 'other' ? `<span class="fu-who">${c.assignedTo[0].toUpperCase()}</span>` : '';
+      const meta = [c.stage, c.source].filter(Boolean).join(' · ');
+      return `<div class="fu-row">
+        <div class="fu-main">
+          <div class="fu-name"><a href="${c.url}" target="_blank">${esc(c.name)}</a>${who}</div>
+          ${meta ? `<div class="fu-meta">${esc(meta)}</div>` : ''}
+        </div>
+        <span class="fu-when ${cls}">${when}</span>
+        <button class="fu-log" onclick="openLog('${esc(c.name)}','${c.id}')">Log</button>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ─── Pipeline kanban ───────────────────────────────────────────────────────────
+function renderPipeline() {
+  const deals = (DATA.deals || []).filter(mineDeal);
+  document.getElementById('pipe-meta').textContent =
+    `${deals.length} open · ${fmtMoneyK(deals.reduce((s, d) => s + (d.value || 0), 0))}`;
+  document.getElementById('kanban').innerHTML = PIPE_COLS.map((col) => {
+    const inCol = deals.filter((d) => d.stage === col).sort((a, b) => (b.value || 0) - (a.value || 0));
+    const cards = inCol.length ? inCol.map((d) => {
+      const age = daysSince(d.lastTouched);
+      const ac = age >= 14 ? 'bad' : age >= 7 ? 'warn' : 'ok';
+      const ageTxt = isFinite(age) ? (age === 0 ? 'today' : age + 'd') : '—';
+      return `<a class="kan-card" href="${d.url}" target="_blank">
+        <div class="kan-card-name">${esc(d.name)}</div>
+        <div class="kan-card-foot">
+          <span class="kan-card-val">${d.value ? fmtMoneyK(d.value) : ''}</span>
+          <span class="kan-card-age ${ac}">${ageTxt}</span>
+        </div></a>`;
+    }).join('') : '<div class="kan-empty">—</div>';
+    return `<div class="kan-col">
+      <div class="kan-col-head"><span class="kan-col-title">${col}</span><span class="kan-col-count">${inCol.length}</span></div>
+      ${cards}
+    </div>`;
+  }).join('');
+}
+
+// ─── Weekly pulse ────────────────────────────────────────────────────────────
+function renderPulse() {
+  if (!PULSE) return;
+  const tp = DATA.touchpointsThisWeek || 0;
+  const num = document.getElementById('pulse-num');
+  num.textContent = tp;
+  num.className = 'pulse-stat-num ' + (tp >= PULSE_TARGET ? 'good' : tp >= PULSE_TARGET / 2 ? 'warn' : 'neutral');
+  document.getElementById('pulse-bar-goal').textContent = `${tp} / ${PULSE_TARGET}`;
+  const fill = document.getElementById('pulse-bar-fill');
+  fill.style.width = Math.min(100, (tp / PULSE_TARGET) * 100) + '%';
+  fill.className = 'pulse-bar-fill' + (tp >= PULSE_TARGET ? ' good' : '');
+  const streak = PULSE.streak || 0;
+  document.getElementById('pulse-streak').innerHTML = streak > 0
+    ? `<b>${streak} week${streak === 1 ? '' : 's'}</b> hitting the sales goal`
+    : 'Sales goal not yet hit this week';
+}
+
+// ─── Render all ────────────────────────────────────────────────────────────────
+function renderAll() {
+  if (!DATA) return;
+  renderCalm(); renderDoNext(); renderRevenue(); renderFollowUps(); renderPipeline(); renderPulse();
+}
+
+// ─── Me-mode ───────────────────────────────────────────────────────────────────
+document.getElementById('me-mode').addEventListener('click', (e) => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  ME = btn.dataset.me;
+  [...document.querySelectorAll('#me-mode button')].forEach((b) => b.classList.toggle('active', b === btn));
+  renderAll();
+});
+
+// ─── Follow-up tabs ──────────────────────────────────────────────────────────
+document.getElementById('fu-tabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('.fu-tab'); if (!btn) return;
+  const k = btn.dataset.fu;
+  [...document.querySelectorAll('.fu-tab')].forEach((b) => b.classList.toggle('active', b === btn));
+  ['warm', 'cold', 'client'].forEach((x) => document.getElementById('fp-' + x).classList.toggle('active', x === k));
+});
+
+// ─── Log Touchpoint modal ──────────────────────────────────────────────────────
+let logContactId = null, logContactName = '', logSearchTimer = null;
+function openLog(name, id) {
+  logContactId = id || null;
+  logContactName = name || '';
+  document.getElementById('log-contact').value = name || '';
+  document.getElementById('log-type').value = 'Email';
+  document.getElementById('log-note').value = '';
+  document.getElementById('log-results').classList.remove('show');
+  document.getElementById('log-modal').classList.add('open');
+}
+function closeLog() { document.getElementById('log-modal').classList.remove('open'); }
+document.getElementById('log-contact').addEventListener('input', (e) => {
+  const q = e.target.value.trim();
+  logContactId = null;  // typing invalidates a prior selection
+  clearTimeout(logSearchTimer);
+  if (q.length < 2) { document.getElementById('log-results').classList.remove('show'); return; }
+  logSearchTimer = setTimeout(async () => {
+    try {
+      const r = await fetch('/api/convert/contacts?q=' + encodeURIComponent(q));
+      const { contacts } = await r.json();
+      const box = document.getElementById('log-results');
+      box.innerHTML = (contacts || []).slice(0, 8).map((c) =>
+        `<div class="msr-item" onclick="pickContact('${esc(c.name)}','${c.id}')">${esc(c.name)}<span style="color:var(--text-3)"> · ${c.relationship || ''}</span></div>`).join('')
+        || '<div class="msr-item" style="color:var(--text-3)">No matches</div>';
+      box.classList.add('show');
+    } catch (_) {}
+  }, 250);
+});
+function pickContact(name, id) {
+  document.getElementById('log-contact').value = name;
+  logContactId = id; logContactName = name;
+  document.getElementById('log-results').classList.remove('show');
+}
+async function submitLog() {
+  if (!logContactId) { toast('Pick a contact from the list first'); return; }
+  const btn = document.getElementById('log-submit');
+  btn.disabled = true; btn.textContent = 'Logging…';
+  try {
+    const r = await fetch('/api/convert/touchpoint', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contactId: logContactId, contactName: logContactName, touchpointType: document.getElementById('log-type').value, notes: document.getElementById('log-note').value })
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'failed');
+    toast('Touchpoint logged ✓');
+    closeLog();
+    await load(true);   // refresh with the new touchpoint
+  } catch (err) { toast('Couldn\'t log: ' + err.message); }
+  finally { btn.disabled = false; btn.textContent = 'Log it'; }
+}
+
+// ─── Generate Message modal (AI — Phase 3 endpoint) ─────────────────────────────
+let genName = null, genContactId = null;
+function openGen(name, id) {
+  genName = name; genContactId = id || null;
+  document.getElementById('gen-for').value = name;
+  document.getElementById('gen-output').textContent = 'Click Generate to draft a follow-up.';
+  document.getElementById('gen-output').classList.remove('gen-loading');
+  document.getElementById('gen-copy').style.display = 'none';
+  document.getElementById('gen-modal').classList.add('open');
+}
+function closeGen() { document.getElementById('gen-modal').classList.remove('open'); }
+async function runGen() {
+  const out = document.getElementById('gen-output');
+  out.textContent = 'Drafting…'; out.classList.add('gen-loading');
+  document.getElementById('gen-go').disabled = true;
+  try {
+    const r = await fetch('/api/convert/draft', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: genName, contactId: genContactId })
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'unavailable');
+    const { message } = await r.json();
+    out.textContent = message; out.classList.remove('gen-loading');
+    document.getElementById('gen-copy').style.display = 'inline-block';
+  } catch (err) {
+    out.textContent = 'Draft unavailable: ' + err.message; out.classList.remove('gen-loading');
+  } finally { document.getElementById('gen-go').disabled = false; }
+}
+function copyGen() {
+  navigator.clipboard.writeText(document.getElementById('gen-output').textContent).then(() => toast('Copied ✓'));
+}
+
+// ─── Toast ───────────────────────────────────────────────────────────────────
+let toastTimer = null;
+function toast(msg) {
+  document.getElementById('toast-text').textContent = msg;
+  const t = document.getElementById('toast'); t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+
+// ─── Load ────────────────────────────────────────────────────────────────────
+async function load(fresh) {
+  try {
+    const [c, p] = await Promise.all([
+      fetch('/api/convert' + (fresh ? '?fresh=1' : '')).then((r) => r.json()),
+      fetch('/api/convert/pulse' + (fresh ? '?fresh=1' : '')).then((r) => r.json()).catch(() => null),
+    ]);
+    if (c.error) throw new Error(c.error);
+    DATA = c; PULSE = p;
+    const badge = document.getElementById('data-badge');
+    const live = !!DATA.revenue;
+    badge.className = 'data-badge' + (live ? '' : ' demo');
+    document.getElementById('data-badge-text').textContent = live ? 'Live' : 'No Xero';
+    renderAll();
+  } catch (err) {
+    document.getElementById('load-error').style.display = 'block';
+    document.getElementById('load-error-msg').textContent = err.message;
+  }
+}
+load();
+</script>
 </body></html>

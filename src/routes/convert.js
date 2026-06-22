@@ -2,7 +2,7 @@ import { SALES_STAGES, SALES_STAGE_GROUP, CONTACTS_DS, SALES_ACTIVITY_DS, TRINA_
 import { serializeDeal, serializeContactRow, queryAllDeals, fetchSalesProductMap } from '../providers/notion/convert.js';
 
 export function registerConvertRoutes(app, ctx) {
-  const { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID } = ctx;
+  const { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID, computeXeroFinance, anthropic } = ctx;
 
 
 // GET /api/convert/pipeline — open deals grouped by stage + headline metrics.
@@ -384,6 +384,105 @@ app.patch('/api/convert/touchpoint/:id', async (req, res) => {
     await notion.pages.update({ page_id: dashifyId(req.params.id), properties });
     cache.delete('sales-pulse');
     res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/convert — full page payload (active contacts classified, open deals,
+// this-week touchpoint count, Q2 revenue). The 6 calm conditions + Do This Next
+// are computed client-side from this, per the reference logic. Cached 15 min.
+app.get('/api/convert', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    if (req.query.fresh === '1') cache.delete('convert-page');
+    const data = await cached('convert-page', async () => {
+      const today = chicagoTodayISODate();
+      const monday = weekStartISO(today);
+
+      // The working set = contacts in an active sales conversation (Stage in
+      // CONVERT_FOLLOWUP_STAGES) plus all Active Clients. This is what drives the
+      // page — NOT all 700+ leads (touching every lead daily is never achievable,
+      // so the calm state would never turn green). Conditions 1 & 2 evaluate the
+      // active-conversation subset (`activeConvo`); the Clients tab uses the rest.
+      const contactPages = [];
+      let c1;
+      do {
+        const r = await notion.dataSources.query({
+          data_source_id: CONTACTS_DS,
+          filter: { and: [
+            { property: 'Archive', checkbox: { equals: false } },
+            { or: [
+              ...CONVERT_FOLLOWUP_STAGES.map((s) => ({ property: 'Stage', select: { equals: s } })),
+              { property: 'Relationship', select: { equals: 'Active Client' } },
+            ] },
+          ] },
+          page_size: 100, start_cursor: c1,
+        });
+        contactPages.push(...r.results);
+        c1 = r.has_more ? r.next_cursor : null;
+      } while (c1);
+      const contacts = contactPages.map(serializeContactRow)
+        .map((c) => ({ ...c, activeConvo: CONVERT_FOLLOWUP_STAGES.includes(c.stage) }));
+
+      // Open deals.
+      const productMap = await fetchSalesProductMap(notion, cached).catch(() => ({}));
+      const deals = (await queryAllDeals(notion))
+        .map((pg) => serializeDeal(pg, productMap))
+        .filter((d) => !d.archived && !['Closed Won', 'Closed Lost'].includes(d.status))
+        .map((d) => ({ url: d.url, id: d.id, name: d.name, stage: d.status, value: d.value, lastTouched: d.lastTouched, assignedTo: d.assignedTo }));
+
+      // Touchpoints logged this week (SALES ACTIVITY entries since Monday).
+      let touchpointsThisWeek = 0, c2;
+      do {
+        const r = await notion.dataSources.query({
+          data_source_id: SALES_ACTIVITY_DS,
+          filter: { property: 'Timestamp', date: { on_or_after: monday } },
+          page_size: 100, start_cursor: c2,
+        });
+        touchpointsThisWeek += r.results.length;
+        c2 = r.has_more ? r.next_cursor : null;
+      } while (c2);
+
+      // Q2 revenue from Xero (best-effort). Accepted-quotes isn't part of the
+      // existing Xero integration, so it's reported as unavailable, not faked.
+      let revenue = null;
+      if (computeXeroFinance) {
+        try {
+          const fin = await cached('xero-finance', computeXeroFinance);
+          revenue = { collected: fin.qtdRevenue || 0, invoiced: fin.accountsReceivable || 0, acceptedQuotes: 0, quotesAvailable: false };
+        } catch (e) { revenue = null; }
+      }
+
+      return { asOf: new Date().toISOString(), quarterLabel: currentQuarter().label, contacts, deals, touchpointsThisWeek, revenue };
+    });
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/convert/draft — draft a short, personalized follow-up message with
+// Claude, using the contact's relationship/stage/source/recency for context.
+app.post('/api/convert/draft', async (req, res) => {
+  if (!anthropic) return res.status(503).json({ error: 'AI not configured' });
+  const { name = '', contactId = '' } = req.body || {};
+  try {
+    const ctxLines = [];
+    if (contactId) {
+      try {
+        const pg = await notion.pages.retrieve({ page_id: dashifyId(contactId) });
+        const c = serializeContactRow(pg);
+        let days = null;
+        if (c.lastTouched) days = Math.round((Date.parse(chicagoTodayISODate()) - Date.parse(c.lastTouched)) / 86400000);
+        if (c.relationship) ctxLines.push(`Relationship: ${c.relationship}`);
+        if (c.stage) ctxLines.push(`Pipeline stage: ${c.stage}`);
+        if (c.source) ctxLines.push(`How they found us: ${c.source}`);
+        ctxLines.push(days != null ? `Last contact: ${days} days ago` : 'No prior contact logged');
+      } catch (_) { /* fall back to name-only */ }
+    }
+    const prompt = `You write warm, concise follow-ups for Left Right Labs, a brand + website design agency.\n\n`
+      + `Draft a short follow-up message to ${name || 'this contact'} that re-opens the conversation without being pushy.\n`
+      + (ctxLines.length ? `\nContext:\n- ${ctxLines.join('\n- ')}\n` : '')
+      + `\nRules: 3–5 sentences. Friendly, human, professional. Use their first name. No subject line, no placeholders, no preamble — just the message text ready to send.`;
+    const msg = await anthropic.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 400, messages: [{ role: 'user', content: prompt }] });
+    res.json({ name, message: (msg.content?.[0]?.text || '').trim() });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

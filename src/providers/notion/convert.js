@@ -33,6 +33,8 @@ export function serializeDeal(page, productMap, opts = {}) {
     callCompleted: p['Call Completed']?.date?.start || null,
     dateWon: p['Date Won']?.date?.start || null,
     dateLost: p['Date Lost']?.date?.start || null,
+    lastTouched: p['Last Touched']?.rollup?.date?.start || p['Last Touched']?.rollup?.array?.[0]?.date?.start || p['Last Touched']?.date?.start || null,
+    assignedTo: meKey((p['Assigned To']?.people || [])[0]?.name || ''),
     products: (p['Product Interest']?.relation || []).map((r) => productMap[r.id.replace(/-/g, '')]).filter(Boolean),
     archived: archivedName === '__YES__',
     created: page.created_time || null,
@@ -59,9 +61,15 @@ export async function queryAllDeals(notion) {
   return all;
 }
 
+// Map a Notion "Assigned To" person name to the app's me-mode key.
+function meKey(name) {
+  return /trina/i.test(name || '') ? 'trina' : /gretchen/i.test(name || '') ? 'gretchen' : (name ? 'other' : null);
+}
+
 export function serializeContactRow(page) {
   const p = page.properties || {};
   const lt = p['Last Touched']?.date?.start || null;
+  const assignedName = (p['Assigned To']?.people || [])[0]?.name || '';
   return {
     id: page.id,
     url: page.url,
@@ -69,6 +77,9 @@ export function serializeContactRow(page) {
     relationship: p['Relationship']?.select?.name || null,
     stage: p['Stage']?.select?.name || null,
     track: p['Track']?.select?.name || null,
+    source: p['Source']?.select?.name || null,
+    assignedTo: meKey(assignedName),
+    assignedToName: assignedName || null,
     lastTouched: lt,
   };
 }
