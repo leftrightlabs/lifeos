@@ -1370,11 +1370,12 @@ function renderVcal() {
   }).join('');
 }
 
+// Live-filled by applyFinance() from /api/finance/xero + /api/convert/pipeline.
 const workSnap = [
-  { lbl:'Cash on hand',  val:'$68.4k',  c:'var(--green)' },
-  { lbl:'MTD revenue',   val:'$0',      c:'var(--red)' },
-  { lbl:'Open pipeline', val:'$23.9k',  c:'var(--text)' },
-  { lbl:'Runway',        val:'0.2 mo',  c:'var(--red)' },
+  { lbl:'Cash on hand',  val:'—',  c:'var(--text)' },
+  { lbl:'MTD revenue',   val:'—',  c:'var(--text)' },
+  { lbl:'Open pipeline', val:'—',  c:'var(--text)' },
+  { lbl:'Runway',        val:'—',  c:'var(--text)' },
 ];
 const personalSnap = [
   { lbl:'Net worth',        val:'—',  c:'var(--text)' },
@@ -1732,6 +1733,20 @@ function applyWealth(data) {
   if (state.mode === 'personal') renderSnap();
 }
 
+// Apply live Xero finance + open pipeline to workSnap (the work-mode snapshot).
+function applyFinance(fin, pipe) {
+  if (fin) {
+    const cash = fin.bankTotal, mtdRev = fin.mtdRevenue, runway = fin.runwayMonths;
+    workSnap[0] = { lbl: 'Cash on hand', val: fmt$(cash),   c: (cash || 0) > 0 ? 'var(--green)' : 'var(--red)' };
+    workSnap[1] = { lbl: 'MTD revenue',  val: fmt$(mtdRev), c: (mtdRev || 0) > 0 ? 'var(--green)' : 'var(--red)' };
+    workSnap[3] = { lbl: 'Runway',       val: runway == null ? '∞' : runway + ' mo', c: (runway != null && runway < 3) ? 'var(--red)' : 'var(--green)' };
+  }
+  if (pipe && pipe.openValue != null) {
+    workSnap[2] = { lbl: 'Open pipeline', val: fmt$(pipe.openValue), c: 'var(--text)' };
+  }
+  if (state.mode !== 'personal') renderSnap();
+}
+
 // Apply server ritual state to local items
 function applyRitual(data) {
   if (!data) return;
@@ -1941,7 +1956,7 @@ async function refreshData() {
 
 // Master loader — all API calls in parallel, each applied gracefully on success
 async function loadTodayData() {
-  const [workTR, lifeTR, goalsR, ringsR, ritualR, briefR, calR, wealthR, projR] = await Promise.allSettled([
+  const [workTR, lifeTR, goalsR, ringsR, ritualR, briefR, calR, wealthR, projR, finR, pipeR] = await Promise.allSettled([
     fetch('/api/tasks/work-myday').then(r => r.json()),
     fetch('/api/tasks/life-myday').then(r => r.json()),
     fetch('/api/goals').then(r => r.json()),
@@ -1951,6 +1966,8 @@ async function loadTodayData() {
     fetch('/api/calendar/today').then(r => r.json()),
     fetch('/api/wealth/summary').then(r => r.json()),
     fetch('/api/projects').then(r => r.json()),
+    fetch('/api/finance/xero').then(r => r.json()),
+    fetch('/api/convert/pipeline').then(r => r.json()),
   ]);
   const ok = r => r.status === 'fulfilled' && !r.value?.error;
 
@@ -1989,6 +2006,7 @@ async function loadTodayData() {
   if (ok(briefR)) applyBrief(briefR.value.brief);
   if (ok(calR)) applyCalendar(calR.value.events || []);
   if (ok(wealthR)) applyWealth(wealthR.value);
+  if (ok(finR) || ok(pipeR)) applyFinance(ok(finR) ? finR.value : null, ok(pipeR) ? pipeR.value : null);
 
   _reRenderAll();
 }
