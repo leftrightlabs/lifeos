@@ -507,5 +507,16 @@ app.get('/api/attract/media', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  // GET /api/attract/channels/:channel/refresh — bust the channel-insights
+  // cache so the next /api/attract/insights pull is fresh from the live APIs.
+  app.get('/api/attract/channels/:channel/refresh', async (req, res) => {
+    try {
+      const u = userContext.getStore()?.user;
+      cache.delete('attract-insights');
+      if (u) cache.delete(`attract-insights::${u.id || u.email}`);
+      res.json({ ok: true, channel: req.params.channel });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   return { MARKETING_ASSETS_DS, fetchMarketingChannelMap, serializeMarketingAsset };
 }

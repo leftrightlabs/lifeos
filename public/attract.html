@@ -1751,6 +1751,66 @@ The expertise was the hard part. This last piece is mostly translation. We built
     applyPageState(['stressed', 'in-progress', 'healthy'].includes(override) ? override : st);
   }
 
+  // ── Channel Insights (Phase 5) — YouTube + GA live; rest are Connect stubs ──
+  const fmtNum = (n) => { n = Number(n) || 0; if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M'; if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K'; return String(n); };
+  function setTabDot(channel, cls) {
+    const d = document.querySelector(`.ci-tab[data-channel="${channel}"] .ci-tab-dot`);
+    if (d) d.className = 'ci-tab-dot ' + cls;
+  }
+  function connectStub(channel, label) {
+    const panel = document.getElementById('ci-' + channel); if (!panel) return;
+    const row = panel.querySelector('.ci-stats-row'); if (!row) return;
+    row.outerHTML = `<div class="ci-stats-row ci-connect" style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface-2);border:1px dashed var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:14px;"><span style="font-size:12px;color:var(--text-2)">Live ${esc(label)} metrics aren't connected yet.</span><button class="ci-alt-btn" onclick="showToast('Connect ${esc(label)} — coming soon →')">Connect ${esc(label)} →</button></div>`;
+    setTabDot(channel, 'amber');
+  }
+  function renderYouTube(yt) {
+    const panel = document.getElementById('ci-youtube'); const row = panel.querySelector('.ci-stats-row'); if (!row) return;
+    row.innerHTML = [
+      ['Subscribers', fmtNum(yt.subscribers), 'Live · YouTube'],
+      ['Total Views', fmtNum(yt.totalViews), 'All time'],
+      ['Avg Views / Video', fmtNum(yt.recentAvgViews), 'Recent uploads'],
+      ['Videos', fmtNum(yt.videoCount), 'Published'],
+    ].map(([l, v, d]) => `<div class="ci-stat"><span class="ci-stat-num">${v}</span><span class="ci-stat-label">${l}</span><span class="ci-stat-delta neutral">${d}</span></div>`).join('');
+    const sub = panel.querySelector('.ci-insight-sub'); const top = (yt.topVideos || [])[0];
+    if (sub && top) sub.textContent = `Top video: "${top.title}" · ${fmtNum(top.views)} views · ${fmtNum(top.likes)} likes`;
+    const infra = panel.querySelector('.ci-infra-note span:last-child');
+    if (infra) infra.textContent = `Live from YouTube Data API v3${yt.channelTitle ? ' · ' + yt.channelTitle : ''}`;
+    setTabDot('youtube', 'green');
+  }
+  function renderFunnelFromGA(props) {
+    const ok = props.filter(p => !p.error && p.totals);
+    const visits = ok.reduce((s, p) => s + (p.totals.sessions || 0), 0);
+    const optins = ok.reduce((s, p) => s + (p.totals.keyEvents || 0), 0);
+    if (visits <= 0) return;   // no real traffic → keep the manual funnel
+    const stages = document.querySelectorAll('.funnel-stage .funnel-stage-num');
+    const srcs = document.querySelectorAll('.funnel-stage .funnel-stage-source');
+    if (stages[2]) stages[2].textContent = fmtNum(visits);   // Site Visits — live
+    if (srcs[2]) srcs[2].textContent = 'GA4 · live';
+    const hdr = document.querySelector('.funnel-header-rate');
+    if (optins > 0) {
+      if (stages[3]) stages[3].textContent = fmtNum(optins);
+      if (srcs[3]) srcs[3].textContent = 'GA4 · key events';
+      const rate = Math.round((optins / visits) * 1000) / 10;
+      if (hdr) { hdr.className = 'funnel-header-rate ' + (rate >= 20 ? 'good' : rate >= 10 ? 'ok' : 'bad'); hdr.textContent = rate + '%'; }
+    } else {
+      // Real traffic, but the GA4 opt-in conversion event isn't configured yet.
+      if (stages[3]) stages[3].textContent = '—';
+      if (srcs[3]) srcs[3].textContent = 'GA4 goal not set up';
+      if (hdr) { hdr.className = 'funnel-header-rate'; hdr.style.color = 'var(--text-3)'; hdr.textContent = '—'; }
+    }
+  }
+  async function hydrateChannels() {
+    // The four unwired channels become Connect stubs immediately (tab stays).
+    connectStub('linkedin', 'LinkedIn'); connectStub('instagram', 'Instagram');
+    connectStub('email', 'Email'); connectStub('facebook', 'Facebook');
+    let ins;
+    try { ins = await fetch('/api/attract/insights').then(r => r.json()); }
+    catch (e) { connectStub('youtube', 'YouTube'); return; }
+    if (!ins || !ins.configured) { connectStub('youtube', 'YouTube'); return; }
+    if (ins.youtube && !ins.youtube.error) renderYouTube(ins.youtube); else connectStub('youtube', 'YouTube');
+    if (ins.properties && ins.properties.some(p => !p.error)) renderFunnelFromGA(ins.properties);
+  }
+
   // ── Three-state system ──
   // Apply the calm healthy presentation (data + tone) WITHOUT any flash or
   // animation — used both on a quiet healthy load and inside the transition.
@@ -1856,5 +1916,6 @@ The expertise was the hard part. This last piece is mostly translation. We built
   // fire from triggerHealthyTransition() on a live publish, never on load.
   applyPageState('stressed');
   hydrate();
+  hydrateChannels();   // channel insights load independently (slower live APIs)
 </script>
 </body></html>
