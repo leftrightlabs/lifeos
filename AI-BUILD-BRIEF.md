@@ -31,13 +31,15 @@ These are not preferences. They are constraints. If a design decision violates a
 Every section must have a single primary call-to-action that is visually dominant. Supporting elements exist to contextualize that action, not compete with it. If a user can look at a section and not immediately know what to do, the section has failed.
 
 **2. Color carries meaning, never decoration.**
-The app uses exactly four colors with defined meanings:
-- Purple (`#7C6CF6`) — the app accent, navigation, primary buttons, the active mode
+The app uses a small, fixed palette with defined meanings (full spec in `COLOR_SYSTEM.md`, which is the canonical source — mirror it, never approximate):
+- Indigo (`#6366F1`) — the app anchor: brand, chrome/navigation, TODAY, ALL mode, shared zones (Messages/Execute)
+- Cobalt (`#2563EB`) — work context: Work mode and the Attract/Convert/Deliver/Scale zones
+- Cyan (`#06B6D4`) — personal/life context: Personal mode and the Health/Wealth/LEGO/Relationships zones
 - Red (`#F26D6D`) — act now, something needs immediate attention
 - Amber (`#EBB454`) — watch this, approaching, pending decision
 - Green (`#4FD6A0`) — healthy, complete, on track
 
-Nothing else gets a color. All other content is neutral gray. If you find yourself adding a new color for aesthetic reasons, stop. Every color must earn its place by communicating status.
+Indigo/cobalt/cyan never swap roles. Nothing else gets a color — all other content is neutral gray. If you find yourself adding a new color for aesthetic reasons, stop. Every color must earn its place by communicating status or context.
 
 **3. The dashboard must get quieter when things are going well.**
 This is the end-game design goal. When all metrics are healthy — revenue on track, rocks moving, pipeline fresh, no overdue items — the dashboard should show almost nothing. Red disappears. The morning brief changes tone from urgent to strategic. The numbers panel relabels to "Looking good." The visual reward for doing good work is a calm, spacious screen. If your implementation makes a fully-healthy state look busy or alarming, something is wrong.
@@ -94,7 +96,7 @@ Numbered priority list (1 through N). Each row shows: checkbox, task name, proje
 Full-screen takeover on Saturdays and Sundays in Work mode. Rotating message (5 options, random per visit). Two buttons: "👀 Just a peek" (reveals dashboard, re-arms screen for next visit, shows floating "back to weekend" banner) and "Unfortunately, I'm working today →" (clears screen for the day, day counts toward streak). The peek button must feel temporary — the banner that follows it must be visible and easy to use to return to rest mode. This screen is protective friction. It must feel friendly, not punishing.
 
 ### Mode System (Gretchen only)
-Three modes: Work (purple), All (amber), Personal (teal). The mode toggle renders only for Gretchen's account. Team members see Work mode with no toggle and zero personal data in the DOM.
+Three modes: Work (cobalt `--work`), All (indigo `--accent`), Personal (cyan `--personal`). The mode toggle renders only for Gretchen's account. Team members see Work mode with no toggle and zero personal data in the DOM.
 
 Work: business tabs, work tasks only, work streak only, business rings.
 Personal: life tabs, personal tasks only, life streak only, single large life ring.
@@ -118,18 +120,20 @@ Mode switch should animate content change (~250ms transition). Layout skeleton n
 - `ritual_log` — daily ritual completion per user per day
 - `one_thing_state` — snooze/blocked/done state per item per user per day
 
-**Design tokens (copy exactly, never approximate):**
+**Design tokens (copy exactly, never approximate — defined in `public/styles/tokens.css`, documented in `COLOR_SYSTEM.md`):**
 ```
 --bg: #0A0D16          --surface: #111826       --surface-2: #0D131F
 --border: #1C2536      --border-soft: #161E2C
---accent: #7C6CF6      --accent-soft: rgba(124,108,246,.14)
---teal: #38BDF8        --teal-soft: rgba(56,189,248,.12)
+--accent: #6366F1      --accent-soft: rgba(99,102,241,.13)    /* indigo  — anchor / chrome / shared */
+--work: #2563EB        --work-soft: rgba(37,99,235,.13)       /* cobalt  — work mode + work zones   */
+--personal: #06B6D4    --personal-soft: rgba(6,182,212,.13)   /* cyan    — personal mode + life zones */
 --text: #DCE3EC        --text-2: #8A9BB0
 --text-3: #54667E      --text-4: #364457
 --red: #F26D6D         --red-soft: rgba(242,109,109,.12)
 --amber: #EBB454       --amber-soft: rgba(235,180,84,.12)
 --green: #4FD6A0       --green-soft: rgba(79,214,160,.12)
 ```
+Each zone page sets `--zone` / `--zone-soft` locally to its context color (work→cobalt, life→cyan, shared→indigo). Light mode overrides live in `tokens.css` (`html.light`). Type sizes use the `--fs-*` token scale (`--fs-caption` 12 … `--fs-hero` 40), not raw px.
 
 **Type scale:**
 - Greeting: 23px / 700
