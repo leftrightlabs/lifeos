@@ -3305,7 +3305,11 @@ async function computeXeroFinance() {
       const creditTotal = creditCards.reduce((s, a) => s + a.balance, 0);
       // Monthly burn = avg of last 3 full months expenses
       const monthlyBurn = burn.expenses / 3;
-      const runwayMonths = monthlyBurn > 0 ? bank.totalCash / monthlyBurn : null;
+      // Runway = liquid bank cash ÷ burn. Use bankTotal (positive bank accounts
+      // only), NOT bank.totalCash — Xero's "Total" row nets in credit-card
+      // balances, which would understate runway (cash $68k vs net $8k). Card
+      // debt is a liability tracked separately, not a reduction of cash on hand.
+      const runwayMonths = monthlyBurn > 0 ? bankTotal / monthlyBurn : null;
 
       // Cash Capacity = Relay OPEX + Relay Revenue, divided by $30K/mo burn assumption.
       // Goal: $90K = 3 months runway.
