@@ -5,15 +5,609 @@
 <link rel="stylesheet" href="/styles/tokens.css">
 <link rel="stylesheet" href="/styles/app.css">
 <script defer src="/zone-scope.js"></script>
-<style>:root { --zone: var(--work); --zone-soft: var(--work-soft); }</style>
+<style>
+@import url('https://use.typekit.net/uwk2elu.css');
+:root {
+  --zone: var(--work); --zone-soft: var(--work-soft);
+  --font-display: 'scotch-display','Playfair Display',Georgia,serif;
+  --font-body: 'sweet-sans-pro','Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --radius: 10px; --radius-sm: 6px; --radius-xs: 4px;
+}
+/* Attract page container (the reference mockup's ".page", renamed to avoid any
+   collision with the shared shell). Body font matches the reference. */
+.attract-page { max-width:880px; margin:0 auto; padding:24px 28px 80px; font-family:var(--font-body); font-size:14px; line-height:1.5; color:var(--text); }
+/* ─── Attract component styles — ported verbatim from the design reference ─── */
+  /* ─── WEEKLY PULSE ─── */
+  .weekly-pulse { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; margin-bottom:18px; }
+  .pulse-row-1 { display:flex; align-items:center; gap:16px; margin-bottom:10px; }
+  .pulse-week { font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-2); white-space:nowrap; }
+  .pulse-slots { display:flex; gap:8px; flex:1; }
+  .pulse-slot { display:flex; align-items:center; gap:7px; font-size:12px; font-weight:600; color:var(--text-2); padding:4px 11px; border-radius:20px; border:1px solid var(--border); background:var(--surface-2); white-space:nowrap; }
+  .pulse-slot .slot-dot { width:7px; height:7px; border-radius:50%; border:2px solid currentColor; background:transparent; flex-shrink:0; }
+  .pulse-slot.done { color:var(--green); border-color:rgba(79,214,160,.25); background:var(--green-soft); }
+  .pulse-slot.done .slot-dot { background:var(--green); border-color:var(--green); }
+  .pulse-slot.overdue { color:var(--red); border-color:rgba(242,109,109,.25); }
+  .pulse-slot.overdue .slot-dot { border-color:var(--red); }
+  .pulse-slot.needs-copy { color:var(--amber); border-color:rgba(235,180,84,.25); }
+  .pulse-slot.needs-copy .slot-dot { border-color:var(--amber); }
+  .pulse-slot.scheduled { color:var(--zone); border-color:rgba(37,99,235,.3); }
+  .pulse-slot.scheduled .slot-dot { border-color:var(--zone); }
+  .slot-label { font-size:11px; line-height:1.2; }
+  .slot-day { font-size:10px; opacity:.7; display:block; }
+  .pulse-status { font-size:12px; font-weight:700; white-space:nowrap; }
+  .pulse-status.bad { color:var(--red); }
+  .pulse-status.ok { color:var(--amber); }
+  .pulse-status.good { color:var(--green); }
+
+  /* Runway gauge inside pulse */
+  .pulse-row-2 { display:flex; align-items:center; gap:12px; }
+  .runway-gauge-label { font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-2); white-space:nowrap; width:60px; }
+  .runway-gauge { flex:1; position:relative; height:6px; background:var(--surface-2); border-radius:3px; cursor:pointer; }
+  .runway-gauge-fill { height:100%; border-radius:3px; background:var(--amber); transition:width .4s ease; }
+  .runway-gauge-marker { position:absolute; top:-3px; width:2px; height:12px; border-radius:1px; }
+  .runway-gauge-marker.min-mark { background:rgba(255,255,255,.25); }
+  .runway-gauge-marker.ideal-mark { background:var(--green); opacity:.5; }
+  .runway-gauge-tooltip { position:absolute; bottom:14px; background:var(--surface-2); border:1px solid #243248; border-radius:var(--radius-sm); padding:6px 10px; font-size:11px; color:var(--text); white-space:nowrap; display:none; pointer-events:none; z-index:10; }
+  .runway-gauge:hover .runway-gauge-tooltip { display:block; }
+  .runway-status-text { font-size:12px; font-weight:700; white-space:nowrap; }
+  .runway-status-text.warn { color:var(--amber); }
+  .runway-status-text.good { color:var(--green); }
+  .runway-status-text.bad { color:var(--red); }
+  .runway-legend { display:flex; gap:10px; font-size:10px; color:var(--text-3); align-items:center; }
+  .runway-legend span { display:flex; align-items:center; gap:4px; }
+
+  /* SECTION LABELS */
+  .section-label { display:flex; align-items:center; gap:8px; margin-bottom:10px; margin-top:22px; }
+  .section-label h3 { font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--text-2); }
+  .section-label .sl-action { margin-left:auto; background:none; border:none; color:var(--text-2); font-family:var(--font-body); font-size:11px; cursor:pointer; text-decoration:underline; }
+  .section-label .sl-action:hover { color:var(--text); }
+
+  /* ─── FEATURED CARD ─── */
+  .featured-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:8px; }
+  .urgency-bar { height:3px; }
+  .urgency-bar.red { background:var(--red); }
+  .urgency-bar.amber { background:var(--amber); }
+  .urgency-bar.green { background:var(--green); }
+  .urgency-bar.purple { background:var(--zone); }
+
+  /* Goal chip */
+  .goal-chip { margin:14px 18px 0; display:inline-flex; align-items:center; gap:7px; background:var(--zone-soft); border:1px solid rgba(37,99,235,.3); border-radius:20px; padding:4px 12px; font-size:11px; font-weight:600; color:var(--zone); }
+  .goal-chip .goal-dot { width:6px; height:6px; border-radius:50%; background:var(--zone); flex-shrink:0; }
+  .goal-progress-inline { color:var(--text-3); font-weight:400; margin-left:2px; }
+
+  .card-header { padding:10px 18px 0; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .status-pill { padding:3px 9px; border-radius:20px; font-size:10px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; flex-shrink:0; }
+  .status-pill.overdue { background:var(--red-soft); color:var(--red); }
+  .status-pill.drafting { background:var(--amber-soft); color:var(--amber); }
+  .status-pill.scheduled { background:var(--green-soft); color:var(--green); }
+  .status-pill.needs-copy { background:var(--amber-soft); color:var(--amber); }
+  .card-tags { display:flex; gap:6px; flex-wrap:wrap; }
+  .tag { padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; background:var(--surface-2); color:var(--text-3); }
+
+  .card-body { padding:10px 18px 0; }
+  .card-series { font-size:11px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; color:var(--text-2); margin-bottom:6px; }
+  .card-title { font-family:var(--font-display); font-weight:700; font-size:21px; line-height:1.15; color:var(--text); margin-bottom:8px; }
+  .card-title span { display:inline-block; transform:scaleY(1.2); transform-origin:top left; }
+  .card-headline-preview { font-size:13px; color:var(--text); background:var(--surface-2); border-left:2px solid var(--zone); padding:9px 13px; border-radius:0 var(--radius-sm) var(--radius-sm) 0; margin-bottom:10px; font-style:italic; }
+  .card-caption-preview { font-size:13px; color:var(--text-2); line-height:1.7; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:4px; }
+  .card-caption-preview.expanded { -webkit-line-clamp:unset; overflow:visible; }
+  .expand-caption-btn { background:none; border:none; color:var(--text-2); font-family:var(--font-body); font-size:12px; cursor:pointer; padding:4px 0; text-decoration:underline; }
+  .expand-caption-btn:hover { color:var(--text); }
+
+  /* Image blocker */
+  .image-blocker { margin:12px 18px 0; background:rgba(235,180,84,.08); border:1px solid rgba(235,180,84,.25); border-radius:var(--radius-sm); padding:10px 14px; display:flex; align-items:center; gap:10px; }
+  .image-blocker-text { font-size:12px; color:var(--amber); font-weight:600; flex:1; }
+  .image-blocker-text span { font-weight:400; color:var(--text-2); margin-left:6px; font-size:11px; }
+  .btn-img-upload { padding:6px 14px; background:var(--amber-soft); border:1px solid rgba(235,180,84,.3); border-radius:var(--radius-sm); font-family:var(--font-body); font-size:11px; font-weight:700; color:var(--amber); cursor:pointer; white-space:nowrap; letter-spacing:.05em; text-transform:uppercase; }
+  .btn-img-upload:hover { background:rgba(235,180,84,.2); }
+  .btn-img-express { padding:6px 14px; background:none; border:1px solid #243248; border-radius:var(--radius-sm); font-family:var(--font-body); font-size:11px; font-weight:600; color:var(--text-2); cursor:pointer; white-space:nowrap; }
+  .btn-img-express:hover { color:var(--text); }
+
+  /* Why this post */
+  .why-section { margin:10px 18px 0; }
+  .why-toggle { background:none; border:none; color:var(--text-2); font-family:var(--font-body); font-size:11px; font-weight:600; cursor:pointer; padding:6px 0; display:flex; align-items:center; gap:6px; letter-spacing:.06em; text-transform:uppercase; transition:color .15s; width:100%; }
+  .why-toggle:hover { color:var(--text); }
+  .why-toggle .arrow { transition:transform .2s; font-size:9px; display:inline-block; }
+  .why-toggle.open .arrow { transform:rotate(90deg); }
+  .why-content { display:none; background:var(--surface-2); border-radius:var(--radius-sm); padding:14px; margin-top:6px; }
+  .why-content.open { display:block; }
+  .why-reasons { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+  .why-reason { display:flex; align-items:flex-start; gap:10px; font-size:12px; color:var(--text-2); line-height:1.5; }
+  .why-reason .wi { font-size:14px; flex-shrink:0; margin-top:1px; }
+  .why-reason strong { color:var(--text); }
+  .analytics-signal { display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:var(--radius-sm); font-size:12px; font-weight:600; margin-bottom:10px; }
+  .analytics-signal.stay { background:var(--green-soft); color:var(--green); border:1px solid rgba(79,214,160,.2); }
+  .analytics-signal.pivot { background:var(--amber-soft); color:var(--amber); border:1px solid rgba(235,180,84,.2); }
+  .pivot-row { border-top:1px solid var(--border); padding-top:10px; }
+  .pivot-heading { font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); margin-bottom:6px; }
+  .pivot-alt { display:flex; align-items:center; gap:10px; }
+  .pivot-alt-text { flex:1; font-size:12px; color:var(--text-2); line-height:1.5; }
+  .pivot-alt-text strong { color:var(--text); }
+  .btn-pivot { padding:6px 12px; background:none; border:1px solid #243248; border-radius:var(--radius-sm); font-family:var(--font-body); font-size:11px; font-weight:600; color:var(--text-2); cursor:pointer; white-space:nowrap; }
+  .btn-pivot:hover { color:var(--text); border-color:var(--text-2); }
+
+  /* Campaign details */
+  .campaign-section { margin:6px 18px 0; }
+  .collapse-toggle { background:none; border:none; color:var(--text-2); font-family:var(--font-body); font-size:11px; font-weight:600; cursor:pointer; padding:5px 0; display:flex; align-items:center; gap:6px; letter-spacing:.06em; text-transform:uppercase; transition:color .15s; }
+  .collapse-toggle:hover { color:var(--text); }
+  .collapse-toggle .arrow { transition:transform .2s; font-size:9px; display:inline-block; }
+  .collapse-toggle.open .arrow { transform:rotate(90deg); }
+  .collapse-content { display:none; background:var(--surface-2); border-radius:var(--radius-sm); padding:10px 12px; margin-top:5px; font-size:12px; color:var(--text-2); line-height:1.8; }
+  .collapse-content.open { display:block; }
+  .collapse-content ul { list-style:none; }
+  .collapse-content li::before { content:"· "; color:var(--zone); }
+
+  /* Card footer */
+  .card-footer { padding:12px 18px 14px; display:flex; align-items:center; gap:8px; border-top:1px solid var(--border); margin-top:12px; flex-wrap:wrap; }
+  .btn-primary { padding:9px 20px; background:var(--zone); color:#fff; border:none; border-radius:var(--radius-sm); font-family:var(--font-body); font-size:12px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; cursor:pointer; transition:all .15s; white-space:nowrap; }
+  .btn-primary:hover { background:#3b7bff; transform:translateY(-1px); }
+  .btn-primary.copied { background:var(--green); color:#fff; pointer-events:none; }
+  .btn-secondary { padding:9px 16px; background:var(--surface-2); color:var(--text); border:1px solid #243248; border-radius:var(--radius-sm); font-family:var(--font-body); font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; white-space:nowrap; }
+  .btn-secondary:hover { border-color:var(--text-2); }
+  .btn-mark-pub { padding:9px 16px; background:var(--green-soft); color:var(--green); border:1px solid rgba(79,214,160,.25); border-radius:var(--radius-sm); font-family:var(--font-body); font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; white-space:nowrap; display:none; }
+  .btn-mark-pub.visible { display:block; }
+  .btn-ghost { padding:9px 14px; background:none; color:var(--text-3); border:none; border-radius:var(--radius-sm); font-family:var(--font-body); font-size:12px; cursor:pointer; transition:color .15s; white-space:nowrap; margin-left:auto; }
+  .btn-ghost:hover { color:var(--text-2); }
+
+  /* DONE STATE */
+  .done-state { text-align:center; padding:36px 20px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:8px; display:none; }
+  .done-state.visible { display:block; }
+  .done-state h3 { font-size:16px; color:var(--green); margin-bottom:6px; }
+  .done-state p { font-size:13px; color:var(--text-2); }
+
+  /* QUEUE PEEK */
+  .queue-peek { display:flex; align-items:center; gap:12px; padding:10px 12px; background:var(--surface-2); border-radius:var(--radius-sm); margin-bottom:0; cursor:pointer; border:1px solid var(--border); transition:border-color .15s; }
+  .queue-peek:hover { border-color:#243248; }
+  .queue-peek-label { font-size:12px; color:var(--text-2); font-weight:600; flex:1; }
+  .queue-peek-badges { display:flex; gap:6px; }
+  .queue-badge { padding:2px 8px; border-radius:var(--radius-xs); font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; }
+  .queue-badge.scheduled { background:var(--green-soft); color:var(--green); }
+  .queue-badge.needs-copy { background:var(--amber-soft); color:var(--amber); }
+  .queue-expand-text { font-size:11px; color:var(--text-3); }
+  .queue-drawer { display:none; }
+  .queue-drawer.open { display:block; padding-top:8px; }
+  .queue-item { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:8px; overflow:hidden; }
+  .qi-bar { height:2px; }
+  .qi-bar.green { background:var(--green); }
+  .qi-bar.amber { background:var(--amber); }
+  .qi-inner { padding:12px 16px; display:flex; align-items:flex-start; gap:12px; }
+  .qi-meta { flex:1; }
+  .qi-meta h4 { font-size:13px; font-weight:600; color:var(--text); margin-bottom:4px; }
+  .qi-tags { display:flex; gap:6px; flex-wrap:wrap; }
+  .qi-actions { display:flex; gap:6px; align-items:center; flex-shrink:0; }
+  .qi-btn { padding:6px 12px; border-radius:var(--radius-xs); font-family:var(--font-body); font-size:11px; font-weight:600; cursor:pointer; transition:all .15s; white-space:nowrap; }
+  .qi-open { background:none; border:1px solid #243248; color:var(--text-2); }
+  .qi-open:hover { color:var(--text); }
+  .qi-write { background:var(--amber-soft); border:1px solid rgba(235,180,84,.25); color:var(--amber); }
+
+  /* ─── CONTENT RUNWAY SECTION ─── */
+  .runway-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  .runway-header { padding:14px 18px; display:flex; align-items:center; gap:12px; cursor:pointer; user-select:none; }
+  .runway-header:hover { background:#141F30; }
+  .runway-header-left { flex:1; }
+  .runway-header-title { font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--text-2); margin-bottom:4px; }
+  .runway-header-stat { font-size:18px; font-weight:700; color:var(--amber); }
+  .runway-header-stat.good { color:var(--green); }
+  .runway-header-stat .stat-sub { font-size:12px; color:var(--text-2); font-weight:400; margin-left:6px; }
+  .runway-header-gauge { flex:1; max-width:260px; }
+  .rwh-gauge-track { height:8px; background:var(--surface-2); border-radius:4px; position:relative; overflow:visible; }
+  .rwh-gauge-fill { height:100%; border-radius:4px; background:var(--amber); transition:width .4s ease; }
+  .rwh-marker { position:absolute; top:-4px; width:2px; height:16px; border-radius:1px; }
+  .rwh-marker.min { background:rgba(255,255,255,.2); }
+  .rwh-marker.ideal { background:var(--green); opacity:.6; }
+  .rwh-labels { display:flex; justify-content:space-between; margin-top:4px; font-size:9px; color:var(--text-3); }
+  .runway-toggle-arrow { font-size:12px; color:var(--text-3); transition:transform .2s; }
+  .runway-toggle-arrow.open { transform:rotate(180deg); }
+  .runway-body { display:none; border-top:1px solid var(--border); }
+  .runway-body.open { display:block; }
+
+  /* 6-week grid */
+  .week-grid { padding:16px 18px; }
+  .week-grid-label { font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-2); margin-bottom:10px; }
+  /* old channel×week grid removed */
+
+  /* Create nudge */
+  .create-nudge { padding:14px 18px; border-top:1px solid var(--border); background:rgba(37,99,235,.05); }
+  .nudge-heading { font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--zone); margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+  .nudge-items { display:flex; flex-direction:column; gap:8px; }
+  .nudge-item { display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); }
+  .nudge-item-text { flex:1; }
+  .nudge-item-title { font-size:13px; font-weight:600; color:var(--text); margin-bottom:2px; }
+  .nudge-item-sub { font-size:11px; color:var(--text-2); }
+  .nudge-item-actions { display:flex; gap:6px; flex-shrink:0; }
+  .btn-draft-ai { padding:7px 14px; background:var(--zone-soft); border:1px solid rgba(37,99,235,.25); border-radius:var(--radius-sm); font-family:var(--font-body); font-size:11px; font-weight:700; color:var(--zone); cursor:pointer; white-space:nowrap; letter-spacing:.04em; }
+  .btn-draft-ai:hover { background:rgba(37,99,235,.2); }
+  .btn-open-template { padding:7px 12px; background:none; border:1px solid #243248; border-radius:var(--radius-sm); font-family:var(--font-body); font-size:11px; font-weight:600; color:var(--text-2); cursor:pointer; white-space:nowrap; }
+  .btn-open-template:hover { color:var(--text); border-color:var(--text-2); }
+  .nudge-goal-link { margin-top:4px; font-size:11px; color:var(--text-3); }
+  .nudge-goal-link span { color:var(--zone); }
+
+
+  /* ─── RUNWAY WEEK LIST ─── */
+  .rw-list { display:flex; flex-direction:column; gap:4px; margin-top:10px; }
+
+  .rw-week { display:grid; grid-template-columns:180px 1fr auto; align-items:center;
+    gap:12px; padding:10px 14px; border-radius:var(--radius-sm);
+    background:var(--surface-2); border:1px solid var(--border-soft);
+    transition:border-color .15s; }
+  .rw-week:hover { border-color:var(--border); }
+  .rw-week.this-week { border-color:var(--border); background:var(--surface); }
+  .rw-week.gap { opacity:.8; }
+
+  .rw-left { display:flex; flex-direction:column; gap:6px; }
+  .rw-label { font-size:12px; font-weight:600; color:var(--text-2); display:flex; align-items:center; gap:8px; }
+  .rw-current-badge { font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+    background:var(--zone-soft); color:var(--zone); padding:2px 7px; border-radius:10px; }
+  .rw-dots { display:flex; gap:5px; align-items:center; }
+  .rw-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .rw-dot.scheduled { background:var(--zone); }
+  .rw-dot.overdue   { background:var(--red); }
+  .rw-dot.needs-copy{ background:var(--amber); }
+  .rw-dot.empty     { background:var(--border); border:1px solid var(--border-soft); }
+
+  .rw-mid { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .rw-chip { font-size:10px; font-weight:700; letter-spacing:.05em; padding:3px 9px;
+    border-radius:20px; white-space:nowrap; }
+  .rw-chip.li       { background:var(--zone-soft); color:var(--zone); }
+  .rw-chip.ig       { background:rgba(6,182,212,.12); color:#06B6D4; }
+  .rw-chip.email    { background:var(--amber-soft); color:var(--amber); }
+  .rw-chip.needs-copy { background:var(--amber-soft); color:var(--amber); }
+  .rw-chip.overdue  { background:var(--red-soft); color:var(--red); }
+  .rw-chip.empty    { background:var(--surface-2); border:1px dashed var(--border);
+    color:var(--text-3); cursor:pointer; }
+  .rw-chip.empty:hover { border-color:var(--zone); color:var(--zone); background:var(--zone-soft); }
+  .rw-week.this-week .rw-chip.overdue { animation: pulse-red 2s ease-in-out infinite; }
+  @keyframes pulse-red { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+  .rw-right { text-align:right; min-width:72px; }
+  .rw-count { font-size:12px; font-weight:700; display:block; }
+  .rw-count.green { color:var(--green); }
+  .rw-count.amber { color:var(--amber); }
+  .rw-count.red   { color:var(--red); }
+  .rw-sub   { font-size:10px; color:var(--text-3); display:block; margin-top:2px; }
+
+  .wg-legend { display:inline-flex; gap:10px; margin-left:12px; font-weight:400; letter-spacing:0; text-transform:none; font-size:10px; }
+  .wg-leg-item { display:flex; align-items:center; gap:4px; }
+  .wg-leg-item.green { color:var(--green); }
+  .wg-leg-item.amber { color:var(--amber); }
+  .wg-leg-item.red   { color:var(--red); }
+
+  /* ─── END RUNWAY WEEK LIST ─── */
+  /* ─── FUNNEL METRICS ─── */
+  .funnel-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  .funnel-header { padding:14px 18px; display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; }
+  .funnel-header:hover { background:#141F30; }
+  .funnel-header h3 { font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--text-2); flex:1; }
+  .funnel-header-rate { font-size:12px; font-weight:700; }
+  .funnel-header-rate.good { color:var(--green); }
+  .funnel-header-rate.ok { color:var(--amber); }
+  .funnel-header-rate.bad { color:var(--red); }
+  .funnel-header-label { font-size:11px; color:var(--text-3); }
+  .funnel-toggle-arrow { font-size:12px; color:var(--text-3); transition:transform .2s; }
+  .funnel-toggle-arrow.open { transform:rotate(180deg); }
+  .funnel-body { display:none; border-top:1px solid var(--border); }
+  .funnel-body.open { display:block; }
+
+  .funnel-strip { padding:18px 18px 6px; }
+  .funnel-flow { display:flex; align-items:center; gap:0; overflow-x:auto; padding-bottom:12px; }
+  .funnel-stage { text-align:center; flex-shrink:0; min-width:100px; }
+  .funnel-stage-num { font-family:var(--font-display); font-size:26px; font-weight:700; line-height:1; display:inline-block; transform:scaleY(1.15); transform-origin:top center; }
+  .funnel-stage-num.dim { color:var(--text); }
+  .funnel-stage-num.highlight { color:var(--zone); }
+  .funnel-stage-label { font-size:10px; color:var(--text-2); font-weight:600; letter-spacing:.07em; text-transform:uppercase; margin-top:4px; }
+  .funnel-stage-source { font-size:9px; color:var(--text-3); margin-top:2px; }
+  .funnel-arrow { flex-shrink:0; padding:0 4px; text-align:center; }
+  .funnel-arrow-line { color:var(--text-3); font-size:16px; line-height:1; display:block; }
+  .funnel-arrow-rate { font-size:10px; font-weight:700; color:var(--text-2); display:block; margin-top:2px; white-space:nowrap; }
+  .funnel-arrow-rate.good { color:var(--green); }
+  .funnel-arrow-rate.ok { color:var(--amber); }
+  .funnel-arrow-rate.bad { color:var(--red); }
+
+  .funnel-insight { margin:0 18px 14px; padding:10px 14px; background:var(--surface-2); border-radius:var(--radius-sm); font-size:12px; color:var(--text-2); line-height:1.6; display:flex; gap:10px; }
+  .funnel-insight strong { color:var(--text); }
+
+  /* Infrastructure note */
+  .infra-note { margin:0 18px 14px; padding:8px 12px; background:rgba(99,102,241,.1); border:1px solid rgba(99,102,241,.2); border-radius:var(--radius-sm); font-size:11px; color:#6366F1; display:flex; gap:8px; align-items:flex-start; }
+  .infra-note-icon { flex-shrink:0; font-size:13px; }
+  .infra-note-text { line-height:1.6; }
+  .infra-note-text strong { color:var(--text); }
+
+  /* ─── LEAD SIGNAL ─── */
+  .signal-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .signal-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; }
+  .signal-icon { font-size:18px; margin-bottom:8px; }
+  .signal-num { font-family:var(--font-display); font-size:28px; font-weight:700; line-height:1; display:inline-block; transform:scaleY(1.15); transform-origin:top left; }
+  .signal-num.zone { color:var(--zone); }
+  .signal-num.red { color:var(--red); }
+  .signal-num.amber { color:var(--amber); }
+  .signal-label { font-size:11px; color:var(--text-2); font-weight:600; letter-spacing:.06em; text-transform:uppercase; margin-top:4px; }
+  .signal-sub { font-size:11px; color:var(--text-3); margin-top:3px; }
+
+  .insight-callout { background:var(--surface); border:1px solid var(--zone-soft); border-left:3px solid var(--zone); border-radius:var(--radius); padding:12px 16px; display:flex; gap:12px; align-items:flex-start; }
+  .insight-callout .ic-icon { font-size:18px; flex-shrink:0; margin-top:1px; }
+  .insight-text strong { color:var(--zone); font-weight:700; }
+  .insight-text { font-size:13px; color:var(--text); line-height:1.6; }
+  .insight-action { margin-top:5px; font-size:12px; color:var(--text-2); display:block; }
+
+  /* THIS WEEK */
+  .week-list { display:flex; flex-direction:column; gap:4px; }
+  .week-row { display:flex; align-items:center; gap:12px; padding:9px 14px; border-radius:var(--radius-sm); background:var(--surface); border:1px solid var(--border); }
+  .week-row:hover { border-color:#243248; }
+  .week-row-date { font-size:11px; color:var(--text-2); font-weight:700; width:42px; flex-shrink:0; }
+  .week-row-title { font-size:13px; color:var(--text); font-weight:500; flex:1; }
+
+  /* TOAST */
+  .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--surface-2); border:1px solid #243248; color:var(--text); padding:10px 18px; border-radius:8px; font-size:13px; font-weight:600; z-index:999; transition:transform .25s ease,opacity .25s ease; opacity:0; pointer-events:none; display:flex; align-items:center; gap:8px; }
+  .toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+  .toast.lime { border-color:var(--zone); }
+  .toast-dot { width:7px; height:7px; border-radius:50%; background:var(--zone); flex-shrink:0; }
+
+  /* ═══ CHANNEL INSIGHTS ═══════════════════════════════════════════════════ */
+  .channel-insights-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+
+  /* Tab bar */
+  .ci-tab-bar {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+    padding: 0 4px;
+  }
+  .ci-tab {
+    display: flex; align-items: center; gap: 7px;
+    padding: 12px 18px;
+    background: none; border: none;
+    font-family: var(--font-body); font-size: 12px; font-weight: 600;
+    color: var(--text-3); cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color .15s, border-color .15s;
+    white-space: nowrap;
+    position: relative;
+  }
+  .ci-tab:hover { color: var(--text-2); }
+  .ci-tab.active { color: var(--zone); border-bottom-color: var(--zone); background: var(--surface); }
+  .ci-tab-icon {
+    font-size: 11px; font-weight: 700;
+    width: 18px; height: 18px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 4px;
+    background: var(--border);
+    color: var(--text-3);
+    flex-shrink: 0;
+  }
+  .ci-tab.active .ci-tab-icon {
+    background: var(--zone-soft); color: var(--zone);
+  }
+  .ci-tab-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  }
+  .ci-tab-dot.green  { background: var(--green); }
+  .ci-tab-dot.amber  { background: var(--amber); }
+  .ci-tab-dot.red    { background: var(--red); }
+
+  /* Panels */
+  .ci-panel { display: none; padding: 18px 20px 14px; }
+  .ci-panel.active { display: block; }
+
+  /* Stats row */
+  .ci-stats-row {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 12px; margin-bottom: 14px;
+  }
+  .ci-stat {
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+  }
+  .ci-stat-num {
+    font-family: var(--font-display);
+    font-size: 22px; font-weight: 700; line-height: 1;
+    color: var(--text); display: block;
+    transform: scaleY(1.15); transform-origin: top left;
+    display: inline-block; margin-bottom: 4px;
+  }
+  .ci-stat-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text-3); display: block;
+  }
+  .ci-stat-delta {
+    font-size: 10px; display: block; margin-top: 3px; font-weight: 600;
+  }
+  .ci-stat-delta.up      { color: var(--green); }
+  .ci-stat-delta.down    { color: var(--red); }
+  .ci-stat-delta.neutral { color: var(--text-3); }
+
+  /* Insight callout */
+  .ci-insight {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
+    border-left: 3px solid var(--zone);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px; margin-bottom: 12px;
+    font-size: 13px; color: var(--text); line-height: 1.6;
+  }
+  .ci-insight strong { color: var(--zone); }
+  .ci-insight-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .ci-insight-sub {
+    display: block; margin-top: 6px;
+    font-size: 11px; color: var(--text-3);
+  }
+
+  /* Instagram insight uses amber/warning for the reach drop */
+  #ci-instagram .ci-insight { border-left-color: var(--amber); }
+  #ci-instagram .ci-insight strong { color: var(--amber); }
+
+  /* Create next card */
+  .ci-create-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+  }
+  .ci-create-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 8px;
+  }
+  .ci-create-eyebrow {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--zone);
+  }
+  .ci-create-goal {
+    font-size: 11px; color: var(--text-3);
+  }
+  .ci-create-title {
+    font-family: var(--font-display);
+    font-size: 16px; font-weight: 700; color: var(--text);
+    line-height: 1.2; margin-bottom: 10px;
+    display: inline-block;
+    transform: scaleY(1.15); transform-origin: top left;
+  }
+  .ci-create-rationale {
+    display: flex; flex-direction: column; gap: 4px;
+    margin-bottom: 12px;
+  }
+  .ci-rat-item {
+    font-size: 12px; color: var(--text-2); line-height: 1.5; display: block;
+  }
+  .ci-create-actions {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+
+  /* Alt idea */
+  .ci-alt-idea {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .ci-alt-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text-3); flex-shrink: 0;
+  }
+  .ci-alt-text {
+    flex: 1; font-size: 12px; color: var(--text-2); min-width: 200px;
+  }
+  .ci-alt-btn {
+    padding: 5px 12px;
+    background: none; border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    font-family: var(--font-body); font-size: 11px; font-weight: 600;
+    color: var(--text-3); cursor: pointer; white-space: nowrap;
+    transition: all .15s; flex-shrink: 0;
+  }
+  .ci-alt-btn:hover { color: var(--text-2); border-color: var(--text-3); }
+
+  /* Infrastructure note */
+  .ci-infra-note {
+    display: flex; gap: 8px; align-items: flex-start;
+    padding: 8px 12px;
+    background: rgba(99,102,241,.08);
+    border: 1px solid rgba(99,102,241,.18);
+    border-radius: var(--radius-sm);
+    font-size: 11px; color: #6366F1;
+    line-height: 1.5;
+  }
+
+  /* ═══ END CHANNEL INSIGHTS ════════════════════════════════════════════════ */
+
+  /* 6 tabs — tighten padding and allow horizontal scroll on small viewports */
+  .ci-tab-bar { overflow-x: auto; scrollbar-width: none; }
+  .ci-tab-bar::-webkit-scrollbar { display: none; }
+  .ci-tab { padding: 11px 14px; font-size: 11px; }
+
+
+  .ci-tab[data-channel="facebook"] .ci-tab-icon { font-size: 13px; font-weight: 800; }
+
+  /* Warning insight variant (Facebook + AC drop-off) */
+  .ci-insight.ci-insight-warning { border-left-color: var(--amber); }
+  .ci-insight.ci-insight-warning strong { color: var(--amber); }
+
+  /* AC stat delta amber */
+  .ci-stat-delta.amber { color: var(--amber); }
+
+  /* Facebook: cobalt insight (boost strategy is positive action, not a warning) */
+  #ci-facebook .ci-insight { border-left-color: var(--zone); }
+  #ci-facebook .ci-insight strong { color: var(--zone); }
+
+  /* ═══ PHASE 2 — THREE-STATE SYSTEM ═══════════════════════════════════════ */
+  @keyframes flash-in  { 0%{opacity:0;transform:translateY(-8px)} 15%{opacity:1;transform:translateY(0)} 70%{opacity:1} 100%{opacity:0;transform:translateY(-4px)} }
+  @keyframes tick-pop  { 0%{transform:scale(0)} 60%{transform:scale(1.3)} 100%{transform:scale(1)} }
+  @keyframes gauge-fill{ 0%{width:33%} 100%{width:87%} }
+  @keyframes fade-in   { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes breathe   { 0%,100%{box-shadow:0 0 0 0 rgba(79,214,160,0)} 50%{box-shadow:0 0 0 6px rgba(79,214,160,.15)} }
+
+  .achievement-flash { position:relative; overflow:hidden; background:linear-gradient(135deg, rgba(79,214,160,.18) 0%, rgba(79,214,160,.08) 100%); border:1px solid rgba(79,214,160,.35); border-radius:var(--radius); padding:18px 24px; margin-bottom:18px; align-items:center; gap:16px; animation:flash-in 3.5s ease forwards; }
+  .achievement-flash.settled { animation:none; opacity:0; height:0; padding:0; margin:0; border:none; overflow:hidden; }
+  .af-tick { width:40px; height:40px; border-radius:50%; background:var(--green); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; animation:tick-pop .5s .2s cubic-bezier(.34,1.56,.64,1) both; box-shadow:0 0 24px rgba(79,214,160,.4); }
+  .af-text h2 { font-family:var(--font-display); font-size:18px; font-weight:700; color:var(--green); display:inline-block; transform:scaleY(1.2); transform-origin:top left; line-height:1.1; margin-bottom:4px; }
+  .af-text p { font-size:13px; color:var(--text-2); }
+
+  .pulse-slot.done .slot-label { color:var(--green); }
+  .pulse-compact-check { width:20px; height:20px; border-radius:50%; background:var(--green-soft); border:1.5px solid var(--green); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--green); flex-shrink:0; }
+  .pulse-compact-label { font-size:13px; font-weight:700; color:var(--green); }
+  .pulse-compact-sub { font-size:11px; color:var(--text-3); margin-left:4px; }
+
+  .runway-gauge-fill.healthy { background:var(--green); animation:gauge-fill 1.2s .2s ease both; }
+  .runway-status-text.healthy { color:var(--green); }
+
+  .ahead-card { background:var(--surface); border:1px solid rgba(79,214,160,.2); border-radius:var(--radius); overflow:hidden; margin-bottom:8px; animation:fade-in .5s ease both; }
+  .ahead-card-bar { height:3px; background:var(--green); }
+  .ahead-card-body { padding:20px; }
+  .ahead-eyebrow { font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--green); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .ahead-eyebrow::after { content:''; flex:1; height:1px; background:rgba(79,214,160,.2); }
+  .ahead-next { display:flex; align-items:center; gap:16px; padding:14px 16px; background:var(--surface-2); border:1px solid var(--border-soft); border-radius:var(--radius-sm); margin-bottom:8px; transition:border-color .15s; }
+  .ahead-next:hover { border-color:var(--border); }
+  .ahead-next-date { font-size:11px; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:.07em; width:48px; flex-shrink:0; text-align:center; line-height:1.3; }
+  .ahead-next-divider { width:1px; height:32px; background:var(--border); flex-shrink:0; }
+  .ahead-next-content { flex:1; }
+  .ahead-next-title { font-size:14px; font-weight:600; color:var(--text); margin-bottom:3px; }
+  .ahead-next-meta { font-size:11px; color:var(--text-3); }
+  .ahead-next-tag { padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+  .ahead-next-tag.li { background:var(--zone-soft); color:var(--zone); }
+  .ahead-next-tag.ig { background:rgba(6,182,212,.12); color:#06B6D4; }
+  .ahead-actions { display:flex; gap:8px; padding-top:4px; }
+  .btn-quiet { padding:8px 16px; background:none; border:1px solid var(--border); border-radius:var(--radius-sm); font-family:var(--font-body); font-size:12px; font-weight:600; color:var(--text-3); cursor:pointer; transition:all .15s; }
+  .btn-quiet:hover { color:var(--text-2); border-color:var(--text-3); }
+
+  .runway-header.healthy { animation:breathe 3s 1s ease-in-out 2; }
+
+  /* ── State visibility — a single body class (.state-*) drives the layout ── */
+  .ahead-card, .pulse-compact, .label-healthy, .achievement-flash { display:none; }
+  .state-healthy .featured-card,
+  .state-healthy .done-state,
+  .state-healthy .image-blocker,
+  .state-healthy .queue-peek,
+  .state-healthy .queue-drawer,
+  .state-healthy .pulse-slots,
+  .state-healthy .label-stressed { display:none !important; }
+  .state-healthy .ahead-card { display:block; }
+  .state-healthy .label-healthy { display:flex; }
+  .state-healthy .pulse-compact { display:flex; }
+  .state-healthy .weekly-pulse { border-color:rgba(79,214,160,.3); }
+  .state-healthy .create-nudge { background:rgba(79,214,160,.04); border-top-color:rgba(79,214,160,.15); }
+  .state-healthy .nudge-heading { color:var(--green); }
+  .state-healthy .runway-header-stat { color:var(--green); }
+</style>
 </head><body>
 <div class="topbar-wrap"><div class="topbar">
   <a href="/" class="logo">◆ LRL OS</a>
   <div class="topbar-right">
     <div class="mode-toggle" style="display:none">
-      <a href="/?mode=work" class="mode-btn work">WORK</a>
+      <a href="/?mode=work" class="mode-btn">WORK</a>
       <a href="/?mode=all" class="mode-btn">ALL</a>
-      <a href="/?mode=personal" class="mode-btn">PERSONAL</a>
+      <a href="/?mode=personal" class="mode-btn personal">PERSONAL</a>
     </div>
     <span class="me-pill">ME</span>
   </div>
@@ -23,32 +617,1151 @@
   <a href="/messages" class="nav-btn">MESSAGES</a>
   <a href="/execute" class="nav-btn">EXECUTE</a>
   <div class="nav-sep"></div>
+  <span class="nav-domain">LIFE</span>
+  <a href="/health" class="nav-btn">HEALTH</a>
+  <a href="/wealth" class="nav-btn">WEALTH</a>
+  <a href="/lego" class="nav-btn">LEGO</a>
+  <a href="/relationships" class="nav-btn">RELATIONSHIPS</a>
+  <div class="nav-sep"></div>
   <span class="nav-domain">WORK</span>
   <a href="/attract" class="nav-btn active">ATTRACT</a>
   <a href="/convert" class="nav-btn">CONVERT</a>
   <a href="/deliver" class="nav-btn">DELIVER</a>
   <a href="/scale" class="nav-btn">SCALE</a>
-  <div class="nav-sep"></div>
-  <span class="nav-domain">LIFE</span>
-  <a href="/health" class="nav-btn">HEALTH</a>
-  <a href="/wealth" class="nav-btn">WEALTH</a>
-  <a href="/lego" class="nav-btn">LEGO</a>
 </nav></div>
-<div class="zone-wrap">
-  <div class="zone-hero">
-    <div class="zone-eyebrow">Work · Attract</div>
-    <div class="zone-heading">
-      <div class="zone-icon">📡</div>
-      <h1 class="zone-title">Attract</h1>
+<div class="attract-page">
+
+  <!-- ══ ACHIEVEMENT FLASH — plays once on transition to healthy ══ -->
+  <div class="achievement-flash" id="achievement-flash">
+    <div class="af-tick">✓</div>
+    <div class="af-text">
+      <h2><span>Content is covered.</span></h2>
+      <p id="af-sub">All 3 posts published this week · 5 weeks of runway ahead · Go build something.</p>
     </div>
-    <p class="zone-desc">GA4 analytics, YouTube performance, content insights. See what's working and what audiences are growing.</p>
-    <span class="zone-badge">⚙ Building this zone</span>
   </div>
-  <div class="zone-placeholder">
-    <div class="zone-card"><div class="zone-card-label">Content</div><div class="zone-card-title">What's Working</div><div class="zone-card-body">GA4 + YouTube insights on top-performing content this quarter.</div></div>
-    <div class="zone-card"><div class="zone-card-label">Audience</div><div class="zone-card-title">Growth Metrics</div><div class="zone-card-body">Subscriber trends, traffic sources, and reach by channel.</div></div>
-    <div class="zone-card"><div class="zone-card-label">Pipeline</div><div class="zone-card-title">Publish Queue</div><div class="zone-card-body">Scheduled posts, drafts in progress, and content calendar.</div></div>
+
+  <!-- ══ 1. WEEKLY PULSE ══ -->
+  <div class="weekly-pulse">
+    <div class="pulse-row-1">
+      <span class="pulse-week">Jun 21–27</span>
+      <div class="pulse-slots">
+        <div class="pulse-slot overdue" title="Post 6: AI Decides Who Finds You · LinkedIn · Overdue 4d">
+          <div class="slot-dot"></div>
+          <span class="slot-label">LinkedIn <span class="slot-day">Mon</span></span>
+        </div>
+        <div class="pulse-slot scheduled" title="They Stopped Googling · Instagram · Jun 23">
+          <div class="slot-dot"></div>
+          <span class="slot-label">Instagram <span class="slot-day">Wed</span></span>
+        </div>
+        <div class="pulse-slot needs-copy" title="AI Readiness Follow-Up · Email · Needs copy">
+          <div class="slot-dot"></div>
+          <span class="slot-label">Email <span class="slot-day">Fri</span></span>
+        </div>
+      </div>
+      <div class="pulse-compact">
+        <div class="pulse-compact-check">✓</div>
+        <span class="pulse-compact-label">Week complete</span>
+        <span class="pulse-compact-sub">LinkedIn Mon · Instagram Wed · Email Fri</span>
+      </div>
+      <span class="pulse-status bad" id="pulse-status">0 of 3 posted</span>
+    </div>
+
+    <!-- RUNWAY GAUGE (inline, second row) -->
+    <div class="pulse-row-2">
+      <span class="runway-gauge-label">Runway</span>
+      <div class="runway-gauge" title="Content queue depth: 3.5 weeks ready. Goal: 4–6 weeks.">
+        <div class="runway-gauge-fill" style="width:33%"></div>
+        <!-- min marker at 4/6=66.7% — shown as absolute in the 0–6w scale -->
+        <div class="runway-gauge-marker min-mark" style="left:66.7%"></div>
+        <div class="runway-gauge-marker ideal-mark" style="left:100%"></div>
+        <div class="runway-gauge-tooltip">
+          2 of 6 weeks fully covered (3+ posts each)<br>
+          <span style="color:var(--text-3)">Min marker at 4w · Ideal at 6w</span>
+        </div>
+      </div>
+      <div class="runway-legend">
+        <span><span style="display:inline-block;width:10px;height:2px;background:rgba(255,255,255,.2);border-radius:1px"></span>4w min</span>
+        <span><span style="display:inline-block;width:10px;height:2px;background:var(--green);border-radius:1px;opacity:.7"></span>6w ideal</span>
+      </div>
+      <span class="runway-status-text warn">3.5w ⚠</span>
+    </div>
   </div>
+
+  <!-- ══ 2. POST THIS NOW / UP NEXT ══ -->
+  <div class="section-label label-stressed">
+    <h3>Post This Now</h3>
+    <button class="sl-action" onclick="toggleQueue()">2 more in queue ↓</button>
+  </div>
+  <div class="section-label label-healthy">
+    <h3>Up Next</h3>
+    <button class="sl-action" onclick="toggleQueue()">View full queue ↓</button>
+  </div>
+
+  <div class="featured-card" id="featured-card">
+    <div class="urgency-bar red"></div>
+
+    <!-- Goal chip -->
+    <div class="goal-chip">
+      <span class="goal-dot"></span>
+      Q2 Rock · AI Assessment Opt-Ins
+      <span class="goal-progress-inline">23 / 50 completions</span>
+    </div>
+
+    <div class="card-header">
+      <span class="status-pill overdue">Overdue · 4 days</span>
+      <div class="card-tags">
+        <span class="tag">LinkedIn</span>
+        <span class="tag">Social Post</span>
+        <span class="tag">AI Visibility · #6 of 7</span>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <p class="card-series">AI Visibility Opt-In Series</p>
+      <h2 class="card-title"><span>AI Decides Who Finds You</span></h2>
+      <div class="card-headline-preview">
+        Your expertise built the reputation. AI decides who gets to find it.
+      </div>
+      <p class="card-caption-preview" id="card-caption">
+        You spent twenty, thirty, sometimes forty years building this reputation. Showing up when nobody was watching. Sharpening the craft. Getting it right when it actually mattered. That body of work is real. And nobody can take it from you.<br><br>
+        What changed is the entire system sitting in front of all that evidence. AI now decides who gets to find you, and it's making that call based almost entirely on what your website signals to the model. Which is a little humbling. And a little annoying. And entirely fixable.<br><br>
+        The expertise was the hard part. This last piece is mostly translation. We built a free tool that gives you instant answers on how AI is reading your site right now. Comment VISIBLE for the link. Hard cap on this round. When it's gone, it's gone.
+      </p>
+      <button class="expand-caption-btn" id="expand-btn" onclick="expandCaption()">See full caption ↓</button>
+    </div>
+
+    <!-- Image blocker -->
+    <div class="image-blocker" id="image-blocker">
+      <span class="image-blocker-text">
+        ⚠ Image required before posting
+        <span>Pending upload — add before copying caption</span>
+      </span>
+      <button class="btn-img-upload" onclick="showToast('Opening file picker…')">Upload Image</button>
+      <button class="btn-img-express" onclick="showToast('Opening Adobe Express template…')">Generate in Express</button>
+    </div>
+
+    <!-- Why this post? -->
+    <div class="why-section">
+      <button class="why-toggle" id="why-toggle" onclick="toggleWhy()">
+        <span class="arrow">▶</span> Why this post?
+      </button>
+      <div class="why-content" id="why-content">
+        <div class="why-reasons">
+          <div class="why-reason">
+            <span class="wi">📊</span>
+            <span><strong>#6 of 7 in your highest-performing series.</strong> AI Visibility posts average 2× more link clicks than general brand content this quarter.</span>
+          </div>
+          <div class="why-reason">
+            <span class="wi">⏰</span>
+            <span><strong>Overdue 4 days.</strong> LinkedIn's algorithm down-weights posts from accounts with large gaps between posts. Earlier is better.</span>
+          </div>
+          <div class="why-reason">
+            <span class="wi">🎯</span>
+            <span><strong>Directly tied to your Q2 Rock.</strong> This series drives AI Assessment opt-ins. You're at 23 of 50 — this post keeps the funnel moving.</span>
+          </div>
+        </div>
+        <div class="analytics-signal stay">
+          📡 Analytics say: <strong style="margin-left:4px">Stay the course.</strong> &nbsp;AI Visibility content is outperforming everything else. Keep publishing it.
+        </div>
+        <div class="pivot-row">
+          <div class="pivot-heading">Or if you want to pivot today —</div>
+          <div class="pivot-alt">
+            <div class="pivot-alt-text">
+              <strong>"Why Ideal Clients Aren't Taking the Next Step"</strong><br>
+              Instagram · Evergreen · Scheduled Jun 24 · Better choice if LinkedIn engagement has dipped this week
+            </div>
+            <button class="btn-pivot" onclick="showToast('Swapped to alternative post')">Use this instead</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Campaign details -->
+    <div class="campaign-section">
+      <button class="collapse-toggle" id="campaign-toggle" onclick="toggleCampaign()">
+        <span class="arrow">▶</span> Campaign details
+      </button>
+      <div class="collapse-content" id="campaign-content">
+        <ul>
+          <li>Comment trigger: VISIBLE</li>
+          <li>Free tool: AI Visibility Assessment</li>
+          <li>CTA emphasis: Hard cap</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <button class="btn-primary" id="copy-btn" onclick="copyCaption()">Copy Caption</button>
+      <button class="btn-secondary" onclick="showToast('Opening in Notion…')">Open in Notion</button>
+      <button class="btn-mark-pub" id="mark-pub" onclick="markPublished()">✓ Mark Published</button>
+      <button class="btn-ghost" onclick="skipPost()">Skip for now</button>
+    </div>
+  </div>
+
+  <!-- Done state -->
+  <div class="done-state" id="done-state">
+    <div style="font-size:36px;margin-bottom:10px">✓</div>
+    <h3>LinkedIn — done.</h3>
+    <p>Post 6 marked published. 2 posts still queued this week. Runway updated.</p>
+  </div>
+
+  <!-- Ahead-of-schedule card (healthy state only) -->
+  <div class="ahead-card" id="ahead-card">
+    <div class="ahead-card-bar"></div>
+    <div class="ahead-card-body">
+      <div class="ahead-eyebrow">You're ahead of schedule — no action needed today</div>
+      <div class="ahead-next">
+        <div class="ahead-next-date">MON<br>JUN 28</div>
+        <div class="ahead-next-divider"></div>
+        <div class="ahead-next-content">
+          <div class="ahead-next-title">Post 7: AI Visibility — "The Best Expert in the Room"</div>
+          <div class="ahead-next-meta">AI Visibility Opt-In Series · Final post</div>
+        </div>
+        <span class="ahead-next-tag li">LinkedIn</span>
+      </div>
+      <div class="ahead-next">
+        <div class="ahead-next-date">WED<br>JUN 30</div>
+        <div class="ahead-next-divider"></div>
+        <div class="ahead-next-content">
+          <div class="ahead-next-title">They Stopped Googling</div>
+          <div class="ahead-next-meta">AI Visibility Series · Post 2</div>
+        </div>
+        <span class="ahead-next-tag ig">Instagram</span>
+      </div>
+      <div class="ahead-next">
+        <div class="ahead-next-date">FRI<br>JUL 2</div>
+        <div class="ahead-next-divider"></div>
+        <div class="ahead-next-content">
+          <div class="ahead-next-title">AI Readiness Opt-In — Follow-Up to Non-Openers</div>
+          <div class="ahead-next-meta">AI Readiness Re-engagement · Email campaign</div>
+        </div>
+        <span class="ahead-next-tag" style="background:var(--amber-soft);color:var(--amber)">Email</span>
+      </div>
+      <div class="ahead-actions">
+        <button class="btn-quiet" onclick="toggleQueue()">See all queued posts</button>
+        <button class="btn-quiet" onclick="showToast('Opening Notion content calendar…')">Open content calendar ↗</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Queue peek -->
+  <div class="queue-peek" onclick="toggleQueue()" id="queue-peek-row">
+    <span class="queue-peek-label">2 more posts in queue this week</span>
+    <div class="queue-peek-badges">
+      <span class="queue-badge scheduled">Scheduled</span>
+      <span class="queue-badge needs-copy">Needs Copy</span>
+    </div>
+    <span class="queue-expand-text" id="q-arrow">Show ↓</span>
+  </div>
+
+  <div class="queue-drawer" id="queue-drawer">
+    <div class="queue-item">
+      <div class="qi-bar green"></div>
+      <div class="qi-inner">
+        <span class="status-pill scheduled" style="flex-shrink:0">Scheduled · Jun 23</span>
+        <div class="qi-meta">
+          <h4>They Stopped Googling</h4>
+          <div class="qi-tags"><span class="tag">Instagram</span><span class="tag">AI Visibility · #2</span></div>
+        </div>
+        <div class="qi-actions">
+          <button class="qi-btn qi-open" onclick="showToast('Opening in Notion…')">Open in Notion</button>
+        </div>
+      </div>
+    </div>
+    <div class="queue-item">
+      <div class="qi-bar amber"></div>
+      <div class="qi-inner">
+        <span class="status-pill needs-copy" style="flex-shrink:0">Needs Copy</span>
+        <div class="qi-meta">
+          <h4>Email: AI Readiness Opt-In — Follow-Up to Non-Openers</h4>
+          <div class="qi-tags"><span class="tag">Email Campaign</span><span class="tag">AI Readiness Re-engagement</span></div>
+        </div>
+        <div class="qi-actions">
+          <button class="qi-btn qi-write" onclick="showToast('Opening email copy workflow…')">Write Copy →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 3. CONTENT RUNWAY ══ -->
+  <div class="section-label">
+    <h3>Content Runway</h3>
+  </div>
+
+  <div class="runway-section">
+    <div class="runway-header" onclick="toggleRunway()">
+      <div class="runway-header-left">
+        <div class="runway-header-title">Weeks of Content Ready</div>
+        <div class="runway-header-stat" id="runway-stat">2 of 6<span class="stat-sub">weeks fully covered · need 4 weeks at 3+ posts</span></div>
+      </div>
+      <div class="runway-header-gauge">
+        <div class="rwh-gauge-track">
+          <div class="rwh-gauge-fill" style="width:33%"></div>
+          <div class="rwh-marker min" style="left:66.7%"></div>
+          <div class="rwh-marker ideal" style="left:100%"></div>
+        </div>
+        <div class="rwh-labels">
+          <span>0w</span>
+          <span style="color:var(--text-4)">4w min</span>
+          <span style="color:var(--zone);opacity:.6">6w ideal</span>
+        </div>
+      </div>
+      <span class="runway-toggle-arrow" id="runway-arrow">▲</span>
+    </div>
+
+    <div class="runway-body open" id="runway-body">
+
+      <!-- Week-by-week post coverage -->
+      <div class="week-grid" style="padding:16px 18px 4px">
+        <div class="week-grid-label">
+          Post Coverage · 6 Weeks · Target: 3 posts/week
+          <span class="wg-legend">
+            <span class="wg-leg-item green">●  3+ ready</span>
+            <span class="wg-leg-item amber">●  1–2 ready</span>
+            <span class="wg-leg-item red">●  0 ready</span>
+          </span>
+        </div>
+
+        <!-- Week rows -->
+        <div class="rw-list">
+
+          <!-- Week 1 — this week, 3 posts but mixed status -->
+          <div class="rw-week this-week">
+            <div class="rw-left">
+              <span class="rw-label">Jun 21–27 <span class="rw-current-badge">This week</span></span>
+              <div class="rw-dots">
+                <span class="rw-dot overdue" title="Post 6: AI Decides Who Finds You · LinkedIn · Overdue"></span>
+                <span class="rw-dot scheduled" title="They Stopped Googling · Instagram · Jun 23"></span>
+                <span class="rw-dot needs-copy" title="Email Follow-Up · Needs copy written"></span>
+              </div>
+            </div>
+            <div class="rw-mid">
+              <span class="rw-chip li overdue">LI · Mon</span>
+              <span class="rw-chip ig">IG · Wed</span>
+              <span class="rw-chip email needs-copy">Em · Fri ✎</span>
+            </div>
+            <div class="rw-right">
+              <span class="rw-count amber">3 planned</span>
+              <span class="rw-sub">1 needs copy</span>
+            </div>
+          </div>
+
+          <!-- Week 2 — 3 posts scheduled -->
+          <div class="rw-week">
+            <div class="rw-left">
+              <span class="rw-label">Jun 28–Jul 4</span>
+              <div class="rw-dots">
+                <span class="rw-dot scheduled"></span>
+                <span class="rw-dot scheduled"></span>
+                <span class="rw-dot scheduled"></span>
+              </div>
+            </div>
+            <div class="rw-mid">
+              <span class="rw-chip li">LI · Mon</span>
+              <span class="rw-chip ig">IG · Wed</span>
+              <span class="rw-chip li">LI · Fri</span>
+            </div>
+            <div class="rw-right">
+              <span class="rw-count green">3 ready</span>
+              <span class="rw-sub">All scheduled</span>
+            </div>
+          </div>
+
+          <!-- Week 3 — only 1 post -->
+          <div class="rw-week">
+            <div class="rw-left">
+              <span class="rw-label">Jul 5–11</span>
+              <div class="rw-dots">
+                <span class="rw-dot scheduled"></span>
+                <span class="rw-dot empty"></span>
+                <span class="rw-dot empty"></span>
+              </div>
+            </div>
+            <div class="rw-mid">
+              <span class="rw-chip li">LI · Tue</span>
+              <span class="rw-chip empty" onclick="showToast('Start new post for Jul 5 week…')">+ Write</span>
+              <span class="rw-chip empty" onclick="showToast('Start new post for Jul 5 week…')">+ Write</span>
+            </div>
+            <div class="rw-right">
+              <span class="rw-count amber">1 of 3</span>
+              <span class="rw-sub">Need 2 more</span>
+            </div>
+          </div>
+
+          <!-- Weeks 4–6 — empty -->
+          <div class="rw-week gap">
+            <div class="rw-left">
+              <span class="rw-label">Jul 12–18</span>
+              <div class="rw-dots">
+                <span class="rw-dot empty"></span>
+                <span class="rw-dot empty"></span>
+                <span class="rw-dot empty"></span>
+              </div>
+            </div>
+            <div class="rw-mid">
+              <span class="rw-chip empty" onclick="showToast('Start new post…')">+ Write</span>
+              <span class="rw-chip empty" onclick="showToast('Start new post…')">+ Write</span>
+              <span class="rw-chip empty" onclick="showToast('Start new post…')">+ Write</span>
+            </div>
+            <div class="rw-right">
+              <span class="rw-count red">0 of 3</span>
+              <span class="rw-sub">Gap week</span>
+            </div>
+          </div>
+
+          <div class="rw-week gap">
+            <div class="rw-left">
+              <span class="rw-label">Jul 19–25</span>
+              <div class="rw-dots">
+                <span class="rw-dot empty"></span>
+                <span class="rw-dot empty"></span>
+                <span class="rw-dot empty"></span>
+              </div>
+            </div>
+            <div class="rw-mid">
+              <span class="rw-chip empty" onclick="showToast('Start new post…')">+ Write</span>
+              <span class="rw-chip empty" onclick="showToast('Start new post…')">+ Write</span>
+              <span class="rw-chip empty" onclick="showToast('Start new post…')">+ Write</span>
+            </div>
+            <div class="rw-right">
+              <span class="rw-count red">0 of 3</span>
+              <span class="rw-sub">Gap week</span>
+            </div>
+          </div>
+
+          <div class="rw-week gap">
+            <div class="rw-left">
+              <span class="rw-label">Jul 26–Aug 1</span>
+              <div class="rw-dots">
+                <span class="rw-dot empty"></span>
+                <span class="rw-dot empty"></span>
+                <span class="rw-dot empty"></span>
+              </div>
+            </div>
+            <div class="rw-mid">
+              <span class="rw-chip empty" onclick="showToast('Start new post…')">+ Write</span>
+              <span class="rw-chip empty" onclick="showToast('Start new post…')">+ Write</span>
+              <span class="rw-chip empty" onclick="showToast('Start new post…')">+ Write</span>
+            </div>
+            <div class="rw-right">
+              <span class="rw-count red">0 of 3</span>
+              <span class="rw-sub">Gap week</span>
+            </div>
+          </div>
+
+        </div><!-- /rw-list -->
+      </div>
+
+      <!-- Create nudge -->
+      <div class="create-nudge">
+        <div class="nudge-heading">✦ Write 2 posts this week · get to 3/wk minimum</div>
+        <div class="nudge-items">
+          <div class="nudge-item">
+            <div class="nudge-item-text">
+              <div class="nudge-item-title">Post 7: AI Visibility — "The Best Expert in the Room"</div>
+              <div class="nudge-item-sub">LinkedIn · Final post in your highest-performing series · Queue it for Thu or Fri</div>
+              <div class="nudge-goal-link">→ Goal: <span>AI Assessment Opt-Ins (Q2 Rock #3)</span></div>
+            </div>
+            <div class="nudge-item-actions">
+              <button class="btn-draft-ai" onclick="showToast('Opening AI draft session with series brief…', 2500)">✦ Draft with AI</button>
+              <button class="btn-open-template" onclick="showToast('Opening Notion template…')">Notion Template</button>
+            </div>
+          </div>
+          <div class="nudge-item">
+            <div class="nudge-item-text">
+              <div class="nudge-item-title">Email: AI Readiness Follow-Up Copy</div>
+              <div class="nudge-item-sub">Email · Already in queue · Blocked until copy is written</div>
+              <div class="nudge-goal-link">→ Goal: <span>AI Assessment Opt-Ins (Q2 Rock #3)</span></div>
+            </div>
+            <div class="nudge-item-actions">
+              <button class="btn-draft-ai" onclick="showToast('Opening email copy session…', 2500)">✦ Draft with AI</button>
+              <button class="btn-open-template" onclick="showToast('Opening email brief in Notion…')">Open Brief</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /runway-body -->
+  </div><!-- /runway-section -->
+
+  <!-- ══ 4. FUNNEL METRICS ══ -->
+  <div class="section-label">
+    <h3>Funnel · June</h3>
+  </div>
+
+  <div class="funnel-section">
+    <div class="funnel-header" onclick="toggleFunnel()">
+      <h3>Posts → Leads Pipeline</h3>
+      <span class="funnel-header-rate ok">18.1%</span>
+      <span class="funnel-header-label">site→opt-in rate</span>
+      <span class="funnel-toggle-arrow open" id="funnel-arrow">▲</span>
+    </div>
+    <div class="funnel-body open" id="funnel-body">
+      <div class="funnel-strip">
+        <div class="funnel-flow">
+          <div class="funnel-stage">
+            <div class="funnel-stage-num dim">5</div>
+            <div class="funnel-stage-label">Posts</div>
+            <div class="funnel-stage-source">This month</div>
+          </div>
+          <div class="funnel-arrow">
+            <span class="funnel-arrow-line">→</span>
+            <span class="funnel-arrow-rate" style="color:var(--text-3)">organic</span>
+          </div>
+          <div class="funnel-stage">
+            <div class="funnel-stage-num dim">~800</div>
+            <div class="funnel-stage-label">Reach</div>
+            <div class="funnel-stage-source">Est. · needs social API</div>
+          </div>
+          <div class="funnel-arrow">
+            <span class="funnel-arrow-line">→</span>
+            <span class="funnel-arrow-rate ok">15.9%</span>
+          </div>
+          <div class="funnel-stage">
+            <div class="funnel-stage-num dim">127</div>
+            <div class="funnel-stage-label">Site Visits</div>
+            <div class="funnel-stage-source">GA4 · organic social</div>
+          </div>
+          <div class="funnel-arrow">
+            <span class="funnel-arrow-line">→</span>
+            <span class="funnel-arrow-rate ok">18.1%</span>
+          </div>
+          <div class="funnel-stage">
+            <div class="funnel-stage-num highlight">23</div>
+            <div class="funnel-stage-label">Opt-Ins</div>
+            <div class="funnel-stage-source">GA4 · goal needed</div>
+          </div>
+          <div class="funnel-arrow">
+            <span class="funnel-arrow-line">→</span>
+            <span class="funnel-arrow-rate bad">17.4%</span>
+          </div>
+          <div class="funnel-stage">
+            <div class="funnel-stage-num dim">4</div>
+            <div class="funnel-stage-label">Discovery Calls</div>
+            <div class="funnel-stage-source">Calendly / manual</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="funnel-insight">
+        <span>💡</span>
+        <span>Your site→opt-in rate is solid at 18%. The weakest point is opt-in→call at 17% — <strong>only 4 of 23 people who opted in booked a call.</strong> Worth reviewing the follow-up sequence.</span>
+      </div>
+
+      <div class="infra-note">
+        <span class="infra-note-icon">⚡</span>
+        <div class="infra-note-text">
+          <strong>Infrastructure needed for full funnel data:</strong>
+          UTM parameters on all social posts (to attribute site visits by post) ·
+          GA4 goal/event for assessment opt-in completions ·
+          Social API or manual reach entry for post reach data ·
+          Calendly → Notion sync for call tracking.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 5. CHANNEL INSIGHTS ══ -->
+  <div class="section-label">
+    <h3>Channel Insights</h3>
+  </div>
+
+  <div class="channel-insights-block">
+
+    <!-- Tab bar -->
+    <div class="ci-tab-bar">
+      <button class="ci-tab active" data-channel="youtube" onclick="switchChannel('youtube', this)">
+        <span class="ci-tab-icon">▶</span>
+        YouTube
+        <span class="ci-tab-dot amber"></span>
+      </button>
+      <button class="ci-tab" data-channel="linkedin" onclick="switchChannel('linkedin', this)">
+        <span class="ci-tab-icon">in</span>
+        LinkedIn
+        <span class="ci-tab-dot green"></span>
+      </button>
+      <button class="ci-tab" data-channel="instagram" onclick="switchChannel('instagram', this)">
+        <span class="ci-tab-icon">◎</span>
+        Instagram
+        <span class="ci-tab-dot amber"></span>
+      </button>
+      <button class="ci-tab" data-channel="email" onclick="switchChannel('email', this)">
+        <span class="ci-tab-icon">✉</span>
+        Email
+        <span class="ci-tab-dot green"></span>
+      </button>
+      <button class="ci-tab" data-channel="facebook" onclick="switchChannel('facebook', this)">
+        <span class="ci-tab-icon">f</span>
+        Facebook
+        <span class="ci-tab-dot amber"></span>
+      </button>
+
+    </div>
+
+    <!-- ── YOUTUBE PANEL ── -->
+    <div class="ci-panel active" id="ci-youtube">
+      <div class="ci-stats-row">
+        <div class="ci-stat">
+          <span class="ci-stat-num">847</span>
+          <span class="ci-stat-label">Subscribers</span>
+          <span class="ci-stat-delta up">+23 this mo.</span>
+        </div>
+        <div class="ci-stat">
+          <span class="ci-stat-num">12.3K</span>
+          <span class="ci-stat-label">Views · June</span>
+          <span class="ci-stat-delta up">+18% vs May</span>
+        </div>
+        <div class="ci-stat">
+          <span class="ci-stat-num">4:12</span>
+          <span class="ci-stat-label">Avg Watch Time</span>
+          <span class="ci-stat-delta neutral">34% retained</span>
+        </div>
+        <div class="ci-stat">
+          <span class="ci-stat-num">2</span>
+          <span class="ci-stat-label">Videos · Q2</span>
+          <span class="ci-stat-delta down">Below 1/wk goal</span>
+        </div>
+      </div>
+
+      <div class="ci-insight">
+        <span class="ci-insight-icon">📡</span>
+        <div>
+          <strong>Tutorial-style videos</strong> hold 3× more watch time than talking-head thought leadership. Your top video ("How AI Reads Your Website") is a tutorial — lean into that format.
+          <span class="ci-insight-sub">Top video: "How AI Reads Your Website" · 2,341 views · 48% retention</span>
+        </div>
+      </div>
+
+      <div class="ci-create-card">
+        <div class="ci-create-header">
+          <span class="ci-create-eyebrow">Create Next</span>
+          <span class="ci-create-goal">→ Q2 Rock: AI Assessment Opt-Ins</span>
+        </div>
+        <div class="ci-create-title">"How to Audit Your AI Visibility Score in 10 Minutes"</div>
+        <div class="ci-create-rationale">
+          <span class="ci-rat-item">📊 Tutorial format · matches your best-performing video type</span>
+          <span class="ci-rat-item">🎯 CTA: drop AI Visibility Assessment link in description</span>
+          <span class="ci-rat-item">🔍 High-search topic — "AI SEO audit" getting traction in your niche</span>
+        </div>
+        <div class="ci-create-actions">
+          <button class="btn-draft-ai" onclick="showToast('Opening YouTube script draft…', 2500)">✦ Draft Script with AI</button>
+          <button class="btn-open-template" onclick="showToast('Opening video brief in Notion…')">Video Brief</button>
+          <button class="btn-open-template" onclick="showToast('Opening YouTube analytics…')">Full Analytics ↗</button>
+        </div>
+      </div>
+
+      <div class="ci-alt-idea">
+        <span class="ci-alt-label">Or consider —</span>
+        <span class="ci-alt-text">"5 Signs AI Can't Find Your Expertise" · List format · Strong hook for cold audience · Lower production barrier than tutorials</span>
+        <button class="ci-alt-btn" onclick="showToast('Swapped to alternative idea')">Use this instead</button>
+      </div>
+
+      <div class="ci-infra-note">
+        <span>⚡</span>
+        <span>Connect YouTube Data API to pull live stats · Current numbers are manually entered</span>
+      </div>
+    </div>
+
+    <!-- ── LINKEDIN PANEL ── -->
+    <div class="ci-panel" id="ci-linkedin">
+      <div class="ci-stats-row">
+        <div class="ci-stat">
+          <span class="ci-stat-num">2,847</span>
+          <span class="ci-stat-label">Followers</span>
+          <span class="ci-stat-delta up">+64 this mo.</span>
+        </div>
+        <div class="ci-stat">
+          <span class="ci-stat-num">1,240</span>
+          <span class="ci-stat-label">Avg Impressions</span>
+          <span class="ci-stat-delta up">+31% vs last mo.</span>
+        </div>
+        <div class="ci-stat">
+          <span class="ci-stat-num">4.8%</span>
+          <span class="ci-stat-label">Engagement Rate</span>
+          <span class="ci-stat-delta up">Above avg (2–3%)</span>
+        </div>
+        <div class="ci-stat">
+          <span class="ci-stat-num">20</span>
+          <span class="ci-stat-label">Posts · Q2</span>
+          <span class="ci-stat-delta neutral">On pace</span>
+        </div>
+      </div>
+
+      <div class="ci-insight">
+        <span class="ci-insight-icon">📡</span>
+        <div>
+          <strong>Series posts outperform standalone posts 2:1.</strong> The AI Visibility series is your highest-engagement content — every post in it beats your average. Completing it is your highest-leverage LinkedIn move.
+          <span class="ci-insight-sub">Top post: "AI Decides Who Finds You" · 4,210 impressions · 89 comments</span>
+        </div>
+      </div>
+
+      <div class="ci-create-card">
+        <div class="ci-create-header">
+          <span class="ci-create-eyebrow">Create Next</span>
+          <span class="ci-create-goal">→ Q2 Rock: AI Assessment Opt-Ins</span>
+        </div>
+        <div class="ci-create-title">Post 7: "The Best Expert in the Room Gets Found. You're Not."</div>
+        <div class="ci-create-rationale">
+          <span class="ci-rat-item">🏁 Final post in your top series — closes the loop, drives the most conversions</span>
+          <span class="ci-rat-item">📊 Series momentum is at peak — engagement has climbed each post</span>
+          <span class="ci-rat-item">🎯 Hard CTA to AI Assessment · strongest conversion point in the series</span>
+        </div>
+        <div class="ci-create-actions">
+          <button class="btn-draft-ai" onclick="showToast('Opening LinkedIn post draft…', 2500)">✦ Draft with AI</button>
+          <button class="btn-open-template" onclick="showToast('Opening series brief…')">Series Brief</button>
+          <button class="btn-open-template" onclick="showToast('Opening LinkedIn analytics…')">Full Analytics ↗</button>
+        </div>
+      </div>
+
+      <div class="ci-alt-idea">
+        <span class="ci-alt-label">After the series —</span>
+        <span class="ci-alt-text">Start a new evergreen series: "The 5-Part Brand Clarity Framework" · Broad authority play · Attracts a wider audience than AI-specific content</span>
+        <button class="ci-alt-btn" onclick="showToast('Saved as next series idea')">Save idea</button>
+      </div>
+
+      <div class="ci-infra-note">
+        <span>⚡</span>
+        <span>LinkedIn Analytics API requires Page admin access · impressions pulled manually from LinkedIn Creator Studio</span>
+      </div>
+    </div>
+
+    <!-- ── INSTAGRAM PANEL ── -->
+    <div class="ci-panel" id="ci-instagram">
+      <div class="ci-stats-row">
+        <div class="ci-stat">
+          <span class="ci-stat-num">1,203</span>
+          <span class="ci-stat-label">Followers</span>
+          <span class="ci-stat-delta up">+17 this mo.</span>
+        </div>
+        <div class="ci-stat">
+          <span class="ci-stat-num">340</span>
+          <span class="ci-stat-label">Avg Reach</span>
+          <span class="ci-stat-delta down">-8% vs last mo.</span>
+        </div>
+        <div class="ci-stat">
+          <span class="ci-stat-num">3.1%</span>
+          <span class="ci-stat-label">Engagement Rate</span>
+          <span class="ci-stat-delta neutral">Avg for size</span>
+        </div>
+        <div class="ci-stat">
+          <span class="ci-stat-num">0</span>
+          <span class="ci-stat-label">Reels · June</span>
+          <span class="ci-stat-delta down">Algorithm gap</span>
+        </div>
+      </div>
+
+      <div class="ci-insight">
+        <span class="ci-insight-icon">⚠️</span>
+        <div>
+          <strong>Reach dropped 8% — no Reels posted in June.</strong> Instagram's algorithm heavily favors Reels for reach outside your existing followers. Static posts alone won't grow the top of funnel here.
+          <span class="ci-insight-sub">Best post: "They Stopped Googling" carousel · 612 reach · 4.7% engagement</span>
+        </div>
+      </div>
+
+      <div class="ci-create-card">
+        <div class="ci-create-header">
+          <span class="ci-create-eyebrow">Create Next</span>
+          <span class="ci-create-goal">→ Top-of-funnel awareness · feeds LinkedIn audience</span>
+        </div>
+        <div class="ci-create-title">Reel: "3 Signs AI Can't Find Your Business" (60 sec)</div>
+        <div class="ci-create-rationale">
+          <span class="ci-rat-item">📱 Reels get 2–3× the reach of static posts for accounts your size</span>
+          <span class="ci-rat-item">🎣 Hook-heavy format — works as cold audience content, not just nurture</span>
+          <span class="ci-rat-item">♻️ Repurpose your LinkedIn Post 2 copy — already written, just reformat</span>
+        </div>
+        <div class="ci-create-actions">
+          <button class="btn-draft-ai" onclick="showToast('Opening Reel script draft…', 2500)">✦ Draft Reel Script</button>
+          <button class="btn-open-template" onclick="showToast('Opening Instagram brief…')">IG Brief</button>
+          <button class="btn-open-template" onclick="showToast('Opening Instagram analytics…')">Full Analytics ↗</button>
+        </div>
+      </div>
+
+      <div class="ci-alt-idea">
+        <span class="ci-alt-label">Or simpler —</span>
+        <span class="ci-alt-text">Carousel: "The AI Visibility Checklist" · 5 slides · Repurposed from existing copy · No video production needed</span>
+        <button class="ci-alt-btn" onclick="showToast('Swapped to carousel idea')">Use this instead</button>
+      </div>
+
+      <div class="ci-infra-note">
+        <span>⚡</span>
+        <span>Connect Instagram Graph API for live reach/engagement · currently manually tracked</span>
+      </div>
+    </div>
+
+    <!-- ── EMAIL PANEL ── -->
+    <div class="ci-panel" id="ci-email">
+      <div class="ci-stats-row">
+        <div class="ci-stat">
+          <span class="ci-stat-num">847</span>
+          <span class="ci-stat-label">Subscribers</span>
+          <span class="ci-stat-delta up">+38 this mo.</span>
+        </div>
+        <div class="ci-stat">
+          <span class="ci-stat-num">41%</span>
+          <span class="ci-stat-label">Open Rate</span>
+          <span class="ci-stat-delta up">2× industry avg</span>
+        </div>
+        <div class="ci-stat">
+          <span class="ci-stat-num">3.2%</span>
+          <span class="ci-stat-label">Click Rate</span>
+          <span class="ci-stat-delta down">Below 5% target</span>
+        </div>
+        <div class="ci-stat">
+          <span class="ci-stat-num">23</span>
+          <span class="ci-stat-label">Opt-ins · June</span>
+          <span class="ci-stat-delta up">From AI campaign</span>
+        </div>
+      </div>
+
+      <div class="ci-insight">
+        <span class="ci-insight-icon">📡</span>
+        <div>
+          <strong>Opens are strong, clicks are weak.</strong> Your subject lines are winning — 41% open rate is excellent. The drop-off happens inside the email. CTAs likely too buried or too passive.
+          <span class="ci-insight-sub">Best email: "AI Visibility Assessment — Now Open" · 52% open · 8.1% click</span>
+        </div>
+      </div>
+
+      <div class="ci-create-card">
+        <div class="ci-create-header">
+          <span class="ci-create-eyebrow">Create Next</span>
+          <span class="ci-create-goal">→ Re-engage non-openers · convert warm list</span>
+        </div>
+        <div class="ci-create-title">Follow-Up: "AI Readiness Opt-In — Re-engagement for Non-Openers"</div>
+        <div class="ci-create-rationale">
+          <span class="ci-rat-item">📬 Already in your publish queue — just needs copy written</span>
+          <span class="ci-rat-item">💡 Use a different subject line angle — curiosity vs direct announcement</span>
+          <span class="ci-rat-item">🎯 Single CTA, above the fold, button not hyperlink — fix the click rate</span>
+        </div>
+        <div class="ci-create-actions">
+          <button class="btn-draft-ai" onclick="showToast('Opening email copy draft…', 2500)">✦ Draft Email with AI</button>
+          <button class="btn-open-template" onclick="showToast('Opening email brief…')">Email Brief</button>
+          <button class="btn-open-template" onclick="showToast('Opening email analytics…')">Full Analytics ↗</button>
+        </div>
+      </div>
+
+      <div class="ci-alt-idea">
+        <span class="ci-alt-label">Also worth writing —</span>
+        <span class="ci-alt-text">Nurture Email 3: "The One Thing Stopping AI From Finding You" · Next in welcome sequence · Bridge from assessment opt-in to discovery call</span>
+        <button class="ci-alt-btn" onclick="showToast('Added to content queue')">Add to queue</button>
+      </div>
+
+      <div class="ci-infra-note">
+        <span>⚡</span>
+        <span>Connect ConvertKit / Mailchimp API for live stats · add UTM params to email CTAs to track click-through in GA4</span>
+      </div>
+    </div>
+
+
+    <!-- ── FACEBOOK PANEL ── -->
+    <div class="ci-panel" id="ci-facebook">
+      <div class="ci-stats-row">
+        <div class="ci-stat">
+          <span class="ci-stat-num">1,240</span>
+          <span class="ci-stat-label">Page Followers</span>
+          <span class="ci-stat-delta neutral">+6 this mo.</span>
+        </div>
+        <div class="ci-stat">
+          <span class="ci-stat-num">180</span>
+          <span class="ci-stat-label">Avg Organic Reach</span>
+          <span class="ci-stat-delta down">14% of followers</span>
+        </div>
+        <div class="ci-stat">
+          <span class="ci-stat-num">2.1%</span>
+          <span class="ci-stat-label">Engagement Rate</span>
+          <span class="ci-stat-delta down">Below avg (3–4%)</span>
+        </div>
+        <div class="ci-stat">
+          <span class="ci-stat-num">3</span>
+          <span class="ci-stat-label">Posts · June</span>
+          <span class="ci-stat-delta down">Inconsistent</span>
+        </div>
+      </div>
+
+      <div class="ci-insight ci-insight-warning">
+        <span class="ci-insight-icon">⚠️</span>
+        <div>
+          <strong>Organic Facebook reach is nearly dead for pages your size.</strong> Meta's algorithm strongly deprioritizes page content — 14% of followers seeing posts is typical. Posting more won't fix it. The channel needs a different strategy.
+          <span class="ci-insight-sub">Best post: "AI Decides Who Finds You" (repurposed from LinkedIn) · 312 reach · 2.8% engagement</span>
+        </div>
+      </div>
+
+      <div class="ci-create-card">
+        <div class="ci-create-header">
+          <span class="ci-create-eyebrow">Highest Leverage Move</span>
+          <span class="ci-create-goal">→ Paid amplification of organic wins</span>
+        </div>
+        <div class="ci-create-title">Boost "AI Decides Who Finds You" · $50–100 · 7 days</div>
+        <div class="ci-create-rationale">
+          <span class="ci-rat-item">💰 $50 Facebook boost on a post already proven on LinkedIn removes all production work</span>
+          <span class="ci-rat-item">🎯 Target: business owners 35–55 · interested in branding + AI · US</span>
+          <span class="ci-rat-item">📊 Goal: drive assessment link clicks · track via UTM + GA4 event</span>
+        </div>
+        <div class="ci-create-actions">
+          <button class="btn-draft-ai" onclick="showToast('Opening ad brief draft…', 2500)">✦ Draft Ad Brief</button>
+          <button class="btn-open-template" onclick="showToast('Opening Facebook Ads Manager…')">Ads Manager ↗</button>
+          <button class="btn-open-template" onclick="showToast('Opening boost setup…')">Boost Post ↗</button>
+        </div>
+      </div>
+
+      <div class="ci-alt-idea">
+        <span class="ci-alt-label">Alternative strategy —</span>
+        <span class="ci-alt-text">Launch a private Facebook Group: "AI Visibility for Thought Leaders" · Community reach beats page reach · Positions you as the hub, not just a poster</span>
+        <button class="ci-alt-btn" onclick="showToast('Saved as strategy idea')">Save idea</button>
+      </div>
+
+      <div class="ci-infra-note">
+        <span>⚡</span>
+        <span>Connect Meta Business Suite API for live page insights · add UTM params to boosted post links to track conversions in GA4</span>
+      </div>
+    </div>
+  </div><!-- /channel-insights-block -->
+  <!-- ══ 5. WHAT'S WORKING ══ -->
+  <div class="section-label">
+    <h3>What's Working</h3>
+  </div>
+
+  <div class="insight-callout" style="margin-bottom:12px">
+    <div class="ic-icon">📡</div>
+    <div class="insight-text">
+      <strong>AI Visibility series</strong> is your highest-converting content. Posts in this series drive 2× more link clicks and directly feed opt-ins. Keep publishing it — one post remains.
+      <span class="insight-action">→ General positioning posts are underperforming by comparison. Save those for filler weeks, not focus weeks.</span>
+    </div>
+  </div>
+
+  <div class="signal-grid" style="margin-bottom:24px">
+    <div class="signal-card">
+      <div class="signal-icon">📤</div>
+      <div class="signal-num zone">20</div>
+      <div class="signal-label">Published · Q2</div>
+      <div class="signal-sub">5 this month · 86 this year</div>
+    </div>
+    <div class="signal-card">
+      <div class="signal-icon">⚠️</div>
+      <div class="signal-num red">3</div>
+      <div class="signal-label">Overdue</div>
+      <div class="signal-sub">1 ready · 1 needs copy · 1 needs image</div>
+    </div>
+  </div>
+
+  <!-- ══ 6. THIS WEEK ══ -->
+  <div class="section-label">
+    <h3>This Week</h3>
+  </div>
+  <div class="week-list">
+    <div class="week-row">
+      <span class="week-row-date">Jun 22</span>
+      <span class="week-row-title">AI Visibility Opt-In — Post 7: Best Expert</span>
+      <span class="status-pill scheduled" style="flex-shrink:0">Scheduled</span>
+    </div>
+    <div class="week-row">
+      <span class="week-row-date">Jun 24</span>
+      <span class="week-row-title">Why Ideal Clients Aren't Taking the Next Step</span>
+      <span class="status-pill scheduled" style="flex-shrink:0">Scheduled</span>
+    </div>
+    <div class="week-row">
+      <span class="week-row-date">Jun 26</span>
+      <span class="week-row-title">AI Visibility — Post 4: Brilliance Needs Legibility</span>
+      <span class="status-pill scheduled" style="flex-shrink:0">Scheduled</span>
+    </div>
+  </div>
+</div><!-- /attract-page -->
+
+<div class="toast lime" id="toast">
+  <div class="toast-dot"></div>
+  <span id="toast-msg">Done.</span>
 </div>
+
 <a href="/" class="fab" title="Back to Today">⚡</a>
+
+<script>
+  const CAPTION = `You spent twenty, thirty, sometimes forty years building this reputation. Showing up when nobody was watching. Sharpening the craft. Getting it right when it actually mattered. That body of work is real. And nobody can take it from you.
+
+What changed is the entire system sitting in front of all that evidence. AI now decides who gets to find you, and it's making that call based almost entirely on what your website signals to the model. Which is a little humbling. And a little annoying. And entirely fixable.
+
+The expertise was the hard part. This last piece is mostly translation. We built a free tool that gives you instant answers on how AI is reading your site right now. Comment VISIBLE for the link. Hard cap on this round. When it's gone, it's gone.`;
+
+  // Phase 2 fixtures: the 3 weekly posts the featured card cycles through as you
+  // mark each published. Phase 3 replaces these with live data from /api/attract.
+  const CAPTION_IG = `They didn't open a search tab. They asked an assistant — and it came back with three names. If yours isn't one of them, the work that earned the reputation never gets seen. Here's what decides that shortlist, and how to get on it.`;
+  const CAPTION_EMAIL = `Quick follow-up: the AI Visibility Assessment is open for a few more days. Two minutes, plain-language answers on how AI is reading your site right now — and the one change that moves you up the list. Reply "SEND" and I'll get you the link.`;
+
+  const FEATURED_POSTS = [
+    { urgency:'red',   goalProgress:'23 / 50 completions', statusClass:'overdue',    statusText:'Overdue · 4 days',
+      tags:['LinkedIn','Social Post','AI Visibility · #6 of 7'], series:'AI Visibility Opt-In Series',
+      title:'AI Decides Who Finds You', headline:'Your expertise built the reputation. AI decides who gets to find it.',
+      caption: CAPTION, image:true, slot:0, toast:'LinkedIn ✓ · 2 posts left this week' },
+    { urgency:'green', goalProgress:'23 / 50 completions', statusClass:'scheduled',  statusText:'Scheduled · Jun 23',
+      tags:['Instagram','Carousel','AI Visibility · #2'], series:'AI Visibility Opt-In Series',
+      title:'They Stopped Googling', headline:'Your buyers stopped Googling. Now they ask AI — and it picks the shortlist.',
+      caption: CAPTION_IG, image:false, slot:1, toast:'Instagram ✓ · 1 post left this week' },
+    { urgency:'amber', goalProgress:'23 / 50 completions', statusClass:'needs-copy', statusText:'Needs Copy',
+      tags:['Email','Re-engagement','AI Readiness'], series:'AI Readiness Re-engagement',
+      title:'AI Readiness Opt-In — Follow-Up', headline:'Still curious how AI reads your site? The door is open one more time.',
+      caption: CAPTION_EMAIL, image:false, slot:2, toast:'Email ✓ · Week complete' },
+  ];
+  let featuredIndex = 0, postedThisWeek = 0, currentCaption = CAPTION;
+
+  let captionExpanded = false, whyOpen = false, campaignOpen = false, queueOpen = false, runwayOpen = true, funnelOpen = true;
+
+  function expandCaption() {
+    captionExpanded = !captionExpanded;
+    document.getElementById('card-caption').classList.toggle('expanded', captionExpanded);
+    document.getElementById('expand-btn').textContent = captionExpanded ? 'Collapse ↑' : 'See full caption ↓';
+  }
+  function toggleWhy() {
+    whyOpen = !whyOpen;
+    document.getElementById('why-toggle').classList.toggle('open', whyOpen);
+    document.getElementById('why-content').classList.toggle('open', whyOpen);
+  }
+  function toggleCampaign() {
+    campaignOpen = !campaignOpen;
+    document.getElementById('campaign-toggle').classList.toggle('open', campaignOpen);
+    document.getElementById('campaign-content').classList.toggle('open', campaignOpen);
+  }
+  function toggleQueue() {
+    queueOpen = !queueOpen;
+    document.getElementById('queue-drawer').classList.toggle('open', queueOpen);
+    document.getElementById('q-arrow').textContent = queueOpen ? 'Hide ↑' : 'Show ↓';
+  }
+  function toggleRunway() {
+    runwayOpen = !runwayOpen;
+    document.getElementById('runway-body').classList.toggle('open', runwayOpen);
+    document.getElementById('runway-arrow').textContent = runwayOpen ? '▲' : '▼';
+  }
+  function toggleFunnel() {
+    funnelOpen = !funnelOpen;
+    document.getElementById('funnel-body').classList.toggle('open', funnelOpen);
+    document.getElementById('funnel-arrow').classList.toggle('open', funnelOpen);
+  }
+
+  function copyCaption() {
+    navigator.clipboard.writeText(currentCaption).catch(()=>{});
+    const btn = document.getElementById('copy-btn');
+    const markBtn = document.getElementById('mark-pub');
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    markBtn.classList.add('visible');
+    showToast('Caption copied to clipboard');
+    setTimeout(() => { btn.textContent = 'Copy Caption'; btn.classList.remove('copied'); }, 2500);
+  }
+
+  // ── Featured card: re-render core fields for the post at index i ──
+  function loadFeatured(i) {
+    const p = FEATURED_POSTS[i]; if (!p) return;
+    document.querySelector('.featured-card .urgency-bar').className = 'urgency-bar ' + p.urgency;
+    document.querySelector('.goal-progress-inline').textContent = p.goalProgress;
+    const pill = document.querySelector('.card-header .status-pill');
+    pill.className = 'status-pill ' + p.statusClass; pill.textContent = p.statusText;
+    document.querySelector('.card-tags').innerHTML = p.tags.map(t => `<span class="tag">${t}</span>`).join('');
+    document.querySelector('.card-series').textContent = p.series;
+    document.querySelector('.card-title span').textContent = p.title;
+    document.querySelector('.card-headline-preview').textContent = p.headline;
+    document.getElementById('card-caption').innerHTML = p.caption.replace(/\n\n/g, '<br><br>');
+    document.getElementById('image-blocker').style.display = p.image ? 'flex' : 'none';
+    currentCaption = p.caption;
+  }
+  function resetFooter() {
+    const copy = document.getElementById('copy-btn');
+    copy.textContent = 'Copy Caption'; copy.classList.remove('copied');
+    document.getElementById('mark-pub').classList.remove('visible');
+  }
+  function greenPulseSlot(idx) {
+    const s = document.querySelectorAll('.pulse-slots .pulse-slot')[idx];
+    if (s) { s.classList.remove('overdue', 'needs-copy', 'scheduled'); s.classList.add('done'); }
+  }
+  function updatePulseStatus(n) {
+    const ps = document.getElementById('pulse-status');
+    ps.textContent = n + ' of 3 posted';
+    ps.className = 'pulse-status ' + (n >= 3 ? 'good' : 'ok');
+  }
+
+  // ── Three-state system ──
+  // Apply the calm healthy presentation (data + tone) WITHOUT any flash or
+  // animation — used both on a quiet healthy load and inside the transition.
+  function renderHealthyVisuals() {
+    updatePulseStatus(3);
+    document.querySelectorAll('.pulse-slots .pulse-slot').forEach(s => { s.classList.remove('overdue', 'needs-copy', 'scheduled'); s.classList.add('done'); });
+    document.querySelectorAll('.runway-gauge-fill').forEach(f => { f.style.background = 'var(--green)'; f.style.width = '87%'; });
+    const rt = document.querySelector('.runway-status-text'); if (rt) { rt.className = 'runway-status-text healthy'; rt.textContent = '5w ✓'; }
+    const rwh = document.querySelector('.rwh-gauge-fill'); if (rwh) { rwh.style.background = 'var(--green)'; rwh.style.width = '87%'; }
+    const stat = document.getElementById('runway-stat'); if (stat) { stat.classList.add('good'); stat.innerHTML = "5 of 6<span class=\"stat-sub\">weeks fully covered · you're ahead of target</span>"; }
+    const rh = document.querySelector('.runway-header'); if (rh) rh.classList.add('healthy');
+    const nh = document.querySelector('.nudge-heading'); if (nh) { nh.classList.add('healthy'); nh.textContent = 'Queue is healthy — create when inspired, not because you have to'; }
+  }
+
+  function applyPageState(state) {
+    document.body.classList.remove('state-stressed', 'state-in-progress', 'state-healthy');
+    document.body.classList.add('state-' + state);
+    if (state === 'healthy') renderHealthyVisuals();   // visuals only — never the flash
+  }
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  // Full transition sequence — fires ONLY when a live publish crosses into
+  // healthy. The flash + gauge animation are the reward for doing the work.
+  async function triggerHealthyTransition() {
+    const card = document.getElementById('featured-card');
+    card.style.transition = 'opacity .3s, transform .3s';
+    card.style.opacity = '0'; card.style.transform = 'translateY(-10px)';
+    await sleep(320);
+    // fill any remaining pulse dots green, left → right
+    for (const s of document.querySelectorAll('.pulse-slots .pulse-slot')) {
+      if (!s.classList.contains('done')) {
+        s.classList.remove('overdue', 'needs-copy', 'scheduled'); s.classList.add('done');
+        await sleep(180);
+      }
+    }
+    applyPageState('healthy');                                   // swaps layout + healthy visuals
+    document.querySelectorAll('.runway-gauge-fill').forEach(f => f.classList.add('healthy')); // animate the fill
+    const flash = document.getElementById('achievement-flash');
+    if (flash) { flash.style.display = 'flex'; flash.classList.remove('settled'); flash.style.animation = 'none'; void flash.offsetWidth; flash.style.animation = ''; setTimeout(() => flash.classList.add('settled'), 3600); }
+    showToast('Content is covered. Go build something. ✓', 3500);
+  }
+
+  function markPublished() {
+    const p = FEATURED_POSTS[featuredIndex];
+    greenPulseSlot(p.slot);
+    postedThisWeek++;
+    updatePulseStatus(postedThisWeek);
+    if (postedThisWeek >= 3) { triggerHealthyTransition(); return; }   // last post → healthy
+    showToast(p.toast, 2600);
+    applyPageState('in-progress');
+    // advance the featured card to the next post
+    featuredIndex++;
+    const card = document.getElementById('featured-card');
+    card.style.transition = 'opacity .25s, transform .25s';
+    card.style.opacity = '0'; card.style.transform = 'translateY(-8px)';
+    setTimeout(() => {
+      loadFeatured(featuredIndex); resetFooter();
+      card.style.opacity = '1'; card.style.transform = 'none';
+    }, 260);
+  }
+
+  function skipPost() { showToast('Skipped — resurfaces tomorrow morning'); }
+
+  let toastTimer;
+  function showToast(msg, duration=2000) {
+    clearTimeout(toastTimer);
+    const t = document.getElementById('toast');
+    document.getElementById('toast-msg').textContent = msg;
+    t.classList.add('show');
+    toastTimer = setTimeout(() => t.classList.remove('show'), duration);
+  }
+
+  function switchChannel(channel, btn) {
+    document.querySelectorAll('.ci-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.ci-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const panel = document.getElementById('ci-' + channel);
+    if (panel) panel.classList.add('active');
+  }
+
+  // ── Page state on load ──
+  // Phase 3 replaces the ?state param with pageState from GET /api/attract.
+  // applyPageState only sets the body class — it never plays the flash or the
+  // transition. Those fire only from triggerHealthyTransition() on a live
+  // publish, so a page that loads already-healthy renders quietly (no flash).
+  (function initState() {
+    const s = new URLSearchParams(location.search).get('state');
+    applyPageState(['stressed', 'in-progress', 'healthy'].includes(s) ? s : 'stressed');
+  })();
+</script>
 </body></html>
