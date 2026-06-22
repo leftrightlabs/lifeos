@@ -411,8 +411,12 @@ html.light {
   --amber-soft:    rgba(235,180,84,.09);
   --green-soft:    rgba(79,214,160,.09);
 }
-/* One Thing card — replace hardcoded dark gradient */
-html.light .onething { background: var(--surface); border-color: var(--border); }
+/* One Thing card — replace hardcoded dark gradient. !important beats the
+   inline gradient the personal card sets, so the card reads as a clean white
+   surface in light mode; the title color is forced dark for contrast. */
+html.light .onething { background: var(--surface) !important; border-color: var(--border); }
+html.light .onething.completed { background: var(--green-soft) !important; }
+html.light .onething-title { color: var(--text); }
 html.light .onething-orb { background: radial-gradient(circle, rgba(99,102,241,.07) 0%, transparent 70%); }
 /* Weekend screen */
 html.light .weekend-screen { background: linear-gradient(160deg, #EEF2FF 0%, #E8EDFF 45%, #EDF4FF 100%); }
@@ -493,7 +497,7 @@ html.light .footer-stamp { color: var(--text-3); }
   <!-- GREETING -->
   <div class="greeting-zone">
     <div class="greeting-top">
-      <div class="greeting" id="greeting">Morning, <span class="name">Gretchen</span> ☕</div>
+      <div class="greeting" id="greeting"></div>
       <div class="greeting-meta" id="greetingMeta">SUN JUN 21 · Q2 · 9 DAYS LEFT</div>
     </div>
     <div class="brief-lines" id="briefLines">
@@ -603,6 +607,14 @@ html.light .footer-stamp { color: var(--text-3); }
 <script>
 // ── STATE ──
 const IS_WEEKEND = [0, 6].includes(new Date().getDay()); // 0=Sun, 6=Sat
+
+// ── CURRENT USER ──
+// Personal mode (and its life data) is gated per-user by the server. Team
+// members get a work-only view with their own name; the owner sees all modes.
+let CURRENT_USER = { name: '', email: '', firstName: '' };
+let CAN_PERSONAL = true; // assume unlocked until /api/me says otherwise
+const escName = (s) => String(s || '').replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
 const state = {
   mode: IS_WEEKEND ? 'personal' : 'all', // default: ALL on weekdays, PERSONAL on weekends
   oneThing: 'active',         // work one thing: active | snoozing | done
@@ -1382,7 +1394,10 @@ function renderGreeting() {
   const h = new Date().getHours();
   const word = h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening';
   const emoji = h < 12 ? '☕' : h < 17 ? '👋' : '🌙';
-  document.getElementById('greeting').innerHTML = `${word}, <span class="name">Gretchen</span> ${emoji}`;
+  const nm = CURRENT_USER.firstName;
+  document.getElementById('greeting').innerHTML = nm
+    ? `${word}, <span class="name">${escName(nm)}</span> ${emoji}`
+    : `${word} ${emoji}`;
 }
 
 // ── WEEKEND ──
@@ -1975,10 +1990,40 @@ async function loadTodayData() {
 }
 
 // ── INIT ──
+// Identify the signed-in user, then personalize the greeting and (for team
+// members) lock the view to work mode only.
+function loadCurrentUser() {
+  return fetch('/api/me').then(r => r.json()).then(me => {
+    if (me && (me.name || me.email)) {
+      CURRENT_USER.email = me.email || '';
+      CURRENT_USER.name = me.name || me.email || '';
+      CURRENT_USER.firstName = (CURRENT_USER.name.trim().split(/\s+/)[0]) || '';
+      // personalEnabled is the server's per-user gate for the personal/all views.
+      CAN_PERSONAL = me.personalEnabled === true || me.role === 'owner';
+    }
+    applyUserScope();
+  }).catch(() => {});
+}
+
+function applyUserScope() {
+  renderGreeting();
+  if (CAN_PERSONAL) return;
+  // Team members: hide the ALL / PERSONAL toggles and force work mode.
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    if (b.dataset.mode !== 'work') b.style.display = 'none';
+  });
+  state.mode = 'work';
+  syncModeButtons('work');
+  renderNav();
+  renderStreaks();
+  _reRenderAll();
+}
+
 function init() {
   // Sync mode toggle buttons to match computed default
   syncModeButtons(state.mode);
 
+  loadCurrentUser();
   renderGreeting();
   renderNav();
   renderStreaks();
