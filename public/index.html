@@ -1839,6 +1839,9 @@
   .theme-picker-footer .theme-fab { width: 32px; height: 32px; }
   .theme-picker-footer .theme-menu { top: auto; bottom: calc(100% + 8px); left: 0; right: auto; }
   .privacy-fab:hover { color: var(--navy); border-color: rgba(var(--edge-rgb), 0.25); background: rgba(var(--edge-rgb), 0.06); }
+  .today-link { background: rgba(var(--edge-rgb), 0.04); border: 1px solid rgba(var(--edge-rgb), 0.1); color: rgba(var(--ink-rgb), 0.5); width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: all 0.18s; flex-shrink: 0; text-decoration: none; }
+  .today-link:hover { color: var(--lime); border-color: var(--lime); background: var(--lime-faint); }
+  .today-link svg { width: 16px; height: 16px; }
   .privacy-fab svg { width: 16px; height: 16px; }
   .privacy-on .privacy-fab { background: var(--lime); color: var(--navy-accent); border-color: var(--lime); }
   .privacy-on .privacy-fab:hover { background: var(--lime-light); }
@@ -3949,6 +3952,13 @@ window.lrl = (function(){
       <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
     </svg>
   </button>
+  <a class="today-link" href="/today" title="Open the new Today view" aria-label="Open the new Today view">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      <polyline points="9 16 11 18 15 14"/>
+    </svg>
+  </a>
   <span id="week-of">Loading…</span>
   <div class="privacy-status">Privacy</div>
 </div>
