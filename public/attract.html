@@ -1811,6 +1811,52 @@ The expertise was the hard part. This last piece is mostly translation. We built
     if (ins.properties && ins.properties.some(p => !p.error)) renderFunnelFromGA(ins.properties);
   }
 
+  // ── AI features (Phase 6) ──
+  const activeChannel = () => (document.querySelector('.ci-tab.active')?.dataset.channel) || 'other';
+  const activeCreateTitle = () => (document.querySelector('.ci-panel.active .ci-create-title')?.textContent || '').trim();
+  const activeGoal = () => (document.querySelector('.ci-panel.active .ci-create-goal')?.textContent || '').replace(/^→\s*/, '').trim();
+  let _aiDraftText = '';
+  function showAiModal(heading, body, loading) {
+    _aiDraftText = body || '';
+    let m = document.getElementById('ai-modal');
+    if (!m) {
+      m = document.createElement('div'); m.id = 'ai-modal';
+      m.style.cssText = 'position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(10,15,30,.7);backdrop-filter:blur(4px);padding:24px';
+      m.addEventListener('click', (e) => { if (e.target === m) m.remove(); });
+      document.body.appendChild(m);
+    }
+    m.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);max-width:560px;width:100%;max-height:80vh;overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,.6)">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border)">
+        <span style="font-family:var(--font-display);font-weight:700;font-size:15px;color:var(--zone);flex:1">${esc(heading)}</span>
+        ${loading ? '' : '<button class="ci-alt-btn" id="ai-copy">Copy</button>'}
+        <button class="ci-alt-btn" onclick="document.getElementById('ai-modal').remove()">Close</button>
+      </div>
+      <div style="padding:16px 18px;font-size:13px;line-height:1.65;color:var(--text);white-space:pre-wrap">${loading ? '<span style="color:var(--text-3)">✦ Generating…</span>' : esc(body)}</div>
+    </div>`;
+    const cb = document.getElementById('ai-copy');
+    if (cb) cb.onclick = () => { navigator.clipboard.writeText(_aiDraftText).catch(() => {}); showToast('Draft copied to clipboard'); };
+  }
+  async function draftWithAI(channelArg, titleArg) {
+    const channel = channelArg || activeChannel();
+    const title = titleArg || activeCreateTitle();
+    showAiModal('Drafting with AI…', '', true);
+    let data;
+    try { data = await fetch('/api/attract/draft', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel, title, goal: activeGoal() }) }).then(r => r.json()); }
+    catch (e) { showAiModal('Draft failed', 'Could not reach the AI service.', false); return; }
+    if (!data || data.error) { showAiModal(data && data.error === 'AI not configured' ? 'AI not configured' : 'Draft failed', (data && data.error) ? data.error : 'Try again.', false); return; }
+    showAiModal(`Draft · ${title || channel}`, data.draft || '(empty draft)', false);
+  }
+  async function loadNextFocus() {
+    let data;
+    try { data = await fetch('/api/attract/next-focus').then(r => r.json()); } catch (e) { return; }
+    if (!data || !data.focus) return;
+    const body = document.querySelector('.ahead-card-body'); if (!body || document.getElementById('ai-focus')) return;
+    const el = document.createElement('div'); el.id = 'ai-focus';
+    el.style.cssText = 'display:flex;gap:8px;align-items:flex-start;background:var(--zone-soft);border:1px solid rgba(37,99,235,.25);border-radius:var(--radius-sm);padding:10px 14px;margin-top:10px;font-size:12px;color:var(--text-2);line-height:1.5';
+    el.innerHTML = `<span style="color:var(--zone)">✦</span><span><strong style="color:var(--zone)">Next focus:</strong> ${esc(data.focus)}</span>`;
+    body.appendChild(el);
+  }
+
   // ── Three-state system ──
   // Apply the calm healthy presentation (data + tone) WITHOUT any flash or
   // animation — used both on a quiet healthy load and inside the transition.
@@ -1824,7 +1870,7 @@ The expertise was the hard part. This last piece is mostly translation. We built
   function applyPageState(state) {
     document.body.classList.remove('state-stressed', 'state-in-progress', 'state-healthy');
     document.body.classList.add('state-' + state);
-    if (state === 'healthy') renderHealthyVisuals();   // visuals only — never the flash
+    if (state === 'healthy') { renderHealthyVisuals(); loadNextFocus(); }   // visuals only — never the flash
   }
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -1917,5 +1963,11 @@ The expertise was the hard part. This last piece is mostly translation. We built
   applyPageState('stressed');
   hydrate();
   hydrateChannels();   // channel insights load independently (slower live APIs)
+
+  // Wire every "Draft with AI ✦" button to the live generator (overrides the
+  // static stubs). Channel-panel buttons infer the active channel + title;
+  // runway-nudge buttons pass their own title.
+  document.querySelectorAll('.ci-create-card .btn-draft-ai').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); draftWithAI(); }; });
+  document.querySelectorAll('.create-nudge .btn-draft-ai').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); draftWithAI('linkedin', (b.closest('.nudge-item')?.querySelector('.nudge-item-title')?.textContent || '').trim()); }; });
 </script>
 </body></html>

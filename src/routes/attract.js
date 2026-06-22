@@ -507,6 +507,44 @@ app.get('/api/attract/media', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  // ── AI features (Phase 6) ──
+  const DRAFT_PROMPTS = {
+    linkedin: 'Write a full LinkedIn post in Left Right Labs\' voice (confident, plain-spoken, anti-hype). End with ONE comment-trigger CTA.',
+    youtube: 'Write a YouTube video outline: a strong 10-second hook, 4–6 section beats, and 3 thumbnail-text options.',
+    instagram: 'Write an Instagram caption plus a 3-beat Reel hook (or a 5-slide carousel outline). Punchy, scroll-stopping.',
+    email: 'Write 3 subject-line options, a short email body, and ONE clear CTA (give the button text).',
+    facebook: 'Write a Facebook boost brief: audience targeting, suggested budget + duration, the goal, and the post angle.',
+    other: 'Write social copy in Left Right Labs\' voice with one clear CTA.',
+  };
+
+  // POST /api/attract/draft — generate channel-specific copy with Claude.
+  app.post('/api/attract/draft', async (req, res) => {
+    if (!anthropic) return res.status(503).json({ error: 'AI not configured' });
+    const { channel = 'other', title = '', series = '', goal = '' } = req.body || {};
+    const instr = DRAFT_PROMPTS[(channel || 'other').toLowerCase()] || DRAFT_PROMPTS.other;
+    try {
+      const prompt = `You are the content writer for Left Right Labs, a brand + website design agency. ${instr}\n\nContext:\n- Channel: ${channel}\n- Working title / idea: ${title || '(none given)'}\n- Series: ${series || '(standalone)'}\n- Goal it serves: ${goal || '(general awareness)'}\n\nWrite the draft now — tight and ready to edit. No preamble, just the content.`;
+      const msg = await anthropic.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 900, messages: [{ role: 'user', content: prompt }] });
+      res.json({ channel, title, draft: (msg.content?.[0]?.text || '').trim() });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // GET /api/attract/next-focus — one-line "what to focus on next" for the
+  // healthy state. Cached (AI cost); returns { focus: null } if AI is off.
+  app.get('/api/attract/next-focus', async (req, res) => {
+    if (!anthropic) return res.json({ focus: null });
+    try {
+      if (req.query.fresh === '1') cache.delete('attract-next-focus');
+      const data = await cached('attract-next-focus', async () => {
+        const p = await cached('attract-page', buildAttractPayload);
+        const prompt = `You are the marketing strategist for Left Right Labs. This week's content is fully published and the runway is healthy (${p.weeklyPulse.runway.weeksCovered} of 6 weeks covered). In ONE sentence (max 22 words), name the single highest-leverage thing to focus on next week to keep momentum. No preamble.`;
+        const msg = await anthropic.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 120, messages: [{ role: 'user', content: prompt }] });
+        return { focus: (msg.content?.[0]?.text || '').trim() || null };
+      });
+      res.json(data);
+    } catch (err) { res.json({ focus: null }); }
+  });
+
   // GET /api/attract/channels/:channel/refresh — bust the channel-insights
   // cache so the next /api/attract/insights pull is fresh from the live APIs.
   app.get('/api/attract/channels/:channel/refresh', async (req, res) => {

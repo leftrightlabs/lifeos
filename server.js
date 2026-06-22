@@ -124,6 +124,7 @@ async function resolveNotionUserId(email) {
 const cache = new Map();
 const CACHE_TTL_OVERRIDES = {
   'attract-page': 15 * 60_000, // Attract page payload (Notion-derived): refresh every 15m
+  'attract-next-focus': 6 * 60 * 60_000, // AI "what to focus on next" (healthy state): 6h
   'attract-insights': 6 * 60 * 60_000, // GA4 + AI analysis: refresh every 6h
   'ynab-networth': 60 * 60_000, // YNAB net worth: refresh hourly
   'ynab-wealth': 60 * 60_000, // YNAB wealth summary: refresh hourly
