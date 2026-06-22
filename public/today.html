@@ -491,7 +491,7 @@ body.app-loading #appLoading { display: flex; }
   <div class="topbar">
     <div class="logo">◆ LRL OS</div>
     <div class="topbar-right">
-      <div class="mode-toggle" id="modeToggle">
+      <div class="mode-toggle" id="modeToggle" style="display:none">
         <button class="mode-btn active" data-mode="work" onclick="setMode('work')">WORK</button>
         <button class="mode-btn" data-mode="all" onclick="setMode('all')">ALL</button>
         <button class="mode-btn" data-mode="personal" onclick="setMode('personal')">PERSONAL</button>
@@ -2036,16 +2036,19 @@ function loadCurrentUser() {
       CAN_PERSONAL = me.personalEnabled === true || me.role === 'owner';
     }
     applyUserScope();
-  }).catch(() => {});
+  }).catch(() => { applyUserScope(); }); // fail open to owner view (reveals toggle)
 }
 
 function applyUserScope() {
   renderGreeting();
-  if (CAN_PERSONAL) return;
-  // Team members: hide the ALL / PERSONAL toggles and force work mode.
-  document.querySelectorAll('.mode-btn').forEach(b => {
-    if (b.dataset.mode !== 'work') b.style.display = 'none';
-  });
+  const toggle = document.getElementById('modeToggle');
+  if (CAN_PERSONAL) {
+    // Owner: reveal the mode switcher (hidden by default to avoid a flash).
+    if (toggle) toggle.style.display = 'flex';
+    return;
+  }
+  // Team members: work-only — keep the whole mode toggle hidden, force work mode.
+  if (toggle) toggle.style.display = 'none';
   state.mode = 'work';
   syncModeButtons('work');
   renderNav();

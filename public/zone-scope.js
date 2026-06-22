@@ -3,16 +3,17 @@
 // hide the ALL/PERSONAL mode toggles and the LIFE nav zones, matching the
 // Today page. Owner sees everything. Fails open to the owner view on error.
 (function () {
+  // The mode toggle is hidden by default (inline style) so it never flashes for
+  // team members; reveal it only once we confirm the owner.
+  const revealToggle = () => { const t = document.querySelector('.mode-toggle'); if (t) t.style.display = 'flex'; };
+
   fetch('/api/me')
     .then((r) => r.json())
     .then((me) => {
       const canPersonal = me && (me.personalEnabled === true || me.role === 'owner');
-      if (canPersonal) return;
+      if (canPersonal) { revealToggle(); return; }
 
-      // Mode toggle: keep WORK, drop ALL + PERSONAL.
-      document.querySelectorAll('.mode-toggle .mode-btn').forEach((b) => {
-        if ((b.textContent || '').trim().toUpperCase() !== 'WORK') b.style.display = 'none';
-      });
+      // Team members: the mode toggle stays hidden (work is the only mode).
 
       // LIFE nav zones: hide the personal-domain links.
       const LIFE = ['/health', '/wealth', '/lego', '/relationships'];
@@ -25,5 +26,5 @@
         e.style.display = 'none';
       });
     })
-    .catch(() => {});
+    .catch(revealToggle); // fail open to owner view
 })();
