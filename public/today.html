@@ -2077,7 +2077,6 @@ function syncRitualToServer(which) {
 // Apply rings/streaks data
 function applyStreaks(data) {
   const s = data.streaks || {};
-  state.lifeStreak = Math.max(s.swimming || 0, s.walking || 0, s.journal || 0);
   const series = (data.quarter?.series || []).slice(-7);
   if (series.length >= 7) {
     const DAYS = ['S','M','T','W','T','F','S'];
@@ -2087,6 +2086,14 @@ function applyStreaks(data) {
       lifeWeek[i] = { d: DAYS[new Date(d.date + 'T12:00:00').getDay()], state: d.date === today ? 'today' : hit ? 'hit' : 'miss' };
     });
   }
+  // Derive streak from the pip window so the number always matches the visual.
+  // Fall back to max of individual backend streaks for stretches beyond the 7-day window.
+  let pipStreak = 0;
+  for (let i = lifeWeek.length - 1; i >= 0; i--) {
+    if (lifeWeek[i].state === 'hit' || lifeWeek[i].state === 'today') pipStreak++;
+    else break;
+  }
+  state.lifeStreak = Math.max(pipStreak, s.swimming || 0, s.walking || 0, s.journal || 0);
   const saved = workStreakLoad();
   if (saved?.days != null) state.workStreak = saved.days;
   renderStreaks();
