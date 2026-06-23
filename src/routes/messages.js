@@ -37,9 +37,16 @@ export function registerMessagesRoutes(app, { notion, cached, clearCached, getSl
   app.get('/api/messages/slack', async (req, res) => {
     const token = getSlackUserToken && getSlackUserToken();
     if (!token) return res.json({ connected: false, channels: [] });
+    const debug = req.query.debug === '1';
+    const diag = { tokenType: token.slice(0, 4), conversations: 0, byType: {}, perChannel: [], errors: [] };
     try {
-      if (req.query.fresh === '1' && clearCached) clearCached('messages-slack');
-      const data = await cached('messages-slack', async () => {
+      if ((req.query.fresh === '1' || debug) && clearCached) clearCached('messages-slack');
+      const run = async () => {
+        // Confirm the token works + identify it (a bot token can't see personal unreads).
+        const auth = await slackApi(token, 'auth.test').catch((e) => { diag.errors.push('auth.test: ' + e.message); return null; });
+        diag.authedAs = auth?.user; diag.team = auth?.team; diag.isBotToken = token.startsWith('xoxb');
+        const myId = auth?.user_id;
+
         const userCache = new Map();
         const userName = async (uid) => {
           if (!uid) return 'Unknown';
@@ -50,29 +57,35 @@ export function registerMessagesRoutes(app, { notion, cached, clearCached, getSl
             userCache.set(uid, name); return name;
           } catch { return 'Unknown'; }
         };
+
         const conv = await slackApi(token, 'users.conversations', {
           types: 'public_channel,private_channel,im,mpim', exclude_archived: 'true', limit: '200',
         });
+        const list = conv.channels || [];
+        diag.conversations = list.length;
+        for (const ch of list) { const t = ch.is_im ? 'im' : ch.is_mpim ? 'mpim' : ch.is_private ? 'private' : 'public'; diag.byType[t] = (diag.byType[t] || 0) + 1; }
+
         const channels = [];
         let checked = 0;
-        for (const ch of (conv.channels || [])) {
-          if (checked >= 60) break; // bound API calls
+        for (const ch of list) {
+          if (checked >= 50) break; // bound API calls
           checked++;
           let info;
           try { info = await slackApi(token, 'conversations.info', { channel: ch.id }); }
-          catch { continue; }
+          catch (e) { diag.errors.push(`info ${ch.id}: ${e.message}`); continue; }
           const c = info.channel || {};
-          const unreadCount = c.unread_count_display || 0;
-          if (!unreadCount) continue; // only surface conversations with unreads
           const lastRead = c.last_read || '0';
+          // Derive unread straight from history vs last_read — more reliable than
+          // unread_count_display, which is often absent/zero for user tokens.
           let hist;
-          try { hist = await slackApi(token, 'conversations.history', { channel: ch.id, oldest: lastRead, limit: '20' }); }
-          catch { continue; }
+          try { hist = await slackApi(token, 'conversations.history', { channel: ch.id, oldest: lastRead, limit: '15' }); }
+          catch (e) { diag.errors.push(`history ${ch.id}: ${e.message}`); continue; }
           const dmName = ch.is_im ? await userName(c.user || ch.user) : null;
           const channelName = ch.is_im ? `@${dmName}` : `#${c.name || ch.name}`;
           const msgs = [];
           for (const m of (hist.messages || [])) {
-            if (m.subtype || !m.user || m.ts === lastRead) continue;
+            if (m.subtype || !m.user || m.ts === lastRead) continue; // skip system + the already-read marker
+            if (m.user === myId) continue;                            // skip my own messages
             const sender = ch.is_im ? dmName : await userName(m.user);
             msgs.push({
               id: `s_${ch.id}_${m.ts}`, channelId: ch.id, channelName,
@@ -82,15 +95,19 @@ export function registerMessagesRoutes(app, { notion, cached, clearCached, getSl
               isMention: SLACK_GRETCHEN ? (m.text || '').includes(`<@${SLACK_GRETCHEN}>`) : false,
             });
           }
+          diag.perChannel.push({ name: channelName, lastRead, unreadFound: msgs.length, unreadCountDisplay: c.unread_count_display ?? null });
           if (msgs.length) channels.push({ id: ch.id, name: channelName, latestTs: msgs[msgs.length - 1].ts, messages: msgs.reverse() });
         }
         channels.sort((a, b) => Number(b.latestTs) - Number(a.latestTs));
         return { connected: true, channels };
-      });
+      };
+      // Debug bypasses the cache wrapper so diag is always fresh.
+      const data = debug ? await run() : await cached('messages-slack', run);
+      if (debug) return res.json({ ...data, diag });
       res.json(data);
     } catch (err) {
       console.error('messages/slack error:', err.message);
-      res.status(500).json({ error: err.message, connected: true, channels: [] });
+      res.status(500).json({ error: err.message, connected: true, channels: [], diag });
     }
   });
 
