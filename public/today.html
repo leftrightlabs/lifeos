@@ -994,15 +994,18 @@ function renderOneThing() {
       const tname = _personalOneThingTask?.name || 'task';
       const msg = isDoing
         ? `In progress — come back when you're ready to complete it.`
-        : `Marked as waiting — it'll resurface when you update its status.`;
+        : `Blocked for now — it'll resurface when unblocked.`;
       const accent = isDoing ? 'var(--amber)' : 'var(--text-3)';
+      const creditBtn = !isDoing
+        ? `<button class="btn-go" style="background:var(--teal);color:#0A0D16;" onclick="countEffort()">✓ Count today's effort</button>`
+        : `<button class="btn-go" style="background:var(--teal);color:#0A0D16;" onclick="markPersonalDone()">✓ Done now</button>`;
       area.innerHTML = `
         <div class="onething" id="otCard" style="border-left-color:${accent};">
           <div class="onething-label" style="color:${accent};">${isDoing ? '→ In progress' : '⏸ Waiting'}</div>
           <div class="onething-title" style="font-size:var(--fs-body);margin-bottom:6px;">${escName(tname)}</div>
           <div class="onething-why" style="margin:0 0 14px;">${msg}</div>
           <div class="onething-actions">
-            <button class="btn-go" style="background:var(--teal);color:#0A0D16;" onclick="markPersonalDone()">✓ Done now</button>
+            ${creditBtn}
             <button class="btn-ghost" style="font-size:var(--fs-caption);padding:8px 14px;" onclick="undoPersonalDone()">↩ Undo</button>
           </div>
           <div class="onething-orb"></div>
@@ -1138,6 +1141,16 @@ function markPersonalDone() {
   state.lifeSatisfied = true;
   _patchPersonalTask({ status: 'Done' });
   _syncPlanStatus(_personalOneThingTask?.id, 'Done');
+  renderOneThing();
+  renderStreaks();
+  fireConfetti();
+}
+function countEffort() {
+  // Task stays Waiting in Notion — you're blocked, not done.
+  // But you did real work today, so lock the streak.
+  state.personalOneThing = 'done';
+  state.lifeStreak += 1;
+  state.lifeSatisfied = true;
   renderOneThing();
   renderStreaks();
   fireConfetti();
