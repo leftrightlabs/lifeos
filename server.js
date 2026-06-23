@@ -15,6 +15,7 @@ import { CONTACTS_DS, PULSE_RELATIONSHIPS } from './src/config/convert.js';
 import { registerAttractRoutes } from './src/routes/attract.js';
 import { registerWealthRoutes } from './src/routes/wealth.js';
 import { registerScaleRoutes } from './src/routes/scale.js';
+import { registerMessagesRoutes } from './src/routes/messages.js';
 import { registerLegoRoutes } from './src/routes/lego.js';
 import { registerDeliverRoutes } from './src/routes/deliver.js';
 
@@ -1303,6 +1304,12 @@ app.get('/api/tasks/all', async (_req, res) => {
   }
 });
 
+// VIP senders for the Messages "Needs Attention" lane. Env-driven so clients can
+// be added without a deploy; defaults to the core team. Lowercased name/email
+// fragments — a match on either flags the sender.
+const MESSAGES_VIP = (process.env.MESSAGES_VIP_EMAILS || 'trina@leftrightlabs.com,natasha@leftrightlabs.com')
+  .toLowerCase().split(',').map((s) => s.trim()).filter(Boolean);
+
 async function fetchInbox(account, userIndex, opts = {}) {
   const auth = authedClient(account);
   if (!auth) return [];
@@ -1332,6 +1339,9 @@ async function fetchInbox(account, userIndex, opts = {}) {
       (msg.payload?.headers || []).map((h) => [h.name, h.value]),
     );
     const from = parseFromHeader(headers.From);
+    const unread = Array.isArray(msg.labelIds) ? msg.labelIds.includes('UNREAD') : false;
+    const hay = `${from.name || ''} ${from.email || ''}`.toLowerCase();
+    const isVIP = MESSAGES_VIP.some((v) => hay.includes(v));
     return {
       id: msg.id,
       account,
@@ -1342,7 +1352,12 @@ async function fetchInbox(account, userIndex, opts = {}) {
       snippet: decodeEntities(msg.snippet || ''),
       date: headers.Date || null,
       internalDate: msg.internalDate ? Number(msg.internalDate) : null,
-      unread: Array.isArray(msg.labelIds) ? msg.labelIds.includes('UNREAD') : false,
+      unread,
+      // Importance is computed server-side (never a manual flag). needsReply is a
+      // pragmatic v1 proxy — a VIP whose message is still unread likely awaits us.
+      isVIP,
+      needsReply: isVIP && unread,
+      category: account === 'personal' ? 'PERSONAL' : 'WORK',
       url: `https://mail.google.com/mail/u/${userIndex}/#inbox/${msg.threadId}`,
     };
   });
@@ -3653,6 +3668,7 @@ registerScaleRoutes(app, {
   notion, cached, clearCached, computeXeroFinance, computeXeroQuotes, chicagoToday, currentQuarter,
   WORK_PROJECTS_DS, WORK_TASKS_DS,
 });
+registerMessagesRoutes(app, { notion, cached, WORK_PROJECTS_DS, WORK_TASKS_DS });
 registerLegoRoutes(app, { notion, cache, cached, userContext });
 
 // ===== Deliver domain — wired sections (offers + care-plan renewals); project sections render client-side =====

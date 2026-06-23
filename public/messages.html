@@ -1,55 +1,580 @@
 <!DOCTYPE html><html lang="en"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>LRL OS · Messages</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="stylesheet" href="/styles/tokens.css">
 <link rel="stylesheet" href="/styles/app.css">
 <script defer src="/zone-scope.js"></script>
-<style>:root { --zone: var(--accent); --zone-soft: var(--accent-soft); }</style>
+<style>
+:root { --zone: var(--accent); --zone-soft: var(--accent-soft); --r:8px; --rs:5px; }
+.msg-zone { max-width: 920px; margin: 0 auto; padding-bottom: 90px; font-size: 14px; line-height: 1.45; }
+
+/* source tabs */
+.source-tabs { display:flex; padding:0 20px; border-bottom:1px solid var(--border); background:var(--surface-2); overflow-x:auto; scrollbar-width:none; }
+.source-tabs::-webkit-scrollbar { display:none; }
+.src-tab { display:flex; align-items:center; gap:7px; padding:12px 16px 11px; border:none; background:transparent; color:var(--text-3); font-size:13px; font-weight:500; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .18s; white-space:nowrap; font-family:inherit; }
+.src-tab:hover { color:var(--text-2); }
+.src-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.src-tab .src-icon { width:15px; height:15px; flex-shrink:0; }
+.cnt { min-width:18px; height:18px; border-radius:9px; padding:0 5px; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; background:var(--accent); color:#fff; }
+.cnt.red { background:var(--red); } .cnt.amber { background:var(--amber); color:#0A0D16; } .cnt.work { background:var(--work); } .cnt.none { display:none; }
+
+/* toolbar */
+.toolbar { display:flex; align-items:center; gap:8px; padding:10px 20px 9px; border-bottom:1px solid var(--border-soft); }
+.f-pill { padding:4px 12px; border-radius:20px; border:1px solid var(--border); background:transparent; color:var(--text-3); font-size:12px; font-weight:500; transition:all .15s; font-family:inherit; }
+.f-pill:hover { border-color:var(--text-4); color:var(--text-2); }
+.f-pill.active { background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
+.f-pill.important-pill.active { background:var(--amber-soft); border-color:var(--amber); color:var(--amber); }
+.toolbar-right { margin-left:auto; display:flex; gap:6px; }
+.triage-btn { padding:4px 11px; border-radius:20px; border:1px solid var(--border); background:transparent; color:var(--text-3); font-size:12px; font-weight:500; transition:all .15s; font-family:inherit; }
+.triage-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+/* bulk bar */
+.bulk-bar { display:none; align-items:center; gap:10px; padding:9px 20px; background:var(--accent-soft); border-bottom:1px solid rgba(99,102,241,.25); }
+.bulk-bar.show { display:flex; }
+.bulk-count { font-size:13px; font-weight:600; color:var(--accent); }
+.bulk-btn { padding:4px 10px; border-radius:var(--rs); border:1px solid rgba(99,102,241,.25); background:transparent; color:var(--text-2); font-size:12px; font-weight:500; transition:all .15s; font-family:inherit; }
+.bulk-btn:hover { background:var(--accent-soft); color:var(--accent); }
+.bulk-btn.danger:hover { background:var(--red-soft); border-color:rgba(242,109,109,.3); color:var(--red); }
+.bulk-spacer { flex:1; }
+
+/* section heads */
+.section-head { display:flex; align-items:center; gap:10px; padding:10px 20px 6px; font-size:10px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+.section-head::after { content:''; flex:1; height:1px; }
+.section-head.urgent { color:var(--amber); } .section-head.urgent::after { background:var(--amber-soft); }
+.section-head.normal { color:var(--text-4); } .section-head.normal::after { background:var(--border-soft); }
+.inbox-meta { display:flex; align-items:center; justify-content:space-between; padding:9px 20px 5px; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-4); }
+
+/* message row */
+.msg-row { display:flex; align-items:flex-start; padding:11px 20px 11px 16px; border-bottom:1px solid var(--border-soft); cursor:pointer; position:relative; overflow:hidden; transition:background .12s; border-left:3px solid transparent; user-select:none; }
+.msg-row:hover { background:var(--surface-2); }
+.msg-row.selected { background:var(--accent-soft); }
+.msg-row.unread { border-left-color:var(--accent); }
+.msg-row.needs-attention { border-left-color:var(--amber); }
+.msg-row.needs-attention.unread { border-left-color:var(--red); }
+.msg-cb { width:18px; height:18px; flex-shrink:0; border:2px solid var(--border); border-radius:4px; margin-right:10px; margin-top:1px; display:flex; align-items:center; justify-content:center; transition:all .15s; font-size:11px; color:transparent; }
+.msg-row:hover .msg-cb, .msg-row.selected .msg-cb { border-color:var(--accent); background:var(--accent-soft); }
+.msg-row.selected .msg-cb { color:var(--accent); }
+.msg-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; margin-top:5px; margin-right:10px; background:transparent; }
+.msg-row.unread .msg-dot { background:var(--accent); }
+.msg-av { width:36px; height:36px; border-radius:50%; flex-shrink:0; margin-right:11px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; position:relative; }
+.msg-av.vip::after { content:''; position:absolute; inset:-2px; border-radius:50%; border:2px solid var(--amber); }
+.msg-body { flex:1; min-width:0; }
+.msg-r1 { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+.msg-sender { font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.msg-row:not(.unread) .msg-sender { font-weight:500; color:var(--text-2); }
+.msg-tag { font-size:10px; font-weight:800; padding:2px 6px; border-radius:3px; text-transform:uppercase; letter-spacing:.05em; flex-shrink:0; white-space:nowrap; }
+.msg-tag.personal { background:var(--personal-soft); color:var(--personal); }
+.msg-tag.work2 { background:var(--work-soft); color:var(--work); }
+.msg-tag.reply { background:var(--amber-soft); color:var(--amber); }
+.msg-time { margin-left:auto; flex-shrink:0; font-size:11px; color:var(--text-3); }
+.msg-row.unread .msg-time { color:var(--accent); font-weight:600; }
+.msg-subject { font-size:13px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px; }
+.msg-row:not(.unread) .msg-subject { color:var(--text-2); font-weight:400; }
+.msg-preview { font-size:12px; color:var(--text-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hover-acts { position:absolute; right:14px; top:50%; transform:translateY(-50%); display:flex; gap:3px; opacity:0; pointer-events:none; background:var(--surface); padding:3px 5px; border-radius:var(--rs); border:1px solid var(--border); transition:opacity .15s; }
+.msg-row:hover .hover-acts { opacity:1; pointer-events:all; }
+.hact { width:28px; height:28px; border-radius:4px; border:none; background:transparent; color:var(--text-3); font-size:13px; display:flex; align-items:center; justify-content:center; transition:all .1s; }
+.hact:hover { background:var(--surface-2); color:var(--text); } .hact.del:hover { color:var(--red); }
+.msg-row.swiping-right { background:var(--green-soft) !important; }
+.msg-row.swiping-left { background:var(--amber-soft) !important; }
+
+/* slack */
+.channel-group { border-bottom:1px solid var(--border); }
+.channel-head { display:flex; align-items:center; gap:8px; padding:9px 20px 7px; font-size:10px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--text-4); background:var(--surface-2); border-bottom:1px solid var(--border-soft); }
+.slack-msg { display:flex; align-items:flex-start; gap:11px; padding:10px 20px; border-bottom:1px solid var(--border-soft); cursor:pointer; transition:background .12s; }
+.slack-msg:hover { background:var(--surface-2); } .slack-msg:last-child { border-bottom:none; }
+.slack-msg.unread { border-left:3px solid var(--work); padding-left:17px; }
+.slack-av { width:32px; height:32px; border-radius:6px; flex-shrink:0; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; margin-top:1px; }
+.slack-meta { flex:1; min-width:0; }
+.slack-top { display:flex; align-items:center; gap:7px; margin-bottom:3px; }
+.slack-name { font-size:13px; font-weight:600; color:var(--text); }
+.slack-time { margin-left:auto; font-size:11px; color:var(--text-3); flex-shrink:0; }
+.slack-text { font-size:13px; color:var(--text-2); line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.slack-at { color:var(--accent); font-weight:500; }
+
+/* notion */
+.notion-comment { display:flex; align-items:flex-start; gap:11px; padding:13px 20px; border-bottom:1px solid var(--border-soft); cursor:pointer; transition:background .12s; }
+.notion-comment:hover { background:var(--surface-2); }
+.notion-comment.unread { border-left:3px solid var(--accent); padding-left:17px; }
+.notion-av { width:34px; height:34px; border-radius:50%; flex-shrink:0; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.notion-meta { flex:1; min-width:0; }
+.notion-page-chip { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:600; padding:2px 7px; border-radius:4px; background:var(--surface); border:1px solid var(--border); color:var(--text-3); margin-bottom:5px; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.notion-top { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+.notion-name { font-size:12px; font-weight:600; color:var(--text-2); }
+.notion-time { margin-left:auto; font-size:11px; color:var(--text-3); }
+.notion-text { font-size:13px; color:var(--text-2); line-height:1.4; }
+.notion-mention { color:var(--accent); font-weight:500; }
+
+/* empty / skeleton / error */
+.empty { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 24px; color:var(--text-4); text-align:center; gap:8px; }
+.empty-icon { font-size:40px; } .empty-title { font-size:15px; font-weight:600; color:var(--text-3); } .empty-body { font-size:13px; max-width:340px; }
+.empty .btn-connect { margin-top:8px; padding:8px 16px; border-radius:20px; border:1px solid var(--accent); background:var(--accent-soft); color:var(--accent); font-size:12px; font-weight:600; font-family:inherit; }
+.sk-row { display:flex; gap:11px; padding:13px 20px; border-bottom:1px solid var(--border-soft); }
+.sk { background:var(--surface-2); border-radius:4px; animation:sk 1.5s ease infinite; }
+.sk-av { width:36px; height:36px; border-radius:50%; flex-shrink:0; }
+.sk-line { height:9px; margin-bottom:7px; } .sk-sm { width:35%; } .sk-md { width:60%; } .sk-lg { width:85%; }
+@keyframes sk { 0%,100%{opacity:1} 50%{opacity:.45} }
+
+/* detail panel */
+.detail-overlay { position:fixed; inset:0; z-index:200; background:rgba(5,8,14,.72); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); display:flex; justify-content:flex-end; opacity:0; pointer-events:none; transition:opacity .22s; }
+.detail-overlay.open { opacity:1; pointer-events:all; }
+.detail-panel { width:560px; max-width:100vw; height:100%; background:var(--surface); border-left:1px solid var(--border); display:flex; flex-direction:column; transform:translateX(100%); transition:transform .26s cubic-bezier(.4,0,.2,1); }
+.detail-overlay.open .detail-panel { transform:translateX(0); }
+.dp-hdr { display:flex; align-items:flex-start; gap:10px; padding:14px 16px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.dp-close { width:30px; height:30px; border-radius:50%; border:none; background:var(--surface-2); color:var(--text-2); font-size:17px; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+.dp-close:hover { background:var(--border); color:var(--text); }
+.dp-subject-wrap { flex:1; min-width:0; }
+.dp-subject { font-size:15px; font-weight:700; color:var(--text); line-height:1.3; margin-bottom:5px; }
+.dp-badges { display:flex; flex-wrap:wrap; gap:5px; }
+.dp-navs { display:flex; gap:4px; flex-shrink:0; }
+.dp-nav-btn { width:28px; height:28px; border-radius:var(--rs); border:1px solid var(--border); background:transparent; color:var(--text-3); font-size:13px; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+.dp-nav-btn:hover { background:var(--surface-2); color:var(--text); }
+.dp-meta { display:flex; align-items:center; gap:11px; padding:11px 16px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.dp-av { width:38px; height:38px; border-radius:50%; flex-shrink:0; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.dp-meta-text { flex:1; min-width:0; }
+.dp-from { font-size:13px; font-weight:600; color:var(--text); }
+.dp-email { font-size:11px; color:var(--text-3); margin-top:1px; }
+.dp-date { font-size:11px; color:var(--text-3); flex-shrink:0; }
+.dp-body { flex:1; overflow-y:auto; padding:20px; }
+.dp-body-text { font-size:14px; line-height:1.65; color:var(--text); word-wrap:break-word; }
+.dp-body-text p { margin-bottom:10px; } .dp-body-text a { color:var(--accent); }
+.dp-body-text img { max-width:100%; height:auto; }
+.open-external { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:var(--rs); border:1px solid var(--border); background:transparent; color:var(--text-3); font-size:12px; font-weight:500; text-decoration:none; transition:all .15s; margin-top:16px; }
+.open-external:hover { border-color:var(--accent); color:var(--accent); }
+.dp-acts { display:flex; align-items:center; gap:5px; flex-wrap:wrap; padding:10px 14px; border-top:1px solid var(--border); background:var(--surface); flex-shrink:0; }
+.dp-btn { display:flex; align-items:center; gap:5px; padding:6px 11px; border-radius:var(--rs); border:1px solid var(--border); background:transparent; color:var(--text-2); font-size:12px; font-weight:500; transition:all .15s; white-space:nowrap; font-family:inherit; }
+.dp-btn:hover { background:var(--surface-2); color:var(--text); border-color:var(--text-4); }
+.dp-btn.primary { background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
+.dp-btn.primary:hover { background:var(--accent); color:#fff; }
+.dp-btn.danger:hover { background:var(--red-soft); border-color:rgba(242,109,109,.3); color:var(--red); }
+.dp-sep { width:1px; height:20px; background:var(--border); margin:0 2px; }
+
+/* reply composer */
+.reply-box { border-top:1px solid var(--border); background:var(--surface-2); flex-shrink:0; display:none; }
+.reply-box.open { display:block; }
+.reply-hdr { display:flex; align-items:center; justify-content:space-between; padding:10px 14px 0; font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--text-3); }
+.reply-x { width:22px; height:22px; border:none; background:transparent; color:var(--text-3); font-size:16px; line-height:1; }
+.reply-x:hover { color:var(--text); }
+.reply-ta { width:100%; min-height:90px; max-height:200px; background:transparent; border:none; outline:none; color:var(--text); font-size:13px; line-height:1.55; padding:10px 14px; resize:none; font-family:inherit; }
+.reply-ta::placeholder { color:var(--text-4); }
+.ai-loading-row { display:none; align-items:center; gap:8px; padding:6px 14px; font-size:12px; color:var(--accent); }
+.ai-loading-row.show { display:flex; }
+.dots { display:flex; gap:3px; } .dots span { width:5px; height:5px; border-radius:50%; background:var(--accent); animation:bounce 1.1s ease-in-out infinite; }
+.dots span:nth-child(2){animation-delay:.18s} .dots span:nth-child(3){animation-delay:.36s}
+@keyframes bounce { 0%,80%,100%{transform:scale(.8);opacity:.4} 40%{transform:scale(1.2);opacity:1} }
+.reply-toolbar { display:flex; align-items:center; gap:6px; padding:7px 14px 11px; }
+.ai-gen-btn { display:flex; align-items:center; gap:5px; padding:6px 13px; border-radius:20px; border:1px solid var(--accent); background:var(--accent-soft); color:var(--accent); font-size:12px; font-weight:600; transition:all .15s; font-family:inherit; }
+.ai-gen-btn:hover { background:var(--accent); color:#fff; } .ai-gen-btn:disabled { opacity:.45; pointer-events:none; }
+.send-btn { display:flex; align-items:center; gap:5px; padding:6px 15px; border-radius:20px; border:none; background:var(--accent); color:#fff; font-size:12px; font-weight:600; margin-left:auto; transition:all .15s; font-family:inherit; }
+.send-btn:hover { filter:brightness(1.1); }
+
+/* snooze + toast */
+.snooze-overlay { position:fixed; inset:0; z-index:300; background:rgba(5,8,14,.85); display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .18s; }
+.snooze-overlay.open { opacity:1; pointer-events:all; }
+.snooze-panel { width:280px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:18px; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+.snooze-title { font-size:13px; font-weight:700; color:var(--text); margin-bottom:14px; }
+.snooze-opt { display:flex; align-items:center; justify-content:space-between; padding:9px 10px; border-radius:var(--rs); cursor:pointer; transition:background .12s; margin-bottom:3px; }
+.snooze-opt:hover { background:var(--surface-2); }
+.snooze-opt-label { font-size:13px; color:var(--text); } .snooze-opt-time { font-size:11px; color:var(--text-3); }
+.snooze-cancel { width:100%; margin-top:10px; padding:8px; border:1px solid var(--border); border-radius:var(--rs); background:transparent; color:var(--text-3); font-size:12px; font-family:inherit; transition:all .15s; }
+.snooze-cancel:hover { color:var(--text); border-color:var(--text-4); }
+.toast-wrap { position:fixed; bottom:28px; left:50%; transform:translateX(-50%); z-index:400; display:flex; flex-direction:column; gap:7px; align-items:center; pointer-events:none; }
+.toast { padding:9px 16px; border-radius:20px; background:var(--surface); border:1px solid var(--border); color:var(--text); font-size:13px; font-weight:500; box-shadow:0 8px 28px rgba(0,0,0,.45); animation:toastIn .2s ease; }
+@keyframes toastIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+#msg-error { display:none; margin:14px 20px; background:var(--red-soft); border:1px solid rgba(242,109,109,.25); color:var(--red); border-radius:var(--r); padding:12px 16px; font-size:13px; }
+#msg-error button { margin-left:10px; background:transparent; border:1px solid var(--red); color:var(--red); border-radius:var(--rs); padding:3px 10px; font-size:12px; font-family:inherit; cursor:pointer; }
+
+@media (max-width:600px) { .detail-panel { width:100vw; } .hover-acts { display:none; } }
+</style>
 </head><body>
 <div class="topbar-wrap"><div class="topbar">
   <a href="/" class="logo">◆ LRL OS</a>
-  <div class="topbar-right">
-    <div class="mode-toggle" style="display:none">
-      <a href="/?mode=work" class="mode-btn">WORK</a>
-      <a href="/?mode=all" class="mode-btn">ALL</a>
-      <a href="/?mode=personal" class="mode-btn personal">PERSONAL</a>
-    </div>
-    <span class="me-pill">ME</span>
-  </div>
+  <div class="topbar-right"><span class="me-pill">ME</span></div>
 </div></div>
 <div class="nav-wrap"><nav class="nav">
   <a href="/today" class="nav-btn">TODAY</a>
   <a href="/messages" class="nav-btn active">MESSAGES</a>
   <a href="/execute" class="nav-btn">EXECUTE</a>
   <div class="nav-sep"></div>
-  <span class="nav-domain">LIFE</span>
-  <a href="/health" class="nav-btn">HEALTH</a>
-  <a href="/wealth" class="nav-btn">WEALTH</a>
-  <a href="/lego" class="nav-btn">LEGO</a>
-  <a href="/relationships" class="nav-btn">RELATIONSHIPS</a>
-  <div class="nav-sep"></div>
   <span class="nav-domain">WORK</span>
   <a href="/attract" class="nav-btn">ATTRACT</a>
   <a href="/convert" class="nav-btn">CONVERT</a>
   <a href="/deliver" class="nav-btn">DELIVER</a>
   <a href="/scale" class="nav-btn">SCALE</a>
+  <div class="nav-sep"></div>
+  <span class="nav-domain">LIFE</span>
+  <a href="/health" class="nav-btn">HEALTH</a>
+  <a href="/wealth" class="nav-btn">WEALTH</a>
+  <a href="/lego" class="nav-btn">LEGO</a>
 </nav></div>
-<div class="zone-wrap">
-  <div class="zone-hero">
-    <div class="zone-eyebrow">Inbox</div>
-    <div class="zone-heading">
-      <div class="zone-icon">✉️</div>
-      <h1 class="zone-title">Messages</h1>
-    </div>
-    <p class="zone-desc">Unified communication triage. Email threads, Slack pings, and DMs that need a response.</p>
-    <span class="zone-badge">⚙ Building this zone</span>
+
+<div class="msg-zone">
+  <div class="source-tabs">
+    <button class="src-tab active" data-tab="gmail" onclick="switchTab('gmail')">
+      <svg class="src-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4C2.9 4 2 4.9 2 6v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/></svg>
+      Gmail <span class="cnt red none" id="g-cnt"></span>
+    </button>
+    <button class="src-tab" data-tab="slack" onclick="switchTab('slack')">
+      <svg class="src-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M6 15a2 2 0 1 1 0-4h2v4H6zm0-6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8-2a2 2 0 1 1 4 0 2 2 0 0 1-4 0zm-2 0H8V5h4v2zm2 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0-2h-4v-4h4v4zm2-6a2 2 0 1 1 0 4h-2V9h2z"/></svg>
+      Slack <span class="cnt work none" id="s-cnt"></span>
+    </button>
+    <button class="src-tab" data-tab="notion" onclick="switchTab('notion')">
+      <svg class="src-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.981-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.887l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952L12.21 19s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279V8.87l-1.215-.14c-.093-.514.28-.888.747-.933z"/></svg>
+      Notion <span class="cnt none" id="n-cnt"></span>
+    </button>
   </div>
-  <div class="zone-placeholder">
-    <div class="zone-card"><div class="zone-card-label">Email</div><div class="zone-card-title">Action Required</div><div class="zone-card-body">Emails flagged for reply or follow-up, sorted by urgency.</div></div>
-    <div class="zone-card"><div class="zone-card-label">Slack</div><div class="zone-card-title">Threads & DMs</div><div class="zone-card-body">Unread threads where you're mentioned or have pending replies.</div></div>
-    <div class="zone-card"><div class="zone-card-label">Drafts</div><div class="zone-card-title">Parked Messages</div><div class="zone-card-body">Replies you've drafted but haven't sent — waiting on info or timing.</div></div>
+
+  <div class="toolbar" id="toolbar">
+    <button class="f-pill active" onclick="setFilter('all',this)">All</button>
+    <button class="f-pill" onclick="setFilter('unread',this)">Unread</button>
+    <button class="f-pill important-pill" onclick="setFilter('important',this)">⚑ Needs Attention</button>
+    <div class="toolbar-right"><button class="triage-btn" id="sel-all-btn" onclick="selectAll()">☐ Select all</button></div>
+  </div>
+
+  <div class="bulk-bar" id="bulk-bar">
+    <span class="bulk-count" id="bulk-cnt">0 selected</span>
+    <button class="bulk-btn" onclick="bulkArchive()">Archive</button>
+    <button class="bulk-btn" onclick="bulkMarkRead()">Mark read</button>
+    <button class="bulk-btn danger" onclick="bulkDelete()">Delete</button>
+    <div class="bulk-spacer"></div>
+    <button class="bulk-btn" onclick="clearSel()">✕ Cancel</button>
+  </div>
+
+  <div id="msg-error"></div>
+
+  <div id="tab-gmail">
+    <div class="inbox-meta"><span id="inbox-label">INBOX</span><span id="account-label"></span></div>
+    <div id="gmail-list"></div>
+  </div>
+  <div id="tab-slack" style="display:none"><div id="slack-list"></div></div>
+  <div id="tab-notion" style="display:none"><div id="notion-list"></div></div>
+</div>
+
+<div class="detail-overlay" id="detail-overlay" onclick="maybeCloseDetail(event)">
+  <div class="detail-panel">
+    <div class="dp-hdr">
+      <button class="dp-close" onclick="closeDetail()">✕</button>
+      <div class="dp-subject-wrap"><div class="dp-subject" id="dp-subject">—</div><div class="dp-badges" id="dp-badges"></div></div>
+      <div class="dp-navs"><button class="dp-nav-btn" onclick="navMsg(-1)">▲</button><button class="dp-nav-btn" onclick="navMsg(1)">▼</button></div>
+    </div>
+    <div class="dp-meta">
+      <div class="dp-av" id="dp-av">?</div>
+      <div class="dp-meta-text"><div class="dp-from" id="dp-from">—</div><div class="dp-email" id="dp-email">—</div></div>
+      <div class="dp-date" id="dp-date">—</div>
+    </div>
+    <div class="dp-body" id="dp-body"><div class="dp-body-text" id="dp-body-text"></div></div>
+    <div class="reply-box" id="reply-box">
+      <div class="reply-hdr"><span>↩ Reply</span><button class="reply-x" onclick="closeReply()">✕</button></div>
+      <textarea class="reply-ta" id="reply-ta" placeholder="Write your reply…"></textarea>
+      <div class="ai-loading-row" id="ai-loading"><div class="dots"><span></span><span></span><span></span></div> Generating with AI…</div>
+      <div class="reply-toolbar">
+        <button class="ai-gen-btn" id="ai-btn" onclick="genReply()">✨ Generate reply</button>
+        <button class="dp-btn" onclick="closeReply()">Discard</button>
+        <button class="send-btn" onclick="sendReply()">Send ↗</button>
+      </div>
+    </div>
+    <div class="dp-acts" id="dp-acts">
+      <button class="dp-btn primary" onclick="openReply()">↩ Reply</button>
+      <div class="dp-sep"></div>
+      <button class="dp-btn" onclick="archiveDetail()">📥 Archive</button>
+      <button class="dp-btn" onclick="snoozeDetail()">⏰ Snooze</button>
+      <div class="dp-sep"></div>
+      <button class="dp-btn danger" onclick="deleteDetail()">🗑 Delete</button>
+    </div>
   </div>
 </div>
+
+<div class="snooze-overlay" id="snooze-overlay">
+  <div class="snooze-panel">
+    <div class="snooze-title">⏰ Snooze until…</div>
+    <div class="snooze-opt" onclick="doSnooze('1h')"><span class="snooze-opt-label">In 1 hour</span><span class="snooze-opt-time" id="sz-1h">—</span></div>
+    <div class="snooze-opt" onclick="doSnooze('3h')"><span class="snooze-opt-label">In 3 hours</span><span class="snooze-opt-time" id="sz-3h">—</span></div>
+    <div class="snooze-opt" onclick="doSnooze('tomorrow-am')"><span class="snooze-opt-label">Tomorrow morning</span><span class="snooze-opt-time">8:00 AM</span></div>
+    <div class="snooze-opt" onclick="doSnooze('tomorrow-pm')"><span class="snooze-opt-label">Tomorrow afternoon</span><span class="snooze-opt-time">2:00 PM</span></div>
+    <div class="snooze-opt" onclick="doSnooze('next-week')"><span class="snooze-opt-label">Next week</span><span class="snooze-opt-time">Mon 8:00 AM</span></div>
+    <button class="snooze-cancel" onclick="closeSnooze()">Cancel</button>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
 <a href="/" class="fab" title="Back to Today">⚡</a>
+
+<script>
+const esc = (s) => String(s==null?'':s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function relTime(ms){ if(!ms) return ''; const d=Date.now()-ms; const m=Math.round(d/60000); if(m<1)return'now'; if(m<60)return m+'m'; const h=Math.round(m/60); if(h<24)return h+'h'; return Math.round(h/24)+'d'; }
+function initials(n){ return String(n||'?').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase()||'?'; }
+const AVC = ['#6366F1','#2563EB','#06B6D4','#059669','#D97706','#DC2626','#7C3AED','#DB2777'];
+function avColor(n){ let h=0; for(const c of String(n||'')) h=(h*31+c.charCodeAt(0))&0xffffffff; return AVC[Math.abs(h)%AVC.length]; }
+
+const state = { tab:'gmail', filter:'all', selected:new Set(), openId:null, openSrc:null,
+  cache:{ gmail:{data:[],t:0}, slack:{data:null,t:0}, notion:{data:[],t:0} } };
+const TTL = 60000;
+let detail = null; // full open message (with messageId/references for reply)
+
+/* snooze (client-side, localStorage) */
+function snoozeStore(){ try { return JSON.parse(localStorage.getItem('lrl-msg-snooze')||'{}'); } catch { return {}; } }
+function isSnoozed(id){ const s=snoozeStore()[id]; return s && s>Date.now(); }
+function setSnooze(id, until){ try { const s=snoozeStore(); s[id]=until; localStorage.setItem('lrl-msg-snooze', JSON.stringify(s)); } catch {} }
+
+function toast(msg){ const w=document.getElementById('toast-wrap'); const t=document.createElement('div'); t.className='toast'; t.textContent=msg; w.appendChild(t); setTimeout(()=>t.remove(),2800); }
+function showError(msg){ const e=document.getElementById('msg-error'); e.style.display='block'; e.innerHTML=esc(msg)+' <button onclick="reloadTab()">Retry</button>'; }
+function clearError(){ document.getElementById('msg-error').style.display='none'; }
+
+/* ── tabs / filters ── */
+function switchTab(t){ state.tab=t;
+  document.querySelectorAll('.src-tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
+  document.getElementById('tab-gmail').style.display = t==='gmail'?'':'none';
+  document.getElementById('tab-slack').style.display = t==='slack'?'':'none';
+  document.getElementById('tab-notion').style.display = t==='notion'?'':'none';
+  document.getElementById('toolbar').style.display = t==='notion'?'none':'';
+  clearSel(); closeDetail(); clearError(); loadTab(t);
+}
+function setFilter(f, btn){ state.filter=f; document.querySelectorAll('.f-pill').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); render(); }
+function reloadTab(){ const c=state.cache[state.tab]; if(c) c.t=0; loadTab(state.tab); }
+
+/* ── data loading ── */
+function skeleton(el){ el.innerHTML = Array.from({length:5}).map(()=>`<div class="sk-row"><div class="sk sk-av"></div><div style="flex:1"><div class="sk sk-line sk-sm"></div><div class="sk sk-line sk-lg"></div><div class="sk sk-line sk-md"></div></div></div>`).join(''); }
+
+async function loadTab(tab){
+  const c = state.cache[tab];
+  if (c.data && (tab==='slack'? c.data!=null : c.data.length) && Date.now()-c.t < TTL) { render(); return; }
+  const listEl = document.getElementById(tab==='gmail'?'gmail-list':tab==='slack'?'slack-list':'notion-list');
+  skeleton(listEl);
+  try {
+    if (tab==='gmail') {
+      const r = await fetch('/api/comms/gmail?status=all&days=30'); const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      c.data = (d.threads||[]).map(t=>({ id:t.id, account:t.account, threadId:t.threadId, from:t.fromName, email:t.fromEmail,
+        subject:t.subject, preview:t.snippet, cat:t.category||'WORK', time:relTime(t.internalDate), unread:t.unread,
+        needsReply:t.needsReply, isVIP:t.isVIP, url:t.url, archived:false, deleted:false })).filter(m=>!isSnoozed(m.id));
+    } else if (tab==='slack') {
+      const r = await fetch('/api/messages/slack'); c.data = await r.json();
+    } else {
+      const r = await fetch('/api/messages/notion-comments'); const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      c.data = (d.comments||[]).filter(m=>!isSnoozed(m.id));
+    }
+    c.t = Date.now(); clearError(); render();
+  } catch (e) { showError("Couldn't load "+tab+": "+e.message); }
+}
+
+/* ── render ── */
+function importantGmail(m){ return m.isVIP || m.needsReply; }
+function render(){ if(state.tab==='gmail') renderGmail(); else if(state.tab==='slack') renderSlack(); else renderNotion(); updateBadges(); }
+
+function renderGmail(){
+  const all = state.cache.gmail.data || [];
+  const visible = all.filter(m=>{ if(m.archived||m.deleted) return false; if(state.filter==='unread') return m.unread; if(state.filter==='important') return importantGmail(m); return true; });
+  const imp = visible.filter(importantGmail), normal = visible.filter(m=>!importantGmail(m));
+  let html='';
+  if (imp.length){ html += `<div class="section-head urgent">⚑ Needs Attention &nbsp;(${imp.length})</div>` + imp.map(gmailRow).join(''); }
+  if (normal.length && state.filter!=='important'){ if(imp.length) html += `<div class="section-head normal">Other &nbsp;(${normal.length})</div>`; html += normal.map(gmailRow).join(''); }
+  if (!visible.length) html = `<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">All clear</div><div class="empty-body">Nothing matches this filter.</div></div>`;
+  document.getElementById('gmail-list').innerHTML = html;
+  const live = all.filter(m=>!m.archived&&!m.deleted);
+  document.getElementById('inbox-label').textContent = `INBOX (${live.length})`;
+  const p = live.filter(m=>m.cat==='PERSONAL').length;
+  document.getElementById('account-label').textContent = `${p} PERSONAL · ${live.length-p} WORK`;
+}
+function gmailRow(m){
+  const col=avColor(m.from), sel=state.selected.has(m.id);
+  let cls='msg-row'; if(m.unread)cls+=' unread'; if(importantGmail(m))cls+=' needs-attention'; if(sel)cls+=' selected';
+  const tags = (m.needsReply?`<span class="msg-tag reply">Needs Reply</span>`:'') + `<span class="msg-tag ${m.cat==='PERSONAL'?'personal':'work2'}">${esc(m.cat)}</span>`;
+  return `<div class="${cls}" id="row-${m.id}" data-id="${m.id}" onclick="openGmail('${m.id}')">
+    <div class="msg-cb" onclick="toggleSel(event,'${m.id}')">✓</div><div class="msg-dot"></div>
+    <div class="msg-av${m.isVIP?' vip':''}" style="background:${col}1f;color:${col}">${esc(initials(m.from))}</div>
+    <div class="msg-body"><div class="msg-r1"><span class="msg-sender">${esc(m.from)}</span>${tags}<span class="msg-time">${esc(m.time)}</span></div>
+      <div class="msg-subject">${esc(m.subject)}</div><div class="msg-preview">${esc(m.preview)}</div></div>
+    <div class="hover-acts" onclick="event.stopPropagation()">
+      <button class="hact" onclick="archiveMsg('${m.id}')" title="Archive">📥</button>
+      <button class="hact" onclick="snoozeMsg('${m.id}',event)" title="Snooze">⏰</button>
+      <button class="hact del" onclick="deleteMsg('${m.id}')" title="Delete">🗑</button></div></div>`;
+}
+
+function renderSlack(){
+  const d = state.cache.slack.data;
+  const el = document.getElementById('slack-list');
+  if (d && d.connected===false){ el.innerHTML = `<div class="empty"><div class="empty-icon">💬</div><div class="empty-title">Connect Slack</div><div class="empty-body">Add a Slack bot token (SLACK_BOT_TOKEN) and invite the bot to your channels to see messages here.</div></div>`; return; }
+  let channels = (d&&d.channels)||[];
+  if (state.filter==='unread') channels = channels.map(c=>({...c,messages:c.messages.filter(m=>m.unread)})).filter(c=>c.messages.length);
+  if (!channels.length){ el.innerHTML = `<div class="empty"><div class="empty-icon">💬</div><div class="empty-title">All caught up</div><div class="empty-body">No Slack messages.</div></div>`; return; }
+  el.innerHTML = channels.map(c=>{ const uc=c.messages.filter(m=>m.unread).length;
+    return `<div class="channel-group"><div class="channel-head">${esc(c.name)} ${uc?`<span class="cnt work" style="min-width:16px;height:16px">${uc}</span>`:''}</div>` +
+    c.messages.map(m=>`<div class="slack-msg${m.unread?' unread':''}" onclick="openSlack('${esc(m.id)}')">
+      <div class="slack-av" style="background:${m.senderColor}1f;color:${m.senderColor}">${esc(m.senderAvatar)}</div>
+      <div class="slack-meta"><div class="slack-top"><span class="slack-name">${esc(m.sender)}</span>${m.unread?`<span class="msg-tag work2">Unread</span>`:''}<span class="slack-time">${esc(m.time)}</span></div>
+      <div class="slack-text">${esc(m.text).replace(/@gretchen/gi,'<span class="slack-at">@gretchen</span>')}</div></div></div>`).join('') + `</div>`;
+  }).join('');
+}
+
+function renderNotion(){
+  const list = state.cache.notion.data || [];
+  const el = document.getElementById('notion-list');
+  if (!list.length){ el.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">No new comments</div><div class="empty-body">Team comments from recent projects &amp; tasks will appear here.</div></div>`; return; }
+  el.innerHTML = `<div class="section-head urgent">Team Comments &nbsp;(${list.length})</div>` + list.map(n=>`
+    <div class="notion-comment${n.unread?' unread':''}" onclick="openNotion('${esc(n.id)}')">
+      <div class="notion-av" style="background:${n.commenterColor}1f;color:${n.commenterColor}">${esc(n.commenterInitials)}</div>
+      <div class="notion-meta"><div class="notion-page-chip">📄 ${esc(n.pageTitle)}</div>
+      <div class="notion-top"><span class="notion-name">${esc(n.commenter)}</span><span class="notion-time">${esc(n.time)}</span></div>
+      <div class="notion-text">${esc(n.text).replace(/@gretchen/gi,'<span class="notion-mention">@gretchen</span>')}</div></div></div>`).join('');
+}
+
+/* ── selection / bulk ── */
+function toggleSel(e,id){ e.stopPropagation(); state.selected.has(id)?state.selected.delete(id):state.selected.add(id); updateSel(); renderGmail(); }
+function selectAll(){ const live=(state.cache.gmail.data||[]).filter(m=>!m.archived&&!m.deleted); if(state.selected.size===live.length){clearSel();return;} live.forEach(m=>state.selected.add(m.id)); updateSel(); renderGmail(); }
+function clearSel(){ state.selected.clear(); updateSel(); if(state.tab==='gmail') renderGmail(); }
+function updateSel(){ const bar=document.getElementById('bulk-bar'), cnt=document.getElementById('bulk-cnt'), btn=document.getElementById('sel-all-btn');
+  if(state.selected.size>0){ bar.classList.add('show'); cnt.textContent=`${state.selected.size} selected`; btn.textContent='✕ Deselect all'; } else { bar.classList.remove('show'); btn.textContent='☐ Select all'; } }
+function selItems(){ return [...state.selected].map(id=>{ const m=(state.cache.gmail.data||[]).find(x=>x.id===id); return {id, account:m?.account||'work'}; }); }
+async function bulkArchive(){ const items=selItems(), n=items.length; items.forEach(i=>{const m=findG(i.id); if(m)m.archived=true;}); clearSel(); renderGmail(); toast(`📥 ${n} archived`);
+  try{ await fetch('/api/comms/messages/archive-batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})}); }catch{} }
+async function bulkDelete(){ const items=selItems(), n=items.length; items.forEach(i=>{const m=findG(i.id); if(m)m.deleted=true;}); clearSel(); renderGmail(); toast(`🗑 ${n} deleted`);
+  try{ await fetch('/api/comms/messages/trash-batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})}); }catch{} }
+function bulkMarkRead(){ state.selected.forEach(id=>{const m=findG(id); if(m)m.unread=false;}); clearSel(); renderGmail(); toast('✓ Marked as read'); }
+const findG = (id)=>(state.cache.gmail.data||[]).find(m=>m.id===id);
+
+/* ── quick actions ── */
+async function archiveMsg(id){ const m=findG(id); if(m)m.archived=true; renderGmail(); updateBadges(); toast('📥 Archived');
+  try{ await fetch(`/api/comms/message/${id}/archive`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account:m?.account})}); }catch{} }
+async function deleteMsg(id){ const m=findG(id); if(m)m.deleted=true; renderGmail(); updateBadges(); toast('🗑 Deleted');
+  try{ await fetch(`/api/comms/message/${id}?account=${encodeURIComponent(m?.account||'work')}`,{method:'DELETE'}); }catch{} }
+function snoozeMsg(id,e){ if(e)e.stopPropagation(); state.snoozeTarget=id; openSnooze(); }
+
+/* ── detail panel ── */
+function showPanel(){ closeReply(); const ol=document.getElementById('detail-overlay'); ol.classList.remove('open'); void ol.offsetWidth; setTimeout(()=>ol.classList.add('open'), 16); }
+function setAv(elId, name){ const col=avColor(name), av=document.getElementById(elId); av.textContent=initials(name); av.style.background=col+'1f'; av.style.color=col; }
+function maybeCloseDetail(e){ if(e.target===document.getElementById('detail-overlay')) closeDetail(); }
+function closeDetail(){ document.getElementById('detail-overlay').classList.remove('open'); state.openId=null; state.openSrc=null; detail=null; }
+
+async function openGmail(id){
+  const m=findG(id); if(!m) return; m.unread=false; state.openId=id; state.openSrc='gmail';
+  document.getElementById('dp-acts').style.display=''; document.getElementById('dp-subject').textContent=m.subject;
+  document.getElementById('dp-badges').innerHTML = (m.needsReply?`<span class="msg-tag reply">Needs Reply</span>`:'')+`<span class="msg-tag ${m.cat==='PERSONAL'?'personal':'work2'}">${esc(m.cat)}</span>`;
+  document.getElementById('dp-from').textContent=m.from; document.getElementById('dp-email').textContent=m.email; document.getElementById('dp-date').textContent=m.time+' ago';
+  setAv('dp-av', m.from);
+  document.getElementById('dp-body-text').innerHTML = '<p style="color:var(--text-3)">Loading…</p>';
+  showPanel(); renderGmail(); updateBadges();
+  try {
+    const r = await fetch(`/api/comms/message/${id}?account=${encodeURIComponent(m.account||'work')}`); const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    detail = d;
+    const safe = d.bodyHtml ? sanitize(d.bodyHtml) : (d.bodyText? esc(d.bodyText).split('\n').filter(Boolean).map(l=>`<p>${l}</p>`).join('') : '<p>(no content)</p>');
+    document.getElementById('dp-body-text').innerHTML = safe + `<a class="open-external" href="${esc(m.url)}" target="_blank">↗ Open in Gmail</a>`;
+  } catch(e){ document.getElementById('dp-body-text').innerHTML = `<p style="color:var(--red)">Couldn't load message: ${esc(e.message)}</p>`; }
+}
+function openSlack(id){ const ch=(state.cache.slack.data?.channels||[]); let m; for(const c of ch){ const f=c.messages.find(x=>x.id===id); if(f){m=f;break;} } if(!m)return;
+  m.unread=false; state.openId=id; state.openSrc='slack'; detail=m;
+  document.getElementById('dp-acts').style.display='none';
+  document.getElementById('dp-subject').textContent = m.channelName||'Slack'; document.getElementById('dp-badges').innerHTML=`<span class="msg-tag work2">Slack</span>`;
+  document.getElementById('dp-from').textContent=m.sender; document.getElementById('dp-email').textContent=m.channelName; document.getElementById('dp-date').textContent=m.time+' ago';
+  setAv('dp-av', m.sender);
+  document.getElementById('dp-body-text').innerHTML = esc(m.text).split('\n').filter(Boolean).map(l=>`<p>${l.replace(/@gretchen/gi,'<span class="notion-mention">@gretchen</span>')}</p>`).join('');
+  showPanel(); renderSlack(); updateBadges();
+}
+function openNotion(id){ const n=(state.cache.notion.data||[]).find(x=>x.id===id); if(!n)return;
+  n.unread=false; state.openId=id; state.openSrc='notion'; detail=n;
+  document.getElementById('dp-acts').style.display='none';
+  document.getElementById('dp-subject').textContent=n.pageTitle; document.getElementById('dp-badges').innerHTML=`<span class="msg-tag work2">Notion Comment</span>`;
+  document.getElementById('dp-from').textContent=n.commenter; document.getElementById('dp-email').textContent='Notion'; document.getElementById('dp-date').textContent=n.time+' ago';
+  setAv('dp-av', n.commenter);
+  document.getElementById('dp-body-text').innerHTML = esc(n.text).split('\n').filter(Boolean).map(l=>`<p>${l.replace(/@gretchen/gi,'<span class="notion-mention">@gretchen</span>')}</p>`).join('')
+    + (n.notionUrl?`<a class="open-external" href="${esc(n.notionUrl)}" target="_blank">↗ Open in Notion</a>`:'');
+  showPanel(); renderNotion(); updateBadges();
+}
+function navMsg(dir){ if(state.openSrc!=='gmail'||!state.openId) return; const live=(state.cache.gmail.data||[]).filter(m=>!m.archived&&!m.deleted); const i=live.findIndex(m=>m.id===state.openId); const nx=live[i+dir]; if(nx) openGmail(nx.id); }
+
+/* detail actions */
+function archiveDetail(){ if(state.openSrc==='gmail'&&state.openId) archiveMsg(state.openId); closeDetail(); }
+function deleteDetail(){ if(state.openSrc==='gmail'&&state.openId) deleteMsg(state.openId); closeDetail(); }
+function snoozeDetail(){ state.snoozeTarget=state.openId; openSnooze(); }
+
+/* ── minimal HTML sanitizer (no library) ── */
+function sanitize(html){
+  const allowed = new Set(['P','BR','B','I','EM','STRONG','UL','OL','LI','A','BLOCKQUOTE','DIV','SPAN']);
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll('script,style,iframe,object,embed,link,meta,head,title,img').forEach(n=>n.remove());
+  const walk = (node) => {
+    [...node.children].forEach(el=>{
+      walk(el);
+      if (!allowed.has(el.tagName)) { el.replaceWith(...el.childNodes); return; }
+      [...el.attributes].forEach(a=>{ const ok = el.tagName==='A' && a.name==='href' && /^(https?:|mailto:)/i.test(a.value); if(!ok) el.removeAttribute(a.name); });
+      if (el.tagName==='A'){ el.setAttribute('target','_blank'); el.setAttribute('rel','noopener'); }
+    });
+  };
+  walk(doc.body);
+  return doc.body.innerHTML;
+}
+
+/* ── reply composer ── */
+function openReply(){ document.getElementById('reply-box').classList.add('open'); document.getElementById('reply-ta').focus(); }
+function closeReply(){ const rb=document.getElementById('reply-box'); rb.classList.remove('open'); document.getElementById('reply-ta').value=''; document.getElementById('ai-loading').classList.remove('show'); document.getElementById('ai-btn').disabled=false; }
+async function genReply(){
+  if(state.openSrc!=='gmail'||!detail) { toast('AI reply is available for email'); return; }
+  const aiBtn=document.getElementById('ai-btn'), loader=document.getElementById('ai-loading'), ta=document.getElementById('reply-ta');
+  aiBtn.disabled=true; loader.classList.add('show'); ta.value='';
+  try {
+    const r = await fetch('/api/comms/draft-reply',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ subject:detail.subject, from:detail.from?.name||detail.from, bodyText:detail.bodyText||'' })});
+    const d = await r.json(); if(d.error) throw new Error(d.error);
+    ta.value = d.draft || ''; ta.focus();
+  } catch(e){ toast("Couldn't generate reply"); }
+  loader.classList.remove('show'); aiBtn.disabled=false;
+}
+async function sendReply(){
+  const txt=document.getElementById('reply-ta').value.trim(); if(!txt||!detail) return;
+  closeReply();
+  try {
+    const r = await fetch('/api/comms/reply',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ threadId:detail.threadId, to:detail.from?.email||detail.fromEmail, subject:detail.subject, body:txt, messageId:detail.messageId, references:detail.references, account:detail.account })});
+    const d = await r.json(); if(d.error) throw new Error(d.error);
+    const m=findG(state.openId); if(m){ m.needsReply=false; m.unread=false; }
+    closeDetail(); renderGmail(); updateBadges(); toast('✅ Reply sent');
+  } catch(e){ toast("Send failed: "+e.message); }
+}
+
+/* ── snooze ── */
+function openSnooze(){ const now=Date.now();
+  document.getElementById('sz-1h').textContent=new Date(now+3600000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('sz-3h').textContent=new Date(now+10800000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('snooze-overlay').classList.add('open'); }
+function closeSnooze(){ document.getElementById('snooze-overlay').classList.remove('open'); state.snoozeTarget=null; }
+function doSnooze(p){ const now=Date.now(); const map={'1h':now+3600000,'3h':now+10800000,'tomorrow-am':wake(8),'tomorrow-pm':wake(14),'next-week':wake(8,7)};
+  const id=state.snoozeTarget; closeSnooze();
+  if(id){ setSnooze(id, map[p]||now+3600000); const m=findG(id); if(m)m.archived=true; const n=(state.cache.notion.data||[]).find(x=>x.id===id); render(); }
+  const labels={'1h':'1 hour','3h':'3 hours','tomorrow-am':'tomorrow morning','tomorrow-pm':'tomorrow afternoon','next-week':'next Monday'};
+  toast(`⏰ Snoozed until ${labels[p]||p}`); }
+function wake(hour, addDays=1){ const d=new Date(); d.setDate(d.getDate()+addDays); d.setHours(hour,0,0,0); return d.getTime(); }
+
+/* ── badges ── */
+function updateBadges(){
+  const g=(state.cache.gmail.data||[]).filter(m=>m.unread&&!m.archived&&!m.deleted);
+  const gNeeds=g.some(m=>importantGmail(m));
+  const gc=document.getElementById('g-cnt'); gc.textContent=g.length; gc.className='cnt '+(gNeeds?'red':'')+(g.length?'':' none');
+  const sd=state.cache.slack.data; const su=sd&&sd.channels?sd.channels.reduce((a,c)=>a+c.messages.filter(m=>m.unread).length,0):0;
+  const sc=document.getElementById('s-cnt'); sc.textContent=su; sc.className='cnt work'+(su?'':' none');
+  const nu=(state.cache.notion.data||[]).filter(n=>n.unread).length;
+  const nc=document.getElementById('n-cnt'); nc.textContent=nu; nc.className='cnt'+(nu?'':' none');
+}
+
+/* ── swipe (mobile) ── */
+let tx0=0,ty0=0,trow=null;
+document.addEventListener('touchstart',e=>{ tx0=e.touches[0].clientX; ty0=e.touches[0].clientY; trow=e.target.closest('.msg-row'); },{passive:true});
+document.addEventListener('touchmove',e=>{ if(!trow)return; const dx=e.touches[0].clientX-tx0, dy=e.touches[0].clientY-ty0; if(Math.abs(dy)>Math.abs(dx)){trow=null;return;} trow.classList.toggle('swiping-right',dx>30); trow.classList.toggle('swiping-left',dx<-30); },{passive:true});
+document.addEventListener('touchend',e=>{ if(!trow)return; trow.classList.remove('swiping-right','swiping-left'); const dx=e.changedTouches[0].clientX-tx0, dy=e.changedTouches[0].clientY-ty0; if(Math.abs(dx)<60||Math.abs(dy)>Math.abs(dx)){trow=null;return;} const id=trow.dataset.id; if(dx>0) archiveMsg(id); else snoozeMsg(id,null); trow=null; },{passive:true});
+
+/* ── keyboard ── */
+document.addEventListener('keydown',e=>{ if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT') return;
+  if(e.key==='Escape'){ if(document.getElementById('snooze-overlay').classList.contains('open')) closeSnooze(); else closeDetail(); return; }
+  if(!state.openId) return; const k=e.key.toLowerCase();
+  if(k==='e'){ archiveDetail(); e.preventDefault(); } if(k==='#'){ deleteDetail(); e.preventDefault(); }
+  if(k==='r'){ openReply(); e.preventDefault(); } if(k==='s'){ snoozeDetail(); e.preventDefault(); }
+  if(k==='arrowdown'){ navMsg(1); e.preventDefault(); } if(k==='arrowup'){ navMsg(-1); e.preventDefault(); }
+});
+
+/* ── init: preload all three so badges populate ── */
+loadTab('gmail');
+fetch('/api/messages/slack').then(r=>r.json()).then(d=>{ state.cache.slack.data=d; state.cache.slack.t=Date.now(); updateBadges(); }).catch(()=>{});
+fetch('/api/messages/notion-comments').then(r=>r.json()).then(d=>{ state.cache.notion.data=(d.comments||[]).filter(m=>!isSnoozed(m.id)); state.cache.notion.t=Date.now(); updateBadges(); }).catch(()=>{});
+</script>
 </body></html>
