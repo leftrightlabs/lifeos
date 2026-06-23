@@ -1715,11 +1715,31 @@ function showReschedule(i) {
   openDatePicker(row, ds => rescheduleTask(i, ds));
 }
 
+// The Today's Plan card visually holds the morning ritual, the task list, and the
+// evening ritual — so its "X of Y done" header tallies all three. This mirrors
+// renderRitual's visibility rules (morning hidden in personal mode; evening
+// filtered by mode) so the count matches exactly what's checkable on screen.
+function ritualVisibleCount() {
+  let done = 0, total = 0;
+  if (!CAN_PERSONAL) return { done, total };
+  if (state.mode !== 'personal') {
+    const m = rituals.morning.items;
+    total += m.length; done += m.filter(it => it.done).length;
+  }
+  const ev = state.mode !== 'all'
+    ? rituals.evening.items.filter(it => it.type === state.mode || !it.type)
+    : rituals.evening.items;
+  total += ev.length; done += ev.filter(it => it.done).length;
+  return { done, total };
+}
+
 function renderPlan() {
   const today = todayISO();
   const visible = state.mode === 'all' ? plan : plan.filter(t => t.type === state.mode || !t.type);
-  const doneCt  = visible.filter(p => p.done).length;
-  document.getElementById('planCount').textContent = `· ${doneCt} of ${visible.length} done`;
+  const rc = ritualVisibleCount();
+  const doneCt  = visible.filter(p => p.done).length + rc.done;
+  const totalCt = visible.length + rc.total;
+  document.getElementById('planCount').textContent = `· ${doneCt} of ${totalCt} done`;
   const shown = state.hideDone ? visible.filter(t => !t.done) : visible;
   const actionable = shown.filter(t => t.status !== 'Waiting');
   const waiting = shown.filter(t => t.status === 'Waiting');
@@ -2086,6 +2106,7 @@ function toggleRitual(which, i) {
     if (it.apiKey) fetch('/api/journal/today', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ [it.apiKey]: null }) }).catch(() => {});
   }
   renderRitual(which);
+  renderPlan();              // keep the Today's Plan header count in sync
   syncRitualToServer(which);
 }
 
@@ -2099,6 +2120,7 @@ function saveRitualInput(which, i, rawValue) {
   it.done = true;
   if (it.apiKey) fetch('/api/journal/today', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ [it.apiKey]: v }) }).catch(() => {});
   renderRitual(which);
+  renderPlan();              // keep the Today's Plan header count in sync
   syncRitualToServer(which);
 }
 
