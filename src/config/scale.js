@@ -32,3 +32,37 @@ export const SCORECARD_SOURCES = [
   'Speaking Stages Pitched',
   'Speaking Stages Touchpoints',
 ];
+
+// Scorecard Source → leading/lagging display type (BUILD-SPEC §7). A leading
+// metric is an input the CEO can push this week; lagging is the outcome.
+export const SCORECARD_SOURCE_TYPE = {
+  'Convert Touchpoints': 'leading',
+  'Convert Deals Won': 'lagging',
+  'Speaking Stages Booked': 'lagging',
+  'Speaking Stages Pitched': 'leading',
+  'Speaking Stages Touchpoints': 'leading',
+  'Xero Revenue': 'lagging',
+  'Xero Profit': 'lagging',
+  'Xero Cash Capacity': 'lagging',
+  Manual: 'lagging',
+};
+
+// --- PULSE: IDS issue queue (ISSUES [DB]) ---
+// The build spec lists the *database* id (2ce458f08cd980fb9eb6e194e9122386); the
+// Notion API's dataSources.query needs the *data source* id, which differs — it's
+// the collection id resolved from that database.
+export const ISSUES_DS = '2ce458f0-8cd9-808a-92d3-000be8dd7983';
+// Statuses that belong in the IDS queue, and the priority ordering for it.
+export const ISSUE_QUEUE_STATUSES = ['Current', 'Agenda'];
+export const ISSUE_PRIORITY_RANK = { URGENT: 3, HIGH: 2, NORMAL: 1, LOW: 0 };
+
+// --- VTO: Quarterly Rocks (WORK PROJECTS [DB], ROCK checkbox) ---
+// Status thresholds from a rock's % complete (BUILD-SPEC §9).
+export function rockStatusFromPct(pct) {
+  if (pct == null) return 'notStarted';
+  if (pct >= 100) return 'complete';
+  if (pct >= 70) return 'onTrack';
+  if (pct >= 40) return 'atRisk';
+  if (pct > 0) return 'offTrack';
+  return 'notStarted';
+}

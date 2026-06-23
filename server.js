@@ -3010,6 +3010,7 @@ const XERO_SCOPES = [
   'accounting.contacts.read',
   'accounting.banktransactions.read',
   'accounting.invoices.read',   // NEW: invoices + bills (Type=ACCPAY) — Scale overdue nudges
+  'accounting.transactions.read', // NEW: Quotes (accepted + open) — Scale revenue projection
 ];
 
 let _xeroAccess = { token: null, exp: 0 };
@@ -3411,6 +3412,34 @@ app.get('/api/finance/xero', async (_req, res) => {
   }
 });
 
+// Xero Quotes for the Scale revenue projection: accepted (committed) + sent
+// (open pipeline). Requires the accounting.transactions.read scope — re-authorize
+// at /auth/xero after this ships, or the call 403s and the projection degrades to
+// recurring-only. Returns null on any failure so the caller can fall back.
+async function computeXeroQuotes() {
+  try {
+    const norm = (qs) => (qs || []).map((q) => ({
+      total: Number(q.Total) || 0,
+      // ExpiryDate drives which quarter accepted revenue lands in (BUILD-SPEC §3B).
+      expiryDate: q.ExpiryDate ? String(q.ExpiryDate).slice(0, 10) : null,
+      date: q.Date ? String(q.Date).slice(0, 10) : null,
+    }));
+    const [acc, sent] = await Promise.all([
+      xeroGet('/api.xro/2.0/Quotes', { Status: 'ACCEPTED' }).catch((e) => { console.error('[xero] Quotes ACCEPTED failed:', e.message); return null; }),
+      xeroGet('/api.xro/2.0/Quotes', { Status: 'SENT' }).catch((e) => { console.error('[xero] Quotes SENT failed:', e.message); return null; }),
+    ]);
+    if (!acc && !sent) return null; // scope likely not granted yet
+    return {
+      accepted: norm(acc?.Quotes),
+      open: norm(sent?.Quotes),
+      asOf: new Date().toISOString(),
+    };
+  } catch (err) {
+    console.error('[xero] quotes error:', err.message);
+    return null;
+  }
+}
+
 const VTO_SCORECARD_DS = 'c359c68c-02bb-4fae-b4cb-3a512e5eafab';
 
 async function fetchVtoGoals() {
@@ -3620,7 +3649,10 @@ function dashifyId(id) {
 const { MARKETING_ASSETS_DS, fetchMarketingChannelMap, serializeMarketingAsset } =
   registerAttractRoutes(app, { notion, cache, cached, currentQuarter, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, anthropic, userContext });
 registerWealthRoutes(app, { cached, cache, userContext });
-registerScaleRoutes(app, { notion, cached, computeXeroFinance, chicagoToday });
+registerScaleRoutes(app, {
+  notion, cached, clearCached, computeXeroFinance, computeXeroQuotes, chicagoToday, currentQuarter,
+  WORK_PROJECTS_DS, WORK_TASKS_DS,
+});
 registerLegoRoutes(app, { notion, cache, cached, userContext });
 
 // ===== Deliver domain — wired sections (offers + care-plan renewals); project sections render client-side =====

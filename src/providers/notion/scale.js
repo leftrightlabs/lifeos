@@ -1,7 +1,15 @@
-// Scale zone — Notion data-access seam for the Business Functions ("systems") DB
-// and the VTO Scorecard (targets scored against live systems).
-// Swappable: a non-Notion provider would expose the same serialized shape.
-import { BUSINESS_FUNCTIONS_DS, VTO_SCORECARD_DS } from '../../config/scale.js';
+// Scale zone — Notion data-access seam for the Business Functions ("systems") DB,
+// the VTO Scorecard (targets scored against live systems), the IDS issue queue,
+// and the quarterly Rocks. Swappable: a non-Notion provider would expose the
+// same serialized shapes.
+import {
+  BUSINESS_FUNCTIONS_DS,
+  VTO_SCORECARD_DS,
+  ISSUES_DS,
+  ISSUE_QUEUE_STATUSES,
+  ISSUE_PRIORITY_RANK,
+  rockStatusFromPct,
+} from '../../config/scale.js';
 
 const txt = (rt) => (rt && rt.length ? rt.map((t) => t.plain_text).join('') : '');
 
@@ -44,6 +52,7 @@ export function serializeBusinessFunction(page) {
     func: p.Function?.select?.name || null,
     impact: p['Impact Score']?.number ?? null,
     effort: p['Effort to Fix']?.number ?? null,
+    maturity: p['Maturity Score']?.formula?.number ?? p['Maturity Score']?.number ?? null,
     owner: p.Owner?.people?.[0]?.name || null,
     nextActions: txt(p['Next Actions']?.rich_text),
     whatsMissing: txt(p["What's Missing"]?.rich_text),
@@ -65,4 +74,103 @@ export async function fetchBusinessFunctions(notion) {
     cursor = res.has_more ? res.next_cursor : undefined;
   } while (cursor);
   return out;
+}
+
+// ── PULSE: IDS issue queue ──
+export function serializeIssue(page) {
+  const p = page.properties || {};
+  const priority = p.Priority?.select?.name || null;
+  return {
+    id: page.id,
+    notionUrl: page.url,
+    name: txt(p['Task Name']?.title) || txt(p.Name?.title) || '(untitled)',
+    status: p.Status?.status?.name || p.Status?.select?.name || null,
+    priority,
+    assigned: (p.Assigned?.people || []).map((u) => u.name).filter(Boolean).join(', ') || null,
+    due: p.Due?.date?.start || null,
+  };
+}
+
+// Open IDS-queue issues (Current/Agenda), sorted URGENT → HIGH → NORMAL.
+export async function fetchIssues(notion) {
+  if (!notion) return [];
+  const res = await notion.dataSources.query({
+    data_source_id: ISSUES_DS,
+    filter: { or: ISSUE_QUEUE_STATUSES.map((s) => ({ property: 'Status', status: { equals: s } })) },
+    page_size: 50,
+  });
+  const issues = res.results.map(serializeIssue);
+  issues.sort((a, b) => (ISSUE_PRIORITY_RANK[b.priority] || 0) - (ISSUE_PRIORITY_RANK[a.priority] || 0));
+  return issues;
+}
+
+// ── VTO: quarterly Rocks ──
+// Reads % complete from the Progress formula when present; otherwise derives it
+// from milestone completion (BUILD-SPEC §9). Milestones are fetched per-rock
+// (there are only a handful), giving us the "next action" line too.
+export function serializeRock(page) {
+  const p = page.properties || {};
+  let pct = null;
+  const pf = p.Progress?.formula;
+  if (pf) {
+    if (typeof pf.number === 'number') pct = pf.number <= 1 ? Math.round(pf.number * 100) : Math.round(pf.number);
+    else if (pf.string) { const n = parseFloat(pf.string); if (!Number.isNaN(n)) pct = n <= 1 ? Math.round(n * 100) : Math.round(n); }
+  }
+  return {
+    id: page.id,
+    notionUrl: page.url,
+    name: txt(p.Name?.title) || '(untitled)',
+    owner: p.Assigned?.people?.[0]?.name || null,
+    function: p.Function?.select?.name || null,
+    status: p.Status?.status?.name || null,
+    deadline: p['Target Deadline']?.date?.start || p['Target Deadline']?.date?.end || p.Due?.date?.start || null,
+    pct,
+  };
+}
+
+export async function fetchRocks(notion, { projectsDs, tasksDs, projectPropName = 'Project' }) {
+  if (!notion) return [];
+  let res;
+  try {
+    res = await notion.dataSources.query({
+      data_source_id: projectsDs,
+      filter: { property: 'ROCK', checkbox: { equals: true } },
+      page_size: 50,
+    });
+  } catch (err) {
+    console.error('scale rocks query failed:', err.message);
+    return [];
+  }
+  return Promise.all(res.results.map(async (page) => {
+    const rock = serializeRock(page);
+    // Milestone sub-tasks → fallback % + next action.
+    let milestones = [];
+    try {
+      const t = await notion.dataSources.query({
+        data_source_id: tasksDs,
+        filter: { and: [
+          { property: projectPropName, relation: { contains: page.id } },
+          { property: 'Milestone', checkbox: { equals: true } },
+        ] },
+        sorts: [{ property: 'Due', direction: 'ascending' }, { timestamp: 'created_time', direction: 'ascending' }],
+        page_size: 100,
+      });
+      milestones = t.results.map((m) => ({
+        name: m.properties.Name?.title?.[0]?.plain_text || '(untitled)',
+        done: m.properties.Status?.status?.name === 'Done',
+      }));
+    } catch (err) {
+      console.error(`scale rock milestones (${page.id}) failed:`, err.message);
+    }
+    const total = milestones.length;
+    const done = milestones.filter((m) => m.done).length;
+    if (rock.pct == null && total > 0) rock.pct = Math.round((done / total) * 100);
+    if (rock.pct == null) rock.pct = 0;
+    const nextMs = milestones.find((m) => !m.done);
+    rock.nextAction = nextMs ? nextMs.name : null;
+    rock.milestonesDone = done;
+    rock.milestonesTotal = total;
+    rock.statusKey = rockStatusFromPct(rock.pct);
+    return rock;
+  }));
 }
