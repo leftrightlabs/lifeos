@@ -1118,23 +1118,40 @@ function markDone() {
   renderStreaks();
 }
 
+function _patchPersonalTask(body) {
+  if (!_personalOneThingTask?.id) { console.warn('[today] _personalOneThingTask has no id — PATCH skipped', _personalOneThingTask); return; }
+  fetch('/api/tasks/' + _personalOneThingTask.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) })
+    .then(r => { if (!r.ok) r.json().then(e => console.error('[today] task PATCH failed:', e.error || e)).catch(() => {}); })
+    .catch(e => console.error('[today] task PATCH error:', e));
+}
+function _syncPlanStatus(id, status) {
+  if (!id) return;
+  const t = plan.find(p => p.id === id);
+  if (!t) return;
+  t.status = status;
+  t.done = status === 'Done';
+  renderPlan();
+}
 function markPersonalDone() {
   state.personalOneThing = 'done';
   state.lifeStreak += 1;
   state.lifeSatisfied = true;
-  if (_personalOneThingTask?.id) fetch('/api/tasks/' + _personalOneThingTask.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'Done' }) }).catch(() => {});
+  _patchPersonalTask({ status: 'Done' });
+  _syncPlanStatus(_personalOneThingTask?.id, 'Done');
   renderOneThing();
   renderStreaks();
   fireConfetti();
 }
 function setPersonalOneThingStatus(status) {
   state.personalOneThing = status.toLowerCase();
-  if (_personalOneThingTask?.id) fetch('/api/tasks/' + _personalOneThingTask.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status }) }).catch(() => {});
+  _patchPersonalTask({ status });
+  _syncPlanStatus(_personalOneThingTask?.id, status);
   renderOneThing();
 }
 function undoPersonalDone() {
   state.personalOneThing = null;
-  if (_personalOneThingTask?.id) fetch('/api/tasks/' + _personalOneThingTask.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'Doing' }) }).catch(() => {});
+  _patchPersonalTask({ status: 'Doing' });
+  _syncPlanStatus(_personalOneThingTask?.id, 'Doing');
   renderOneThing();
   renderStreaks();
 }
