@@ -146,11 +146,6 @@ body {
 .chev { font-size: 9px; color: var(--text-4); transition: transform .2s; flex-shrink: 0; }
 .t-card.collapsed .chev { transform: rotate(-90deg); }
 .t-card.collapsed .t-body { display: none; }
-/* Section-wrap: bare collapsible row — no card background (streak/onething have their own) */
-.section-wrap.collapsed .chev { transform: rotate(-90deg); }
-.section-wrap.collapsed .t-body { display: none; }
-.section-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; padding-bottom: 10px; }
-.section-toggle .sec-title { font-size: var(--fs-caption); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
 /* streak strip now lives at the top of the main column (≈2/3 width) */
 .streak-strip { padding: 0; }
 
@@ -558,7 +553,7 @@ html.light .footer-stamp { color: var(--text-3); }
   .onething-title { font-size: var(--fs-title); }
   .btn-go, .btn-ghost, .btn-done { width: 100%; }
   .onething-actions { flex-direction: column; align-items: stretch; }
-  .streak-strip { padding: 14px 0 0; }
+  .streak-strip { padding: 0; }
   .nav-domain { display: none; }
   .wk-message { font-size: var(--fs-heading); }
   .wk-emoji { font-size: var(--fs-giant); }
@@ -567,7 +562,7 @@ html.light .footer-stamp { color: var(--text-3); }
   .topbar { padding: 11px 14px; }
   .main-col { padding: 14px; }
   .greeting-zone { padding: 18px 14px 14px; }
-  .streak-strip { padding: 12px 0 0; }
+  .streak-strip { padding: 0; }
 }
 /* Loading gate — hide every live-data panel until the first data load resolves,
    so no seed/sample data flashes before the real data arrives. */
@@ -635,20 +630,24 @@ body.app-loading #appLoading { display: flex; }
   <div class="layout">
     <div class="main-col">
 
-      <div class="section-wrap" id="wrap-streaks" data-persist-key="streaks">
-        <div class="section-toggle" onclick="toggleCard(this)">
-          <span class="chev">▾</span>
-          <span class="sec-title" id="streaksToggleLabel">Streaks</span>
+      <div class="t-card" id="wrap-streaks" data-persist-key="streaks">
+        <div class="sec-head">
+          <div class="card-toggle" onclick="toggleCard(this)">
+            <span class="chev">▾</span>
+            <div class="sec-title" id="streaksToggleLabel">Streaks</div>
+          </div>
         </div>
         <div class="t-body">
           <div class="streak-strip" id="streakStrip"></div>
         </div>
       </div>
 
-      <div class="section-wrap" id="wrap-onething" data-persist-key="onething">
-        <div class="section-toggle" onclick="toggleCard(this)">
-          <span class="chev">▾</span>
-          <span class="sec-title">The One Thing</span>
+      <div class="t-card" id="wrap-onething" data-persist-key="onething">
+        <div class="sec-head">
+          <div class="card-toggle" onclick="toggleCard(this)">
+            <span class="chev">▾</span>
+            <div class="sec-title">The One Thing</div>
+          </div>
         </div>
         <div class="t-body">
           <div id="oneThingArea"></div>
@@ -1377,7 +1376,7 @@ function openInNotion(i) {
 // Collapse/expand a card or section-wrap. Persists state keyed by today's date
 // so collapsed sections auto-reopen the next day.
 function toggleCard(el) {
-  const c = el.closest('.t-card, .section-wrap');
+  const c = el.closest('.t-card');
   if (!c) return;
   c.classList.toggle('collapsed');
   const key = c.dataset.persistKey;
