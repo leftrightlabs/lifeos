@@ -977,29 +977,35 @@ function renderOneThing() {
 
   if (state.mode === 'personal') {
     if (state.personalOneThing === 'done') {
+      const tname = _personalOneThingTask?.name || 'task';
       area.innerHTML = `
         <div class="onething completed" id="otCard" style="border-left-color:var(--teal);">
           <div class="onething-label" style="color:var(--teal);">✦ Done — that was the big one</div>
-          <div class="payoff">
-            <div class="payoff-check" style="background:var(--teal-soft);color:var(--teal);">✓</div>
-            <div class="payoff-text">
-              <div class="payoff-title">Swim logged 🎉</div>
-              <div class="payoff-sub">Life streak → <strong style="color:var(--teal);">${state.lifeStreak} days</strong> · Swim 3×/week moved forward · Life streak locked in.</div>
-            </div>
+          <div class="onething-why" style="margin:6px 0 14px;">Life streak → <strong style="color:var(--teal);">${state.lifeStreak} days</strong> · ${escName(tname)} marked complete.</div>
+          <div class="onething-actions">
+            <button class="btn-ghost" style="font-size:var(--fs-caption);padding:8px 14px;" onclick="undoPersonalDone()">↩ Undo</button>
           </div>
           <div class="onething-orb" style="background:radial-gradient(circle,rgba(56,189,248,.1) 0%,transparent 70%);"></div>
         </div>`;
       return;
     }
-    if (state.personalOneThing === 'skipped') {
+    if (state.personalOneThing === 'doing' || state.personalOneThing === 'waiting') {
+      const isDoing = state.personalOneThing === 'doing';
+      const tname = _personalOneThingTask?.name || 'task';
+      const msg = isDoing
+        ? `In progress — come back when you're ready to complete it.`
+        : `Marked as waiting — it'll resurface when you update its status.`;
+      const accent = isDoing ? 'var(--amber)' : 'var(--text-3)';
       area.innerHTML = `
-        <div class="onething" id="otCard" style="border-left-color:var(--teal);">
-          <div class="onething-label" style="color:var(--teal);">The one thing</div>
-          <div class="onething-why" style="margin:6px 0 16px;">Skipped for now — it'll be here when you're ready.</div>
+        <div class="onething" id="otCard" style="border-left-color:${accent};">
+          <div class="onething-label" style="color:${accent};">${isDoing ? '→ In progress' : '⏸ Waiting'}</div>
+          <div class="onething-title" style="font-size:var(--fs-body);margin-bottom:6px;">${escName(tname)}</div>
+          <div class="onething-why" style="margin:0 0 14px;">${msg}</div>
           <div class="onething-actions">
-            <button class="btn-ghost" onclick="state.personalOneThing=null;renderOneThing()">Show it again</button>
+            <button class="btn-go" style="background:var(--teal);color:#0A0D16;" onclick="markPersonalDone()">✓ Done now</button>
+            <button class="btn-ghost" style="font-size:var(--fs-caption);padding:8px 14px;" onclick="undoPersonalDone()">↩ Undo</button>
           </div>
-          <div class="onething-orb" style="background:radial-gradient(circle,rgba(56,189,248,.06) 0%,transparent 70%);"></div>
+          <div class="onething-orb"></div>
         </div>`;
       return;
     }
@@ -1022,7 +1028,8 @@ function renderOneThing() {
         <div class="onething-why">${ptWhy}</div>
         <div class="onething-actions">
           <button class="btn-go" style="background:var(--teal);color:#0A0D16;" onclick="markPersonalDone()">✓ I did this</button>
-          <button class="btn-ghost" onclick="state.personalOneThing='skipped';renderOneThing()">Not today</button>
+          <button class="btn-ghost" onclick="setPersonalOneThingStatus('Doing')">→ In progress</button>
+          <button class="btn-ghost" onclick="setPersonalOneThingStatus('Waiting')">⏸ Waiting</button>
         </div>
         <div class="onething-orb" style="background:radial-gradient(circle,rgba(56,189,248,.1) 0%,transparent 70%);"></div>
       </div>`;
@@ -1119,6 +1126,17 @@ function markPersonalDone() {
   renderOneThing();
   renderStreaks();
   fireConfetti();
+}
+function setPersonalOneThingStatus(status) {
+  state.personalOneThing = status.toLowerCase();
+  if (_personalOneThingTask?.id) fetch('/api/tasks/' + _personalOneThingTask.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status }) }).catch(() => {});
+  renderOneThing();
+}
+function undoPersonalDone() {
+  state.personalOneThing = null;
+  if (_personalOneThingTask?.id) fetch('/api/tasks/' + _personalOneThingTask.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'Doing' }) }).catch(() => {});
+  renderOneThing();
+  renderStreaks();
 }
 function startSnooze()  { state.oneThing = 'snoozing'; renderOneThing(); }
 function cancelSnooze() { state.oneThing = 'active';   renderOneThing(); }
