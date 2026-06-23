@@ -46,6 +46,12 @@ export function registerMessagesRoutes(app, { notion, cached, clearCached, getSl
         const auth = await slackApi(token, 'auth.test').catch((e) => { diag.errors.push('auth.test: ' + e.message); return null; });
         diag.authedAs = auth?.user; diag.team = auth?.team; diag.isBotToken = token.startsWith('xoxb');
         const myId = auth?.user_id;
+        // Slack echoes the token's actual granted scopes in this response header —
+        // the definitive way to see whether the read scopes were granted.
+        try {
+          const rr = await fetch('https://slack.com/api/auth.test', { headers: { Authorization: `Bearer ${token}` } });
+          diag.grantedScopes = rr.headers.get('x-oauth-scopes');
+        } catch (e) { diag.grantedScopes = 'header read failed: ' + e.message; }
 
         const userCache = new Map();
         const userName = async (uid) => {
