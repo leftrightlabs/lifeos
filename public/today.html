@@ -991,6 +991,18 @@ function renderOneThing() {
         </div>`;
       return;
     }
+    if (state.personalOneThing === 'skipped') {
+      area.innerHTML = `
+        <div class="onething" id="otCard" style="border-left-color:var(--teal);">
+          <div class="onething-label" style="color:var(--teal);">The one thing</div>
+          <div class="onething-why" style="margin:6px 0 16px;">Skipped for now — it'll be here when you're ready.</div>
+          <div class="onething-actions">
+            <button class="btn-ghost" onclick="state.personalOneThing=null;renderOneThing()">Show it again</button>
+          </div>
+          <div class="onething-orb" style="background:radial-gradient(circle,rgba(56,189,248,.06) 0%,transparent 70%);"></div>
+        </div>`;
+      return;
+    }
     if (!_personalOneThingTask) { area.innerHTML = oneThingEmpty('personal'); return; }
     let ptTitle, ptMeta, ptWhy;
     {
