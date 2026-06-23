@@ -3620,7 +3620,7 @@ registerScaleRoutes(app, { notion, cached, computeXeroFinance, chicagoToday });
 registerLegoRoutes(app, { notion, cache, cached, userContext });
 
 // ===== Deliver domain — wired sections (offers + care-plan renewals); project sections render client-side =====
-registerDeliverRoutes(app, { notion, cached, cache, userContext, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, GRETCHEN_USER_ID, currentNotionUserId, currentUser });
+registerDeliverRoutes(app, { notion, cached, cache, userContext, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, GRETCHEN_USER_ID, currentNotionUserId, currentUser, anthropic });
 
 // =========================== MOVE THE NEEDLE (Phase 0) ===========================
 // GET /api/needle/today — ONE ranked, cross-zone "what to do next" list. This is

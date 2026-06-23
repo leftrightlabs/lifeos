@@ -11,7 +11,7 @@ import {
 
 export function registerDeliverRoutes(app, ctx) {
   const { notion, cached, cache, userContext, chicagoTodayISODate,
-    chicagoDateNDaysAgo, dashifyId, GRETCHEN_USER_ID, currentNotionUserId, currentUser } = ctx;
+    chicagoDateNDaysAgo, dashifyId, GRETCHEN_USER_ID, currentNotionUserId, currentUser, anthropic } = ctx;
   const bust = (key) => { const u = userContext.getStore()?.user; cache.delete(u ? `${key}::${u.id || u.email}` : key); };
 
   // GET /api/deliver/offers — offer-ladder health: which rungs are live vs empty,
@@ -338,6 +338,46 @@ export function registerDeliverRoutes(app, ctx) {
     if (!taskId) return res.status(400).json({ error: 'taskId is required' });
     try {
       await notion.pages.update({ page_id: dashifyId(taskId), properties: { Status: { status: { name: 'Done' } } } });
+      bust('deliver-page');
+      res.json({ ok: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // ── Phase 2 actions (draft-first — nothing auto-sends) ──
+
+  // POST /api/deliver/draft { kind, taskName, projectName, waiting, days } → a
+  // copy-ready reminder (to a client) or nudge (to support) drafted by Claude.
+  app.post('/api/deliver/draft', async (req, res) => {
+    if (!anthropic) return res.status(503).json({ error: 'AI not configured' });
+    const { kind = 'reminder', taskName = '', projectName = '', waiting = '', days = null } = req.body || {};
+    try {
+      const ctxLines = [
+        `Task / deliverable: ${taskName || '(unnamed)'}`,
+        projectName ? `Project: ${projectName}` : '',
+        waiting ? `Currently waiting on: ${waiting}` : '',
+        days != null ? `Days stalled: ${days}` : '',
+      ].filter(Boolean);
+      const instr = kind === 'nudge'
+        ? 'Write a short, friendly internal Slack nudge to the support/contractor teammate who owns this task, gently checking on status and asking for an ETA. Casual, collegial, no pressure.'
+        : 'Write a short, warm reminder message to the CLIENT, nudging them on what we are waiting for so we can keep their project moving. Polite, professional, makes it easy for them to respond.';
+      const prompt = `You write for Left Right Labs, a brand + website design agency.\n\n${instr}\n\nContext:\n- ${ctxLines.join('\n- ')}\n\nRules: 3–5 sentences. Use a real, human tone. No subject line, no placeholders like [Name], no preamble — just the message text ready to paste and send.`;
+      const msg = await anthropic.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 400, messages: [{ role: 'user', content: prompt }] });
+      res.json({ kind, message: (msg.content?.[0]?.text || '').trim() });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // POST /api/deliver/mark-invoiced { taskId } → add "Invoiced" to the task's
+  // Invoice multi-select (preserving existing values). Reversible; the actual
+  // invoice is created by the user in Xero (read-only integration here).
+  app.post('/api/deliver/mark-invoiced', async (req, res) => {
+    if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+    const { taskId } = req.body || {};
+    if (!taskId) return res.status(400).json({ error: 'taskId is required' });
+    try {
+      const pg = await notion.pages.retrieve({ page_id: dashifyId(taskId) });
+      const cur = (pg.properties?.Invoice?.multi_select || []).map((o) => o.name);
+      const next = [...new Set([...cur, INVOICE_DONE])].map((name) => ({ name }));
+      await notion.pages.update({ page_id: dashifyId(taskId), properties: { Invoice: { multi_select: next } } });
       bust('deliver-page');
       res.json({ ok: true });
     } catch (err) { res.status(500).json({ error: err.message }); }

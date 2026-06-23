@@ -136,6 +136,7 @@ body:not([data-state]) .dv-content { display:none; }
 .modal-input, .modal-textarea { width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:9px 11px; font-family:var(--font-body); font-size:13px; color:var(--text); }
 .modal-input:focus, .modal-textarea:focus { outline:none; border-color:var(--zone); }
 .modal-textarea { resize:vertical; min-height:64px; }
+.gen-output { background:var(--surface-2); border:1px solid var(--border-soft); border-left:2px solid var(--zone); border-radius:0 var(--radius-sm) var(--radius-sm) 0; padding:12px 14px; font-size:13px; color:var(--text); line-height:1.6; white-space:pre-wrap; min-height:60px; }
 .modal-foot { padding:13px 18px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
 
 .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--surface-2); border:1px solid var(--border); color:var(--text); padding:10px 18px; border-radius:8px; font-size:13px; font-weight:600; z-index:999; transition:transform .25s,opacity .25s; opacity:0; pointer-events:none; display:flex; align-items:center; gap:8px; }
@@ -234,6 +235,22 @@ body:not([data-state]) .dv-content { display:none; }
   </div>
 </div>
 
+<!-- DRAFT MODAL (reminder / nudge) -->
+<div class="modal-overlay" id="draft-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="draft-title">Draft</h3><button class="modal-close" onclick="closeDraft()">×</button></div>
+    <div class="modal-body">
+      <div class="modal-sub" id="draft-sub"></div>
+      <div class="gen-output" id="draft-output">Drafting…</div>
+    </div>
+    <div class="modal-foot">
+      <a class="btn btn-ghost" id="draft-link" href="#" target="_blank" style="display:none">Open</a>
+      <button class="btn btn-ghost" id="draft-copy" onclick="copyDraft()" style="display:none">Copy</button>
+      <button class="btn btn-primary" onclick="closeDraft()">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"><span class="toast-dot"></span><span id="toast-text"></span></div>
 <a href="/" class="fab" title="Back to Today">⚡</a>
 
@@ -270,9 +287,9 @@ const A = {
   done: (t) => `<button class="miniact" onclick="markDone('${t.id}',this)">✓ Done</button>`,
   log: (t) => `<button class="miniact log" onclick='openLog("${t.id}",${JSON.stringify(t.name)})'>⏱ Log time</button>`,
   est: (t) => `<button class="miniact est" onclick='openEst("${t.id}",${JSON.stringify(t.name)})'>+ Add estimate</button>`,
-  nudge: () => `<button class="miniact" onclick="toast('Phase 2: nudge support via Slack')">💬 Nudge</button>`,
-  remind: () => `<button class="miniact" onclick="toast('Phase 2: send reminder')">✉ Send reminder</button>`,
-  bill: (t) => `<a class="miniact bill" href="${t.url}" target="_blank">→ Create invoice</a>`,
+  nudge: (t) => `<button class="miniact" onclick="openDraft('${t.id}','nudge')">💬 Nudge</button>`,
+  remind: (t) => `<button class="miniact" onclick="openDraft('${t.id}','reminder')">✉ Send reminder</button>`,
+  bill: (t) => `<button class="miniact bill" onclick="markInvoiced('${t.id}',this)">→ Create invoice</button>`,
   open: (t) => `<a class="miniact" href="${t.url}" target="_blank">→ Open</a>`,
 };
 function projRowHTML(p, opts = {}) {
@@ -336,13 +353,13 @@ function render() {
 
   const s = d.sections;
   renderRows('sec-comingdue', '⏰ Needs you now', 'Coming due', s.comingDue.length, 'red',
-    s.comingDue.map((t) => taskRowHTML(t, { showNoEst: true, actions: [t.est == null ? A.est(t) : A.log(t), t.outsourced ? A.nudge() : A.done(t)] })));
+    s.comingDue.map((t) => taskRowHTML(t, { showNoEst: true, actions: [t.est == null ? A.est(t) : A.log(t), t.outsourced ? A.nudge(t) : A.done(t)] })));
   renderRows('sec-atrisk', '📉 Protect the deadline', 'Projects at risk', s.atRisk.length, 'red',
     s.atRisk.map((pp) => projRowHTML(pp)));
   renderRows('sec-waiting', '⏳ Stalled — chase it', 'Waiting on others', s.waiting.length, 'amber',
-    s.waiting.slice(0, 12).map((t) => taskRowHTML(t, { actions: [A.remind()] })), s.waiting.length);
+    s.waiting.slice(0, 12).map((t) => taskRowHTML(t, { actions: [A.remind(t)] })), s.waiting.length);
   renderRows('sec-delegated', '🤝 Did they do it?', 'Delegated & outsourced', s.delegated.length, 'amber',
-    s.delegated.slice(0, 10).map((t) => taskRowHTML(t, { actions: [t.outsourced ? A.nudge() : A.open(t)] })), s.delegated.length);
+    s.delegated.slice(0, 10).map((t) => taskRowHTML(t, { actions: [t.outsourced ? A.nudge(t) : A.open(t)] })), s.delegated.length);
   renderDataFix(s.dataToFix);
   renderRows('sec-bill', '💰 Get paid', 'Ready to bill', s.readyToBill.length, 'green',
     s.readyToBill.map((t) => taskRowHTML(t, { line: 'l-green', actions: [A.bill(t)] })));
@@ -401,6 +418,43 @@ async function markDone(id, el, isHero) {
     const row = el && el.closest('.row'); if (row) row.classList.add('done-anim');
     setTimeout(() => load(ME), isHero ? 650 : 420);
   } catch (e) { toast('Failed: ' + e.message); if (el) { el.disabled = false; el.textContent = '✓ Done'; } }
+}
+
+// ── Phase 2 actions (draft-first — nothing auto-sends) ──
+function findTask(id) {
+  const s = DATA?.sections; if (!s) return null;
+  for (const arr of [s.comingDue, s.waiting, s.delegated, s.readyToBill]) { const t = (arr || []).find((x) => x.id === id); if (t) return t; }
+  return null;
+}
+async function openDraft(id, kind) {
+  const t = findTask(id) || {};
+  document.getElementById('draft-title').textContent = kind === 'nudge' ? 'Nudge support' : 'Send reminder';
+  document.getElementById('draft-sub').textContent = t.name || '';
+  const out = document.getElementById('draft-output'); out.textContent = 'Drafting…';
+  document.getElementById('draft-copy').style.display = 'none';
+  const link = document.getElementById('draft-link');
+  if (kind === 'nudge') { link.style.display = 'inline-flex'; link.textContent = 'Open Slack'; link.href = 'https://slack.com/app_redirect?team='; }
+  else if (t.url) { link.style.display = 'inline-flex'; link.textContent = 'Open in Notion'; link.href = t.url; }
+  else { link.style.display = 'none'; }
+  document.getElementById('draft-modal').classList.add('open');
+  try {
+    const r = await fetch('/api/deliver/draft', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, taskName: t.name || '', projectName: t.projectName || '', waiting: t.waiting || '', days: t.waitDays ?? null }) });
+    if (!r.ok) throw new Error((await r.json()).error || 'unavailable');
+    out.textContent = (await r.json()).message;
+    document.getElementById('draft-copy').style.display = 'inline-flex';
+  } catch (e) { out.textContent = 'Draft unavailable: ' + e.message; }
+}
+function closeDraft() { document.getElementById('draft-modal').classList.remove('open'); }
+function copyDraft() { navigator.clipboard.writeText(document.getElementById('draft-output').textContent).then(() => toast('Copied ✓')); }
+async function markInvoiced(id, el) {
+  if (el) { el.disabled = true; el.textContent = '…'; }
+  try {
+    const r = await fetch('/api/deliver/mark-invoiced', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ taskId: id }) });
+    if (!r.ok) throw new Error((await r.json()).error || 'failed');
+    toast('Marked invoiced ✓ — opening Xero');
+    window.open('https://go.xero.com/app/invoicing', '_blank');
+    setTimeout(() => load(ME), 450);
+  } catch (e) { toast('Failed: ' + e.message); if (el) { el.disabled = false; el.textContent = '→ Create invoice'; } }
 }
 
 // ── Load ──
