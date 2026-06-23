@@ -91,6 +91,7 @@ export function registerDeliverRoutes(app, ctx) {
       waiting: p.Waiting?.select?.name || null,
       waitDate: p['Wait Date']?.date?.start || null,
       recurring: !!p['Recurring?']?.checkbox || (p['Recur Interval']?.number || 0) > 0,
+      snooze: p.Snooze?.date?.start || null,
       invoice: (p.Invoice?.multi_select || []).map((o) => o.name),
       completed: p.Completed?.date?.start || null,
       edited: page.last_edited_time || null,
@@ -155,7 +156,9 @@ export function registerDeliverRoutes(app, ctx) {
       overdue: !!t.due && t.due < today, dueToday: t.due === today, dueTomorrow: t.due === addDays(today, 1),
     });
 
-    const active = data.active.map(tagT).filter((t) => inScope(t.assignees));
+    // Snoozed tasks drop out of the active surface (hero, sections, conditions)
+    // until their Snooze date passes — "deferred, not dismissed; resurfaces later".
+    const active = data.active.map(tagT).filter((t) => inScope(t.assignees) && !(t.snooze && t.snooze > today));
     const doneRecent = data.doneRecent.map(tagT).filter((t) => inScope(t.assignees));
 
     // Project scope (Me): assigned/owner OR contains one of my active tasks.
@@ -363,6 +366,23 @@ export function registerDeliverRoutes(app, ctx) {
       const prompt = `You write for Left Right Labs, a brand + website design agency.\n\n${instr}\n\nContext:\n- ${ctxLines.join('\n- ')}\n\nRules: 3–5 sentences. Use a real, human tone. No subject line, no placeholders like [Name], no preamble — just the message text ready to paste and send.`;
       const msg = await anthropic.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 400, messages: [{ role: 'user', content: prompt }] });
       res.json({ kind, message: (msg.content?.[0]?.text || '').trim() });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // POST /api/deliver/snooze { taskId, days } → set the task's Snooze date to
+  // today+days; the aggregator hides it from the active view until then.
+  app.post('/api/deliver/snooze', async (req, res) => {
+    if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+    const { taskId, days } = req.body || {};
+    const n = Number(days);
+    if (!taskId || !(n > 0)) return res.status(400).json({ error: 'taskId and positive days are required' });
+    try {
+      const d = new Date(chicagoTodayISODate() + 'T00:00:00Z');
+      d.setUTCDate(d.getUTCDate() + n);
+      const until = d.toISOString().slice(0, 10);
+      await notion.pages.update({ page_id: dashifyId(taskId), properties: { Snooze: { date: { start: until } } } });
+      bust('deliver-page');
+      res.json({ ok: true, until });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
