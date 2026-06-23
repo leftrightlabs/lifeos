@@ -131,6 +131,7 @@ const CACHE_TTL_OVERRIDES = {
   'ynab-wealth': 60 * 60_000, // YNAB wealth summary: refresh hourly
   'deliver-offers': 30 * 60_000, // Offer catalog: refresh every 30m
   'deliver-renewals': 30 * 60_000, // Care-plan renewals: refresh every 30m
+  'deliver-page': 5 * 60_000, // Deliver dashboard (production projects + tasks): 5m
   'journal-rings': 5 * 60_000, // heavier query (per-row body-text check); cache longer
   'vto-goals': 10 * 60_000,    // goals rarely change
   'scale-systems': 10 * 60_000, // Business Functions change slowly (weekly review)
@@ -3619,7 +3620,7 @@ registerScaleRoutes(app, { notion, cached, computeXeroFinance, chicagoToday });
 registerLegoRoutes(app, { notion, cache, cached, userContext });
 
 // ===== Deliver domain — wired sections (offers + care-plan renewals); project sections render client-side =====
-registerDeliverRoutes(app, { notion, cached, cache, userContext, chicagoTodayISODate });
+registerDeliverRoutes(app, { notion, cached, cache, userContext, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, GRETCHEN_USER_ID, currentNotionUserId, currentUser });
 
 // =========================== MOVE THE NEEDLE (Phase 0) ===========================
 // GET /api/needle/today — ONE ranked, cross-zone "what to do next" list. This is

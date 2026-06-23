@@ -5,7 +5,145 @@
 <link rel="stylesheet" href="/styles/tokens.css">
 <link rel="stylesheet" href="/styles/app.css">
 <script defer src="/zone-scope.js"></script>
-<style>:root { --zone: var(--work); --zone-soft: var(--work-soft); }</style>
+<style>
+@import url('https://use.typekit.net/uwk2elu.css');
+:root {
+  --zone: var(--work); --zone-soft: var(--work-soft);
+  --font-display: 'scotch-display','Playfair Display',Georgia,serif;
+  --font-body: 'sweet-sans-pro','Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --radius: 12px; --radius-sm: 8px; --radius-xs: 5px;
+}
+.deliver-page { max-width:1100px; margin:0 auto; padding:24px 28px 90px; font-family:var(--font-body); font-size:14px; line-height:1.5; color:var(--text); }
+.scotch { display:inline-block; transform:scaleY(1.18); transform-origin:center left; }
+
+/* HEADER ROW */
+.dv-head { display:flex; align-items:flex-end; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
+.dv-head-left { flex:1; min-width:200px; }
+.dv-eyebrow { font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--text-2); margin-bottom:5px; }
+.dv-title { font-family:var(--font-display); font-weight:700; font-size:32px; line-height:1; color:var(--text); }
+.me-toggle { display:none; background:var(--surface-2); border:1px solid var(--border); border-radius:99px; padding:3px; }
+.me-toggle button { background:none; border:none; font-family:var(--font-body); font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-3); padding:6px 14px; border-radius:99px; cursor:pointer; transition:all .15s; }
+.me-toggle button.active { background:var(--accent); color:#fff; }
+body.owner .me-toggle { display:inline-flex; }
+
+/* STATE BANNER */
+.statebanner { display:flex; align-items:center; gap:14px; padding:14px 18px; border-radius:var(--radius); margin-bottom:22px; border:1px solid; }
+.statebanner .bigicon { font-size:22px; }
+.statebanner .txt h2 { font-family:var(--font-display); font-weight:700; font-size:17px; margin-bottom:1px; }
+.statebanner .txt p { font-size:12.5px; color:var(--text-2); }
+body[data-state="stressed"] .statebanner { background:var(--red-soft); border-color:rgba(242,109,109,.3); }
+body[data-state="stressed"] .statebanner h2 { color:var(--red); }
+body[data-state="calm"] .statebanner { background:var(--green-soft); border-color:rgba(79,214,160,.3); }
+body[data-state="calm"] .statebanner h2 { color:var(--green); }
+
+/* HERO */
+.hero { background:linear-gradient(135deg,var(--surface) 0%, #0E1626 100%); border:1px solid var(--border); border-left:3px solid var(--zone); border-radius:var(--radius); padding:22px 24px; margin-bottom:22px; }
+.hero .eyebrow { font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; font-weight:700; color:var(--red); margin-bottom:10px; }
+.hero h1 { font-family:var(--font-display); font-weight:700; font-size:24px; line-height:1.15; margin-bottom:6px; }
+.hero .sub { font-size:13px; color:var(--text-2); margin-bottom:16px; }
+.hero .meta { display:flex; gap:18px; flex-wrap:wrap; margin-bottom:18px; }
+.hero .meta .m { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--text-2); }
+.hero .meta .m b { color:var(--text); font-weight:600; }
+.hero .meta .dot { width:7px; height:7px; border-radius:99px; background:var(--text-3); }
+.hero .actions { display:flex; gap:10px; flex-wrap:wrap; }
+.hero .amberflag { margin-top:14px; font-size:11.5px; color:var(--amber); background:var(--amber-soft); border:1px solid rgba(235,180,84,.25); padding:8px 12px; border-radius:7px; display:inline-flex; gap:7px; align-items:center; }
+
+.btn { font-family:var(--font-body); font-weight:600; font-size:12.5px; letter-spacing:.03em; padding:10px 18px; border-radius:8px; cursor:pointer; border:1px solid transparent; display:inline-flex; align-items:center; gap:7px; transition:all .15s; text-decoration:none; }
+.btn-primary { background:var(--zone); color:#fff; }
+.btn-primary:hover { filter:brightness(1.1); }
+.btn-ghost { background:transparent; border-color:var(--border); color:var(--text-2); }
+.btn-ghost:hover { border-color:var(--text-3); color:var(--text); }
+
+/* CALM PAYOFF */
+.calmpayoff { text-align:center; padding:30px 24px; background:linear-gradient(135deg,#0E1A16,#0C1420); border:1px solid rgba(79,214,160,.25); border-radius:var(--radius); margin-bottom:24px; }
+.calmpayoff .burst { width:34px; height:34px; margin-bottom:14px; }
+.calmpayoff h1 { font-family:var(--font-display); font-weight:700; font-size:26px; color:var(--green); margin-bottom:8px; }
+.calmpayoff p { font-size:13.5px; color:var(--text-2); max-width:460px; margin:0 auto 4px; }
+.calmpayoff .gozone { margin-top:18px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+.gozone a { font-size:12px; font-weight:600; color:var(--text-2); text-decoration:none; padding:9px 16px; border:1px solid var(--border); border-radius:8px; transition:all .15s; }
+.gozone a:hover { border-color:var(--personal); color:#5BD4E8; }
+
+/* PULSE STRIP */
+.pulsestrip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
+.pulsecard { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:15px 16px; }
+.pulsecard .label { font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); font-weight:600; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+.pulsecard .val { font-family:var(--font-display); font-weight:700; font-size:26px; line-height:1; }
+.pulsecard .valsub { font-size:11px; color:var(--text-3); margin-top:4px; }
+.pbar { height:5px; background:var(--surface-2); border-radius:99px; overflow:hidden; margin-top:10px; }
+.pbar i { display:block; height:100%; border-radius:99px; }
+
+/* SECTIONS */
+.section { margin-bottom:26px; }
+.section-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.section-head .h { display:flex; align-items:center; gap:10px; }
+.section-head .eyebrow { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; font-weight:700; color:var(--text-3); }
+.section-head h3 { font-family:var(--font-display); font-weight:700; font-size:16px; }
+.section-head .count { font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; }
+.count.red { background:var(--red-soft); color:var(--red); }
+.count.amber { background:var(--amber-soft); color:var(--amber); }
+.count.green { background:var(--green-soft); color:var(--green); }
+.count.zone { background:var(--zone-soft); color:#7FA8FF; }
+.count.neutral { background:var(--surface-2); color:var(--text-3); }
+
+.rows { display:flex; flex-direction:column; gap:7px; }
+.row { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 15px; display:flex; align-items:center; gap:14px; border-left:3px solid transparent; transition:opacity .3s, transform .3s; }
+.row.l-red { border-left-color:var(--red); } .row.l-amber { border-left-color:var(--amber); } .row.l-green { border-left-color:var(--green); } .row.l-zone { border-left-color:var(--zone); }
+.row .main { flex:1; min-width:0; }
+.row .title { font-size:13.5px; font-weight:600; color:var(--text); margin-bottom:2px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.row .title a { color:inherit; text-decoration:none; } .row .title a:hover { color:#7FA8FF; }
+.row .meta { font-size:11.5px; color:var(--text-3); display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.row .meta .sep { color:var(--text-4); }
+.row .right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.row.done-anim { opacity:0; transform:translateX(20px); }
+
+.chip { font-size:10px; font-weight:700; letter-spacing:.04em; padding:3px 8px; border-radius:5px; text-transform:uppercase; white-space:nowrap; }
+.chip.red { background:var(--red-soft); color:var(--red); } .chip.amber { background:var(--amber-soft); color:var(--amber); } .chip.green { background:var(--green-soft); color:var(--green); } .chip.zone { background:var(--zone-soft); color:#7FA8FF; } .chip.purple { background:var(--accent-soft); color:#A5A8F5; }
+.chip.outsource { background:rgba(138,155,176,.12); color:var(--text-2); border:1px solid var(--border); }
+.chip.ghost { background:transparent; border:1px dashed var(--text-4); color:var(--text-3); }
+
+.av { width:22px; height:22px; border-radius:99px; display:flex; align-items:center; justify-content:center; font-size:9.5px; font-weight:700; color:#fff; flex-shrink:0; }
+.av.gc { background:#6366F1; } .av.tf { background:#2563EB; } .av.sup { background:#475569; } .av.nw { background:#06B6D4; }
+
+.miniact { font-size:10.5px; font-weight:600; padding:5px 10px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2); color:var(--text-2); cursor:pointer; white-space:nowrap; transition:all .15s; display:inline-flex; gap:5px; align-items:center; text-decoration:none; }
+.miniact:hover { border-color:var(--zone); color:#7FA8FF; }
+.miniact.log, .miniact.est { border-color:rgba(235,180,84,.4); color:var(--amber); background:var(--amber-soft); }
+.miniact.bill { border-color:rgba(79,214,160,.4); color:var(--green); background:var(--green-soft); }
+.miniprog { width:54px; height:5px; background:var(--surface-2); border-radius:99px; overflow:hidden; }
+.miniprog i { display:block; height:100%; background:var(--zone); border-radius:99px; }
+
+.clean { display:flex; align-items:center; gap:10px; padding:13px 16px; background:var(--green-soft); border:1px solid rgba(79,214,160,.2); border-radius:var(--radius-sm); font-size:12.5px; color:var(--green); }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+@media(max-width:860px){ .grid2{ grid-template-columns:1fr; } .pulsestrip{ grid-template-columns:repeat(2,1fr); } }
+.empty-line { font-size:12px; color:var(--text-3); padding:10px 4px; }
+.more-line { font-size:11.5px; color:var(--text-3); padding:8px 4px 2px; }
+
+/* state visibility */
+body[data-state="calm"] .show-stressed { display:none !important; }
+body[data-state="stressed"] .show-calm { display:none !important; }
+body:not([data-state]) .dv-content { display:none; }
+
+/* MODAL (shared, log-time + estimate) */
+.modal-overlay { position:fixed; inset:0; background:rgba(5,8,14,.7); display:none; align-items:flex-start; justify-content:center; padding:70px 16px; z-index:200; }
+.modal-overlay.open { display:flex; }
+.modal { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); width:100%; max-width:420px; overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,.5); }
+.modal-head { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+.modal-head h3 { font-family:var(--font-display); font-size:18px; font-weight:700; }
+.modal-close { margin-left:auto; background:none; border:none; color:var(--text-3); font-size:20px; cursor:pointer; line-height:1; }
+.modal-body { padding:16px 18px; }
+.modal-sub { font-size:12px; color:var(--text-3); margin-bottom:12px; }
+.modal-field { margin-bottom:13px; }
+.modal-label { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-2); margin-bottom:6px; display:block; }
+.modal-input, .modal-textarea { width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:9px 11px; font-family:var(--font-body); font-size:13px; color:var(--text); }
+.modal-input:focus, .modal-textarea:focus { outline:none; border-color:var(--zone); }
+.modal-textarea { resize:vertical; min-height:64px; }
+.modal-foot { padding:13px 18px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
+
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--surface-2); border:1px solid var(--border); color:var(--text); padding:10px 18px; border-radius:8px; font-size:13px; font-weight:600; z-index:999; transition:transform .25s,opacity .25s; opacity:0; pointer-events:none; display:flex; align-items:center; gap:8px; }
+.toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+.toast .toast-dot { width:7px; height:7px; border-radius:50%; background:var(--green); }
+#dv-loading { padding:60px 0; text-align:center; color:var(--text-3); font-size:13px; }
+#dv-error { display:none; background:var(--red-soft); border:1px solid rgba(242,109,109,.25); color:var(--red); border-radius:var(--radius); padding:14px 18px; font-size:13px; margin-bottom:18px; }
+</style>
 </head><body>
 <div class="topbar-wrap"><div class="topbar">
   <a href="/" class="logo">◆ LRL OS</a>
@@ -34,21 +172,257 @@
   <a href="/wealth" class="nav-btn">WEALTH</a>
   <a href="/lego" class="nav-btn">LEGO</a>
 </nav></div>
-<div class="zone-wrap">
-  <div class="zone-hero">
-    <div class="zone-eyebrow">Work · Deliver</div>
-    <div class="zone-heading">
-      <div class="zone-icon">📦</div>
-      <h1 class="zone-title">Deliver</h1>
+
+<div class="deliver-page">
+  <div class="dv-head">
+    <div class="dv-head-left">
+      <div class="dv-eyebrow">Work · Deliver</div>
+      <span class="dv-title scotch">Deliver</span>
     </div>
-    <p class="zone-desc">Active client projects, retainers, and delivery health. Keep work on time and clients in the loop.</p>
-    <span class="zone-badge">⚙ Building this zone</span>
+    <div class="me-toggle" id="me-toggle">
+      <button data-me="0" class="active">All</button>
+      <button data-me="1">Just me</button>
+    </div>
   </div>
-  <div class="zone-placeholder">
-    <div class="zone-card"><div class="zone-card-label">Active</div><div class="zone-card-title">Open Projects</div><div class="zone-card-body">Client engagements in flight, milestones due, and health status.</div></div>
-    <div class="zone-card"><div class="zone-card-label">Billing</div><div class="zone-card-title">Time Logged</div><div class="zone-card-body">Hours this week vs. retainer, invoices pending, and billing gaps.</div></div>
-    <div class="zone-card"><div class="zone-card-label">Clients</div><div class="zone-card-title">Communication Log</div><div class="zone-card-body">Last touch per client, pending updates, and feedback signals.</div></div>
+
+  <div id="dv-error"></div>
+  <div id="dv-loading">Loading delivery…</div>
+
+  <div class="dv-content">
+    <div class="statebanner" id="banner"></div>
+    <div class="hero show-stressed" id="hero"></div>
+    <div class="calmpayoff show-calm" id="calmpayoff"></div>
+    <div class="pulsestrip" id="pulse"></div>
+
+    <div class="section show-stressed" id="sec-comingdue"></div>
+    <div class="section show-stressed" id="sec-atrisk"></div>
+    <div class="section show-stressed" id="sec-waiting"></div>
+    <div class="grid2 show-stressed">
+      <div class="section" id="sec-delegated"></div>
+      <div class="section" id="sec-datafix"></div>
+    </div>
+    <div class="section show-stressed" id="sec-bill"></div>
+
+    <div class="section show-calm" id="sec-ontrack"></div>
+    <div class="grid2 show-calm">
+      <div class="section" id="sec-onhold"></div>
+      <div class="section" id="sec-notstarted"></div>
+    </div>
+    <div class="section show-calm" id="sec-clean"></div>
   </div>
 </div>
+
+<!-- LOG TIME / ESTIMATE MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="modal-title">Log time</h3><button class="modal-close" onclick="closeModal()">×</button></div>
+    <div class="modal-body">
+      <div class="modal-sub" id="modal-sub"></div>
+      <div class="modal-field">
+        <label class="modal-label" id="modal-hours-label">Hours</label>
+        <input class="modal-input" id="modal-hours" type="number" step="0.25" min="0" placeholder="e.g. 1.5">
+      </div>
+      <div class="modal-field" id="modal-note-field">
+        <label class="modal-label">Note (optional)</label>
+        <textarea class="modal-textarea" id="modal-note" placeholder="What did you work on?"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modal-save" onclick="submitModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="toast-dot"></span><span id="toast-text"></span></div>
 <a href="/" class="fab" title="Back to Today">⚡</a>
+
+<script>
+const BURST = '<svg class="burst" viewBox="0 0 512 512"><path fill="#4FD6A0" d="M507.2,257.1c-125.4,19.1-225.5,115-250.7,238.3-.2.8-1.3.8-1.5,0-25.2-123.2-125.3-219.2-250.7-238.3-.9-.1-.9-1.4,0-1.5,125.4-19.1,225.5-115,250.7-238.3.2-.8,1.3-.8,1.5,0,25.2,123.2,125.3,219.2,250.7,238.3.9.1.9,1.4,0,1.5Z"/></svg>';
+let ME = 0;
+let DATA = null;
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+const fmtDate = (iso) => { if (!iso) return '—'; const d = new Date(iso + 'T00:00:00Z'); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }); };
+const avEl = (av) => av ? `<span class="av ${av.cls}">${esc(av.init)}</span>` : '';
+const dueLabel = (t) => t.overdue ? `<span style="color:var(--red)">Overdue ${t.overdueDays}d</span>` : t.dueToday ? `<span style="color:var(--amber)">Due today</span>` : t.dueTomorrow ? `<span style="color:var(--amber)">Due tomorrow</span>` : (t.due ? `Due ${fmtDate(t.due)}` : '');
+
+function toast(msg) { document.getElementById('toast-text').textContent = msg; const t = document.getElementById('toast'); t.classList.add('show'); clearTimeout(window._tt); window._tt = setTimeout(() => t.classList.remove('show'), 2600); }
+
+function sectionHead(eyebrow, title, count, tone) {
+  return `<div class="section-head"><div class="h"><span class="eyebrow">${eyebrow}</span><h3 class="scotch">${title}</h3></div>${count != null ? `<span class="count ${tone}">${count}</span>` : ''}</div>`;
+}
+function taskRowHTML(t, opts = {}) {
+  const lcls = t.overdue ? 'l-red' : (t.dueToday || t.dueTomorrow || t.waiting) ? 'l-amber' : (opts.line || 'l-zone');
+  const metaBits = [];
+  if (t.projectName) metaBits.push(esc(t.projectName));
+  const dl = dueLabel(t); if (dl) metaBits.push(dl);
+  if (t.waiting) metaBits.push(`<span class="chip purple" style="display:inline">${esc(t.waiting)}</span> <span style="color:var(--amber)">${t.waitDays}d</span>`);
+  if (t.est != null) metaBits.push(`Est ${t.est}h`); else if (opts.showNoEst) metaBits.push('<span class="chip ghost">no estimate</span>');
+  const right = (opts.actions || []).join('');
+  const out = t.outsourced ? '<span class="chip outsource">outsourced</span>' : '';
+  return `<div class="row ${lcls}" data-task="${t.id}">
+    ${avEl(t.av)}
+    <div class="main"><div class="title"><a href="${t.url}" target="_blank">${esc(t.name)}</a> ${out}</div>
+    <div class="meta">${metaBits.join(' <span class="sep">·</span> ')}</div></div>
+    <div class="right">${right}</div></div>`;
+}
+const A = {
+  done: (t) => `<button class="miniact" onclick="markDone('${t.id}',this)">✓ Done</button>`,
+  log: (t) => `<button class="miniact log" onclick='openLog("${t.id}",${JSON.stringify(t.name)})'>⏱ Log time</button>`,
+  est: (t) => `<button class="miniact est" onclick='openEst("${t.id}",${JSON.stringify(t.name)})'>+ Add estimate</button>`,
+  nudge: () => `<button class="miniact" onclick="toast('Phase 2: nudge support via Slack')">💬 Nudge</button>`,
+  remind: () => `<button class="miniact" onclick="toast('Phase 2: send reminder')">✉ Send reminder</button>`,
+  bill: (t) => `<a class="miniact bill" href="${t.url}" target="_blank">→ Create invoice</a>`,
+  open: (t) => `<a class="miniact" href="${t.url}" target="_blank">→ Open</a>`,
+};
+function projRowHTML(p, opts = {}) {
+  const lcls = p.atRisk ? 'l-red' : opts.line || 'l-green';
+  const bits = [];
+  if (p.deadline) bits.push(`Target <b style="color:var(--text-2)">${fmtDate(p.deadline)}</b>`);
+  if (p.overdueN) bits.push(`<span style="color:var(--red)">${p.overdueN} overdue task${p.overdueN > 1 ? 's' : ''}</span>`);
+  if (p.timeUsedPct != null && p.workDonePct != null) bits.push(`${p.timeUsedPct}% time used, ${p.workDonePct}% work done`);
+  const prog = p.workDonePct != null ? `<div class="miniprog"><i style="width:${Math.min(100, p.workDonePct)}%${p.atRisk ? ';background:var(--red)' : ''}"></i></div>` : '';
+  const right = opts.chip ? `${prog}<span class="chip green">On track</span>` : `${prog}${A.open(p)}`;
+  return `<div class="row ${lcls}">${avEl(p.av)}<div class="main"><div class="title"><a href="${p.url}" target="_blank">${esc(p.name)}</a></div><div class="meta">${bits.join(' <span class="sep">·</span> ')}</div></div><div class="right">${right}</div></div>`;
+}
+
+function render() {
+  const d = DATA;
+  document.body.setAttribute('data-state', d.isCalm ? 'calm' : 'stressed');
+
+  const b = d.banner;
+  if (d.isCalm) {
+    document.getElementById('banner').innerHTML = `<span class="bigicon">✓</span><div class="txt"><h2 class="scotch">Delivery is under control</h2><p>Nothing overdue. Every active project has a deadline and an owner. You're free to move to another zone.</p></div>`;
+  } else {
+    const parts = [];
+    if (b.overdue) parts.push(`${b.overdue} task${b.overdue > 1 ? 's' : ''} overdue`);
+    if (b.atRisk) parts.push(`${b.atRisk} project${b.atRisk > 1 ? 's' : ''} at risk`);
+    if (b.staleWaits) parts.push(`${b.staleWaits} stale client wait${b.staleWaits > 1 ? 's' : ''}`);
+    document.getElementById('banner').innerHTML = `<span class="bigicon">🔥</span><div class="txt"><h2 class="scotch">${b.stressedCount} thing${b.stressedCount === 1 ? '' : 's'} need you today</h2><p>${esc(parts.join(' · ') || 'A few items need attention')}. Knock out the top one first.</p></div>`;
+  }
+
+  const h = d.hero;
+  if (h) {
+    const flag = h.blocks > 0 ? `<div class="amberflag">⚠ This is the #1 domino — ${h.blocks} other task${h.blocks > 1 ? 's' : ''} on this project unblock${h.blocks > 1 ? '' : 's'} once it's done.</div>` : (h.stale ? `<div class="amberflag">⚠ No movement in ${h.staleDays} days — still live?</div>` : '');
+    document.getElementById('hero').innerHTML = `
+      <div class="eyebrow">⚡ Do this next</div>
+      <h1 class="scotch">${esc(h.name)}</h1>
+      <p class="sub">${h.overdue ? `Overdue ${h.overdueDays} days · ` : h.dueToday ? 'Due today · ' : ''}${esc(h.projectName)}</p>
+      <div class="meta">
+        ${h.overdue ? `<span class="m"><span class="dot" style="background:var(--red)"></span> <b>Overdue ${h.overdueDays}d</b></span>` : ''}
+        <span class="m">Project <b>${esc(h.projectName)}</b></span>
+        ${avEl(h.av)}
+        <span class="m">Est <b>${h.est != null ? h.est + 'h' : '—'}</b> · logged <b>${(h.logged || 0)}h</b></span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="markDone('${h.id}',this,true)">✓ Mark done</button>
+        <button class="btn btn-ghost" onclick='openLog("${h.id}",${JSON.stringify(h.name)})'>⏱ Log time</button>
+        <a class="btn btn-ghost" href="${h.url}" target="_blank">→ Open in Notion</a>
+      </div>${flag}`;
+  } else {
+    document.getElementById('hero').innerHTML = `<div class="eyebrow">⚡ Do this next</div><h1 class="scotch">Nothing urgent assigned to you.</h1><p class="sub">No overdue or due-soon production tasks in this view.</p>`;
+  }
+  const c = d.calm;
+  document.getElementById('calmpayoff').innerHTML = `${BURST}<h1 class="scotch">Everything's handled.</h1><p>All ${c.activeCount} active production project${c.activeCount === 1 ? '' : 's'} are on track. No overdue tasks, no stale client waits, nothing unbilled.</p>${c.nextDeadline ? `<p style="color:var(--text-3); font-size:12px;">Next deadline — <b style="color:var(--text-2)">${esc(c.nextDeadline.name)}, ${fmtDate(c.nextDeadline.deadline)}</b>.</p>` : ''}<div class="gozone"><a href="/attract">→ Go to Attract</a><a href="/convert">→ Go to Convert</a><a href="/scale">→ Go to Scale</a></div>`;
+
+  const p = d.pulse;
+  const wkPct = p.lastWeek ? Math.min(100, Math.round((p.shippedThisWeek / Math.max(p.lastWeek, 1)) * 100)) : (p.shippedThisWeek ? 100 : 0);
+  const otTone = p.onTimeRate == null ? 'var(--text-3)' : p.onTimeRate >= 90 ? 'var(--green)' : 'var(--amber)';
+  document.getElementById('pulse').innerHTML = `
+    <div class="pulsecard"><div class="label">Shipped this week</div><div class="val" style="color:var(--zone)">${p.shippedThisWeek}</div><div class="valsub">resets Monday · last wk ${p.lastWeek}</div><div class="pbar"><i style="width:${wkPct}%; background:var(--zone)"></i></div></div>
+    <div class="pulsecard"><div class="label">🔥 Delivery streak</div><div class="val" style="color:var(--amber)">${p.streak}<span style="font-size:13px; color:var(--text-3)"> days</span></div><div class="valsub">${p.streak ? 'moved something every day' : 'ship one to start a streak'}</div></div>
+    <div class="pulsecard"><div class="label">On-time rate</div><div class="val" style="color:${otTone}">${p.onTimeRate == null ? '—' : p.onTimeRate + '%'}</div><div class="valsub">last 30 days</div></div>
+    <div class="pulsecard"><div class="label">Momentum</div><div class="val" style="color:var(--${p.momentum.tone})">${p.momentum.label}</div><div class="valsub" style="color:var(--${p.momentum.tone})">${esc(p.momentum.detail)}</div></div>`;
+
+  const s = d.sections;
+  renderRows('sec-comingdue', '⏰ Needs you now', 'Coming due', s.comingDue.length, 'red',
+    s.comingDue.map((t) => taskRowHTML(t, { showNoEst: true, actions: [t.est == null ? A.est(t) : A.log(t), t.outsourced ? A.nudge() : A.done(t)] })));
+  renderRows('sec-atrisk', '📉 Protect the deadline', 'Projects at risk', s.atRisk.length, 'red',
+    s.atRisk.map((pp) => projRowHTML(pp)));
+  renderRows('sec-waiting', '⏳ Stalled — chase it', 'Waiting on others', s.waiting.length, 'amber',
+    s.waiting.slice(0, 12).map((t) => taskRowHTML(t, { actions: [A.remind()] })), s.waiting.length);
+  renderRows('sec-delegated', '🤝 Did they do it?', 'Delegated & outsourced', s.delegated.length, 'amber',
+    s.delegated.slice(0, 10).map((t) => taskRowHTML(t, { actions: [t.outsourced ? A.nudge() : A.open(t)] })), s.delegated.length);
+  renderDataFix(s.dataToFix);
+  renderRows('sec-bill', '💰 Get paid', 'Ready to bill', s.readyToBill.length, 'green',
+    s.readyToBill.map((t) => taskRowHTML(t, { line: 'l-green', actions: [A.bill(t)] })));
+  renderRows('sec-ontrack', '🟢 All moving', 'Active projects — on track', s.onTrack.length, 'green',
+    s.onTrack.slice(0, 12).map((pp) => projRowHTML(pp, { chip: true })), s.onTrack.length);
+  renderRows('sec-onhold', '⏸ Intentionally parked', 'On hold', s.onHold.length, 'neutral',
+    s.onHold.map((pp) => projRowHTML(pp, { line: '' })));
+  renderRows('sec-notstarted', '📅 Queued up', 'Not started', s.notStarted.length, 'zone',
+    s.notStarted.map((pp) => projRowHTML(pp, { line: 'l-zone' })));
+  document.getElementById('sec-clean').innerHTML = `<div class="clean"><span class="ic">✓</span> Delivery data is clean — nothing overdue, every project owned and dated.</div>`;
+
+  document.getElementById('dv-loading').style.display = 'none';
+}
+
+function renderRows(id, eyebrow, title, count, tone, rowsHtml, total) {
+  const el = document.getElementById(id);
+  const more = (total != null && total > rowsHtml.length) ? `<div class="more-line">+ ${total - rowsHtml.length} more</div>` : '';
+  el.innerHTML = sectionHead(eyebrow, title, count, tone) + (rowsHtml.length ? `<div class="rows">${rowsHtml.join('')}</div>${more}` : `<div class="empty-line">Nothing here.</div>`);
+}
+function renderDataFix(df) {
+  const rows = [];
+  if (df.missingEstimates.count) rows.push(`<div class="row l-amber"><div class="main"><div class="title">${df.missingEstimates.count} tasks missing time estimates</div><div class="meta">Can't forecast capacity without these</div></div><div class="right"><button class="miniact est" onclick='openEst("${df.missingEstimates.tasks[0]?.id || ''}",${JSON.stringify('Estimate (' + df.missingEstimates.count + ' missing)')})'>+ Add estimate</button></div></div>`);
+  if (df.doneNoTime.count) rows.push(`<div class="row l-amber"><div class="main"><div class="title">${df.doneNoTime.count} task${df.doneNoTime.count > 1 ? 's' : ''} done this week, 0h logged</div><div class="meta" style="color:var(--amber)">⚠ You forgot to log time again</div></div><div class="right"><button class="miniact log" onclick='openLog("${df.doneNoTime.tasks[0]?.id || ''}",${JSON.stringify('Log time (' + df.doneNoTime.count + ' un-logged)')})'>⏱ Log time</button></div></div>`);
+  if (df.missingDeadlines.count) rows.push(`<div class="row l-zone"><div class="main"><div class="title">${df.missingDeadlines.count} project${df.missingDeadlines.count > 1 ? 's' : ''} missing target dates</div><div class="meta">${esc(df.missingDeadlines.projects.slice(0, 3).map((p) => p.name).join(' · '))}</div></div><div class="right"><a class="miniact" href="${df.missingDeadlines.projects[0]?.url || '#'}" target="_blank">+ Set dates</a></div></div>`);
+  const total = df.missingEstimates.count + df.doneNoTime.count + df.missingDeadlines.count;
+  document.getElementById('sec-datafix').innerHTML = sectionHead('🩹 Backfill the gaps', 'Data to fix', total, 'amber') + (rows.length ? `<div class="rows">${rows.join('')}</div>` : `<div class="empty-line">All clean.</div>`);
+}
+
+// ── Actions ──
+let modalMode = 'log', modalTaskId = null;
+function openLog(id, name) { modalMode = 'log'; modalTaskId = id; document.getElementById('modal-title').textContent = 'Log time'; document.getElementById('modal-sub').textContent = name; document.getElementById('modal-hours-label').textContent = 'Hours worked'; document.getElementById('modal-note-field').style.display = 'block'; document.getElementById('modal-hours').value = ''; document.getElementById('modal-note').value = ''; document.getElementById('modal').classList.add('open'); setTimeout(() => document.getElementById('modal-hours').focus(), 30); }
+function openEst(id, name) { modalMode = 'est'; modalTaskId = id; document.getElementById('modal-title').textContent = 'Add estimate'; document.getElementById('modal-sub').textContent = name; document.getElementById('modal-hours-label').textContent = 'Estimated hours'; document.getElementById('modal-note-field').style.display = 'none'; document.getElementById('modal-hours').value = ''; document.getElementById('modal').classList.add('open'); setTimeout(() => document.getElementById('modal-hours').focus(), 30); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+async function submitModal() {
+  const hours = parseFloat(document.getElementById('modal-hours').value);
+  if (!(hours > 0)) { toast('Enter hours greater than 0'); return; }
+  if (!modalTaskId) { toast('No task selected'); closeModal(); return; }
+  const btn = document.getElementById('modal-save'); btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const url = modalMode === 'log' ? '/api/deliver/log-time' : '/api/deliver/estimate';
+    const body = modalMode === 'log' ? { taskId: modalTaskId, hours, note: document.getElementById('modal-note').value } : { taskId: modalTaskId, hours };
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error((await r.json()).error || 'failed');
+    toast(modalMode === 'log' ? 'Time logged ✓' : 'Estimate saved ✓');
+    closeModal();
+    await load(ME);
+  } catch (e) { toast('Failed: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = 'Save'; }
+}
+async function markDone(id, el, isHero) {
+  if (el) { el.disabled = true; el.textContent = '…'; }
+  try {
+    const r = await fetch('/api/deliver/done', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ taskId: id }) });
+    if (!r.ok) throw new Error((await r.json()).error || 'failed');
+    toast('Shipped ✓ 🎉');
+    const row = el && el.closest('.row'); if (row) row.classList.add('done-anim');
+    setTimeout(() => load(ME), isHero ? 650 : 420);
+  } catch (e) { toast('Failed: ' + e.message); if (el) { el.disabled = false; el.textContent = '✓ Done'; } }
+}
+
+// ── Load ──
+async function load(me) {
+  try {
+    const r = await fetch('/api/deliver?me=' + (me ? 1 : 0));
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    DATA = d; render();
+  } catch (e) {
+    document.getElementById('dv-loading').style.display = 'none';
+    const er = document.getElementById('dv-error'); er.style.display = 'block'; er.textContent = "Couldn't load Deliver: " + e.message;
+  }
+}
+document.getElementById('me-toggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  ME = btn.dataset.me === '1' ? 1 : 0;
+  [...document.querySelectorAll('#me-toggle button')].forEach((bb) => bb.classList.toggle('active', bb === btn));
+  document.getElementById('dv-loading').style.display = 'block';
+  load(ME);
+});
+fetch('/api/deliver/me').then((r) => r.json()).then((m) => { if (m.owner) document.body.classList.add('owner'); }).catch(() => {});
+load(0);
+</script>
 </body></html>
