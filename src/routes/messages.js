@@ -7,7 +7,6 @@
 // endpoint returns { connected:false } and the UI shows a "Connect Slack" state.
 // Notion comments are team-only, pulled from recently-edited PROJECTS/TASKS pages.
 
-const SLACK_TOKEN = process.env.SLACK_BOT_TOKEN || '';
 const SLACK_GRETCHEN = process.env.SLACK_GRETCHEN_USER_ID || '';
 const NOTION_TEAM_IDS = (process.env.NOTION_TEAM_USER_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
 const NOTION_BOT_IDS = (process.env.NOTION_BOT_USER_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -22,60 +21,70 @@ function initials(name) {
   return String(name || '?').trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
 }
 
-async function slackApi(method, params = {}) {
+async function slackApi(token, method, params = {}) {
   const url = `https://slack.com/api/${method}` + (Object.keys(params).length ? `?${new URLSearchParams(params)}` : '');
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${SLACK_TOKEN}` } });
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   const d = await r.json();
   if (!d.ok) throw new Error(`Slack ${method}: ${d.error}`);
   return d;
 }
 
-export function registerMessagesRoutes(app, { notion, cached, WORK_PROJECTS_DS, WORK_TASKS_DS }) {
-  // ── Slack ──
-  app.get('/api/messages/slack', async (_req, res) => {
-    if (!SLACK_TOKEN) return res.json({ connected: false, channels: [] });
+export function registerMessagesRoutes(app, { notion, cached, clearCached, getSlackUserToken, ownNotionUserId, WORK_PROJECTS_DS, WORK_TASKS_DS }) {
+  // ── Slack (user token → reads YOUR real unread DMs + channels) ──
+  // Strategy: list the conversations the user is in, ask Slack for each one's
+  // unread count + last-read marker, then pull only the messages after last_read.
+  // Capped + cached to stay within Slack rate limits.
+  app.get('/api/messages/slack', async (req, res) => {
+    const token = getSlackUserToken && getSlackUserToken();
+    if (!token) return res.json({ connected: false, channels: [] });
     try {
+      if (req.query.fresh === '1' && clearCached) clearCached('messages-slack');
       const data = await cached('messages-slack', async () => {
         const userCache = new Map();
         const userName = async (uid) => {
           if (!uid) return 'Unknown';
           if (userCache.has(uid)) return userCache.get(uid);
           try {
-            const u = await slackApi('users.info', { user: uid });
+            const u = await slackApi(token, 'users.info', { user: uid });
             const name = u.user?.real_name || u.user?.profile?.display_name || u.user?.name || 'Unknown';
-            userCache.set(uid, name);
-            return name;
+            userCache.set(uid, name); return name;
           } catch { return 'Unknown'; }
         };
-        const conv = await slackApi('conversations.list', {
-          types: 'public_channel,private_channel,im,mpim', exclude_archived: 'true', limit: '100',
+        const conv = await slackApi(token, 'users.conversations', {
+          types: 'public_channel,private_channel,im,mpim', exclude_archived: 'true', limit: '200',
         });
         const channels = [];
+        let checked = 0;
         for (const ch of (conv.channels || [])) {
-          if (!ch.is_member && !ch.is_im) continue; // bot must be in the channel
-          let hist;
-          try { hist = await slackApi('conversations.history', { channel: ch.id, limit: '15' }); }
+          if (checked >= 60) break; // bound API calls
+          checked++;
+          let info;
+          try { info = await slackApi(token, 'conversations.info', { channel: ch.id }); }
           catch { continue; }
+          const c = info.channel || {};
+          const unreadCount = c.unread_count_display || 0;
+          if (!unreadCount) continue; // only surface conversations with unreads
+          const lastRead = c.last_read || '0';
+          let hist;
+          try { hist = await slackApi(token, 'conversations.history', { channel: ch.id, oldest: lastRead, limit: '20' }); }
+          catch { continue; }
+          const dmName = ch.is_im ? await userName(c.user || ch.user) : null;
+          const channelName = ch.is_im ? `@${dmName}` : `#${c.name || ch.name}`;
           const msgs = [];
           for (const m of (hist.messages || [])) {
-            if (m.subtype || !m.user) continue; // skip joins/bots/system
-            const sender = await userName(m.user);
+            if (m.subtype || !m.user || m.ts === lastRead) continue;
+            const sender = ch.is_im ? dmName : await userName(m.user);
             msgs.push({
-              id: `s_${m.ts}`,
-              channelId: ch.id,
-              channelName: ch.is_im ? `@${sender}` : `#${ch.name}`,
-              sender,
-              senderAvatar: initials(sender),
-              senderColor: avatarColor(sender),
-              text: m.text || '',
-              ts: m.ts,
-              time: relTime(Number(m.ts) * 1000),
-              unread: !!(ch.unread_count || hist.messages.indexOf(m) < (ch.unread_count || 0)),
+              id: `s_${ch.id}_${m.ts}`, channelId: ch.id, channelName,
+              sender, senderAvatar: initials(sender), senderColor: avatarColor(sender),
+              text: m.text || '', ts: m.ts, time: relTime(Number(m.ts) * 1000),
+              unread: true,
               isMention: SLACK_GRETCHEN ? (m.text || '').includes(`<@${SLACK_GRETCHEN}>`) : false,
             });
           }
-          if (msgs.length) channels.push({ id: ch.id, name: ch.is_im ? `@${msgs[0].sender}` : `#${ch.name}`, messages: msgs });
+          if (msgs.length) channels.push({ id: ch.id, name: channelName, latestTs: msgs[msgs.length - 1].ts, messages: msgs.reverse() });
         }
+        channels.sort((a, b) => Number(b.latestTs) - Number(a.latestTs));
         return { connected: true, channels };
       });
       res.json(data);
@@ -86,9 +95,11 @@ export function registerMessagesRoutes(app, { notion, cached, WORK_PROJECTS_DS, 
   });
 
   app.post('/api/messages/slack/:channelId/read', async (req, res) => {
-    if (!SLACK_TOKEN) return res.status(400).json({ error: 'Slack not connected' });
+    const token = getSlackUserToken && getSlackUserToken();
+    if (!token) return res.status(400).json({ error: 'Slack not connected' });
     try {
-      await slackApi('conversations.mark', { channel: req.params.channelId, ts: req.body?.ts || '' });
+      await slackApi(token, 'conversations.mark', { channel: req.params.channelId, ts: req.body?.ts || '' });
+      if (clearCached) clearCached('messages-slack');
       res.json({ ok: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
@@ -129,6 +140,7 @@ export function registerMessagesRoutes(app, { notion, cached, WORK_PROJECTS_DS, 
           catch { continue; }
           for (const c of (cs.results || [])) {
             const uid = c.created_by?.id;
+            if (uid === ownNotionUserId) continue;            // hide my own comments
             if (NOTION_BOT_IDS.includes(uid)) continue;
             if (NOTION_TEAM_IDS.length && !NOTION_TEAM_IDS.includes(uid)) continue;
             const text = (c.rich_text || []).map((x) => x.plain_text).join('');

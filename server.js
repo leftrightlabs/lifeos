@@ -641,8 +641,12 @@ app.get('/auth/google/callback', async (req, res) => {
 });
 
 // ----- SLACK OAuth (per-user, so check-ins post as the signed-in user) -----
-// Requires a Slack app with user scope `chat:write`, its OAuth redirect set to
+// Requires a Slack app with the user scopes below, its OAuth redirect set to
 // `${origin}/auth/slack/callback`, and SLACK_CLIENT_ID / SLACK_CLIENT_SECRET.
+// chat:write powers check-in posting; the *:history + *:read + users:read scopes
+// let the Messages zone read your unread DMs and channels. Re-authorize at
+// /auth/slack after adding the new scopes to the Slack app.
+const SLACK_USER_SCOPES = 'chat:write,channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read';
 app.get('/auth/slack', (req, res) => {
   if (!process.env.SLACK_CLIENT_ID || !process.env.SLACK_CLIENT_SECRET) {
     return res.status(500).send('SLACK_CLIENT_ID / SLACK_CLIENT_SECRET not configured');
@@ -650,7 +654,7 @@ app.get('/auth/slack', (req, res) => {
   const redirectUri = `${originFromReq(req)}/auth/slack/callback`;
   const url = 'https://slack.com/oauth/v2/authorize?' + new URLSearchParams({
     client_id: process.env.SLACK_CLIENT_ID,
-    user_scope: 'chat:write',
+    user_scope: SLACK_USER_SCOPES,
     redirect_uri: redirectUri,
   }).toString();
   res.redirect(url);
@@ -3025,7 +3029,6 @@ const XERO_SCOPES = [
   'accounting.contacts.read',
   'accounting.banktransactions.read',
   'accounting.invoices.read',   // NEW: invoices + bills (Type=ACCPAY) — Scale overdue nudges
-  'accounting.transactions.read', // NEW: Quotes (accepted + open) — Scale revenue projection
 ];
 
 let _xeroAccess = { token: null, exp: 0 };
@@ -3428,10 +3431,14 @@ app.get('/api/finance/xero', async (_req, res) => {
 });
 
 // Xero Quotes for the Scale revenue projection: accepted (committed) + sent
-// (open pipeline). Requires the accounting.transactions.read scope — re-authorize
-// at /auth/xero after this ships, or the call 403s and the projection degrades to
-// recurring-only. Returns null on any failure so the caller can fall back.
+// (open pipeline). These need the `accounting.transactions.read` scope, which is
+// NOT in this Xero app's allowed-scope list (see XERO_SCOPES note) — so quotes are
+// unavailable and the projection degrades to recurring-revenue only. Kept as a
+// no-op (returns null) so the projection code path stays intact if that ever
+// changes; flip ENABLED to true once the scope is grantable.
 async function computeXeroQuotes() {
+  const ENABLED = false;
+  if (!ENABLED) return null;
   try {
     const norm = (qs) => (qs || []).map((q) => ({
       total: Number(q.Total) || 0,
@@ -3668,7 +3675,10 @@ registerScaleRoutes(app, {
   notion, cached, clearCached, computeXeroFinance, computeXeroQuotes, chicagoToday, currentQuarter,
   WORK_PROJECTS_DS, WORK_TASKS_DS,
 });
-registerMessagesRoutes(app, { notion, cached, WORK_PROJECTS_DS, WORK_TASKS_DS });
+// Reuses the existing Slack user-token OAuth (/auth/slack) + currentSlackToken().
+// The Messages zone reads unreads, so the OAuth user_scope was widened to include
+// the history/read scopes (see /auth/slack above).
+registerMessagesRoutes(app, { notion, cached, clearCached, getSlackUserToken: currentSlackToken, ownNotionUserId: GRETCHEN_USER_ID, WORK_PROJECTS_DS, WORK_TASKS_DS });
 registerLegoRoutes(app, { notion, cache, cached, userContext });
 
 // ===== Deliver domain — wired sections (offers + care-plan renewals); project sections render client-side =====

@@ -466,7 +466,7 @@ function renderFinance(d){
     <div><div class="tv">${moneyK(pj.total)}</div><div class="ton">${pj.goal?Math.round((pj.total/pj.goal)*100)+'% of '+moneyK(pj.goal)+' goal':''}</div></div></div>
   </div>`;
   if(!pj.quotesAvailable){
-    h += `<div class="xero-tip"><strong>Heads up:</strong> Quote data needs the <strong>accounting.transactions.read</strong> scope — re-authorize at <strong>/auth/xero</strong> so accepted + open quotes feed the projection. Until then it uses recurring revenue only.</div>`;
+    h += `<div class="xero-tip"><strong>Note:</strong> Xero quote data isn't available on the current connection (the quotes API scope isn't enabled for this app), so this projection uses your recurring-revenue average only.</div>`;
   } else {
     h += `<div class="xero-tip"><strong>Xero tip:</strong> Set an <strong>Expiry Date</strong> on each accepted quote to mark its expected invoice date — this lets the projection spread revenue accurately across the quarter.</div>`;
   }

@@ -105,6 +105,10 @@
 .notion-time { margin-left:auto; font-size:11px; color:var(--text-3); }
 .notion-text { font-size:13px; color:var(--text-2); line-height:1.4; }
 .notion-mention { color:var(--accent); font-weight:500; }
+.n-archive { background:none; border:1px solid var(--border); border-radius:5px; color:var(--text-3); font-size:11px; font-weight:600; padding:2px 8px; margin-left:8px; cursor:pointer; flex-shrink:0; transition:all .15s; font-family:inherit; }
+.n-archive:hover { border-color:var(--accent); color:var(--accent); }
+.archive-all { background:none; border:1px solid var(--border); border-radius:20px; color:var(--text-3); font-size:11px; font-weight:600; padding:3px 12px; cursor:pointer; font-family:inherit; transition:all .15s; }
+.archive-all:hover { border-color:var(--accent); color:var(--accent); }
 
 /* empty / skeleton / error */
 .empty { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 24px; color:var(--text-4); text-align:center; gap:8px; }
@@ -316,6 +320,11 @@ let detail = null; // full open message (with messageId/references for reply)
 function snoozeStore(){ try { return JSON.parse(localStorage.getItem('lrl-msg-snooze')||'{}'); } catch { return {}; } }
 function isSnoozed(id){ const s=snoozeStore()[id]; return s && s>Date.now(); }
 function setSnooze(id, until){ try { const s=snoozeStore(); s[id]=until; localStorage.setItem('lrl-msg-snooze', JSON.stringify(s)); } catch {} }
+/* Notion archive — dismiss handled comments from this page (Notion's API has no
+   read/resolve state, so we track dismissals locally). */
+function nArchiveStore(){ try { return JSON.parse(localStorage.getItem('lrl-msg-notion-archived')||'[]'); } catch { return []; } }
+function isNotionArchived(id){ return nArchiveStore().includes(id); }
+function addNotionArchive(ids){ try { const s=new Set(nArchiveStore()); (Array.isArray(ids)?ids:[ids]).forEach(i=>s.add(i)); localStorage.setItem('lrl-msg-notion-archived', JSON.stringify([...s])); } catch {} }
 
 function toast(msg){ const w=document.getElementById('toast-wrap'); const t=document.createElement('div'); t.className='toast'; t.textContent=msg; w.appendChild(t); setTimeout(()=>t.remove(),2800); }
 function showError(msg){ const e=document.getElementById('msg-error'); e.style.display='block'; e.innerHTML=esc(msg)+' <button onclick="reloadTab()">Retry</button>'; }
@@ -353,7 +362,7 @@ async function loadTab(tab){
     } else {
       const r = await fetch('/api/messages/notion-comments'); const d = await r.json();
       if (d.error) throw new Error(d.error);
-      c.data = (d.comments||[]).filter(m=>!isSnoozed(m.id));
+      c.data = (d.comments||[]).filter(m=>!isSnoozed(m.id) && !isNotionArchived(m.id));
     }
     c.t = Date.now(); clearError(); render();
   } catch (e) { showError("Couldn't load "+tab+": "+e.message); }
@@ -395,7 +404,7 @@ function gmailRow(m){
 function renderSlack(){
   const d = state.cache.slack.data;
   const el = document.getElementById('slack-list');
-  if (d && d.connected===false){ el.innerHTML = `<div class="empty"><div class="empty-icon">💬</div><div class="empty-title">Connect Slack</div><div class="empty-body">Add a Slack bot token (SLACK_BOT_TOKEN) and invite the bot to your channels to see messages here.</div></div>`; return; }
+  if (d && d.connected===false){ el.innerHTML = `<div class="empty"><div class="empty-icon">💬</div><div class="empty-title">Connect Slack</div><div class="empty-body">Sign in with Slack to see your unread DMs and channel messages here.</div><a class="btn-connect" href="/auth/slack">Connect Slack</a></div>`; return; }
   let channels = (d&&d.channels)||[];
   if (state.filter==='unread') channels = channels.map(c=>({...c,messages:c.messages.filter(m=>m.unread)})).filter(c=>c.messages.length);
   if (!channels.length){ el.innerHTML = `<div class="empty"><div class="empty-icon">💬</div><div class="empty-title">All caught up</div><div class="empty-body">No Slack messages.</div></div>`; return; }
@@ -411,14 +420,16 @@ function renderSlack(){
 function renderNotion(){
   const list = state.cache.notion.data || [];
   const el = document.getElementById('notion-list');
-  if (!list.length){ el.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">No new comments</div><div class="empty-body">Team comments from recent projects &amp; tasks will appear here.</div></div>`; return; }
-  el.innerHTML = `<div class="section-head urgent">Team Comments &nbsp;(${list.length})</div>` + list.map(n=>`
+  if (!list.length){ el.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">All caught up</div><div class="empty-body">No team comments needing your attention. Comments you've archived here won't reappear.</div></div>`; return; }
+  el.innerHTML = `<div class="section-head urgent" style="justify-content:space-between">Team Comments &nbsp;(${list.length})<button class="archive-all" onclick="archiveAllNotion(event)" style="text-transform:none;letter-spacing:0">📥 Archive all</button></div>` + list.map(n=>`
     <div class="notion-comment${n.unread?' unread':''}" onclick="openNotion('${esc(n.id)}')">
       <div class="notion-av" style="background:${n.commenterColor}1f;color:${n.commenterColor}">${esc(n.commenterInitials)}</div>
       <div class="notion-meta"><div class="notion-page-chip">📄 ${esc(n.pageTitle)}</div>
-      <div class="notion-top"><span class="notion-name">${esc(n.commenter)}</span><span class="notion-time">${esc(n.time)}</span></div>
+      <div class="notion-top"><span class="notion-name">${esc(n.commenter)}</span><span class="notion-time">${esc(n.time)}</span><button class="n-archive" onclick="archiveNotion(event,'${esc(n.id)}')" title="Archive">📥 Archive</button></div>
       <div class="notion-text">${esc(n.text).replace(/@gretchen/gi,'<span class="notion-mention">@gretchen</span>')}</div></div></div>`).join('');
 }
+function archiveNotion(e,id){ if(e) e.stopPropagation(); addNotionArchive(id); state.cache.notion.data=(state.cache.notion.data||[]).filter(x=>x.id!==id); if(state.openSrc==='notion'&&state.openId===id) closeDetail(); renderNotion(); updateBadges(); toast('📥 Archived'); }
+function archiveAllNotion(e){ if(e) e.stopPropagation(); const ids=(state.cache.notion.data||[]).map(x=>x.id); if(!ids.length) return; addNotionArchive(ids); state.cache.notion.data=[]; renderNotion(); updateBadges(); toast(`📥 ${ids.length} archived`); }
 
 /* ── selection / bulk ── */
 function toggleSel(e,id){ e.stopPropagation(); state.selected.has(id)?state.selected.delete(id):state.selected.add(id); updateSel(); renderGmail(); }
@@ -575,6 +586,6 @@ document.addEventListener('keydown',e=>{ if(e.target.tagName==='TEXTAREA'||e.tar
 /* ── init: preload all three so badges populate ── */
 loadTab('gmail');
 fetch('/api/messages/slack').then(r=>r.json()).then(d=>{ state.cache.slack.data=d; state.cache.slack.t=Date.now(); updateBadges(); }).catch(()=>{});
-fetch('/api/messages/notion-comments').then(r=>r.json()).then(d=>{ state.cache.notion.data=(d.comments||[]).filter(m=>!isSnoozed(m.id)); state.cache.notion.t=Date.now(); updateBadges(); }).catch(()=>{});
+fetch('/api/messages/notion-comments').then(r=>r.json()).then(d=>{ state.cache.notion.data=(d.comments||[]).filter(m=>!isSnoozed(m.id)&&!isNotionArchived(m.id)); state.cache.notion.t=Date.now(); updateBadges(); }).catch(()=>{});
 </script>
 </body></html>
