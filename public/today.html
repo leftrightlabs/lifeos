@@ -1977,44 +1977,61 @@ async function refreshData() {
   }
 }
 
-// Master loader — all API calls in parallel, each applied gracefully on success
+// Master loader — every call fires in parallel, but the dashboard is revealed
+// as soon as the CORE data (tasks + goals) lands instead of waiting for the
+// slowest call (projects/Xero/pipeline). Slower sections patch in as they
+// resolve, so time-to-first-paint is gated by the fast core, not the tail.
 async function loadTodayData() {
-  const [workTR, lifeTR, goalsR, ringsR, ritualR, briefR, calR, wealthR, projR, finR, pipeR] = await Promise.allSettled([
-    fetch('/api/tasks/work-myday').then(r => r.json()),
-    fetch('/api/tasks/life-myday').then(r => r.json()),
-    fetch('/api/goals').then(r => r.json()),
-    fetch('/api/journal/rings').then(r => r.json()),
-    fetch('/api/ritual/today').then(r => r.json()),
-    fetch('/api/ai/daily-focus').then(r => r.json()),
-    fetch('/api/calendar/today').then(r => r.json()),
-    fetch('/api/wealth/summary').then(r => r.json()),
-    fetch('/api/projects').then(r => r.json()),
-    fetch('/api/finance/xero').then(r => r.json()),
-    fetch('/api/convert/pipeline').then(r => r.json()),
-  ]);
-  const ok = r => r.status === 'fulfilled' && !r.value?.error;
+  const j = url => fetch(url).then(r => r.json()).catch(() => ({ error: true }));
+  const ok = v => v && !v.error;
 
-  if (ok(projR)) {
+  // Kick everything off immediately (parallel).
+  const pWork   = j('/api/tasks/work-myday');
+  const pLife   = j('/api/tasks/life-myday');
+  const pGoals  = j('/api/goals');
+  const pProj   = j('/api/projects');
+  const pRings  = j('/api/journal/rings');
+  const pRitual = j('/api/ritual/today');
+  const pBrief  = j('/api/ai/daily-focus');
+  const pCal    = j('/api/calendar/today');
+  const pWealth = j('/api/wealth/summary');
+  const pFin    = j('/api/finance/xero');
+  const pPipe   = j('/api/convert/pipeline');
+
+  // Projects only decorate task rows with a project label — patch in when ready.
+  pProj.then(v => {
+    if (!ok(v)) return;
     _projectMap = {};
-    (projR.value.projects || []).forEach(p => { _projectMap[p.id] = p; });
-  }
-  if (ok(goalsR)) {
-    _loadedGoals = goalsR.value.goals || [];
+    (v.projects || []).forEach(p => { _projectMap[p.id] = p; });
+    if (_dataLoaded) _reRenderAll();
+  });
+
+  // ── CORE: tasks + goals → reveal the dashboard as soon as these resolve ──
+  const [goalsV, workV, lifeV] = await Promise.all([pGoals, pWork, pLife]);
+  if (ok(goalsV)) {
+    _loadedGoals = goalsV.goals || [];
     rocks.length = 0;
     _loadedGoals.forEach(g => rocks.push(goalToRock(g)));
   }
-  if (ok(workTR) || ok(lifeTR)) {
-    const wt = ok(workTR) ? (workTR.value.tasks || []) : [];
-    const lt = ok(lifeTR) ? (lifeTR.value.tasks || []) : [];
+  if (ok(workV) || ok(lifeV)) {
+    const wt = ok(workV) ? (workV.tasks || []) : [];
+    const lt = ok(lifeV) ? (lifeV.tasks || []) : [];
     plan.length = 0;
     [...wt, ...lt].forEach(t => plan.push(taskToPlanItem(t)));
     _oneThingTask = pickOneThing(wt, _loadedGoals, 'work');
     _personalOneThingTask = pickOneThing(lt, _loadedGoals, 'personal');
   }
-  if (ok(ringsR)) {
-    applyStreaks(ringsR.value);
+  _dataLoaded = true;
+  _reRenderAll();
+  // Reveal the dashboard now — no sample-data flash, no waiting on the tail.
+  document.body.classList.remove('app-loading');
+
+  // ── SECONDARY: everything else patches in as it arrives (non-blocking) ──
+  pRings.then(v => {
+    if (!ok(v)) return;
+    applyStreaks(v);
     // Pre-populate EOD input chips from today's logged journal values
-    const jt = ringsR.value.today;
+    const jt = v.today;
     if (jt) {
       if (jt.id) _journalTodayUrl = 'https://www.notion.so/' + jt.id.replace(/-/g, '');
       rituals.evening.items.forEach(it => {
@@ -2024,17 +2041,15 @@ async function loadTodayData() {
         }
       });
     }
-  }
-  if (ok(ritualR)) applyRitual(ritualR.value);
-  if (ok(briefR)) applyBrief(briefR.value.brief);
-  if (ok(calR)) applyCalendar(calR.value.events || []);
-  if (ok(wealthR)) applyWealth(wealthR.value);
-  if (ok(finR) || ok(pipeR)) applyFinance(ok(finR) ? finR.value : null, ok(pipeR) ? pipeR.value : null);
-
-  _dataLoaded = true;
-  _reRenderAll();
-  // Reveal the dashboard now that real data is in — no sample-data flash.
-  document.body.classList.remove('app-loading');
+    _reRenderAll();
+  });
+  pRitual.then(v => { if (ok(v)) { applyRitual(v); _reRenderAll(); } });
+  pBrief.then(v  => { if (ok(v)) { applyBrief(v.brief); _reRenderAll(); } });
+  pCal.then(v    => { if (ok(v)) { applyCalendar(v.events || []); _reRenderAll(); } });
+  pWealth.then(v => { if (ok(v)) { applyWealth(v); _reRenderAll(); } });
+  Promise.all([pFin, pPipe]).then(([f, p]) => {
+    if (ok(f) || ok(p)) { applyFinance(ok(f) ? f : null, ok(p) ? p : null); _reRenderAll(); }
+  });
 }
 
 // ── INIT ──

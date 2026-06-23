@@ -136,6 +136,10 @@ const CACHE_TTL_OVERRIDES = {
   'scale-systems': 10 * 60_000, // Business Functions change slowly (weekly review)
   'scale-scorecard': 5 * 60_000, // VTO targets + live actuals; refresh every 5m
   'active-projects': 5 * 60_000, // project status changes slowly
+  'projects-list': 5 * 60_000,   // /today's slowest call (full project list) — keep warm
+  'goals': 5 * 60_000,           // Q2 rocks change rarely; keeps /today's core warm
+  'sales-pipeline': 5 * 60_000,  // deals move slowly within a session
+  'calendar-today': 3 * 60_000,  // today's events; a few minutes stale is fine
   'projects-board': 5 * 60_000,  // Projects tab board (area/system maps + paginated projects)
   'weather': 20 * 60_000,        // current conditions change slowly
   'lego-summary': 10 * 60_000,   // LEGO collection/build rollups change slowly
