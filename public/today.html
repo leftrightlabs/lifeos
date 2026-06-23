@@ -67,13 +67,14 @@ body {
   font-size: var(--fs-body);
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 /* ── APP ── */
 .app { max-width: 1080px; margin: 0 auto; position: relative; }
 
 /* TOP BAR */
-.topbar { display: flex; align-items: center; justify-content: space-between; padding: 13px 22px; gap: 12px; border-bottom: 1px solid var(--border-soft); }
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 13px 22px; padding-top: max(13px, env(safe-area-inset-top)); gap: 12px; border-bottom: 1px solid var(--border-soft); }
 .logo { color: var(--accent); font-weight: 800; font-size: var(--fs-body-sm); letter-spacing: .09em; white-space: nowrap; }
 .topbar-right { display: flex; align-items: center; gap: 7px; }
 .mode-toggle { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 3px; gap: 2px; }
@@ -203,7 +204,7 @@ body {
 
 /* ── ROCKS ── */
 .rocks-list { display: flex; flex-direction: column; gap: 6px; }
-.rock-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 10px; padding: 13px 15px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; cursor: pointer; border-left: 3px solid var(--border); transition: transform .12s; }
+.rock-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 10px; padding: 13px 15px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 4px 12px; align-items: center; cursor: pointer; border-left: 3px solid var(--border); transition: transform .12s; }
 .rock-card:hover { transform: translateX(2px); }
 .rock-card.risk { border-left-color: var(--red); }
 .rock-card.track { border-left-color: var(--green); }
@@ -629,11 +630,14 @@ html.light .footer-stamp { color: var(--text-3); }
   .wk-emoji { font-size: var(--fs-giant); }
 }
 @media (max-width: 420px) {
-  .topbar { padding: 11px 14px; }
+  .topbar { padding: 11px 14px; padding-top: max(11px, env(safe-area-inset-top)); }
   .main-col { padding: 14px 14px 0; }
   .side-col { padding: 0 14px 14px; }
   .greeting-zone { padding: 16px 14px 10px; }
   .streak-strip { padding: 0; }
+  .qrow { flex-wrap: wrap; align-items: flex-start; }
+  .qcheck, .qdot { margin-top: 2px; }
+  .qmeta { order: 10; flex-basis: 100%; padding-left: 46px; justify-content: flex-start; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 }
 /* Loading gate — hide every live-data panel until the first data load resolves,
    so no seed/sample data flashes before the real data arrives. */
