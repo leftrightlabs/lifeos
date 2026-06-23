@@ -138,6 +138,17 @@ body {
 .mini-btn { background: none; border: 1px solid var(--border); border-radius: 5px; font-size: var(--fs-caption); font-weight: 600; color: var(--text-3); padding: 4px 9px; cursor: pointer; font-family: inherit; letter-spacing: .03em; }
 .mini-btn.on { background: var(--accent-soft); color: var(--accent); border-color: rgba(99,102,241,.3); }
 
+/* ── COLLAPSIBLE SECTION CARDS (contained like /index) ── */
+.t-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 12px; padding: 15px 17px; }
+.t-card .sec-head { margin-bottom: 12px; }
+.t-card.collapsed .sec-head { margin-bottom: 0; }
+.card-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1; min-width: 0; user-select: none; }
+.chev { font-size: 9px; color: var(--text-4); transition: transform .2s; flex-shrink: 0; }
+.t-card.collapsed .chev { transform: rotate(-90deg); }
+.t-card.collapsed .t-body { display: none; }
+/* streak strip now lives at the top of the main column (≈2/3 width) */
+.streak-strip { padding: 0; }
+
 /* ── THE ONE THING ── */
 .onething { border-radius: 14px; padding: 24px; position: relative; overflow: hidden; background: linear-gradient(135deg, #161C2E 0%, #1A2138 100%); border: 1px solid #28304A; border-left: 4px solid var(--work); transition: all .4s; }
 .onething.completed { border-left-color: var(--green); background: linear-gradient(135deg, #14241E 0%, #16291F 100%); }
@@ -226,6 +237,17 @@ body {
 .pt-area { background: rgba(84,102,126,.13); color: var(--text-2); }
 .pt-personal { background: var(--personal-soft); color: var(--personal); }
 .pt-work     { background: var(--work-soft);     color: var(--work); }
+
+/* Inline task-card controls (My Day + date on the card, not a 3-dot menu) */
+.plan-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto; }
+.plan-date-chip { background: rgba(255,255,255,.04); border: 1px solid var(--border); color: var(--text-2); font-size: var(--fs-caption); padding: 3px 9px; border-radius: 999px; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all .15s; }
+.plan-date-chip:hover { border-color: var(--accent); color: var(--text); }
+.plan-date-chip.overdue { color: var(--amber); border-color: rgba(235,180,84,.3); }
+.plan-date-chip.unset { color: var(--text-4); border-style: dashed; }
+.plan-myday-btn { background: var(--accent); color: #fff; border: 1px solid var(--accent); font-size: var(--fs-caption); padding: 3px 10px; border-radius: 999px; cursor: pointer; font-family: inherit; letter-spacing: .05em; text-transform: uppercase; font-weight: 600; transition: filter .15s; }
+.plan-myday-btn:hover { filter: brightness(1.12); }
+.plan-notion-btn { background: none; border: 1px solid var(--border); color: var(--text-3); font-size: var(--fs-body-sm); padding: 3px 8px; border-radius: 6px; cursor: pointer; line-height: 1; transition: all .15s; }
+.plan-notion-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 /* Plan row actions */
 .plan-menu-wrap { position: relative; flex-shrink: 0; }
@@ -529,69 +551,77 @@ body.app-loading #appLoading { display: flex; }
   <!-- LOADING GATE (shown until first data load resolves) -->
   <div id="appLoading"><span class="app-loading-dot"></span> Loading your day…</div>
 
-  <!-- STREAK STRIP -->
-  <div class="streak-strip" id="streakStrip"></div>
-
-  <!-- LAYOUT -->
+  <!-- LAYOUT — streaks top-left (≈2/3), Campaign Progress top-right (≈1/3) -->
   <div class="layout">
     <div class="main-col">
 
+      <div class="streak-strip" id="streakStrip"></div>
+
       <div id="oneThingArea"></div>
 
-      <div>
+      <div class="t-card" id="card-rocks">
         <div class="sec-head">
-          <div class="sec-title"><span id="rocksTitle">Q2 Rocks</span> <span class="count" id="rocksCount">· 3 at risk · 9 days left</span></div>
-          <button class="mini-btn" id="rocksBtn" onclick="toggleRocks()">Collapse</button>
+          <div class="card-toggle" onclick="toggleCard(this)">
+            <span class="chev">▾</span>
+            <div class="sec-title"><span id="rocksTitle">Q2 Rocks</span> <span class="count" id="rocksCount"></span></div>
+          </div>
         </div>
-        <div id="rocksBody"><div class="rocks-list" id="rocksList"></div></div>
+        <div class="t-body" id="rocksBody"><div class="rocks-list" id="rocksList"></div></div>
       </div>
 
-      <div>
+      <div class="t-card" id="card-plan">
         <div class="sec-head">
-          <div class="sec-title">Today's Plan <span class="count" id="planCount">· 0 of 4 done</span></div>
+          <div class="card-toggle" onclick="toggleCard(this)">
+            <span class="chev">▾</span>
+            <div class="sec-title">Today's Plan <span class="count" id="planCount"></span></div>
+          </div>
           <div style="display:flex;gap:6px;">
-            <button class="mini-btn" id="planAddBtn" onclick="toggleAddTask()" title="Add task" style="font-size: var(--fs-body);padding:3px 11px;line-height:1;">+</button>
-            <button class="mini-btn" id="planHideBtn" onclick="toggleHideDone()">Hide done</button>
+            <button class="mini-btn" id="planAddBtn" onclick="event.stopPropagation();toggleAddTask()" title="Add task" style="font-size: var(--fs-body);padding:3px 11px;line-height:1;">+</button>
+            <button class="mini-btn" id="planHideBtn" onclick="event.stopPropagation();toggleHideDone()">Hide done</button>
           </div>
         </div>
-        <div class="ritual" id="morningRitual"></div>
-        <div class="plan-list" id="planList"></div>
-        <div class="plan-add-wrap">
-          <div class="plan-add-form" id="planAddForm">
-            <select id="planAddSrc" class="plan-add-src">
-              <option value="work">Work</option>
-              <option value="personal">Personal</option>
-            </select>
-            <input type="text" id="planAddInput" class="plan-add-input" placeholder="Task name…"
-              onkeydown="if(event.key==='Enter')submitAddTask();if(event.key==='Escape')toggleAddTask()"/>
-            <button id="planAddSubmit" class="plan-add-submit" onclick="submitAddTask()">Add</button>
+        <div class="t-body">
+          <div class="ritual" id="morningRitual"></div>
+          <div class="plan-list" id="planList"></div>
+          <div class="plan-add-wrap">
+            <div class="plan-add-form" id="planAddForm">
+              <select id="planAddSrc" class="plan-add-src">
+                <option value="work">Work</option>
+                <option value="personal">Personal</option>
+              </select>
+              <input type="text" id="planAddInput" class="plan-add-input" placeholder="Task name…"
+                onkeydown="if(event.key==='Enter')submitAddTask();if(event.key==='Escape')toggleAddTask()"/>
+              <button id="planAddSubmit" class="plan-add-submit" onclick="submitAddTask()">Add</button>
+            </div>
+            <div class="plan-add-msg" id="planAddMsg" style="display:none;"></div>
           </div>
-          <div class="plan-add-msg" id="planAddMsg" style="display:none;"></div>
+          <div class="ritual evening" id="eveningRitual"></div>
         </div>
-        <div class="ritual evening" id="eveningRitual"></div>
       </div>
 
     </div>
 
     <div class="side-col">
-      <div>
-        <div class="side-sec-title" id="progressTitle">Campaign Progress</div>
-        <div class="rings" id="rings"></div>
-        <div class="next-rock-box" id="nextRockBox">
-          <div class="nr-label">Most urgent rock</div>
-          <div class="nr-text" id="nextRockText">Tier 2 Journey — only 1 of 5 milestones done with 9 days left</div>
+      <div class="t-card">
+        <div class="side-sec-title card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><span id="progressTitle">Campaign Progress</span></div>
+        <div class="t-body">
+          <div class="rings" id="rings"></div>
+          <div class="next-rock-box" id="nextRockBox">
+            <div class="nr-label">Most urgent rock</div>
+            <div class="nr-text" id="nextRockText"></div>
+          </div>
         </div>
       </div>
-      <div>
-        <div class="side-sec-title" style="display:flex;align-items:center;justify-content:space-between;">
-          <span>Today's Schedule</span>
-          <span class="wx-chip" id="wxChip">☀️ 82° · Clear</span>
+      <div class="t-card">
+        <div class="side-sec-title card-toggle" onclick="toggleCard(this)" style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="display:flex;align-items:center;gap:8px;"><span class="chev">▾</span>Today's Schedule</span>
+          <span class="wx-chip" id="wxChip"></span>
         </div>
-        <div class="vcal" id="vcal"></div>
+        <div class="t-body"><div class="vcal" id="vcal"></div></div>
       </div>
-      <div>
-        <div class="side-sec-title">Snapshot</div>
-        <div class="snap-grid" id="snapGrid"></div>
+      <div class="t-card">
+        <div class="side-sec-title card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span>Snapshot</div>
+        <div class="t-body"><div class="snap-grid" id="snapGrid"></div></div>
       </div>
     </div>
   </div>
@@ -1126,12 +1156,18 @@ function closePlanMenus() {
 
 document.addEventListener('click', closePlanMenus);
 
+// Hand the URL straight to the Notion desktop app via its notion:// scheme.
+// Using window.open('_blank') on an https notion link opens the app AND leaves
+// an empty browser tab behind; assigning the scheme to location keeps the
+// dashboard in place and opens the app with no stray tab.
+function toNotionApp(url) { return url ? url.replace(/^https?:/i, 'notion:') : url; }
 function openInNotion(i) {
-  closePlanMenus();
   const t = plan[i];
-  if (t.notionUrl) { window.open(t.notionUrl, '_blank'); }
-  else { alert('Notion link will be available once Phase 3 data wiring is complete.'); }
+  if (t && t.notionUrl) { window.location.href = toNotionApp(t.notionUrl); }
 }
+
+// Collapse/expand a section card (sections behave like the /index cards).
+function toggleCard(el) { const c = el.closest('.t-card'); if (c) c.classList.toggle('collapsed'); }
 
 // ── UNDO TOAST ──
 let _undoTimer = null;
@@ -1280,6 +1316,11 @@ function renderPlan() {
       : `<span class="plan-src task">▪ Task</span>`;
     const hide = t.done && state.hideDone ? 'style="display:none;"' : '';
     const displayNum = t.done ? '✓' : num++;
+    const today = todayISO();
+    const dueCls = !t.dueStart ? 'unset' : (t.dueStart < today ? 'overdue' : '');
+    const dueLbl = !t.dueStart ? '📅 Date'
+      : t.dueStart === today ? '📅 Today'
+      : '📅 ' + new Date(t.dueStart + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     return `
     <div class="plan-row ${t.done ? 'done-row' : ''}" data-plan-idx="${origIdx}" ${hide}>
       <span class="plan-drag" title="Drag to reorder">⠿</span>
@@ -1290,14 +1331,10 @@ function renderPlan() {
         <span class="plan-project">${srcIcon} ${t.project}</span>
       </div>
       <div class="plan-tags">${t.tags.map(tg => `<span class="plan-tag ${tg.c}">${tg.t}</span>`).join('')}</div>
-      <div class="plan-menu-wrap">
-        <button class="plan-menu-btn" onclick="togglePlanMenu(${origIdx}, event)" title="Task options">⋯</button>
-        <div class="plan-menu-drop hidden">
-          ${t.notionUrl ? `<button class="plan-menu-item" onclick="openInNotion(${origIdx})"><span class="mi-icon">↗</span>Open in Notion</button>` : `<button class="plan-menu-item" onclick="openInNotion(${origIdx})" style="opacity:.5"><span class="mi-icon">↗</span>Open in Notion</button>`}
-          <div class="plan-menu-sep"></div>
-          <button class="plan-menu-item" onclick="showReschedule(${origIdx})"><span class="mi-icon">📅</span>Reschedule</button>
-          <button class="plan-menu-item danger" onclick="removeFromMyDay(${origIdx})"><span class="mi-icon">✕</span>Remove from My Day</button>
-        </div>
+      <div class="plan-actions">
+        <button class="plan-date-chip ${dueCls}" onclick="event.stopPropagation();showReschedule(${origIdx})" title="Set due date">${dueLbl}</button>
+        <button class="plan-myday-btn" onclick="event.stopPropagation();removeFromMyDay(${origIdx})" title="Remove from My Day">My Day</button>
+        ${t.notionUrl ? `<button class="plan-notion-btn" onclick="event.stopPropagation();openInNotion(${origIdx})" title="Open in Notion">↗</button>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -1578,10 +1615,11 @@ function renderRitual(which) {
               </div>
             </div>`;
         }
+        const isNotion = (u) => /notion\.so|notion\.site/i.test(u || '');
         const link = it.notionJournal && _journalTodayUrl
-          ? `<a class="ritual-link" href="${_journalTodayUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open in Notion">↗</a>`
+          ? `<a class="ritual-link" href="${toNotionApp(_journalTodayUrl)}" onclick="event.stopPropagation()" title="Open in Notion">↗</a>`
           : it.href
-            ? `<a class="ritual-link" href="${it.href}" ${it.external ? 'target="_blank" rel="noopener"' : ''} onclick="event.stopPropagation()">↗</a>`
+            ? `<a class="ritual-link" href="${isNotion(it.href) ? toNotionApp(it.href) : it.href}" ${it.external && !isNotion(it.href) ? 'target="_blank" rel="noopener"' : ''} onclick="event.stopPropagation()">↗</a>`
             : it.modal === 'checkin'
               ? `<a class="ritual-link" href="#" onclick="openCheckinModal();return false;">↗</a>`
               : '';
