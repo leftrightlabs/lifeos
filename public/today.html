@@ -146,6 +146,11 @@ body {
 .chev { font-size: 9px; color: var(--text-4); transition: transform .2s; flex-shrink: 0; }
 .t-card.collapsed .chev { transform: rotate(-90deg); }
 .t-card.collapsed .t-body { display: none; }
+/* Section-wrap: bare collapsible row — no card background (streak/onething have their own) */
+.section-wrap.collapsed .chev { transform: rotate(-90deg); }
+.section-wrap.collapsed .t-body { display: none; }
+.section-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; padding-bottom: 10px; }
+.section-toggle .sec-title { font-size: var(--fs-caption); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
 /* streak strip now lives at the top of the main column (≈2/3 width) */
 .streak-strip { padding: 0; }
 
@@ -630,9 +635,25 @@ body.app-loading #appLoading { display: flex; }
   <div class="layout">
     <div class="main-col">
 
-      <div class="streak-strip" id="streakStrip"></div>
+      <div class="section-wrap" id="wrap-streaks" data-persist-key="streaks">
+        <div class="section-toggle" onclick="toggleCard(this)">
+          <span class="chev">▾</span>
+          <span class="sec-title" id="streaksToggleLabel">Streaks</span>
+        </div>
+        <div class="t-body">
+          <div class="streak-strip" id="streakStrip"></div>
+        </div>
+      </div>
 
-      <div id="oneThingArea"></div>
+      <div class="section-wrap" id="wrap-onething" data-persist-key="onething">
+        <div class="section-toggle" onclick="toggleCard(this)">
+          <span class="chev">▾</span>
+          <span class="sec-title">The One Thing</span>
+        </div>
+        <div class="t-body">
+          <div id="oneThingArea"></div>
+        </div>
+      </div>
 
       <div class="t-card" id="card-rocks">
         <div class="sec-head">
@@ -1353,8 +1374,27 @@ function openInNotion(i) {
   if (t && t.notionUrl) { window.location.href = toNotionApp(t.notionUrl); }
 }
 
-// Collapse/expand a section card (sections behave like the /index cards).
-function toggleCard(el) { const c = el.closest('.t-card'); if (c) c.classList.toggle('collapsed'); }
+// Collapse/expand a card or section-wrap. Persists state keyed by today's date
+// so collapsed sections auto-reopen the next day.
+function toggleCard(el) {
+  const c = el.closest('.t-card, .section-wrap');
+  if (!c) return;
+  c.classList.toggle('collapsed');
+  const key = c.dataset.persistKey;
+  if (key) {
+    const today = todayISO();
+    const stored = JSON.parse(localStorage.getItem('today-sections') || '{}');
+    if (stored._date !== today) { localStorage.setItem('today-sections', JSON.stringify({ _date: today, [key]: c.classList.contains('collapsed') })); }
+    else { stored[key] = c.classList.contains('collapsed'); localStorage.setItem('today-sections', JSON.stringify(stored)); }
+  }
+}
+function loadSectionStates() {
+  const stored = JSON.parse(localStorage.getItem('today-sections') || '{}');
+  if (stored._date !== todayISO()) return; // new day → all expanded
+  ['streaks', 'onething'].forEach(key => {
+    if (stored[key]) document.getElementById('wrap-' + key)?.classList.add('collapsed');
+  });
+}
 
 // ── EDIT TASK MODAL (click a task title to open) ──
 let _editIdx = null;
@@ -2417,6 +2457,7 @@ function init() {
   renderStreaks();
   _reRenderAll();
   renderVcal();
+  loadSectionStates();
 
   // Restore work streak from localStorage immediately (before API returns)
   const _saved = workStreakLoad();
