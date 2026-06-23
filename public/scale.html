@@ -5,7 +5,104 @@
 <link rel="stylesheet" href="/styles/tokens.css">
 <link rel="stylesheet" href="/styles/app.css">
 <script defer src="/zone-scope.js"></script>
-<style>:root { --zone: var(--work); --zone-soft: var(--work-soft); }</style>
+<style>
+@import url('https://use.typekit.net/uwk2elu.css');
+:root {
+  --zone: var(--work); --zone-soft: var(--work-soft);
+  --font-display: 'scotch-display','Playfair Display',Georgia,serif;
+  --font-body: 'sweet-sans-pro','Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --radius: 12px; --radius-sm: 8px; --radius-xs: 5px;
+}
+.scale-page { max-width:1100px; margin:0 auto; padding:24px 28px 90px; font-family:var(--font-body); font-size:14px; line-height:1.5; color:var(--text); }
+.scotch { display:inline-block; transform:scaleY(1.18); transform-origin:center left; }
+
+.sc-head { margin-bottom:20px; }
+.sc-eyebrow { font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--text-2); margin-bottom:5px; }
+.sc-title { font-family:var(--font-display); font-weight:700; font-size:32px; line-height:1; color:var(--text); }
+.sc-sub { font-size:12.5px; color:var(--text-3); margin-top:4px; }
+
+.statebanner { display:flex; align-items:center; gap:14px; padding:14px 18px; border-radius:var(--radius); margin-bottom:22px; border:1px solid; }
+.statebanner .bigicon { font-size:22px; }
+.statebanner .txt h2 { font-family:var(--font-display); font-weight:700; font-size:17px; margin-bottom:1px; }
+.statebanner .txt p { font-size:12.5px; color:var(--text-2); }
+body[data-state="stressed"] .statebanner { background:var(--amber-soft); border-color:rgba(235,180,84,.3); }
+body[data-state="stressed"] .statebanner h2 { color:var(--amber); }
+body[data-state="calm"] .statebanner { background:var(--green-soft); border-color:rgba(79,214,160,.3); }
+body[data-state="calm"] .statebanner h2 { color:var(--green); }
+
+.hero { background:linear-gradient(135deg,var(--surface) 0%, #0E1626 100%); border:1px solid var(--border); border-left:3px solid var(--zone); border-radius:var(--radius); padding:22px 24px; margin-bottom:22px; }
+.hero .eyebrow { font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; font-weight:700; color:var(--zone); margin-bottom:10px; }
+.hero h1 { font-family:var(--font-display); font-weight:700; font-size:23px; line-height:1.15; margin-bottom:6px; }
+.hero .sub { font-size:13px; color:var(--text-2); margin-bottom:14px; }
+.hero .why { font-size:13px; color:var(--text-2); line-height:1.6; margin-bottom:8px; }
+.hero .why b { color:var(--text); }
+.hero .next { font-size:12.5px; color:var(--text-2); background:var(--surface-2); border-left:2px solid var(--zone); border-radius:0 var(--radius-sm) var(--radius-sm) 0; padding:10px 13px; margin-bottom:16px; }
+.hero .next .lbl { font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); display:block; margin-bottom:3px; }
+.hero .meta { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:16px; align-items:center; }
+.hero .actions { display:flex; gap:10px; flex-wrap:wrap; }
+.btn { font-family:var(--font-body); font-weight:600; font-size:12.5px; letter-spacing:.03em; padding:10px 18px; border-radius:8px; cursor:pointer; border:1px solid transparent; display:inline-flex; align-items:center; gap:7px; transition:all .15s; text-decoration:none; }
+.btn-primary { background:var(--zone); color:#fff; } .btn-primary:hover { filter:brightness(1.1); }
+.btn-ghost { background:transparent; border-color:var(--border); color:var(--text-2); } .btn-ghost:hover { border-color:var(--text-3); color:var(--text); }
+
+.calmpayoff { text-align:center; padding:30px 24px; background:linear-gradient(135deg,#0E1A16,#0C1420); border:1px solid rgba(79,214,160,.25); border-radius:var(--radius); margin-bottom:24px; }
+.calmpayoff .burst { width:34px; height:34px; margin-bottom:14px; }
+.calmpayoff h1 { font-family:var(--font-display); font-weight:700; font-size:25px; color:var(--green); margin-bottom:8px; }
+.calmpayoff p { font-size:13.5px; color:var(--text-2); max-width:460px; margin:0 auto 4px; }
+
+.pulsestrip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
+.pulsecard { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:15px 16px; }
+.pulsecard .label { font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); font-weight:600; margin-bottom:8px; }
+.pulsecard .val { font-family:var(--font-display); font-weight:700; font-size:26px; line-height:1; }
+.pulsecard .valsub { font-size:11px; color:var(--text-3); margin-top:4px; }
+
+.section { margin-bottom:26px; }
+.section-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.section-head .h { display:flex; align-items:center; gap:10px; }
+.section-head .eyebrow { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; font-weight:700; color:var(--text-3); }
+.section-head h3 { font-family:var(--font-display); font-weight:700; font-size:16px; }
+.section-head .count { font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; }
+.count.red { background:var(--red-soft); color:var(--red); } .count.amber { background:var(--amber-soft); color:var(--amber); } .count.green { background:var(--green-soft); color:var(--green); } .count.zone { background:var(--zone-soft); color:#7FA8FF; } .count.neutral { background:var(--surface-2); color:var(--text-3); }
+
+.rows { display:flex; flex-direction:column; gap:7px; }
+.row { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 15px; display:flex; align-items:center; gap:14px; border-left:3px solid transparent; }
+.row.l-red { border-left-color:var(--red); } .row.l-amber { border-left-color:var(--amber); } .row.l-green { border-left-color:var(--green); } .row.l-zone { border-left-color:var(--zone); }
+.row .main { flex:1; min-width:0; }
+.row .title { font-size:13.5px; font-weight:600; color:var(--text); margin-bottom:3px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.row .title a { color:inherit; text-decoration:none; } .row .title a:hover { color:#7FA8FF; }
+.row .meta { font-size:11.5px; color:var(--text-3); display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.row .meta .sep { color:var(--text-4); }
+.row .right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.row .next-actions { font-size:11.5px; color:var(--text-3); margin-top:5px; line-height:1.5; display:none; }
+.row.open .next-actions { display:block; }
+
+.chip { font-size:10px; font-weight:700; letter-spacing:.04em; padding:3px 8px; border-radius:5px; text-transform:uppercase; white-space:nowrap; }
+.chip.red { background:var(--red-soft); color:var(--red); } .chip.amber { background:var(--amber-soft); color:var(--amber); } .chip.green { background:var(--green-soft); color:var(--green); } .chip.zone { background:var(--zone-soft); color:#7FA8FF; } .chip.neutral { background:var(--surface-2); color:var(--text-3); border:1px solid var(--border); }
+.chip.qw { background:rgba(99,102,241,.13); color:#A5A8F5; }
+
+/* scorecard value + bar */
+.sc-val { font-size:13px; font-weight:700; white-space:nowrap; text-align:right; }
+.sc-val.red { color:var(--red); } .sc-val.amber { color:var(--amber); } .sc-val.green { color:var(--green); } .sc-val.unknown { color:var(--text-3); }
+.sc-bar { width:90px; height:6px; background:var(--surface-2); border-radius:99px; overflow:hidden; }
+.sc-bar i { display:block; height:100%; border-radius:99px; }
+.ie { display:inline-flex; gap:3px; align-items:center; font-size:10px; color:var(--text-3); }
+.ie b { color:var(--text-2); }
+
+.miniact { font-size:10.5px; font-weight:600; padding:5px 10px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2); color:var(--text-2); cursor:pointer; white-space:nowrap; transition:all .15s; text-decoration:none; display:inline-flex; gap:5px; align-items:center; }
+.miniact:hover { border-color:var(--zone); color:#7FA8FF; }
+.clean { display:flex; align-items:center; gap:10px; padding:13px 16px; background:var(--green-soft); border:1px solid rgba(79,214,160,.2); border-radius:var(--radius-sm); font-size:12.5px; color:var(--green); }
+.empty-line { font-size:12px; color:var(--text-3); padding:10px 4px; }
+.more-line { font-size:11.5px; color:var(--text-3); padding:8px 4px 2px; cursor:pointer; }
+.more-line:hover { color:var(--text-2); }
+@media(max-width:860px){ .pulsestrip{ grid-template-columns:repeat(2,1fr); } }
+body[data-state="calm"] .show-stressed { display:none !important; }
+body[data-state="stressed"] .show-calm { display:none !important; }
+body:not([data-state]) .sc-content { display:none; }
+
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--surface-2); border:1px solid var(--border); color:var(--text); padding:10px 18px; border-radius:8px; font-size:13px; font-weight:600; z-index:999; transition:transform .25s,opacity .25s; opacity:0; pointer-events:none; }
+.toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+#sc-loading { padding:60px 0; text-align:center; color:var(--text-3); font-size:13px; }
+#sc-error { display:none; background:var(--red-soft); border:1px solid rgba(242,109,109,.25); color:var(--red); border-radius:var(--radius); padding:14px 18px; font-size:13px; margin-bottom:18px; }
+</style>
 </head><body>
 <div class="topbar-wrap"><div class="topbar">
   <a href="/" class="logo">◆ LRL OS</a>
@@ -34,21 +131,130 @@
   <a href="/wealth" class="nav-btn">WEALTH</a>
   <a href="/lego" class="nav-btn">LEGO</a>
 </nav></div>
-<div class="zone-wrap">
-  <div class="zone-hero">
-    <div class="zone-eyebrow">Work · Scale</div>
-    <div class="zone-heading">
-      <div class="zone-icon">📈</div>
-      <h1 class="zone-title">Scale</h1>
-    </div>
-    <p class="zone-desc">Team, systems, and infrastructure. The levers that let the business grow without you doing everything.</p>
-    <span class="zone-badge">⚙ Building this zone</span>
+
+<div class="scale-page">
+  <div class="sc-head">
+    <div class="sc-eyebrow">Work · Scale</div>
+    <span class="sc-title scotch">Scale</span>
+    <div class="sc-sub" id="sc-sub">The operating view — scorecard vs targets, and the systems holding growth back.</div>
   </div>
-  <div class="zone-placeholder">
-    <div class="zone-card"><div class="zone-card-label">Team</div><div class="zone-card-title">Capacity & Output</div><div class="zone-card-body">Team utilization, blockers, and output metrics this sprint.</div></div>
-    <div class="zone-card"><div class="zone-card-label">Systems</div><div class="zone-card-title">SOPs & Automations</div><div class="zone-card-body">Documented processes, automation health, and ops debt.</div></div>
-    <div class="zone-card"><div class="zone-card-label">Growth</div><div class="zone-card-title">Partner Program</div><div class="zone-card-body">Referral pipeline, partner activity, and commission tracking.</div></div>
+
+  <div id="sc-error"></div>
+  <div id="sc-loading">Loading scorecard & systems…</div>
+
+  <div class="sc-content">
+    <div class="statebanner" id="banner"></div>
+    <div class="hero show-stressed" id="hero"></div>
+    <div class="calmpayoff show-calm" id="calmpayoff"></div>
+    <div class="pulsestrip" id="pulse"></div>
+    <div class="section" id="sec-scorecard"></div>
+    <div class="section" id="sec-systems"></div>
   </div>
 </div>
+
+<div class="toast" id="toast"></div>
 <a href="/" class="fab" title="Back to Today">⚡</a>
+
+<script>
+const BURST = '<svg class="burst" viewBox="0 0 512 512"><path fill="#4FD6A0" d="M507.2,257.1c-125.4,19.1-225.5,115-250.7,238.3-.2.8-1.3.8-1.5,0-25.2-123.2-125.3-219.2-250.7-238.3-.9-.1-.9-1.4,0-1.5,125.4-19.1,225.5-115,250.7-238.3.2-.8,1.3-.8,1.5,0,25.2,123.2,125.3,219.2,250.7,238.3.9.1.9,1.4,0,1.5Z"/></svg>';
+let SCORE = null, SYS = null, SYS_LIMIT = 8;
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+const CUR_SOURCES = ['Xero Revenue', 'Xero Profit', 'Convert Deals Won'];
+function fmtMetric(m) {
+  const f = (v) => v == null ? '—' : CUR_SOURCES.includes(m.source) ? '$' + Math.round(v).toLocaleString() : (m.source === 'Xero Cash Capacity' ? (Math.round(v * 100) / 100).toFixed(2) : Math.round(v).toLocaleString());
+  return `${f(m.actual)} <span style="color:var(--text-3);font-weight:400">/ ${f(m.goal)}</span>`;
+}
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(window._tt); window._tt = setTimeout(() => t.classList.remove('show'), 2400); }
+const barColor = (s) => s === 'green' ? 'var(--green)' : s === 'amber' ? 'var(--amber)' : 'var(--red)';
+const healthChip = (h) => { const t = /broken|missing/i.test(h) ? 'red' : /needs build/i.test(h) ? 'amber' : 'neutral'; return `<span class="chip ${t}">${esc(h)}</span>`; };
+const prioChip = (p) => { const t = p === 'Critical' ? 'red' : p === 'High' ? 'amber' : 'neutral'; return `<span class="chip ${t}">${esc(p)}</span>`; };
+
+function render() {
+  const offTrack = SCORE?.offTrack?.length || 0;
+  const attention = SYS?.counts?.attention || 0;
+  const critical = SYS?.counts?.critical || 0;
+  const calm = offTrack === 0 && attention === 0;
+  document.body.setAttribute('data-state', calm ? 'calm' : 'stressed');
+
+  // Banner
+  if (calm) {
+    document.getElementById('banner').innerHTML = `<span class="bigicon">✓</span><div class="txt"><h2 class="scotch">Scaling on plan</h2><p>Every scorecard metric is on target and no business system needs attention. The machine is running.</p></div>`;
+  } else {
+    const parts = [];
+    if (offTrack) parts.push(`${offTrack} metric${offTrack > 1 ? 's' : ''} off-track`);
+    if (attention) parts.push(`${attention} system${attention > 1 ? 's' : ''} need attention`);
+    if (critical) parts.push(`${critical} critical`);
+    document.getElementById('banner').innerHTML = `<span class="bigicon">🛠️</span><div class="txt"><h2 class="scotch">The machine needs work</h2><p>${esc(parts.join(' · '))}. Fix the highest-leverage one first.</p></div>`;
+  }
+
+  // Hero — the #1 system to fix (backend ranks them) → else worst off-track metric
+  const top = (SYS?.systems || [])[0];
+  if (top) {
+    document.getElementById('hero').innerHTML = `
+      <div class="eyebrow">⚡ Highest-leverage fix</div>
+      <h1 class="scotch">${esc(top.name)}</h1>
+      <p class="sub">${esc(top.func || 'Business system')} · ${esc(top.health)}${top.quickWin ? ' · quick win' : ''}</p>
+      ${top.whatsMissing ? `<div class="why">${esc(top.whatsMissing)}</div>` : ''}
+      ${top.nextActions ? `<div class="next"><span class="lbl">Next action</span>${esc(top.nextActions)}</div>` : ''}
+      <div class="meta">
+        ${prioChip(top.priority)} ${healthChip(top.health)} ${top.quickWin ? '<span class="chip qw">Quick win</span>' : ''}
+        <span class="ie">Impact <b>${top.impact ?? '—'}/5</b></span><span class="ie">Effort <b>${top.effort ?? '—'}/5</b></span>
+      </div>
+      <div class="actions"><a class="btn btn-primary" href="${top.url}" target="_blank">→ Open in Notion</a></div>`;
+  } else {
+    document.getElementById('hero').innerHTML = `<div class="eyebrow">⚡ Highest-leverage fix</div><h1 class="scotch">No systems flagged.</h1><p class="sub">Nothing in the business-functions board needs attention right now.</p>`;
+  }
+  document.getElementById('calmpayoff').innerHTML = `${BURST}<h1 class="scotch">The machine is running.</h1><p>All ${SCORE?.metrics?.length || 0} scorecard metrics are on target and every business system is healthy. Spend the time building the next thing, not firefighting.</p>`;
+
+  // Pulse
+  document.getElementById('pulse').innerHTML = `
+    <div class="pulsecard"><div class="label">Off-track metrics</div><div class="val" style="color:${offTrack ? 'var(--red)' : 'var(--green)'}">${offTrack}<span style="font-size:13px;color:var(--text-3)"> / ${SCORE?.counts?.total ?? 0}</span></div><div class="valsub">${esc(SCORE?.quarter || '')}</div></div>
+    <div class="pulsecard"><div class="label">Systems need attention</div><div class="val" style="color:${attention ? 'var(--amber)' : 'var(--green)'}">${attention}<span style="font-size:13px;color:var(--text-3)"> / ${SYS?.counts?.total ?? 0}</span></div><div class="valsub">business functions</div></div>
+    <div class="pulsecard"><div class="label">Critical</div><div class="val" style="color:${critical ? 'var(--red)' : 'var(--green)'}">${critical}</div><div class="valsub">top-priority gaps</div></div>
+    <div class="pulsecard"><div class="label">Quick wins</div><div class="val" style="color:var(--zone)">${(SYS?.systems || []).filter((s) => s.quickWin).length}</div><div class="valsub">high impact, low effort</div></div>`;
+
+  // Scorecard board (off-track first; backend already sorts)
+  const metrics = SCORE?.metrics || [];
+  document.getElementById('sec-scorecard').innerHTML =
+    `<div class="section-head"><div class="h"><span class="eyebrow">📊 ${esc(SCORE?.quarter || '')}</span><h3 class="scotch">Scorecard</h3></div><span class="count ${offTrack ? 'red' : 'green'}">${offTrack ? offTrack + ' off' : 'all on track'}</span></div>` +
+    (metrics.length ? `<div class="rows">${metrics.map((m) => {
+      const lc = m.status === 'green' ? 'l-green' : m.status === 'amber' ? 'l-amber' : m.status === 'red' ? 'l-red' : 'l-zone';
+      const w = m.pct == null ? 0 : Math.max(2, Math.min(100, m.pct));
+      return `<div class="row ${lc}"><div class="main"><div class="title"><a href="${m.url}" target="_blank">${esc(m.metric)}</a></div><div class="meta">${esc(m.category || '')} <span class="sep">·</span> ${esc(m.period)} <span class="sep">·</span> ${esc(m.unit || '')}</div></div><div class="right"><div class="sc-bar"><i style="width:${w}%;background:${barColor(m.status)}"></i></div><span class="sc-val ${m.status}">${fmtMetric(m)}</span></div></div>`;
+    }).join('')}</div>` : `<div class="empty-line">No wired scorecard metrics this quarter.</div>`);
+
+  // Systems needing attention
+  const systems = SYS?.systems || [];
+  const shown = systems.slice(0, SYS_LIMIT);
+  document.getElementById('sec-systems').innerHTML =
+    `<div class="section-head"><div class="h"><span class="eyebrow">🛠️ Build & fix</span><h3 class="scotch">Systems needing attention</h3></div><span class="count ${attention ? 'amber' : 'green'}">${attention}</span></div>` +
+    (shown.length ? `<div class="rows">${shown.map((s) => `
+      <div class="row ${s.health === 'Broken' || s.health === 'Missing' ? 'l-red' : 'l-amber'}" onclick="this.classList.toggle('open')" style="cursor:pointer">
+        <div class="main">
+          <div class="title">${esc(s.name)} ${s.quickWin ? '<span class="chip qw">Quick win</span>' : ''}</div>
+          <div class="meta">${esc(s.func || '')} <span class="sep">·</span> ${healthChip(s.health)} ${prioChip(s.priority)} <span class="ie">Impact <b>${s.impact ?? '—'}</b></span><span class="ie">Effort <b>${s.effort ?? '—'}</b></span></div>
+          ${s.nextActions ? `<div class="next-actions"><b style="color:var(--text-2)">Next:</b> ${esc(s.nextActions)}</div>` : ''}
+        </div>
+        <div class="right"><a class="miniact" href="${s.url}" target="_blank" onclick="event.stopPropagation()">→ Open</a></div>
+      </div>`).join('')}</div>${systems.length > SYS_LIMIT ? `<div class="more-line" onclick="SYS_LIMIT=99;render()">+ ${systems.length - SYS_LIMIT} more — show all ↓</div>` : ''}` : `<div class="clean"><span>✓</span> Every business system is healthy.</div>`);
+
+  document.getElementById('sc-loading').style.display = 'none';
+}
+
+async function load() {
+  try {
+    const [sc, sy] = await Promise.all([
+      fetch('/api/scale/scorecard').then((r) => r.json()),
+      fetch('/api/scale/systems').then((r) => r.json()),
+    ]);
+    if (sc.error) throw new Error(sc.error);
+    if (sy.error) throw new Error(sy.error);
+    SCORE = sc; SYS = sy; render();
+  } catch (e) {
+    document.getElementById('sc-loading').style.display = 'none';
+    const er = document.getElementById('sc-error'); er.style.display = 'block'; er.textContent = "Couldn't load Scale: " + e.message;
+  }
+}
+load();
+</script>
 </body></html>
