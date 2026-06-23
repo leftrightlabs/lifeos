@@ -494,23 +494,74 @@ body {
 .footer-stamp { font-size: var(--fs-caption); font-weight: 600; color: var(--text-4); letter-spacing: .05em; text-transform: uppercase; margin-left: 6px; white-space: nowrap; }
 
 /* ── QUICK CAPTURE SHEET ── */
-.qc-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
+.qc-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
 .qc-overlay.hidden { display: none; }
-.qc-sheet { background: var(--surface); border: 1px solid var(--border); border-bottom: none; border-radius: 20px 20px 0 0; width: 100%; max-width: 720px; padding: 28px 28px 36px; animation: slideUp .22s cubic-bezier(.4,0,.2,1); }
+.qc-sheet { background: var(--surface); border: 1px solid var(--border); border-bottom: none; border-radius: 20px 20px 0 0; width: 100%; max-width: 720px; max-height: 80vh; display: flex; flex-direction: column; animation: slideUp .22s cubic-bezier(.4,0,.2,1); }
 @keyframes slideUp { from { transform: translateY(40px); opacity: .5; } to { transform: translateY(0); opacity: 1; } }
-.qc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.qc-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 62px 14px 24px; flex-shrink: 0; position: relative; }
+.qc-head-right { display: flex; gap: 8px; align-items: center; }
+.qc-close { position: absolute; right: 16px; top: 16px; }
 .qc-label { font-size: var(--fs-heading); font-weight: 700; color: var(--text); }
-.qc-close { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-3); font-size: var(--fs-title); cursor: pointer; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.qc-newconv-btn { background: transparent; border: 1px solid var(--border); color: var(--text-3); font-family: inherit; font-size: 10px; padding: 5px 10px; border-radius: 999px; cursor: pointer; letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; }
+.qc-newconv-btn:hover { color: var(--text-2); border-color: var(--text-4); }
+.qc-close { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-3); font-size: var(--fs-title); cursor: pointer; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .qc-close:hover { color: var(--text-2); }
-.qc-body { display: flex; gap: 12px; align-items: flex-start; }
-.qc-input { flex: 1; background: var(--bg); border: 1.5px solid var(--accent); color: var(--text); font-family: inherit; font-size: var(--fs-body); padding: 14px 16px; border-radius: 12px; resize: none; min-height: 88px; line-height: 1.5; }
+.qc-body { display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 0 24px 28px; gap: 12px; min-height: 0; }
+.qc-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 2px; min-height: 0; }
+.qc-messages:empty { flex: 0; }
+.qc-msg { display: flex; }
+.qc-msg.user { justify-content: flex-end; }
+.qc-msg.assistant { justify-content: flex-start; }
+.qc-bubble { max-width: 85%; padding: 10px 14px; border-radius: 12px; font-size: var(--fs-body); line-height: 1.5; word-wrap: break-word; }
+.qc-msg.user .qc-bubble { background: var(--accent-muted); border: 1px solid rgba(99,102,241,.3); color: var(--text); border-bottom-right-radius: 4px; }
+.qc-msg.assistant .qc-bubble { background: var(--surface-2); border: 1px solid var(--border-soft); color: var(--text); border-bottom-left-radius: 4px; max-width: 100%; width: 100%; }
+.qc-intro { color: var(--text-2); font-size: var(--fs-body); }
+.qc-plan { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.qc-action { display: flex; align-items: flex-start; gap: 10px; padding: 10px 13px; background: var(--surface); border: 1px solid var(--border-soft); border-left: 3px solid var(--border); border-radius: 8px; }
+.qc-action.task-work { border-left-color: var(--work); }
+.qc-action.task-personal { border-left-color: var(--personal); }
+.qc-action.task-update { border-left-color: #D4A854; }
+.qc-action.event-work, .qc-action.event-undefined { border-left-color: rgba(37,99,235,.6); }
+.qc-action.event-personal { border-left-color: var(--personal); }
+.qc-action.project-work { border-left-color: #818CF8; }
+.qc-action.project-personal { border-left-color: #C084FC; }
+.qc-action.applied { opacity: .5; }
+.qc-action.failed { border-left-color: var(--red); }
+.qc-check { width: 17px; height: 17px; border: 1.5px solid var(--border); border-radius: 4px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+.qc-check.checked { background: var(--accent); border-color: var(--accent); color: #fff; }
+.qc-check.checked::after { content: "✓"; font-size: 10px; font-weight: 700; }
+.qc-action-body { flex: 1; min-width: 0; }
+.qc-action-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; margin-bottom: 2px; }
+.qc-kind { font-size: var(--fs-caption); font-weight: 700; color: var(--text-3); letter-spacing: .06em; text-transform: uppercase; }
+.qc-alabel { font-size: var(--fs-body-sm); color: var(--text-2); }
+.qc-ameta { font-size: var(--fs-caption); color: var(--text-3); margin-top: 2px; }
+.qc-ameta a { color: var(--accent-dim); text-decoration: none; }
+.qc-ameta-err { font-size: var(--fs-caption); color: var(--red); margin-top: 2px; }
+.qc-top-btns { display: flex; gap: 4px; flex-shrink: 0; }
+.qc-edit-btn, .qc-myday-btn { background: transparent; border: 1px solid var(--border); color: var(--text-3); font-size: var(--fs-caption); padding: 3px 8px; border-radius: 6px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.qc-edit-btn:hover, .qc-myday-btn:hover { color: var(--text-2); border-color: var(--text-4); }
+.qc-myday-btn.on { background: rgba(99,102,241,.12); color: var(--accent-dim); border-color: rgba(99,102,241,.3); }
+.qc-apply-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+.qc-apply-btn { background: var(--accent); color: #fff; border: none; padding: 8px 18px; border-radius: 22px; font-size: var(--fs-body-sm); font-weight: 700; cursor: pointer; font-family: inherit; letter-spacing: .05em; white-space: nowrap; }
+.qc-apply-btn:disabled { opacity: .4; }
+.qc-text-btn { background: transparent; border: none; color: var(--text-3); font-size: var(--fs-body-sm); padding: 8px 10px; cursor: pointer; font-family: inherit; }
+.qc-text-btn:hover { color: var(--text-2); }
+.qc-edit-form { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.qc-edit-form .field-full { grid-column: 1/-1; }
+.qc-edit-form label { display: block; font-size: var(--fs-caption); color: var(--text-3); margin-bottom: 3px; letter-spacing: .05em; text-transform: uppercase; }
+.qc-edit-form input, .qc-edit-form select { width: 100%; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); font-size: var(--fs-body-sm); font-family: inherit; padding: 6px 9px; border-radius: 6px; box-sizing: border-box; }
+.qc-edit-form input:focus, .qc-edit-form select:focus { outline: 1px solid var(--accent); }
+.qc-edit-form .checkbox-row { grid-column: 1/-1; display: flex; align-items: center; gap: 6px; color: var(--text-2); font-size: var(--fs-body-sm); }
+.qc-edit-form .checkbox-row input[type=checkbox] { width: auto; }
+.qc-edit-actions { grid-column: 1/-1; display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+.qc-edit-actions button { font-family: inherit; font-size: var(--fs-body-sm); padding: 6px 14px; border-radius: 6px; cursor: pointer; }
+.qc-edit-actions button.cancel { background: transparent; border: 1px solid var(--border); color: var(--text-3); }
+.qc-edit-actions button.save { background: var(--accent); color: #fff; border: none; font-weight: 600; }
+.qc-input-area { display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0; }
+.qc-input { flex: 1; background: var(--bg); border: 1.5px solid var(--accent); color: var(--text); font-family: inherit; font-size: var(--fs-body); padding: 12px 14px; border-radius: 12px; resize: none; min-height: 60px; max-height: 160px; line-height: 1.5; }
 .qc-input:focus { outline: none; }
-.qc-actions { display: flex; gap: 8px; margin-top: 0; align-items: flex-start; }
-.qc-submit { background: var(--accent); color: #fff; border: none; padding: 11px 26px; border-radius: 22px; font-size: var(--fs-body-sm); font-weight: 700; cursor: pointer; font-family: inherit; letter-spacing: .05em; white-space: nowrap; }
+.qc-submit { background: var(--accent); color: #fff; border: none; padding: 11px 22px; border-radius: 22px; font-size: var(--fs-body-sm); font-weight: 700; cursor: pointer; font-family: inherit; letter-spacing: .05em; white-space: nowrap; flex-shrink: 0; }
 .qc-submit:disabled { opacity: .4; }
-.qc-status { font-size: var(--fs-caption); color: var(--text-3); margin-top: 8px; }
-.qc-status.ok { color: var(--green); font-weight: 600; }
-.qc-status.err { color: var(--red); }
 
 /* ── PRIVACY MODE ── */
 body.privacy .snap-val,
@@ -769,14 +820,17 @@ body.app-loading #appLoading { display: flex; }
   <div class="qc-sheet">
     <div class="qc-head">
       <span class="qc-label">Quick Capture</span>
-      <button class="qc-close" onclick="closeCapture()">×</button>
+      <div class="qc-head-right">
+        <button class="qc-newconv-btn" id="qcNewConv">↻ New Conversation</button>
+        <button class="qc-close" onclick="closeCapture()">×</button>
+      </div>
     </div>
     <div class="qc-body">
-      <textarea class="qc-input" id="qcInput" placeholder="Capture a task, find a project, or ask anything…"
-        onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey))submitCapture()"></textarea>
-      <div class="qc-actions">
+      <div class="qc-messages" id="qcMessages"></div>
+      <div class="qc-input-area">
+        <textarea class="qc-input" id="qcInput" placeholder="Dump your thoughts — tasks, ideas, questions…"
+          onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();submitCapture()}"></textarea>
         <button class="qc-submit" id="qcSubmit" onclick="submitCapture()">SEND</button>
-        <span class="qc-status" id="qcStatus"></span>
       </div>
     </div>
   </div>
@@ -2312,45 +2366,279 @@ async function submitAddTask() {
   }
 }
 
-// ── QUICK CAPTURE (FAB) ──
+// ── QUICK CAPTURE — FULL TRIAGE CHAT ──
+function escapeHtml(s) {
+  return String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+const QC_CHAT_KEY = 'lrl-today-chat-v1';
+let qcHistory = [];
+let qcProjects = null;
+let qcSelected = new Set();
+let qcEditing = null;
+
+function qcLoadHistory() { try { qcHistory = JSON.parse(localStorage.getItem(QC_CHAT_KEY) || '[]'); } catch(e) { qcHistory = []; } }
+function qcSaveHistory() { try { localStorage.setItem(QC_CHAT_KEY, JSON.stringify(qcHistory)); } catch(e) {} }
+
+function qcLatestEditableIdx() {
+  for (let i = qcHistory.length - 1; i >= 0; i--) {
+    const m = qcHistory[i];
+    if (m.role === 'assistant' && m.plan && m.plan.actions && m.plan.actions.length && !m.applied) return i;
+  }
+  return -1;
+}
+
+function qcBuildEditForm(a, i) {
+  const projOptions = ['<option value="">— no project —</option>']
+    .concat((qcProjects || []).map(p => `<option value="${p.id}" data-source="${p.source}" ${a.projectId === p.id ? 'selected' : ''}>[${p.source}] ${escapeHtml(p.name)}</option>`))
+    .join('');
+  if (a.type === 'create_task' || a.type === 'update_task') {
+    return `<div class="qc-edit-form">
+      <div class="field-full"><label>Name</label><input type="text" data-f="name" value="${escapeHtml(a.name||'')}"/></div>
+      <div><label>Source</label><select data-f="source">
+        <option value="work" ${a.source==='work'?'selected':''}>work</option>
+        <option value="personal" ${a.source==='personal'?'selected':''}>personal</option>
+      </select></div>
+      <div><label>Due</label><input type="date" data-f="dueStart" value="${a.dueStart||''}"/></div>
+      <div class="field-full"><label>Project</label><select data-f="projectId">${projOptions}</select></div>
+      <div><label>Priority</label><select data-f="priority">
+        <option value="" ${!a.priority?'selected':''}>(none)</option>
+        <option value="URGENT" ${a.priority==='URGENT'?'selected':''}>Urgent</option>
+        <option value="HIGH" ${a.priority==='HIGH'?'selected':''}>High</option>
+        <option value="MEDIUM" ${a.priority==='MEDIUM'?'selected':''}>Medium</option>
+      </select></div>
+      <div class="checkbox-row"><label><input type="checkbox" data-f="myDay" ${a.myDay?'checked':''}/> My Day</label></div>
+      <div class="qc-edit-actions">
+        <button class="cancel" data-act="cancel-edit">Cancel</button>
+        <button class="save" data-act="save-edit" data-idx="${i}">Save</button>
+      </div>
+    </div>`;
+  }
+  const startVal = a.allDay ? (a.start||'') : (a.start ? a.start.slice(0,16) : '');
+  const endVal   = a.allDay ? (a.end||'')   : (a.end   ? a.end.slice(0,16)   : '');
+  const tType    = a.allDay ? 'date' : 'datetime-local';
+  return `<div class="qc-edit-form">
+    <div class="field-full"><label>Title</label><input type="text" data-f="title" value="${escapeHtml(a.title||'')}"/></div>
+    <div><label>Account</label><select data-f="account">
+      <option value="work" ${a.account==='work'?'selected':''}>work</option>
+      <option value="personal" ${a.account==='personal'?'selected':''}>personal</option>
+    </select></div>
+    <div class="checkbox-row"><label><input type="checkbox" data-f="allDay" ${a.allDay?'checked':''}/> All day</label></div>
+    <div><label>Start</label><input type="${tType}" data-f="start" value="${startVal}"/></div>
+    <div><label>End</label><input type="${tType}" data-f="end" value="${endVal}"/></div>
+    <div class="field-full"><label>Location</label><input type="text" data-f="location" value="${escapeHtml(a.location||'')}"/></div>
+    <div class="qc-edit-actions">
+      <button class="cancel" data-act="cancel-edit">Cancel</button>
+      <button class="save" data-act="save-edit" data-idx="${i}">Save</button>
+    </div>
+  </div>`;
+}
+
+function qcRenderPlanItems(plan, editable) {
+  const items = (plan.actions||[]).map((a, i) => {
+    let kindLabel, cls;
+    if (a.type === 'create_task')      { kindLabel = `${a.source||'?'} task`;    cls = `task-${a.source}`; }
+    else if (a.type === 'update_task') { kindLabel = 'update task';              cls = 'task-update'; }
+    else if (a.type === 'create_project') { kindLabel = `${a.source||'?'} project`; cls = `project-${a.source}`; }
+    else                               { kindLabel = `${a.account||'?'} event`;  cls = `event-${a.account}`; }
+    const checked = editable && qcSelected.has(i);
+    const meta = [];
+    if (a.dueStart) meta.push(`due ${a.dueStart}`);
+    if (a.priority) meta.push(a.priority);
+    if (a.projectId && qcProjects) { const p = qcProjects.find(p=>p.id===a.projectId); if (p) meta.push('→ ' + p.name); }
+    if (!a.projectId && a.projectRef) meta.push('→ new project: ' + a.projectRef);
+    if (a.start && a.type === 'create_event') meta.push(a.allDay ? `${a.start} all-day` : new Date(a.start).toLocaleString('en-US',{timeZone:'America/Chicago',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}));
+    const metaLine = meta.length ? `<div class="qc-ameta">${escapeHtml(meta.join(' · '))}</div>` : '';
+    const isNotion = a.type === 'create_task' || a.type === 'update_task' || a.type === 'create_project';
+    let resultLine = '', errLine = '';
+    if (a._result) {
+      let rUrl = a._result.url || '';
+      try { if (isNotion && rUrl) { const id = rUrl.split('-').pop().replace(/\//g,''); rUrl = `https://www.notion.so/leftrightlabs/${id}`; } } catch(e){}
+      resultLine = `<div class="qc-ameta"><a href="${rUrl}" target="_blank" rel="noopener">→ open in ${isNotion?'Notion':'Calendar'}</a></div>`;
+    }
+    if (a._error) errLine = `<div class="qc-ameta-err">Error: ${escapeHtml(a._error)}</div>`;
+    const appliedCls = a._result ? ' applied' : (a._error ? ' failed' : '');
+    const editBtn   = (editable && !a._result) ? `<button class="qc-edit-btn" data-act="edit" data-idx="${i}">Edit</button>` : '';
+    const myDayBtn  = (editable && !a._result && a.type==='create_task') ? `<button class="qc-myday-btn ${a.myDay?'on':''}" data-act="toggle-myday" data-idx="${i}">★ My Day</button>` : '';
+    const editForm  = (editable && qcEditing === i) ? qcBuildEditForm(a, i) : '';
+    const checkEl   = editable ? `<div class="qc-check ${checked?'checked':''}" data-idx="${i}"></div>` : `<div class="qc-check" style="visibility:hidden"></div>`;
+    return `<div class="qc-action ${cls}${appliedCls}">
+      ${checkEl}
+      <div class="qc-action-body">
+        <div class="qc-action-head">
+          <span class="qc-kind">${escapeHtml(kindLabel)}</span>
+          <div class="qc-top-btns">${myDayBtn}${editBtn}</div>
+        </div>
+        <div class="qc-alabel">${escapeHtml(a.label||a.name||a.title||'')}</div>
+        ${metaLine}${resultLine}${errLine}${editForm}
+      </div>
+    </div>`;
+  }).join('');
+  if (!editable) return items;
+  return items + `<div class="qc-apply-row">
+    <button class="qc-apply-btn" data-act="apply-plan">Apply selected (${qcSelected.size})</button>
+    <button class="qc-text-btn" data-act="select-all">All</button>
+    <button class="qc-text-btn" data-act="select-none">None</button>
+  </div>`;
+}
+
+function qcRender() {
+  const wrap = document.getElementById('qcMessages');
+  if (!wrap) return;
+  const editableIdx = qcLatestEditableIdx();
+  wrap.innerHTML = qcHistory.map((msg, i) => {
+    if (msg.role === 'user') {
+      return `<div class="qc-msg user"><div class="qc-bubble">${escapeHtml(msg.content).replace(/\n/g,'<br/>')}</div></div>`;
+    }
+    const introHtml = msg.content ? `<div class="qc-intro">${escapeHtml(msg.content).replace(/\n/g,'<br/>')}</div>` : '';
+    let planHtml = '';
+    if (msg.plan && msg.plan.actions && msg.plan.actions.length) {
+      planHtml = `<div class="qc-plan">${qcRenderPlanItems(msg.plan, i === editableIdx)}</div>`;
+    }
+    return `<div class="qc-msg assistant"><div class="qc-bubble">${introHtml}${planHtml}</div></div>`;
+  }).join('');
+  wrap.scrollTop = wrap.scrollHeight;
+  qcAttachHandlers();
+}
+
+function qcAttachHandlers() {
+  const wrap = document.getElementById('qcMessages');
+  if (!wrap) return;
+  const editableIdx = qcLatestEditableIdx();
+  if (editableIdx < 0) return;
+  const msg = qcHistory[editableIdx];
+  const p = msg.plan;
+  wrap.querySelectorAll('.qc-check').forEach(el => {
+    el.addEventListener('click', () => {
+      const i = parseInt(el.dataset.idx);
+      if (qcSelected.has(i)) qcSelected.delete(i); else qcSelected.add(i);
+      qcRender();
+    });
+  });
+  wrap.querySelectorAll('[data-act="edit"]').forEach(el => {
+    el.addEventListener('click', () => { qcEditing = parseInt(el.dataset.idx); qcRender(); });
+  });
+  wrap.querySelectorAll('[data-act="toggle-myday"]').forEach(el => {
+    el.addEventListener('click', () => { const i = parseInt(el.dataset.idx); p.actions[i].myDay = !p.actions[i].myDay; qcSaveHistory(); qcRender(); });
+  });
+  wrap.querySelectorAll('[data-act="cancel-edit"]').forEach(el => {
+    el.addEventListener('click', () => { qcEditing = null; qcRender(); });
+  });
+  wrap.querySelectorAll('[data-act="save-edit"]').forEach(el => {
+    el.addEventListener('click', () => {
+      const i = parseInt(el.dataset.idx);
+      const form = el.closest('.qc-edit-form');
+      const updates = {};
+      form.querySelectorAll('[data-f]').forEach(f => { updates[f.dataset.f] = f.type === 'checkbox' ? f.checked : (f.value || null); });
+      if (updates.projectId && qcProjects) { const proj = qcProjects.find(pp=>pp.id===updates.projectId); if (proj && p.actions[i].type==='create_task') updates.source = proj.source; }
+      p.actions[i] = { ...p.actions[i], ...updates };
+      const a = p.actions[i];
+      if (a.type === 'create_task') {
+        const pn = a.projectId ? (qcProjects||[]).find(pp=>pp.id===a.projectId)?.name||'' : '';
+        const bits = [`Task: ${a.name}`, '→', a.source];
+        if (a.dueStart) bits.push(`due ${a.dueStart}`);
+        if (a.myDay) bits.push('My Day');
+        if (pn) bits.push(`(${pn})`);
+        a.label = bits.join(' ');
+      }
+      qcEditing = null;
+      qcSaveHistory();
+      qcRender();
+    });
+  });
+  wrap.querySelectorAll('[data-act="select-all"]').forEach(el => {
+    el.addEventListener('click', () => { (p.actions||[]).forEach((_,i) => qcSelected.add(i)); qcRender(); });
+  });
+  wrap.querySelectorAll('[data-act="select-none"]').forEach(el => {
+    el.addEventListener('click', () => { qcSelected.clear(); qcRender(); });
+  });
+  wrap.querySelectorAll('[data-act="apply-plan"]').forEach(el => {
+    el.addEventListener('click', () => qcApply(editableIdx));
+  });
+}
+
+async function qcApply(msgIdx) {
+  const msg = qcHistory[msgIdx];
+  if (!msg?.plan) return;
+  const selected = (msg.plan.actions||[]).filter((_,i) => qcSelected.has(i));
+  if (!selected.length) return;
+  try {
+    const r = await fetch('/api/ai/triage/apply', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ actions: selected }),
+    });
+    const d = await r.json();
+    if (d.error) { alert('Error: ' + d.error); return; }
+    let ri = 0;
+    msg.plan.actions = msg.plan.actions.map((a, i) => {
+      if (!qcSelected.has(i)) return a;
+      const res = d.results[ri++];
+      return res.ok ? { ...a, _result: res.result } : { ...a, _error: res.error };
+    });
+    msg.applied = true;
+    qcSelected.clear();
+    qcSaveHistory();
+    qcRender();
+    if (d.results.some(r => r.ok)) setTimeout(() => loadTodayData(), 800);
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
 function openCapture() {
+  qcLoadHistory();
   document.getElementById('qcOverlay').classList.remove('hidden');
+  qcRender();
   setTimeout(() => document.getElementById('qcInput')?.focus(), 80);
 }
 
 function closeCapture() {
   document.getElementById('qcOverlay').classList.add('hidden');
-  const st = document.getElementById('qcStatus');
-  if (st) { st.textContent = ''; st.className = 'qc-status'; }
 }
 
 async function submitCapture() {
-  const input  = document.getElementById('qcInput');
-  const btn    = document.getElementById('qcSubmit');
-  const st     = document.getElementById('qcStatus');
-  const name   = input?.value.trim();
-  if (!name) return;
-  const source = state.mode === 'personal' ? 'personal' : 'work';
+  const input = document.getElementById('qcInput');
+  const btn   = document.getElementById('qcSubmit');
+  const text  = input?.value.trim();
+  if (!text) return;
+  input.value = '';
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  qcHistory.push({ role: 'user', content: text });
+  qcSaveHistory();
+  qcRender();
+  const apiHistory = qcHistory.slice(0, -1)
+    .filter(m => (m.role==='user'||m.role==='assistant') && typeof m.content === 'string' && m.content.trim())
+    .map(m => ({ role: m.role, content: m.content }));
   try {
-    const r = await fetch('/api/tasks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ source, name, myDay: true, status: 'Planned' }),
+    const r = await fetch('/api/ai/triage', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, history: apiHistory }),
     });
     const d = await r.json();
-    if (!r.ok || d.error) throw new Error(d.error || 'Failed');
-    plan.push({ id: d.id, n: 0, name, project: '', source: 'task', tags: [], done: false, rockLinked: false, type: source, notionUrl: null });
-    renderPlan();
-    input.value = '';
-    if (st) { st.className = 'qc-status ok'; st.textContent = '✓ Added'; }
-    if (btn) { btn.disabled = false; btn.textContent = 'SEND'; }
-    setTimeout(closeCapture, 900);
+    if (d.error) {
+      qcHistory.push({ role: 'assistant', content: 'Error: ' + d.error });
+    } else {
+      if (d.projects) qcProjects = d.projects;
+      const p = d.plan || {};
+      qcHistory.push({ role: 'assistant', content: p.intro || '', plan: p });
+      if (p.actions && p.actions.length) { qcSelected = new Set(p.actions.map((_,i)=>i)); qcEditing = null; }
+    }
+    qcSaveHistory();
+    qcRender();
   } catch(e) {
-    if (st) { st.className = 'qc-status err'; st.textContent = e.message; }
+    qcHistory.push({ role: 'assistant', content: 'Error: ' + e.message });
+    qcSaveHistory();
+    qcRender();
+  } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'SEND'; }
   }
 }
+
+document.getElementById('qcNewConv')?.addEventListener('click', () => {
+  if (!qcHistory.length || confirm('Start fresh? Current conversation will be cleared.')) {
+    qcHistory = []; qcSelected.clear(); qcEditing = null;
+    qcSaveHistory();
+    qcRender();
+  }
+});
 
 // ── FOOTER ACTIONS ──
 function togglePrivacy() {

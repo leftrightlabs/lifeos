@@ -2590,7 +2590,11 @@ app.post('/api/ai/triage', async (req, res) => {
     const jsonStr = extractFirstJson(raw) || raw;
     let plan;
     try { plan = JSON.parse(jsonStr); }
-    catch (e) { return res.status(500).json({ error: 'invalid JSON from model: ' + e.message, raw }); }
+    catch (e) {
+      // Model returned prose instead of JSON — show it as a conversational reply rather than 500-ing
+      if (!raw.trim().startsWith('{')) { plan = { intro: raw.trim(), actions: [] }; }
+      else { return res.status(500).json({ error: 'invalid JSON from model: ' + e.message, raw }); }
+    }
     const u = msg.usage || {};
     res.json({ plan, projects, _usage: {
       input_tokens: u.input_tokens,
