@@ -493,22 +493,20 @@ body {
 .footer-btn.active { color: var(--accent); background: var(--accent-soft); }
 .footer-stamp { font-size: var(--fs-caption); font-weight: 600; color: var(--text-4); letter-spacing: .05em; text-transform: uppercase; margin-left: 6px; white-space: nowrap; }
 
-/* ── QUICK CAPTURE SHEET ── */
-.qc-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
-.qc-overlay.hidden { display: none; }
-.qc-sheet { background: var(--surface); border: 1px solid var(--border); border-bottom: none; border-radius: 20px 20px 0 0; width: 100%; max-width: 720px; max-height: 80vh; display: flex; flex-direction: column; animation: slideUp .22s cubic-bezier(.4,0,.2,1); }
-@keyframes slideUp { from { transform: translateY(40px); opacity: .5; } to { transform: translateY(0); opacity: 1; } }
-.qc-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 62px 14px 24px; flex-shrink: 0; position: relative; }
-.qc-head-right { display: flex; gap: 8px; align-items: center; }
-.qc-close { position: absolute; right: 16px; top: 16px; }
+/* ── QUICK CAPTURE MODAL ── */
+.qc-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.72); backdrop-filter: blur(4px); display: none; align-items: flex-start; justify-content: center; padding: 60px 20px 20px; z-index: 200; overflow-y: auto; }
+.qc-overlay:not(.hidden) { display: flex; }
+@keyframes qcPop { from { opacity: 0; transform: scale(.96) translateY(8px); } to { opacity: 1; transform: none; } }
+.qc-modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; max-width: 720px; width: 100%; box-shadow: 0 24px 60px rgba(0,0,0,.6); display: flex; flex-direction: column; animation: qcPop .28s cubic-bezier(.34,1.56,.64,1); }
+.qc-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-shrink: 0; }
 .qc-label { font-size: var(--fs-heading); font-weight: 700; color: var(--text); }
-.qc-newconv-btn { background: transparent; border: 1px solid var(--border); color: var(--text-3); font-family: inherit; font-size: 10px; padding: 5px 10px; border-radius: 999px; cursor: pointer; letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; }
-.qc-newconv-btn:hover { color: var(--text-2); border-color: var(--text-4); }
-.qc-close { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-3); font-size: var(--fs-title); cursor: pointer; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.qc-close { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-3); font-size: var(--fs-body); cursor: pointer; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .qc-close:hover { color: var(--text-2); }
-.qc-body { display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 0 24px 28px; gap: 12px; min-height: 0; }
-.qc-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 2px; min-height: 0; }
-.qc-messages:empty { flex: 0; }
+.qc-toolbar { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 10px; flex-shrink: 0; }
+.qc-newconv-btn { background: transparent; border: 1px solid var(--border); color: var(--text-3); font-family: inherit; font-size: var(--fs-caption); padding: 5px 12px; border-radius: 999px; cursor: pointer; letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; }
+.qc-newconv-btn:hover { color: var(--text-2); border-color: var(--text-4); }
+.qc-messages { max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
+.qc-messages:empty { display: none; margin-bottom: 0; }
 .qc-msg { display: flex; }
 .qc-msg.user { justify-content: flex-end; }
 .qc-msg.assistant { justify-content: flex-start; }
@@ -557,11 +555,18 @@ body {
 .qc-edit-actions button { font-family: inherit; font-size: var(--fs-body-sm); padding: 6px 14px; border-radius: 6px; cursor: pointer; }
 .qc-edit-actions button.cancel { background: transparent; border: 1px solid var(--border); color: var(--text-3); }
 .qc-edit-actions button.save { background: var(--accent); color: #fff; border: none; font-weight: 600; }
-.qc-input-area { display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0; }
-.qc-input { flex: 1; background: var(--bg); border: 1.5px solid var(--accent); color: var(--text); font-family: inherit; font-size: var(--fs-body); padding: 12px 14px; border-radius: 12px; resize: none; min-height: 60px; max-height: 160px; line-height: 1.5; }
-.qc-input:focus { outline: none; }
+.qc-input-pane { flex-shrink: 0; }
+.qc-input-area { display: flex; gap: 10px; align-items: flex-end; }
+.qc-input { flex: 1; background: var(--bg); border: 1.5px solid var(--border); color: var(--text); font-family: inherit; font-size: var(--fs-body); padding: 12px 14px; border-radius: 12px; resize: none; min-height: 60px; max-height: 160px; line-height: 1.5; }
+.qc-input:focus { outline: none; border-color: var(--accent); }
 .qc-submit { background: var(--accent); color: #fff; border: none; padding: 11px 22px; border-radius: 22px; font-size: var(--fs-body-sm); font-weight: 700; cursor: pointer; font-family: inherit; letter-spacing: .05em; white-space: nowrap; flex-shrink: 0; }
 .qc-submit:disabled { opacity: .4; }
+@media (max-width: 600px) {
+  .qc-overlay { padding: 0; align-items: stretch; overflow: hidden; }
+  .qc-modal { border-radius: 0; border: none; box-shadow: none; width: 100%; max-width: none; height: 100vh; height: 100dvh; padding: 16px; padding-top: max(16px, env(safe-area-inset-top)); padding-bottom: max(16px, env(safe-area-inset-bottom)); overflow: hidden; }
+  .qc-messages { flex: 1; max-height: none; min-height: 0; }
+  .qc-messages:empty { flex: 0; min-height: 0; }
+}
 
 /* ── PRIVACY MODE ── */
 body.privacy .snap-val,
@@ -815,18 +820,18 @@ body.app-loading #appLoading { display: flex; }
 <!-- Brain dump FAB -->
 <button class="fab" onclick="openCapture()" title="Quick capture">⚡</button>
 
-<!-- Quick Capture Sheet -->
+<!-- Quick Capture Modal -->
 <div class="qc-overlay hidden" id="qcOverlay" onclick="if(event.target===this)closeCapture()">
-  <div class="qc-sheet">
-    <div class="qc-head">
+  <div class="qc-modal">
+    <div class="qc-modal-header">
       <span class="qc-label">Quick Capture</span>
-      <div class="qc-head-right">
-        <button class="qc-newconv-btn" id="qcNewConv">↻ New Conversation</button>
-        <button class="qc-close" onclick="closeCapture()">×</button>
-      </div>
+      <button class="qc-close" onclick="closeCapture()">×</button>
     </div>
-    <div class="qc-body">
-      <div class="qc-messages" id="qcMessages"></div>
+    <div class="qc-toolbar">
+      <button class="qc-newconv-btn" id="qcNewConv">↻ New conversation</button>
+    </div>
+    <div class="qc-messages" id="qcMessages"></div>
+    <div class="qc-input-pane">
       <div class="qc-input-area">
         <textarea class="qc-input" id="qcInput" placeholder="Dump your thoughts — tasks, ideas, questions…"
           onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();submitCapture()}"></textarea>
