@@ -235,7 +235,7 @@ function simplifyTask(page, source) {
     recurUnit: props['Recur Unit']?.select?.name || null,
     recurInterval: props['Recur Interval']?.number || null,
     estHours: props['Est Hours']?.number ?? null,
-    priority: props['Priority 2']?.select?.name || props.Priority?.status?.name || null,
+    priority: props.Priority?.select?.name || null,
     project: null,
     projectId: (props.Project?.relation || [])[0]?.id || null,
     assigneeNames: (props.Assigned?.people || []).map((u) => u.name).filter(Boolean),
@@ -1226,7 +1226,7 @@ app.patch('/api/tasks/:id', async (req, res) => {
     }
     if (myDay !== undefined) properties['My Day'] = { checkbox: !!myDay };
     if (priority !== undefined) {
-      properties['Priority 2'] = priority ? { select: { name: priority } } : { select: null };
+      properties['Priority'] = priority ? { select: { name: priority } } : { select: null };
     }
     // projectId: a uuid sets the Project relation; null/'' clears it.
     if (projectId !== undefined) {
@@ -1822,7 +1822,7 @@ async function reviewTasksForSource(taskDs, source, peopleProp, activeProjectIds
       status: props.Status?.status?.name || null,
       dueStart: due.start || null,
       dueEnd: due.end || null,
-      priority: props['Priority 2']?.select?.name || props.Priority?.status?.name || null,
+      priority: props.Priority?.select?.name || null,
       myDay: !!props['My Day']?.checkbox,
       hasProject: projectRel.length > 0,
       projectIds: projectRel.map((r) => r.id),
@@ -2414,8 +2414,8 @@ CRITICAL: Your entire response must be ONE JSON object and NOTHING else — no m
 
 Action types you can emit:
 - create_project: a new Notion project (in the work SYSTEMS or personal FOCUS database). source = "work" or "personal". Required: name. Use this when she says things like "set up a project for X" or "create a course / launch / build / area called Y". A project is a container for related tasks (vs. a single task).
-- create_task: a new Notion task. source = "work" or "personal". Required: name. Optional: dueStart (YYYY-MM-DD), myDay (boolean), priority ("URGENT" | "HIGH" | "NORMAL" | null), projectId (uuid from the project list), projectRef (string — the exact "name" of a create_project action earlier in this same plan; the server resolves it to the new project's id after creation), status ("Planned" | "Doing" | "Waiting" | "Agenda" | "Done" — defaults to Planned), body (string — appears as paragraph(s) in the Notion task page body; use this to preserve email context, URLs, or notes. Plain text only, separate paragraphs with blank lines).
-- update_task: change fields on an existing Notion task. Required: taskId (uuid from ALL OPEN TASKS context — use the EXACT id shown). Optional: dueStart (YYYY-MM-DD, or empty string "" to clear), dueEnd, myDay (boolean), priority ("URGENT" | "HIGH" | "NORMAL"), status ("Done" | "Doing" | "Planned" | "Agenda" | "Waiting"), name (string).
+- create_task: a new Notion task. source = "work" or "personal". Required: name. Optional: dueStart (YYYY-MM-DD), myDay (boolean), priority ("URGENT" | "HIGH" | "MEDIUM" | "LOW" | null), projectId (uuid from the project list), projectRef (string — the exact "name" of a create_project action earlier in this same plan; the server resolves it to the new project's id after creation), status ("Planned" | "Doing" | "Waiting" | "Agenda" | "Done" — defaults to Planned), body (string — appears as paragraph(s) in the Notion task page body; use this to preserve email context, URLs, or notes. Plain text only, separate paragraphs with blank lines).
+- update_task: change fields on an existing Notion task. Required: taskId (uuid from ALL OPEN TASKS context — use the EXACT id shown). Optional: dueStart (YYYY-MM-DD, or empty string "" to clear), dueEnd, myDay (boolean), priority ("URGENT" | "HIGH" | "MEDIUM" | "LOW"), status ("Done" | "Doing" | "Planned" | "Agenda" | "Waiting"), name (string).
 - create_event: a calendar event. account = "work" or "personal". Required: title, start, end. If allDay=true, start/end are YYYY-MM-DD; otherwise ISO datetime with America/Chicago offset (-05:00 CDT or -06:00 CST). location optional.
 
 For "create a project + add these tasks to it" patterns, emit create_project FIRST, then create_task actions with projectRef set to the project's name (exact string match, case-insensitive). The apply step links them automatically.
@@ -2435,7 +2435,7 @@ Email handling:
 - If she's creating a waiting/follow-up task from an email, set status: "Waiting".
 
 My Day defaults to false. Set true only if she signals today/tomorrow or time-sensitivity.
-Priority defaults to null. Only set HIGH/URGENT if she signals urgency.
+Priority defaults to null. Only set MEDIUM/HIGH/URGENT if she signals priority. Use URGENT for today/critical, HIGH for this week, MEDIUM for general importance.
 Date parsing: "tomorrow", "Friday", "next week" — anchor to today's date.
 
 Each action gets a short "label" (e.g. "Task: Email Trina about Rock 3 → work, due Fri Jun 12, My Day").
@@ -2448,8 +2448,8 @@ const TRIAGE_JSON_HINT = `Return ONLY valid JSON in this exact shape, no prose, 
   "intro": "one sentence, warm casual tone",
   "actions": [
     { "type": "create_project", "label": "short summary", "source": "work"|"personal", "name": "project name" },
-    { "type": "create_task", "label": "short summary", "source": "work"|"personal", "name": "task name", "dueStart": "YYYY-MM-DD" (optional), "myDay": true|false (optional), "priority": "URGENT"|"HIGH"|"NORMAL" (optional), "status": "Planned"|"Doing"|"Waiting"|"Agenda" (optional, default Planned), "projectId": "uuid" (optional), "projectRef": "exact name of a create_project in this same plan" (optional), "body": "optional multi-line plain text — email link, notes, context" },
-    { "type": "update_task", "label": "short summary of what's changing", "taskId": "exact uuid from ALL OPEN TASKS", "dueStart": "YYYY-MM-DD"|"" (optional), "myDay": true|false (optional), "priority": "URGENT"|"HIGH"|"NORMAL" (optional), "status": "Done"|"Doing"|"Planned"|"Agenda"|"Waiting" (optional), "name": "new name" (optional) },
+    { "type": "create_task", "label": "short summary", "source": "work"|"personal", "name": "task name", "dueStart": "YYYY-MM-DD" (optional), "myDay": true|false (optional), "priority": "URGENT"|"HIGH"|"MEDIUM"|"LOW" (optional), "status": "Planned"|"Doing"|"Waiting"|"Agenda" (optional, default Planned), "projectId": "uuid" (optional), "projectRef": "exact name of a create_project in this same plan" (optional), "body": "optional multi-line plain text — email link, notes, context" },
+    { "type": "update_task", "label": "short summary of what's changing", "taskId": "exact uuid from ALL OPEN TASKS", "dueStart": "YYYY-MM-DD"|"" (optional), "myDay": true|false (optional), "priority": "URGENT"|"HIGH"|"MEDIUM"|"LOW" (optional), "status": "Done"|"Doing"|"Planned"|"Agenda"|"Waiting" (optional), "name": "new name" (optional) },
     { "type": "create_event", "label": "short summary", "account": "work"|"personal", "title": "event title", "start": "ISO datetime with TZ offset, or YYYY-MM-DD if allDay", "end": "same format", "allDay": true|false (optional), "location": "optional string" }
   ]
 }`;
@@ -2629,7 +2629,7 @@ async function createNotionTask({ source, name, dueStart, dueEnd, myDay, priorit
   };
   if (myDay) properties['My Day'] = { checkbox: true };
   if (dueStart) properties.Due = { date: { start: dueStart, end: dueEnd || null } };
-  if (priority) properties['Priority 2'] = { select: { name: priority } };
+  if (priority) properties['Priority'] = { select: { name: priority } };
   // Est Hours only exists on the work DB — guard so a personal create can't 400.
   if (source === 'work' && estHours !== undefined && estHours !== null && estHours !== '') {
     const n = Number(estHours);
@@ -2670,7 +2670,7 @@ async function updateNotionTask({ taskId, name, status, dueStart, dueEnd, myDay,
     properties.Due = dueStart ? { date: { start: dueStart, end: dueEnd || null } } : { date: null };
   }
   if (myDay !== undefined && myDay !== null) properties['My Day'] = { checkbox: !!myDay };
-  if (priority !== undefined && priority !== null) properties['Priority 2'] = priority ? { select: { name: priority } } : { select: null };
+  if (priority !== undefined && priority !== null) properties['Priority'] = priority ? { select: { name: priority } } : { select: null };
   if (!Object.keys(properties).length) throw new Error('no fields to update');
   await notion.pages.update({ page_id: taskId, properties });
   return { id: taskId, url: `https://www.notion.so/leftrightlabs/${taskId.replace(/-/g, '')}` };
