@@ -976,12 +976,16 @@ function renderOneThing() {
   const area = document.getElementById('oneThingArea');
 
   if (state.mode === 'personal') {
-    if (state.personalOneThing === 'done') {
+    if (state.personalOneThing === 'done' || state.personalOneThing === 'credited') {
       const tname = _personalOneThingTask?.name || 'task';
+      const isCredited = state.personalOneThing === 'credited';
+      const msg = isCredited
+        ? `Life streak → <strong style="color:var(--teal);">${state.lifeStreak} days</strong> · Effort counted — task still open.`
+        : `Life streak → <strong style="color:var(--teal);">${state.lifeStreak} days</strong> · ${escName(tname)} marked complete.`;
       area.innerHTML = `
-        <div class="onething completed" id="otCard" style="border-left-color:var(--teal);">
-          <div class="onething-label" style="color:var(--teal);">✦ Done — that was the big one</div>
-          <div class="onething-why" style="margin:6px 0 14px;">Life streak → <strong style="color:var(--teal);">${state.lifeStreak} days</strong> · ${escName(tname)} marked complete.</div>
+        <div class="onething" id="otCard" style="border-left-color:var(--teal);background:linear-gradient(135deg,rgba(56,189,248,.08) 0%,rgba(10,13,22,0) 60%);">
+          <div class="onething-label" style="color:var(--teal);">✦ ${isCredited ? 'Effort counted' : 'Done — that was the big one'}</div>
+          <div class="onething-why" style="margin:6px 0 14px;">${msg}</div>
           <div class="onething-actions">
             <button class="btn-ghost" style="font-size:var(--fs-caption);padding:8px 14px;" onclick="undoPersonalDone()">↩ Undo</button>
           </div>
@@ -996,18 +1000,20 @@ function renderOneThing() {
         ? `In progress — come back when you're ready to complete it.`
         : `Blocked for now — it'll resurface when unblocked.`;
       const accent = isDoing ? 'var(--amber)' : 'var(--text-3)';
-      const creditBtn = !isDoing
-        ? `<button class="btn-go" style="background:var(--teal);color:#0A0D16;" onclick="countEffort()">✓ Count today's effort</button>`
-        : `<button class="btn-go" style="background:var(--teal);color:#0A0D16;" onclick="markPersonalDone()">✓ Done now</button>`;
+      const nextPersonal = plan.find(t => t.type === 'personal' && !t.done && t.status !== 'Waiting' && t.id !== _personalOneThingTask?.id);
+      const waitingActions = `
+        <button class="btn-go" style="background:var(--teal);color:#0A0D16;" onclick="countEffort()">✓ Count today's effort</button>
+        ${nextPersonal ? `<button class="btn-ghost" onclick="showNextPersonalTask()">→ Try another task</button>` : ''}
+        <button class="btn-ghost" style="font-size:var(--fs-caption);padding:8px 14px;" onclick="undoPersonalDone()">↩ Undo</button>`;
+      const doingActions = `
+        <button class="btn-go" style="background:var(--teal);color:#0A0D16;" onclick="markPersonalDone()">✓ Done now</button>
+        <button class="btn-ghost" style="font-size:var(--fs-caption);padding:8px 14px;" onclick="undoPersonalDone()">↩ Undo</button>`;
       area.innerHTML = `
         <div class="onething" id="otCard" style="border-left-color:${accent};">
           <div class="onething-label" style="color:${accent};">${isDoing ? '→ In progress' : '⏸ Waiting'}</div>
           <div class="onething-title" style="font-size:var(--fs-body);margin-bottom:6px;">${escName(tname)}</div>
           <div class="onething-why" style="margin:0 0 14px;">${msg}</div>
-          <div class="onething-actions">
-            ${creditBtn}
-            <button class="btn-ghost" style="font-size:var(--fs-caption);padding:8px 14px;" onclick="undoPersonalDone()">↩ Undo</button>
-          </div>
+          <div class="onething-actions">${isDoing ? doingActions : waitingActions}</div>
           <div class="onething-orb"></div>
         </div>`;
       return;
@@ -1146,14 +1152,24 @@ function markPersonalDone() {
   fireConfetti();
 }
 function countEffort() {
-  // Task stays Waiting in Notion — you're blocked, not done.
-  // But you did real work today, so lock the streak.
-  state.personalOneThing = 'done';
+  // Task stays Waiting in Notion — blocked, not done.
+  // Fill today's pip and lock the streak.
+  state.personalOneThing = 'credited';
   state.lifeStreak += 1;
   state.lifeSatisfied = true;
+  const todayPip = lifeWeek.findIndex(d => d.state === 'today');
+  if (todayPip >= 0) lifeWeek[todayPip] = { ...lifeWeek[todayPip], state: 'hit' };
   renderOneThing();
   renderStreaks();
   fireConfetti();
+}
+function showNextPersonalTask() {
+  // Swap _personalOneThingTask to the next personal task that isn't blocked
+  const next = plan.find(t => t.type === 'personal' && !t.done && t.status !== 'Waiting' && t.id !== _personalOneThingTask?.id);
+  if (!next) return;
+  _personalOneThingTask = next;
+  state.personalOneThing = null;
+  renderOneThing();
 }
 function setPersonalOneThingStatus(status) {
   state.personalOneThing = status.toLowerCase();
@@ -1162,9 +1178,19 @@ function setPersonalOneThingStatus(status) {
   renderOneThing();
 }
 function undoPersonalDone() {
-  state.personalOneThing = null;
-  _patchPersonalTask({ status: 'Doing' });
-  _syncPlanStatus(_personalOneThingTask?.id, 'Doing');
+  const wasCredited = state.personalOneThing === 'credited';
+  state.personalOneThing = wasCredited ? 'waiting' : null;
+  state.lifeStreak = Math.max(0, state.lifeStreak - 1);
+  state.lifeSatisfied = false;
+  // countEffort() changed today's pip from 'today' → 'hit'; restore it
+  if (wasCredited) {
+    const last = lifeWeek[lifeWeek.length - 1];
+    if (last) lifeWeek[lifeWeek.length - 1] = { ...last, state: 'today' };
+  }
+  if (!wasCredited) {
+    _patchPersonalTask({ status: 'Doing' });
+    _syncPlanStatus(_personalOneThingTask?.id, 'Doing');
+  }
   renderOneThing();
   renderStreaks();
 }
