@@ -560,9 +560,9 @@ html.light .footer-stamp { color: var(--text-3); }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 720px) {
-  .layout { grid-template-columns: 1fr; }
-  .main-col { border-right: none; padding: 18px; }
-  .side-col { border-top: none; }
+  .layout { grid-template-columns: 1fr; row-gap: 24px; }
+  .main-col { border-right: none; padding: 18px 18px 0; }
+  .side-col { border-top: none; padding: 0 16px 18px; }
   .greeting { font-size: var(--fs-title); }
   .onething-title { font-size: var(--fs-title); }
   .btn-go, .btn-ghost, .btn-done { width: 100%; }
@@ -574,7 +574,8 @@ html.light .footer-stamp { color: var(--text-3); }
 }
 @media (max-width: 420px) {
   .topbar { padding: 11px 14px; }
-  .main-col { padding: 14px; }
+  .main-col { padding: 14px 14px 0; }
+  .side-col { padding: 0 14px 14px; }
   .greeting-zone { padding: 16px 14px 10px; }
   .streak-strip { padding: 0; }
 }
