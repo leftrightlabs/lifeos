@@ -744,7 +744,7 @@ body.app-loading #appLoading { display: flex; }
         <div class="t-body" id="rocksBody"><div class="rocks-list" id="rocksList"></div></div>
       </div>
 
-      <div class="t-card" id="card-plan">
+      <div class="t-card" id="card-plan" data-persist-key="plan">
         <div class="sec-head">
           <div class="card-toggle" onclick="toggleCard(this)">
             <span class="chev">▾</span>
@@ -1201,6 +1201,7 @@ function renderOneThing() {
           </div>
           <div class="onething-actions" style="margin-top:18px;">
             <button class="btn-go" style="background:var(--green);" onclick="nextOneThing()">→ Show my next priority</button>
+            <button class="btn-ghost" onclick="undoOneThing()">↩ Undo</button>
           </div>
           <div class="onething-orb" style="background:radial-gradient(circle,rgba(79,214,160,.12) 0%,transparent 70%);"></div>
         </div>
@@ -1274,6 +1275,7 @@ function markDone() {
   _oneThingDone = {
     name: _oneThingTask?.name || null,
     rock: _oneThingTask ? _loadedGoals.find(g => g.id === _oneThingTask.projectId) : null,
+    prevStatus: _oneThingTask?.status || 'Planned', // for Undo
   };
   if (_oneThingTask?.id) {
     fetch('/api/tasks/' + _oneThingTask.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'Done' }) }).catch(() => {});
@@ -1281,6 +1283,24 @@ function markDone() {
     const pt = plan.find(t => t.id === _oneThingTask.id);
     if (pt) { pt.done = true; pt.status = 'Done'; }
   }
+  renderOneThing();
+  renderPlan();
+  renderStreaks();
+}
+
+// Reverse an accidental "I did this" — restore the task, streak, and plan row.
+function undoOneThing() {
+  state.oneThing = 'active';
+  if (state.workStreak > 0) state.workStreak -= 1;
+  state.workSatisfied = false;
+  workStreakSave(state.workStreak);
+  const prevStatus = _oneThingDone?.prevStatus || 'Doing';
+  if (_oneThingTask?.id) {
+    fetch('/api/tasks/' + _oneThingTask.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status: prevStatus }) }).catch(() => {});
+    const pt = plan.find(t => t.id === _oneThingTask.id);
+    if (pt) { pt.done = false; pt.status = prevStatus; }
+  }
+  _oneThingDone = null;
   renderOneThing();
   renderPlan();
   renderStreaks();
@@ -1514,27 +1534,32 @@ function openInNotion(i) {
 
 // Collapse/expand a card or section-wrap. Persists state keyed by today's date
 // so collapsed sections auto-reopen the next day.
+// Collapse state persists per-day in localStorage. Shared by cards (data-persist-key)
+// and the morning/evening rituals (keys ritual-morning / ritual-evening).
+function getSection(key) {
+  const s = JSON.parse(localStorage.getItem('today-sections') || '{}');
+  return s._date === todayISO() && !!s[key];
+}
+function setSection(key, collapsed) {
+  let s = JSON.parse(localStorage.getItem('today-sections') || '{}');
+  if (s._date !== todayISO()) s = { _date: todayISO() };
+  s[key] = collapsed;
+  localStorage.setItem('today-sections', JSON.stringify(s));
+}
 function toggleCard(el) {
   const c = el.closest('.t-card, .streak-card, .onething');
   if (!c) return;
   c.classList.toggle('collapsed');
-  const key = c.dataset.persistKey;
-  if (key) {
-    const today = todayISO();
-    const stored = JSON.parse(localStorage.getItem('today-sections') || '{}');
-    if (stored._date !== today) { localStorage.setItem('today-sections', JSON.stringify({ _date: today, [key]: c.classList.contains('collapsed') })); }
-    else { stored[key] = c.classList.contains('collapsed'); localStorage.setItem('today-sections', JSON.stringify(stored)); }
-  }
+  if (c.dataset.persistKey) setSection(c.dataset.persistKey, c.classList.contains('collapsed'));
 }
 function _restoreCardCollapse(key, selector) {
-  const stored = JSON.parse(localStorage.getItem('today-sections') || '{}');
-  if (stored._date === todayISO() && stored[key]) document.querySelector(selector)?.classList.add('collapsed');
+  // Exception: an active (not-yet-done) One Thing always stays open on reload.
+  if (key === 'onething' && state.oneThing !== 'done') return;
+  if (getSection(key)) document.querySelector(selector)?.classList.add('collapsed');
 }
 function loadSectionStates() {
-  const stored = JSON.parse(localStorage.getItem('today-sections') || '{}');
-  if (stored._date !== todayISO()) return;
   document.querySelectorAll('[data-persist-key]').forEach(el => {
-    if (stored[el.dataset.persistKey]) el.classList.add('collapsed');
+    if (getSection(el.dataset.persistKey)) el.classList.add('collapsed');
   });
 }
 
@@ -2046,6 +2071,7 @@ function renderRitual(which) {
   const r = rituals[which];
   const el = document.getElementById(which + 'Ritual');
   if (!el) return;
+  r.collapsed = getSection('ritual-' + which); // persist collapse across reloads
 
   // The morning/evening checklists are the owner's personal rituals — team
   // members don't have them, so hide both entirely.
@@ -2113,8 +2139,8 @@ function renderRitual(which) {
 let _journalTodayUrl = null;
 
 function toggleRitualCollapse(which) {
-  rituals[which].collapsed = !rituals[which].collapsed;
-  renderRitual(which);
+  setSection('ritual-' + which, !rituals[which].collapsed);
+  renderRitual(which); // re-reads the stored collapse state
 }
 
 function toggleRitual(which, i) {
@@ -2346,6 +2372,16 @@ function applyStreaks(data) {
 // Apply AI brief text → brief-lines
 function applyBrief(text) {
   if (!text) return;
+  // Exception to "stay collapsed": when the briefing content is new (changed since
+  // last seen), reopen the Current Focus card so the new message isn't hidden.
+  const sig = String(text).trim();
+  let bs = {};
+  try { bs = JSON.parse(localStorage.getItem('today-brief-sig') || '{}'); } catch (e) {}
+  if (bs.sig !== sig) {
+    try { localStorage.setItem('today-brief-sig', JSON.stringify({ sig })); } catch (e) {}
+    document.getElementById('card-briefing')?.classList.remove('collapsed');
+    setSection('briefing', false);
+  }
   const sentences = (text.match(/[^.!?]+[.!?]*/g) || [text]).map(s => s.trim()).filter(Boolean).slice(0, 4);
   const colors = ['var(--red)', 'var(--amber)', 'var(--green)', 'var(--teal)'];
   workBrief.length = 0;
