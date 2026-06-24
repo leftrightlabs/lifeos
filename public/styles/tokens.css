@@ -13,6 +13,7 @@
   --accent-soft:  rgba(99,102,241,.13);
   --accent-muted: rgba(99,102,241,.25);
   --accent-deep:  #4F52CC;
+  --label:        #818CF8;  /* lighter periwinkle for card/section labels */
 
   /* Work — cobalt */
   --work:      #2563EB;

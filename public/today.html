@@ -36,6 +36,7 @@
   --accent-soft:  rgba(99,102,241,.13);
   --accent-muted: rgba(99,102,241,.25);
   --accent-deep:  #4F52CC;
+  --label:        #818CF8;  /* lighter periwinkle for card/section labels */
 
   /* Work = cobalt blue — serious, corporate */
   --work:      #2563EB;
@@ -144,7 +145,7 @@ body {
 .main-col { padding: 22px; border-right: 1px solid var(--border-soft); display: flex; flex-direction: column; gap: 24px; }
 .side-col { padding: 22px 16px; display: flex; flex-direction: column; gap: 24px; }
 .sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; }
-.sec-title { font-size: var(--fs-caption); font-weight: 700; color: var(--accent); letter-spacing: .09em; text-transform: uppercase; }
+.sec-title { font-size: var(--fs-caption); font-weight: 700; color: var(--label); letter-spacing: .09em; text-transform: uppercase; }
 .sec-title .count { color: var(--text-4); font-weight: 500; margin-left: 4px; }
 .mini-btn { background: none; border: 1px solid var(--border); border-radius: 5px; font-size: var(--fs-caption); font-weight: 600; color: var(--text-3); padding: 4px 9px; cursor: pointer; font-family: inherit; letter-spacing: .03em; }
 .mini-btn.on { background: var(--accent-soft); color: var(--accent); border-color: rgba(99,102,241,.3); }
@@ -387,7 +388,7 @@ body {
 .plan-menu-sep { height: 1px; background: var(--border-soft); margin: 3px 0; }
 
 /* ── SIDEBAR ── */
-.side-sec-title { font-size: var(--fs-caption); font-weight: 700; color: var(--accent); letter-spacing: .09em; text-transform: uppercase; margin-bottom: 12px; }
+.side-sec-title { font-size: var(--fs-caption); font-weight: 700; color: var(--label); letter-spacing: .09em; text-transform: uppercase; margin-bottom: 12px; }
 .rings { display: flex; gap: 10px; justify-content: center; margin-bottom: 12px; }
 .ring-wrap { display: flex; flex-direction: column; align-items: center; gap: 5px; }
 .ring-lbl { font-size: var(--fs-caption); color: var(--text-3); text-align: center; }
