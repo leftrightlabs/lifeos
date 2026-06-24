@@ -9,6 +9,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.webmanifest">
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="/shell.js"></script>
 <meta name="theme-color" content="#0A0F1E">
 <style>
 :root {
@@ -81,10 +82,10 @@ body {
 .logo .logo-mark { color: #5D9CEC; }
 .topbar-right { display: flex; align-items: center; gap: 7px; }
 .mode-toggle { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 3px; gap: 2px; }
-.mode-btn { background: none; border: none; font-size: var(--fs-caption); font-weight: 700; letter-spacing: .05em; padding: 5px 13px; border-radius: 16px; cursor: pointer; color: var(--text-3); font-family: inherit; white-space: nowrap; transition: all .2s; }
-.mode-btn.active { background: var(--work); color: #fff; }
-.mode-btn.active.personal { background: var(--personal); color: #fff; }
-.mode-btn.active.all { background: var(--accent); color: #fff; }
+.mode-btn { display: flex; align-items: center; justify-content: center; background: none; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: var(--text-3); font-family: inherit; transition: all .2s; }
+.mode-btn:hover { color: var(--text-2); }
+.mode-btn[data-mode="work"].active { background: var(--work); color: #fff; }
+.mode-btn[data-mode="personal"].active { background: var(--personal); color: #fff; }
 .me-pill { background: var(--accent); color: #fff; font-size: var(--fs-caption); font-weight: 600; padding: 5px 13px; border-radius: 22px; white-space: nowrap; cursor: pointer; }
 
 /* NAV */
@@ -663,6 +664,8 @@ html.light .footer-stamp { color: var(--text-3); }
   .nav-domain { display: none; }
   .wk-message { font-size: var(--fs-heading); }
   .wk-emoji { font-size: var(--fs-giant); }
+  .nav-btn { flex-direction: column; gap: 2px; padding: 7px 10px; font-size: 9px; letter-spacing: .05em; }
+  .nav-ic svg { width: 18px; height: 18px; }
 }
 @media (max-width: 420px) {
   .topbar { padding: 11px 14px; padding-top: max(11px, env(safe-area-inset-top)); }
@@ -719,9 +722,12 @@ body.app-loading #appLoading { display: flex; }
     <div class="logo"><span class="logo-mark">◆</span> LRL OS</div>
     <div class="topbar-right">
       <div class="mode-toggle" id="modeToggle" style="display:none">
-        <button class="mode-btn active" data-mode="work" onclick="setMode('work')">WORK</button>
-        <button class="mode-btn" data-mode="all" onclick="setMode('all')">ALL</button>
-        <button class="mode-btn" data-mode="personal" onclick="setMode('personal')">PERSONAL</button>
+        <button class="mode-btn active" data-mode="work" onclick="toggleMode('work')" title="Work mode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+        </button>
+        <button class="mode-btn" data-mode="personal" onclick="toggleMode('personal')" title="Personal mode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        </button>
       </div>
       <div class="me-pill" onclick="window.location='/'">ME</div>
     </div>
@@ -901,7 +907,9 @@ let CAN_PERSONAL = true; // assume unlocked until /api/me says otherwise
 const escName = (s) => String(s || '').replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 
 const state = {
-  mode: IS_WEEKEND ? 'personal' : 'all', // default: ALL on weekdays, PERSONAL on weekends
+  // Mode is shared across pages via the shell (localStorage); fall back to the
+  // weekday/weekend default. ALL on weekdays, PERSONAL on weekends.
+  mode: (window.LRLShell ? LRLShell.getMode() : (IS_WEEKEND ? 'personal' : 'all')),
   oneThing: 'active',         // work one thing: active | snoozing | done
   personalOneThing: 'active', // personal one thing: active | done
   hideDone: false,
@@ -935,69 +943,9 @@ const lifeWeek = [
 ];
 
 // ── MODE ──
-const NAV_WORK = [
-  { label:'TODAY',  href:'/today',        active:true },
-  { label:'MESSAGES', href:'/messages' },
-  { label:'EXECUTE',  href:'/execute' },
-  { sep: true },
-  { domain:'WORK' },
-  { label:'ATTRACT',  href:'/attract' },
-  { label:'CONVERT',  href:'/convert' },
-  { label:'DELIVER',  href:'/deliver' },
-  { label:'SCALE',    href:'/scale' },
-  { label:'REFERENCE', href:'/reference' },
-];
-const NAV_PERSONAL = [
-  { label:'TODAY',  href:'/today',        active:true },
-  { label:'MESSAGES', href:'/messages' },
-  { label:'EXECUTE',  href:'/execute' },
-  { label:'REFERENCE', href:'/reference' },
-  { sep: true },
-  { domain:'LIFE' },
-  { label:'HEALTH',        href:'/health' },
-  { label:'WEALTH',        href:'/wealth' },
-  { label:'LEGO',          href:'/lego' },
-  { label:'RELATIONSHIPS', href:'/relationships' },
-];
-const NAV_ALL = [
-  { label:'TODAY',  href:'/today',        active:true },
-  { label:'MESSAGES', href:'/messages' },
-  { label:'EXECUTE',  href:'/execute' },
-  { sep: true },
-  { domain:'WORK' },
-  { label:'ATTRACT',  href:'/attract' },
-  { label:'CONVERT',  href:'/convert' },
-  { label:'DELIVER',  href:'/deliver' },
-  { label:'SCALE',    href:'/scale' },
-  { label:'REFERENCE', href:'/reference' },
-  { sep: true },
-  { domain:'LIFE' },
-  { label:'HEALTH',        href:'/health' },
-  { label:'WEALTH',        href:'/wealth' },
-  { label:'LEGO',          href:'/lego' },
-  { label:'RELATIONSHIPS', href:'/relationships' },
-];
-
-// Lucide-style nav icons (stroke, currentColor) keyed by route — mirrors the
-// home page's iconed nav.
-const NAV_ICONS = {
-  '/today':    '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
-  '/messages': '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/>',
-  '/execute':  '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="m9 13 2 2 4-4"/>',
-  '/attract':  '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
-  '/convert':  '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
-  '/deliver':  '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><polyline points="3.3 7 12 12 20.7 7"/><line x1="12" y1="22" x2="12" y2="12"/>',
-  '/scale':    '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
-  '/reference':'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
-  '/health':   '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
-  '/wealth':   '<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>',
-  '/lego':     '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
-  '/relationships':'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-};
-function navSvg(href) {
-  const p = NAV_ICONS[href]; if (!p) return '';
-  return `<span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg></span>`;
-}
+// Nav data + icons live in the shared shell (public/shell.js) so every page
+// renders identical chrome. This page keeps its own richer mode behavior
+// (weekend screen, streaks, FAB color) and just delegates nav rendering.
 
 function setMode(m) {
   // Clicking WORK on a weekend shows the screen instead of switching immediately.
@@ -1007,20 +955,20 @@ function setMode(m) {
     return;
   }
   state.mode = m;
+  try { localStorage.setItem('lrl-mode', m); } catch (e) {} // shared across pages
   syncModeButtons(m);
   renderNav();
   renderStreaks();
   _reRenderAll();
 }
 
+function toggleMode(m) {
+  setMode(state.mode === m ? 'all' : m);
+}
+
 function syncModeButtons(m) {
   document.querySelectorAll('.mode-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.mode === m);
-    b.classList.remove('personal', 'all');
-    if (b.dataset.mode === m) {
-      if (m === 'personal') b.classList.add('personal');
-      if (m === 'all') b.classList.add('all');
-    }
   });
   const fab = document.querySelector('.fab');
   if (fab) {
@@ -1031,15 +979,11 @@ function syncModeButtons(m) {
 }
 
 function renderNav() {
-  let items = state.mode === 'personal' ? NAV_PERSONAL : state.mode === 'all' ? NAV_ALL : NAV_WORK;
-  // Team members only have work zones — the domain labels/separators have
-  // nothing left to divide, so drop them.
-  if (!CAN_PERSONAL) items = items.filter(item => !item.sep && !item.domain);
-  document.getElementById('nav').innerHTML = items.map(item => {
-    if (item.sep) return `<div class="nav-sep"></div>`;
-    if (item.domain) return `<span class="nav-domain">${item.domain}</span>`;
-    return `<a href="${item.href}" class="nav-btn${item.active?' active':''}">${navSvg(item.href)}${item.label}</a>`;
-  }).join('');
+  LRLShell.renderNav(document.getElementById('nav'), {
+    mode: state.mode,
+    active: '/today',
+    canPersonal: CAN_PERSONAL,
+  });
 }
 
 // ── STREAKS ──

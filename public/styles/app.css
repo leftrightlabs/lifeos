@@ -33,16 +33,14 @@ a { color: inherit; text-decoration: none; }
 .topbar-right { display: flex; align-items: center; gap: 7px; }
 .mode-toggle { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 3px; gap: 2px; }
 .mode-btn {
-  background: none; border: none; font-size: var(--fs-caption); font-weight: 700;
-  letter-spacing: .05em; padding: 5px 13px; border-radius: 16px;
-  cursor: pointer; color: var(--text-3); font-family: inherit;
-  white-space: nowrap; transition: all .2s; text-decoration: none;
-  display: inline-flex; align-items: center;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; width: 32px; height: 32px; border-radius: 50%;
+  cursor: pointer; color: var(--text-3); font-family: inherit; transition: all .2s;
+  text-decoration: none;
 }
 .mode-btn:hover { color: var(--text-2); }
-.mode-btn.work   { background: var(--work);     color: #fff; }
-.mode-btn.all    { background: var(--accent);   color: #fff; }
-.mode-btn.personal { background: var(--personal); color: #fff; }
+.mode-btn[data-mode="work"].active   { background: var(--work);     color: #fff; }
+.mode-btn[data-mode="personal"].active { background: var(--personal); color: #fff; }
 .me-pill {
   background: var(--accent); color: #fff; font-size: var(--fs-caption); font-weight: 600;
   padding: 5px 13px; border-radius: 22px; cursor: pointer;
@@ -134,6 +132,15 @@ a { color: inherit; text-decoration: none; }
 html.light .topbar-wrap,
 html.light .nav-wrap { background: var(--bg); }
 html.light .zone-card { background: var(--surface); }
+
+/* ── MOBILE NAV ── */
+@media (max-width: 720px) {
+  .topbar { padding: 10px 16px; }
+  .nav-btn { flex-direction: column; gap: 2px; padding: 7px 10px; font-size: 9px; letter-spacing: .05em; }
+  .nav-ic svg { width: 18px; height: 18px; }
+  .nav-domain { display: none; }
+  .nav-sep { display: none; }
+}
 
 /* ── DESKTOP UI SCALE ──
    Bump the whole interface to ~125% on large screens so type reads larger

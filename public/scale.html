@@ -244,34 +244,7 @@ body[data-state="calm"] .vto-group-head span { color:var(--green); }
 }
 </style>
 </head><body>
-<div class="topbar-wrap"><div class="topbar">
-  <a href="/" class="logo"><span class="logo-mark">◆</span> LRL OS</a>
-  <div class="topbar-right">
-    <div class="mode-toggle" style="display:none">
-      <a href="/?mode=work" class="mode-btn work">WORK</a>
-      <a href="/?mode=all" class="mode-btn">ALL</a>
-      <a href="/?mode=personal" class="mode-btn">PERSONAL</a>
-    </div>
-    <span class="me-pill">ME</span>
-  </div>
-</div></div>
-<div class="nav-wrap"><nav class="nav">
-  <a href="/today" class="nav-btn">TODAY</a>
-  <a href="/messages" class="nav-btn">MESSAGES</a>
-  <a href="/execute" class="nav-btn">EXECUTE</a>
-  <div class="nav-sep"></div>
-  <span class="nav-domain">WORK</span>
-  <a href="/attract" class="nav-btn">ATTRACT</a>
-  <a href="/convert" class="nav-btn">CONVERT</a>
-  <a href="/deliver" class="nav-btn">DELIVER</a>
-  <a href="/scale" class="nav-btn active">SCALE</a>
-  <a href="/reference" class="nav-btn">REFERENCE</a>
-  <div class="nav-sep"></div>
-  <span class="nav-domain">LIFE</span>
-  <a href="/health" class="nav-btn">HEALTH</a>
-  <a href="/wealth" class="nav-btn">WEALTH</a>
-  <a href="/lego" class="nav-btn">LEGO</a>
-</nav></div>
+<div id="lrl-shell"></div>
 
 <div class="scale-page">
   <div class="sc-head">
@@ -625,4 +598,5 @@ async function load(){
 }
 load();
 </script>
+<script src="/shell.js"></script>
 </body></html>

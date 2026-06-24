@@ -192,34 +192,7 @@
 @media (max-width:600px) { .detail-panel { width:100vw; } .hover-acts { display:none; } }
 </style>
 </head><body>
-<div class="topbar-wrap"><div class="topbar">
-  <a href="/" class="logo"><span class="logo-mark">◆</span> LRL OS</a>
-  <div class="topbar-right">
-    <div class="mode-toggle" id="modeToggle">
-      <button class="mode-btn" data-mode="work" onclick="setMode('work')">WORK</button>
-      <button class="mode-btn all" data-mode="all" onclick="setMode('all')">ALL</button>
-      <button class="mode-btn" data-mode="personal" onclick="setMode('personal')">PERSONAL</button>
-    </div>
-    <span class="me-pill" onclick="window.location='/'">ME</span>
-  </div>
-</div></div>
-<div class="nav-wrap"><nav class="nav">
-  <a href="/today" class="nav-btn">TODAY</a>
-  <a href="/messages" class="nav-btn active">MESSAGES</a>
-  <a href="/execute" class="nav-btn">EXECUTE</a>
-  <div class="nav-sep"></div>
-  <span class="nav-domain">WORK</span>
-  <a href="/attract" class="nav-btn">ATTRACT</a>
-  <a href="/convert" class="nav-btn">CONVERT</a>
-  <a href="/deliver" class="nav-btn">DELIVER</a>
-  <a href="/scale" class="nav-btn">SCALE</a>
-  <a href="/reference" class="nav-btn">REFERENCE</a>
-  <div class="nav-sep"></div>
-  <span class="nav-domain">LIFE</span>
-  <a href="/health" class="nav-btn">HEALTH</a>
-  <a href="/wealth" class="nav-btn">WEALTH</a>
-  <a href="/lego" class="nav-btn">LEGO</a>
-</nav></div>
+<div id="lrl-shell"></div>
 
 <div class="msg-zone">
   <div class="source-tabs">
@@ -326,9 +299,10 @@ const state = { tab:'gmail', filter:'all', mode:'all', selected:new Set(), openI
   cache:{ gmail:{data:[],t:0}, slack:{data:null,t:0}, notion:{data:[],t:0} } };
 
 /* WORK / ALL / PERSONAL — Gmail is split by category; Slack & Notion are work
-   tools, so they're hidden in PERSONAL mode. */
-function setMode(m){ state.mode=m; syncModeButtons(m); render(); updateBadges(); }
-function syncModeButtons(m){ document.querySelectorAll('#modeToggle .mode-btn').forEach(b=>{ b.classList.remove('work','all','personal'); if(b.dataset.mode===m) b.classList.add(m); }); }
+   tools, so they're hidden in PERSONAL mode. The shared shell (shell.js) owns
+   the mode toggle and calls this hook whenever the mode changes (and once on
+   load), so this page just re-renders its content for the new mode. */
+window.onShellModeChange = function(m){ state.mode = m; render(); updateBadges(); };
 function modeGmail(m){ if(state.mode==='work') return m.cat!=='PERSONAL'; if(state.mode==='personal') return m.cat==='PERSONAL'; return true; }
 function modeHidesWorkSource(){ return state.mode==='personal'; }
 function workSourceEmpty(label){ return `<div class="empty"><div class="empty-icon">💼</div><div class="empty-title">Work only</div><div class="empty-body">${label} is a work tool — switch to WORK or ALL to see it.</div></div>`; }
@@ -611,4 +585,5 @@ loadTab('gmail');
 fetch('/api/messages/slack').then(r=>r.json()).then(d=>{ state.cache.slack.data=d; state.cache.slack.t=Date.now(); updateBadges(); }).catch(()=>{});
 fetch('/api/messages/notion-comments').then(r=>r.json()).then(d=>{ state.cache.notion.data=(d.comments||[]).filter(m=>!isSnoozed(m.id)&&!isNotionArchived(m.id)); state.cache.notion.t=Date.now(); updateBadges(); }).catch(()=>{});
 </script>
+<script src="/shell.js"></script>
 </body></html>
