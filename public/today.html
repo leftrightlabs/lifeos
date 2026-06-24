@@ -310,8 +310,10 @@ body {
 .qstar svg { width: 18px; height: 18px; }
 .qstar .fillp { fill: none; stroke: var(--text-4); stroke-width: 1.6; transition: all .2s; }
 .qstar.on .fillp { fill: var(--accent); stroke: var(--accent); }
-.plan-waiting-div { display: flex; align-items: center; gap: 10px; padding: 15px 0 9px; }
+.plan-waiting-div { display: flex; align-items: center; gap: 10px; padding: 15px 0 9px; cursor: pointer; user-select: none; }
 .plan-waiting-div span { font-size: var(--fs-caption); letter-spacing: .2em; text-transform: uppercase; color: var(--amber); font-weight: 800; white-space: nowrap; }
+.plan-waiting-div .wchev { letter-spacing: 0; font-size: 9px; }
+#planList.waiting-collapsed .qrow-waiting { display: none; }
 .plan-waiting-div::before, .plan-waiting-div::after { content: ''; flex: 1; height: 1px; background: rgba(235,180,84,.15); }
 
 /* ── Edit Task modal ── */
@@ -1790,7 +1792,7 @@ function renderPlan() {
   const actionable = shown.filter(t => t.status !== 'Waiting');
   const waiting = shown.filter(t => t.status === 'Waiting');
 
-  const rowHtml = (t) => {
+  const rowHtml = (t, isWaiting) => {
     const origIdx = plan.indexOf(t);
     const statusKey = (t.status || 'Planned').toLowerCase().replace(/\s+/g, '-');
     const pr = (t.priority || '').toLowerCase();
@@ -1803,7 +1805,7 @@ function renderPlan() {
       : new Date(t.dueStart + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
     const star = `<button class="qstar on" data-act="star" title="Remove from My Day" aria-label="Remove from My Day"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>`;
     return `
-    <div class="qrow ${t.done ? 'done' : ''}" data-plan-idx="${origIdx}" data-task-id="${t.id || ''}">
+    <div class="qrow ${t.done ? 'done' : ''} ${isWaiting ? 'qrow-waiting' : ''}" data-plan-idx="${origIdx}" data-task-id="${t.id || ''}">
       <div class="qcheck ${t.done ? 'checked' : ''}" data-act="check"></div>
       <span class="qdot status-${statusKey}" title="${escName(t.status || 'Planned')}"></span>
       <div class="qbody" data-act="open">
@@ -1815,12 +1817,14 @@ function renderPlan() {
     </div>`;
   };
 
-  let html = actionable.map(rowHtml).join('');
+  let html = actionable.map(t => rowHtml(t)).join('');
+  const waitingCollapsed = getSection('waiting');
   if (waiting.length) {
-    html += `<div class="plan-waiting-div" data-no-drag><span>Waiting on · ${waiting.length}</span></div>`;
-    html += waiting.map(rowHtml).join('');
+    html += `<div class="plan-waiting-div" data-no-drag onclick="toggleWaiting()"><span><span class="wchev">${waitingCollapsed ? '▶' : '▼'}</span> Waiting on · ${waiting.length}</span></div>`;
+    html += waiting.map(t => rowHtml(t, true)).join('');
   }
   const list = document.getElementById('planList');
+  list.classList.toggle('waiting-collapsed', waitingCollapsed);
   list.innerHTML = html || `<div style="padding:10px 4px;color:var(--text-3);font-size:var(--fs-body-sm)">Nothing on My Day yet.</div>`;
   if (!list._clickBound) {
     list.addEventListener('click', (e) => {
@@ -1835,6 +1839,11 @@ function renderPlan() {
     list._clickBound = true;
   }
   initSortable();
+}
+
+function toggleWaiting() {
+  setSection('waiting', !getSection('waiting'));
+  renderPlan();
 }
 
 function togglePlan(i) {
@@ -1862,9 +1871,27 @@ function initSortable() {
     delay: 140, delayOnTouchOnly: true, // tap opens the task; long-press drags (touch only)
     ghostClass: 'sortable-ghost',
     onEnd() {
+      // Drop position vs. the "Waiting on" divider decides status: rows that land
+      // below it become Waiting; rows dragged back above it leave Waiting.
+      const children = Array.from(list.children);
+      const divIdx = children.findIndex(c => c.classList.contains('plan-waiting-div'));
+      const rows = Array.from(list.querySelectorAll('.qrow'));
+      if (divIdx >= 0) {
+        rows.forEach(row => {
+          const t = plan[parseInt(row.dataset.planIdx)];
+          if (!t || t.done) return;
+          const inWaiting = children.indexOf(row) > divIdx;
+          let next = null;
+          if (inWaiting && t.status !== 'Waiting') next = 'Waiting';
+          else if (!inWaiting && t.status === 'Waiting') next = 'Doing';
+          if (next) {
+            t.status = next;
+            if (t.id) fetch('/api/tasks/' + t.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status: next }) }).catch(() => {});
+          }
+        });
+      }
       // Rebuild plan array to match new DOM order
-      const rows = list.querySelectorAll('.qrow');
-      const reordered = Array.from(rows).map(row => plan[parseInt(row.dataset.planIdx)]).filter(Boolean);
+      const reordered = rows.map(row => plan[parseInt(row.dataset.planIdx)]).filter(Boolean);
       plan.length = 0;
       reordered.forEach(t => plan.push(t));
       renderPlan();
