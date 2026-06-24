@@ -155,8 +155,7 @@ body {
 .t-card .sec-head { margin-bottom: 12px; }
 .t-card.collapsed .sec-head { margin-bottom: 0; }
 .card-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1; min-width: 0; user-select: none; }
-.chev { font-size: 9px; color: var(--text-4); transition: transform .2s; flex-shrink: 0; }
-.t-card.collapsed .chev { transform: rotate(-90deg); }
+.chev { display: none; }
 .t-card.collapsed .t-body { display: none; }
 .streak-card .sec-head { margin-bottom: 12px; }
 .streak-card.collapsed { border-left-color: var(--border); border-left-width: 1px; }
@@ -172,6 +171,27 @@ body {
 .onething.collapsed .sec-head { margin-bottom: 0; }
 .onething.collapsed .chev { transform: rotate(-90deg); }
 .onething.collapsed .t-body { display: none; }
+/* ── ONE THING OVERRIDE PICKER ── */
+.ot-change-btn { background: none; border: 1px solid var(--border); border-radius: 5px; font-size: 10px; font-weight: 700; color: var(--text-3); padding: 3px 8px; cursor: pointer; font-family: inherit; letter-spacing: .06em; text-transform: uppercase; flex-shrink: 0; line-height: 1.4; }
+.ot-change-btn:hover { color: var(--label); border-color: var(--label); }
+.ot-picker-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.ot-picker-overlay.hidden { display: none; }
+.ot-picker { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 500px; max-height: 72vh; display: flex; flex-direction: column; overflow: hidden; }
+.ot-picker-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 0; flex-shrink: 0; }
+.ot-picker-title { font-size: var(--fs-body-sm); font-weight: 700; color: var(--text); letter-spacing: .04em; text-transform: uppercase; }
+.ot-picker-close { background: none; border: none; color: var(--text-3); font-size: 22px; cursor: pointer; padding: 0 6px; line-height: 1; }
+.ot-picker-tabs { display: flex; padding: 10px 18px 0; border-bottom: 1px solid var(--border-soft); flex-shrink: 0; }
+.ot-tab { background: none; border: none; border-bottom: 2px solid transparent; font-size: var(--fs-caption); font-weight: 700; letter-spacing: .07em; padding: 7px 14px; cursor: pointer; color: var(--text-3); font-family: inherit; text-transform: uppercase; transition: color .15s; margin-bottom: -1px; }
+.ot-tab.active { color: var(--label); border-bottom-color: var(--label); }
+.ot-picker-list { flex: 1; overflow-y: auto; padding: 8px; }
+.ot-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background .12s; }
+.ot-item:hover { background: rgba(129,140,248,.1); }
+.ot-item-name { font-size: var(--fs-body-sm); font-weight: 600; color: var(--text); line-height: 1.3; }
+.ot-item-sub { font-size: var(--fs-caption); color: var(--text-3); }
+.ot-picker-empty { padding: 28px 18px; color: var(--text-3); font-size: var(--fs-body-sm); text-align: center; }
+.ot-picker-footer { padding: 10px 14px; border-top: 1px solid var(--border-soft); flex-shrink: 0; }
+.ot-reset-btn { background: none; border: none; color: var(--text-3); font-size: var(--fs-caption); cursor: pointer; font-family: inherit; padding: 4px 0; }
+.ot-reset-btn:hover { color: var(--red); }
 /* streak strip now lives at the top of the main column (≈2/3 width) */
 .streak-strip { padding: 0; }
 
@@ -732,7 +752,7 @@ body.app-loading #appLoading { display: flex; }
         <div class="sec-head">
           <div class="card-toggle" onclick="toggleCard(this)">
             <span class="chev">▾</span>
-            <div class="sec-title">Current Focus</div>
+            <div class="sec-title">🎯 Current Focus</div>
           </div>
         </div>
         <div class="t-body">
@@ -747,7 +767,7 @@ body.app-loading #appLoading { display: flex; }
         <div class="sec-head">
           <div class="card-toggle" onclick="toggleCard(this)">
             <span class="chev">▾</span>
-            <div class="sec-title"><span id="rocksTitle">Q2 Rocks</span> <span class="count" id="rocksCount"></span></div>
+            <div class="sec-title">🪨 <span id="rocksTitle">Q2 Rocks</span> <span class="count" id="rocksCount"></span></div>
           </div>
         </div>
         <div class="t-body" id="rocksBody"><div class="rocks-list" id="rocksList"></div></div>
@@ -757,7 +777,7 @@ body.app-loading #appLoading { display: flex; }
         <div class="sec-head">
           <div class="card-toggle" onclick="toggleCard(this)">
             <span class="chev">▾</span>
-            <div class="sec-title">Today's Plan <span class="count" id="planCount"></span></div>
+            <div class="sec-title">✅ Today's Plan <span class="count" id="planCount"></span></div>
           </div>
           <div style="display:flex;gap:6px;">
             <button class="mini-btn" id="planAddBtn" onclick="event.stopPropagation();toggleAddTask()" title="Add task" style="font-size: var(--fs-body);padding:3px 11px;line-height:1;">+</button>
@@ -787,7 +807,7 @@ body.app-loading #appLoading { display: flex; }
 
     <div class="side-col">
       <div class="t-card" data-persist-key="campaign">
-        <div class="side-sec-title card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><span id="progressTitle">Campaign Progress</span></div>
+        <div class="side-sec-title card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span>📊 <span id="progressTitle">Campaign Progress</span></div>
         <div class="t-body">
           <div class="rings" id="rings"></div>
           <div class="next-rock-box" id="nextRockBox">
@@ -798,13 +818,13 @@ body.app-loading #appLoading { display: flex; }
       </div>
       <div class="t-card" data-persist-key="schedule">
         <div class="side-sec-title card-toggle" onclick="toggleCard(this)" style="display:flex;align-items:center;justify-content:space-between;">
-          <span style="display:flex;align-items:center;gap:8px;"><span class="chev">▾</span>Today's Schedule</span>
+          <span style="display:flex;align-items:center;gap:8px;"><span class="chev">▾</span>🗓 Today's Schedule</span>
           <span class="wx-chip" id="wxChip"></span>
         </div>
         <div class="t-body"><div class="vcal" id="vcal"></div></div>
       </div>
       <div class="t-card" data-persist-key="snapshot">
-        <div class="side-sec-title card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span>Snapshot</div>
+        <div class="side-sec-title card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span>📸 Snapshot</div>
         <div class="t-body"><div class="snap-grid" id="snapGrid"></div></div>
       </div>
     </div>
@@ -1128,7 +1148,7 @@ function renderOneThing() {
       area.innerHTML = `
         <div class="onething" id="otCard" data-persist-key="onething" style="border-left-color:var(--teal);background:linear-gradient(135deg,rgba(56,189,248,.08) 0%,rgba(10,13,22,0) 60%);">
           <div class="sec-head">
-            <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><span class="sec-title">The One Thing</span></div>
+            <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><span class="sec-title">⭐ The One Thing</span></div>
           </div>
           <div class="t-body">
             <div class="onething-label" style="color:var(--teal);">✦ ${isCredited ? 'Effort counted' : 'Done — that was the big one'}</div>
@@ -1160,7 +1180,7 @@ function renderOneThing() {
       area.innerHTML = `
         <div class="onething" id="otCard" data-persist-key="onething" style="border-left-color:${accent};">
           <div class="sec-head">
-            <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><span class="sec-title">The One Thing</span></div>
+            <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><span class="sec-title">⭐ The One Thing</span></div>
           </div>
           <div class="t-body">
             <div class="onething-label" style="color:${accent};">${isDoing ? '→ In progress' : '⏸ Waiting'}</div>
@@ -1187,7 +1207,8 @@ function renderOneThing() {
     area.innerHTML = `
       <div class="onething" id="otCard" data-persist-key="onething" style="border-left-color:var(--teal);background:linear-gradient(135deg,rgba(56,189,248,.06) 0%,rgba(10,13,22,0) 60%);">
         <div class="sec-head">
-          <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><span class="pulse-ring" style="background:var(--teal);box-shadow:0 0 0 6px rgba(56,189,248,.18);margin:0 2px 0 4px;"></span><span class="sec-title">The One Thing</span></div>
+          <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><span class="pulse-ring" style="background:var(--teal);box-shadow:0 0 0 6px rgba(56,189,248,.18);margin:0 2px 0 4px;"></span><span class="sec-title">⭐ The One Thing</span></div>
+          <button class="ot-change-btn" onclick="event.stopPropagation();openOTPicker()">Change</button>
         </div>
         <div class="t-body">
           <div class="onething-meta">${ptMeta}</div>
@@ -1205,6 +1226,10 @@ function renderOneThing() {
     return;
   }
 
+  // Check for a manual override (work / all mode only)
+  const _otOv = getOTOverride();
+  if (_otOv) { _renderOTOverride(area, _otOv); return; }
+
   if (!_oneThingTask && state.oneThing !== 'done') { area.innerHTML = oneThingEmpty('work'); return; }
 
   if (state.oneThing === 'done') {
@@ -1218,7 +1243,7 @@ function renderOneThing() {
     area.innerHTML = `
       <div class="onething completed" id="otCard" data-persist-key="onething">
         <div class="sec-head">
-          <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><span class="sec-title">The One Thing</span></div>
+          <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><span class="sec-title">⭐ The One Thing</span></div>
         </div>
         <div class="t-body">
           <div class="onething-label">✦ Done — that was the big one</div>
@@ -1282,7 +1307,8 @@ function renderOneThing() {
   area.innerHTML = `
     <div class="onething" id="otCard" data-persist-key="onething">
       <div class="sec-head">
-        <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><span class="pulse-ring" style="margin:0 2px 0 4px;"></span><span class="sec-title">The One Thing</span></div>
+        <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><span class="pulse-ring" style="margin:0 2px 0 4px;"></span><span class="sec-title">⭐ The One Thing</span></div>
+        <button class="ot-change-btn" onclick="event.stopPropagation();openOTPicker()">Change</button>
       </div>
       <div class="t-body">
         <div class="onething-meta">${otMeta}</div>
@@ -1353,6 +1379,148 @@ function undoOneThing() {
   renderOneThing();
   renderPlan();
   renderStreaks();
+}
+
+// ── ONE THING OVERRIDE ──
+function _otKey() { return 'lrl-ot-override-' + todayISO(); }
+function getOTOverride() { try { return JSON.parse(localStorage.getItem(_otKey())); } catch { return null; } }
+function setOTOverride(o) { try { localStorage.setItem(_otKey(), JSON.stringify(o)); } catch {} }
+function clearOTOverride() { try { localStorage.removeItem(_otKey()); } catch {} }
+
+let _pickerTab = 'tasks', _dealCache = null, _postCache = null, _pickerItems = [];
+
+function openOTPicker() {
+  document.getElementById('otPickerOverlay')?.classList.remove('hidden');
+  const resetBtn = document.getElementById('otResetBtn');
+  if (resetBtn) resetBtn.style.display = getOTOverride() ? '' : 'none';
+  loadPickerTab('tasks');
+}
+function closeOTPicker() {
+  document.getElementById('otPickerOverlay')?.classList.add('hidden');
+}
+function loadPickerTab(tab) {
+  _pickerTab = tab;
+  document.querySelectorAll('.ot-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  const list = document.getElementById('otPickerList');
+  if (!list) return;
+
+  if (tab === 'tasks') {
+    const tasks = (plan || []).filter(t => !t.done && t.id);
+    if (!tasks.length) { list.innerHTML = '<div class="ot-picker-empty">No active My Day tasks found.</div>'; return; }
+    _pickerItems = tasks.map(t => ({
+      type: 'task', id: t.id, name: t.name, url: t.url || '',
+      subtitle: t.project || (t.status && t.status !== 'Planned' ? t.status : ''),
+    }));
+    list.innerHTML = _pickerItems.map((item, i) => `
+      <div class="ot-item" onclick="selectOT(_pickerItems[${i}])">
+        <div class="ot-item-name">${escName(item.name)}</div>
+        ${item.subtitle ? `<div class="ot-item-sub">${escName(item.subtitle)}</div>` : ''}
+      </div>`).join('');
+    return;
+  }
+
+  if (tab === 'deals') {
+    if (_dealCache) { _renderPickerDeals(_dealCache); return; }
+    list.innerHTML = '<div class="ot-picker-empty">Loading deals…</div>';
+    fetch('/api/convert/pipeline').then(r => r.json()).then(d => {
+      _dealCache = (d.stages || []).flatMap(s => s.deals || []);
+      if (_pickerTab === 'deals') _renderPickerDeals(_dealCache);
+    }).catch(() => {
+      if (_pickerTab === 'deals') list.innerHTML = '<div class="ot-picker-empty">Could not load deals.</div>';
+    });
+    return;
+  }
+
+  if (tab === 'posts') {
+    if (_postCache) { _renderPickerPosts(_postCache); return; }
+    list.innerHTML = '<div class="ot-picker-empty">Loading posts…</div>';
+    fetch('/api/attract/today').then(r => r.json()).then(d => {
+      _postCache = [...(d.overdue||[]), ...(d.dueToday||[]), ...(d.thisWeek||[])];
+      if (_pickerTab === 'posts') _renderPickerPosts(_postCache);
+    }).catch(() => {
+      if (_pickerTab === 'posts') list.innerHTML = '<div class="ot-picker-empty">Could not load posts.</div>';
+    });
+    return;
+  }
+}
+function _renderPickerDeals(deals) {
+  const list = document.getElementById('otPickerList');
+  if (!list) return;
+  if (!deals.length) { list.innerHTML = '<div class="ot-picker-empty">No open deals found.</div>'; return; }
+  _pickerItems = deals.map(d => ({ type: 'deal', id: d.id, name: d.name, url: d.url || '', subtitle: d.status || '' }));
+  list.innerHTML = _pickerItems.map((item, i) => `
+    <div class="ot-item" onclick="selectOT(_pickerItems[${i}])">
+      <div class="ot-item-name">${escName(item.name)}</div>
+      ${item.subtitle ? `<div class="ot-item-sub">${escName(item.subtitle)}</div>` : ''}
+    </div>`).join('');
+}
+function _renderPickerPosts(posts) {
+  const list = document.getElementById('otPickerList');
+  if (!list) return;
+  if (!posts.length) { list.innerHTML = '<div class="ot-picker-empty">No upcoming posts found.</div>'; return; }
+  _pickerItems = posts.map(p => ({ type: 'post', id: p.id, name: p.name, url: p.url || '', subtitle: p.publishDate || p.status || '' }));
+  list.innerHTML = _pickerItems.map((item, i) => `
+    <div class="ot-item" onclick="selectOT(_pickerItems[${i}])">
+      <div class="ot-item-name">${escName(item.name)}</div>
+      ${item.subtitle ? `<div class="ot-item-sub">${escName(item.subtitle)}</div>` : ''}
+    </div>`).join('');
+}
+function selectOT(item) {
+  setOTOverride(item);
+  closeOTPicker();
+  renderOneThing();
+}
+function markOverrideDone() {
+  const ov = getOTOverride();
+  if (!ov) return;
+  if (ov.type === 'deal' || ov.type === 'post') {
+    if (ov.url) window.open(ov.url, '_blank');
+    clearOTOverride();
+    renderOneThing();
+    return;
+  }
+  // Task: slot it into _oneThingTask so markDone() fires correctly
+  const planTask = plan.find(t => t.id === ov.id);
+  _oneThingTask = planTask || { id: ov.id, name: ov.name, url: ov.url, status: 'Planned', source: 'work' };
+  clearOTOverride();
+  markDone();
+}
+function _renderOTOverride(area, ov) {
+  const typeCfg = {
+    deal: { label: 'DEAL', bg: 'var(--accent-soft)', fg: '#A99EFF' },
+    post: { label: 'POST', bg: 'var(--amber-soft)',  fg: 'var(--amber)' },
+    task: { label: 'TASK', bg: 'var(--accent-soft)', fg: 'var(--label)' },
+  }[ov.type] || { label: 'OVERRIDE', bg: 'var(--accent-soft)', fg: 'var(--label)' };
+  const why = ov.type === 'deal'
+    ? 'Manually set — close this deal today. Tap "I did this" to open it in Notion and update the status.'
+    : ov.type === 'post'
+    ? 'Manually set — publish this post today. Tap "I did this" to open it in Notion and update the status.'
+    : 'Manually set as today\'s top priority.';
+  area.innerHTML = `
+    <div class="onething" id="otCard" data-persist-key="onething">
+      <div class="sec-head">
+        <div class="card-toggle" onclick="toggleCard(this)">
+          <span class="pulse-ring" style="margin:0 2px 0 4px;"></span>
+          <span class="sec-title">⭐ The One Thing</span>
+        </div>
+        <button class="ot-change-btn" onclick="event.stopPropagation();openOTPicker()">Change</button>
+      </div>
+      <div class="t-body">
+        <div class="onething-meta">
+          <span class="ot-chip" style="background:${typeCfg.bg};color:${typeCfg.fg};">${typeCfg.label}</span>
+          ${ov.subtitle ? `<span class="ot-rocklink">${escName(ov.subtitle)}</span>` : ''}
+          <span class="ot-chip" style="background:rgba(129,140,248,.08);color:var(--text-4);font-size:10px;letter-spacing:.06em;">MANUAL</span>
+        </div>
+        <div class="onething-title">${escName(ov.name)}</div>
+        <div class="onething-why">${why}</div>
+        <div class="onething-actions">
+          <button class="btn-go" onclick="markOverrideDone()">✓ I did this</button>
+          <button class="btn-ghost" onclick="clearOTOverride();renderOneThing()">↩ Reset to suggested</button>
+        </div>
+        <div class="onething-orb"></div>
+      </div>
+    </div>`;
+  _restoreCardCollapse('onething', '#otCard');
 }
 
 function _patchPersonalTask(body) {
@@ -3265,6 +3433,25 @@ init();
 <div id="undoToast">
   <span id="undoMsg"></span>
   <button onclick="triggerUndo()">UNDO</button>
+</div>
+
+<!-- One Thing Override Picker -->
+<div class="ot-picker-overlay hidden" id="otPickerOverlay" onclick="if(event.target===this)closeOTPicker()">
+  <div class="ot-picker">
+    <div class="ot-picker-head">
+      <div class="ot-picker-title">Choose Your One Thing</div>
+      <button class="ot-picker-close" onclick="closeOTPicker()">×</button>
+    </div>
+    <div class="ot-picker-tabs">
+      <button class="ot-tab active" data-tab="tasks" onclick="loadPickerTab('tasks')">Tasks</button>
+      <button class="ot-tab" data-tab="deals" onclick="loadPickerTab('deals')">Deals</button>
+      <button class="ot-tab" data-tab="posts" onclick="loadPickerTab('posts')">Posts</button>
+    </div>
+    <div class="ot-picker-list" id="otPickerList"></div>
+    <div class="ot-picker-footer">
+      <button class="ot-reset-btn" id="otResetBtn" style="display:none" onclick="clearOTOverride();closeOTPicker();renderOneThing()">↩ Reset to suggested</button>
+    </div>
+  </div>
 </div>
 </body>
 </html>
