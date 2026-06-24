@@ -2275,8 +2275,7 @@ function saveRitualInput(which, i, rawValue) {
 const workBrief = [];
 const personalBrief = [];
 function renderBrief() {
-  const lines = state.mode === 'personal' ? personalBrief : workBrief;
-  document.getElementById('briefLines').innerHTML = lines.map(l =>
+  document.getElementById('briefLines').innerHTML = workBrief.map(l =>
     `<div class="brief-line"><span class="brief-marker" style="background:${l.c};"></span><span>${l.html}</span></div>`
   ).join('');
 }
@@ -2485,7 +2484,7 @@ function applyBrief(text) {
   const colors = ['var(--red)', 'var(--amber)', 'var(--green)', 'var(--teal)'];
   workBrief.length = 0;
   sentences.forEach((s, i) => workBrief.push({ c: colors[i % colors.length], html: s }));
-  if (state.mode !== 'personal') renderBrief();
+  renderBrief();
 }
 
 // Apply calendar events to vcal
@@ -3163,7 +3162,9 @@ async function fetchCheckinModal() {
   if (text)    text.style.display = 'none';
   if (actions) actions.style.display = 'none';
   try {
-    const r = await fetch('/api/checkin/compose');
+    const orderIds = (plan || []).map(t => t.id).filter(Boolean);
+    const qs = orderIds.length ? '?order=' + encodeURIComponent(JSON.stringify(orderIds)) : '';
+    const r = await fetch('/api/checkin/compose' + qs);
     const d = await r.json();
     if (d.error) {
       if (loading) loading.textContent = 'Error: ' + d.error;

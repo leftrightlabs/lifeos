@@ -1724,7 +1724,7 @@ DO NOT recap events or work already completed. DO NOT mention things in the past
 
 Voice: direct, warm, casual. Like a friend who knows your day. Uses ellipses sometimes; never em-dashes. No corporate tone. No "let's" or "looks like you've got a busy afternoon!" Skip preambles.
 
-Format: 3-4 sentences. Plain text — no markdown, no bullets, no headers.
+Format: 3-4 short key points, each a single crisp sentence — no run-ons, no compound clauses. Each point is a distinct observation. Plain text — no markdown, no bullets, no headers. Write like a briefing card, not a paragraph.
 
 Reference real specifics: names, times, project names. Surface tension if something matters (overdue, soon-due). End with one grounding observation about what's ahead.`;
 
@@ -1902,12 +1902,19 @@ app.get('/api/review', async (_req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
     const data = await cached('review', async () => {
-      const activeProjectIds = await cached('active-projects', fetchActiveProjectIds);
+      const [activeProjectIds, projects] = await Promise.all([
+        cached('active-projects', fetchActiveProjectIds),
+        cached('projects-list', fetchActiveProjects),
+      ]);
+      const nameById = new Map(projects.map((p) => [p.id, p.name]));
       const [work, personal] = await Promise.all([
         reviewTasksForSource(WORK_TASKS_DS, 'work', 'Assigned', activeProjectIds),
         reviewTasksForSource(LIFE_TASKS_DS, 'personal', null, activeProjectIds),
       ]);
-      const combine = (k) => [...work[k], ...personal[k]];
+      const combine = (k) => [...work[k], ...personal[k]].map((t) => ({
+        ...t,
+        project: t.projectId ? (nameById.get(t.projectId) || null) : null,
+      }));
       return {
         overdue: combine('overdue'),
         noProjectNoDue: combine('noProjectNoDue'),

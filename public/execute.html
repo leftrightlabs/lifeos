@@ -161,6 +161,7 @@
   .review-item-name { flex: 1; min-width: 200px; font-size: var(--fs-body); color: var(--navy); font-weight: 500; line-height: 1.4; cursor: pointer; border-radius: 4px; padding: 2px 4px; margin: -2px -4px; transition: background 0.12s; }
   .review-item-name:hover { background: rgba(var(--edge-rgb), 0.05); }
   .review-item-name:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+  .review-item-project { font-size: var(--fs-caption); color: var(--navy-dim); margin-top: 2px; font-style: italic; }
   .review-item-meta { font-size: var(--fs-caption); color: var(--navy-dim); margin-top: 2px; }
   .review-source-pill { font-size: var(--fs-caption); letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; font-weight: 600; flex-shrink: 0; }
   .review-source-pill.work { background: rgba(93,156,236,0.15); color: #9cc5f5; }
@@ -846,10 +847,70 @@ var mode = localStorage.getItem('lrl-mode') || 'all';
 if (mode === 'combined') { mode = 'all'; try { localStorage.setItem('lrl-mode','all'); } catch(e){} }
 document.body.dataset.mode = mode;
 // Lightweight task-edit stub: open in Notion (full editor lives on the Today page)
-window.openTaskEdit = function(t){
-  if (t && t.url) { window.openNotion(t.url); return; }
-  window.lrl && window.lrl.toast && window.lrl.toast('Open this task on the Today page to edit','');
+let _editTask = null;
+window.openTaskEdit = function(t) {
+  _editTask = t;
+  const isPersonal = t.source === 'personal';
+  document.getElementById('tmPill').className = 'tm-pill ' + (isPersonal ? 'personal' : 'work');
+  document.getElementById('tmPillLabel').textContent = isPersonal ? 'Personal' : 'Work';
+  document.getElementById('tmName').value = t.name || '';
+  const sel = document.getElementById('tmProject');
+  const projs = REVIEW_PROJECTS || [];
+  sel.innerHTML = '<option value="">— none —</option>' + projs.map(p =>
+    `<option value="${p.id}"${t.projectId === p.id ? ' selected' : ''}>${escapeHtml(p.name)}</option>`
+  ).join('');
+  document.getElementById('tmMyDay').checked = !!t.myDay;
+  const validStatus = ['Planned','Doing','Waiting','Agenda','Billing','Done'];
+  document.getElementById('tmStatus').value = validStatus.includes(t.status) ? t.status : 'Planned';
+  const up = (t.priority || '').toUpperCase();
+  document.getElementById('tmPriority').value = ['URGENT','HIGH','MEDIUM','LOW','NONE'].includes(up) ? up : '';
+  document.getElementById('tmEstField').style.display = isPersonal ? 'none' : '';
+  document.getElementById('tmEst').value = t.est != null ? t.est : '';
+  document.getElementById('tmDue').value = t.dueStart || '';
+  document.getElementById('taskModal').classList.add('open');
 };
+function closeTaskModal() { document.getElementById('taskModal').classList.remove('open'); _editTask = null; }
+function openInNotionFromModal() { if (_editTask?.url) window.openNotion(_editTask.url); }
+function saveTaskModal() {
+  if (!_editTask) return;
+  const id = _editTask.id;
+  const name = document.getElementById('tmName').value.trim();
+  const projectId = document.getElementById('tmProject').value || null;
+  const myDay = document.getElementById('tmMyDay').checked;
+  const status = document.getElementById('tmStatus').value;
+  const priority = document.getElementById('tmPriority').value;
+  const estRaw = document.getElementById('tmEst').value;
+  const estHours = estRaw === '' ? null : Number(estRaw);
+  const dueStart = document.getElementById('tmDue').value || null;
+  if (id) {
+    fetch('/api/tasks/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, projectId, status, priority, estHours, dueStart, myDay }) }).catch(() => {});
+  }
+  if (REVIEW_DATA) {
+    for (const key of Object.keys(REVIEW_DATA)) {
+      if (!Array.isArray(REVIEW_DATA[key])) continue;
+      const item = REVIEW_DATA[key].find(t => t.id === id);
+      if (item) Object.assign(item, { name: name || item.name, projectId, status, priority, dueStart, myDay });
+    }
+  }
+  closeTaskModal();
+  renderReview({ skipVictory: true });
+}
+function deleteTaskModal() {
+  if (!_editTask) return;
+  if (!confirm('Delete this task in Notion? This cannot be undone.')) return;
+  const id = _editTask.id;
+  if (id) fetch('/api/tasks/' + id, { method: 'DELETE' }).catch(() => {});
+  if (REVIEW_DATA) {
+    for (const key of Object.keys(REVIEW_DATA)) {
+      if (!Array.isArray(REVIEW_DATA[key])) continue;
+      const idx = REVIEW_DATA[key].findIndex(t => t.id === id);
+      if (idx !== -1) REVIEW_DATA[key].splice(idx, 1);
+    }
+  }
+  closeTaskModal();
+  renderReview({ skipVictory: true });
+}
 </script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
@@ -1809,7 +1870,7 @@ function reviewItemHtml(item, sectionKey){
   controls += `<button class="review-btn subtle" data-act="snooze" data-id="${item.id}" title="Hide from this review (until next refresh)">Skip</button>`;
   return `<div class="review-item${cleared ? ' clearing' : ''}" data-id="${item.id}">
     <div class="review-item-row">
-      <div class="review-item-name" data-act="open-edit" data-id="${item.id}" role="button" tabindex="0" title="Edit task">${escapeHtml(item.name)}${meta}</div>
+      <div class="review-item-name" data-act="open-edit" data-id="${item.id}" role="button" tabindex="0" title="Edit task">${escapeHtml(item.name)}${item.project ? `<div class="review-item-project">${escapeHtml(item.project)}</div>` : ''}${meta}</div>
       <span class="review-source-pill ${item.source}">${item.source}</span>
     </div>
     <div class="review-controls">${controls}</div>
@@ -1888,7 +1949,7 @@ function attachReviewHandlers(){
       const id = el.dataset.id;
       const item = findReviewItemById(id);
       if (!item) return;
-      window.openTaskEdit && window.openTaskEdit({ ...item, project: null }, 'review');
+      window.openTaskEdit && window.openTaskEdit(item, 'review');
     };
     el.addEventListener('click', open);
     el.addEventListener('keydown', (e) => {
@@ -1988,7 +2049,7 @@ async function fetchReview(){
     const [reviewRes, projRes] = await Promise.all([
       fetch('/api/review').then(r => r.json()),
       // Reuse triage endpoint that returns projects in its response. Or fetch projects separately... use a lightweight call:
-      Promise.resolve({ projects: REVIEW_PROJECTS }), // will be populated by triage usage; for V1, leave empty if not loaded
+      fetch('/api/projects').then(r => r.json()).catch(() => ({ projects: [] })),
     ]);
     if (reviewRes.error) { document.getElementById('review-body').innerHTML = `<div style="color:#ff7a6b;padding:20px">${reviewRes.error}</div>`; return; }
     REVIEW_DATA = reviewRes;
