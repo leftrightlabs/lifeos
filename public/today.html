@@ -3162,7 +3162,11 @@ async function fetchCheckinModal() {
   if (text)    text.style.display = 'none';
   if (actions) actions.style.display = 'none';
   try {
-    const orderIds = (plan || []).map(t => t.id).filter(Boolean);
+    const statusRank = { Doing: 0, Planned: 1, Agenda: 2, Waiting: 3, Billing: 4 };
+    const sortedPlan = (plan || []).slice().sort((a, b) =>
+      (statusRank[a.status] ?? 99) - (statusRank[b.status] ?? 99)
+    );
+    const orderIds = sortedPlan.map(t => t.id).filter(Boolean);
     const qs = orderIds.length ? '?order=' + encodeURIComponent(JSON.stringify(orderIds)) : '';
     const r = await fetch('/api/checkin/compose' + qs);
     const d = await r.json();
