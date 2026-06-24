@@ -310,11 +310,13 @@ body {
 .qstar svg { width: 18px; height: 18px; }
 .qstar .fillp { fill: none; stroke: var(--text-4); stroke-width: 1.6; transition: all .2s; }
 .qstar.on .fillp { fill: var(--accent); stroke: var(--accent); }
-.plan-waiting-div { display: flex; align-items: center; gap: 10px; padding: 15px 0 9px; cursor: pointer; user-select: none; }
-.plan-waiting-div span { font-size: var(--fs-caption); letter-spacing: .2em; text-transform: uppercase; color: var(--amber); font-weight: 800; white-space: nowrap; }
-.plan-waiting-div .wchev { letter-spacing: 0; font-size: 9px; }
-#planList.waiting-collapsed .qrow-waiting { display: none; }
-.plan-waiting-div::before, .plan-waiting-div::after { content: ''; flex: 1; height: 1px; background: rgba(235,180,84,.15); }
+.plan-status-div { display: flex; align-items: center; gap: 10px; padding: 15px 0 9px; cursor: pointer; user-select: none; }
+.plan-status-div span { font-size: var(--fs-caption); letter-spacing: .2em; text-transform: uppercase; font-weight: 800; white-space: nowrap; }
+.plan-status-div .wchev { letter-spacing: 0; font-size: 9px; }
+.plan-status-div::before, .plan-status-div::after { content: ''; flex: 1; height: 1px; background: var(--sdiv, var(--border-soft)); opacity: .22; }
+.qrow.qrow-hidden { display: none; }
+.plan-status-div.drop-target::before, .plan-status-div.drop-target::after { opacity: .6; }
+.plan-status-div.drop-target span { text-shadow: 0 0 8px var(--sdiv); }
 
 /* ── Edit Task modal ── */
 .task-modal { position: fixed; inset: 0; background: rgba(5,8,14,.78); backdrop-filter: blur(4px); display: none; align-items: flex-start; justify-content: center; padding: 56px 18px; z-index: 400; overflow-y: auto; }
@@ -1274,11 +1276,16 @@ function markDone() {
   state.workSatisfied = true;
   workStreakSave(state.workStreak);
   // Capture what was completed so the done card shows the real task (not a placeholder).
+  const rock = _oneThingTask ? _loadedGoals.find(g => g.id === _oneThingTask.projectId) : null;
   _oneThingDone = {
     name: _oneThingTask?.name || null,
-    rock: _oneThingTask ? _loadedGoals.find(g => g.id === _oneThingTask.projectId) : null,
+    rock,
     prevStatus: _oneThingTask?.status || 'Planned', // for Undo
+    taskId: _oneThingTask?.id || null,
   };
+  // Persist for the day — once the work One Thing is done, a reload shows the win,
+  // not a fresh task.
+  setOneThing('work', { status:'done', name:_oneThingDone.name, rockName:rock?.name || null, prevStatus:_oneThingDone.prevStatus, taskId:_oneThingDone.taskId });
   if (_oneThingTask?.id) {
     fetch('/api/tasks/' + _oneThingTask.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'Done' }) }).catch(() => {});
     // The One Thing is usually also a Today's Plan row — check it off there too.
@@ -1297,9 +1304,11 @@ function undoOneThing() {
   state.workSatisfied = false;
   workStreakSave(state.workStreak);
   const prevStatus = _oneThingDone?.prevStatus || 'Doing';
-  if (_oneThingTask?.id) {
-    fetch('/api/tasks/' + _oneThingTask.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status: prevStatus }) }).catch(() => {});
-    const pt = plan.find(t => t.id === _oneThingTask.id);
+  const undoId = _oneThingDone?.taskId || _oneThingTask?.id;
+  setOneThing('work', null);
+  if (undoId) {
+    fetch('/api/tasks/' + undoId, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status: prevStatus }) }).catch(() => {});
+    const pt = plan.find(t => t.id === undoId);
     if (pt) { pt.done = false; pt.status = prevStatus; }
   }
   _oneThingDone = null;
@@ -1322,10 +1331,14 @@ function _syncPlanStatus(id, status) {
   t.done = status === 'Done';
   renderPlan();
 }
+function _persistPersonal(status) {
+  setOneThing('personal', status ? { status, taskId: _personalOneThingTask?.id || null, name: _personalOneThingTask?.name || null } : null);
+}
 function markPersonalDone() {
   state.personalOneThing = 'done';
   state.lifeStreak += 1;
   state.lifeSatisfied = true;
+  _persistPersonal('done');
   _patchPersonalTask({ status: 'Done' });
   _syncPlanStatus(_personalOneThingTask?.id, 'Done');
   renderOneThing();
@@ -1338,6 +1351,7 @@ function countEffort() {
   state.personalOneThing = 'credited';
   state.lifeStreak += 1;
   state.lifeSatisfied = true;
+  _persistPersonal('credited');
   const todayPip = lifeWeek.findIndex(d => d.state === 'today');
   if (todayPip >= 0) lifeWeek[todayPip] = { ...lifeWeek[todayPip], state: 'hit' };
   renderOneThing();
@@ -1349,11 +1363,13 @@ function showNextPersonalTask() {
   const next = plan.find(t => t.type === 'personal' && !t.done && t.status !== 'Waiting' && t.id !== _personalOneThingTask?.id);
   if (!next) return;
   _personalOneThingTask = next;
-  state.personalOneThing = null;
+  state.personalOneThing = 'active';
+  _persistPersonal('active'); // pin the chosen swap for the day
   renderOneThing();
 }
 function setPersonalOneThingStatus(status) {
   state.personalOneThing = status.toLowerCase();
+  _persistPersonal(status.toLowerCase());
   _patchPersonalTask({ status });
   _syncPlanStatus(_personalOneThingTask?.id, status);
   renderOneThing();
@@ -1372,6 +1388,7 @@ function undoPersonalDone() {
     _patchPersonalTask({ status: 'Doing' });
     _syncPlanStatus(_personalOneThingTask?.id, 'Doing');
   }
+  _persistPersonal(state.personalOneThing); // 'waiting' (was credited) or null (back to active)
   renderOneThing();
   renderStreaks();
 }
@@ -1547,6 +1564,18 @@ function setSection(key, collapsed) {
   if (s._date !== todayISO()) s = { _date: todayISO() };
   s[key] = collapsed;
   localStorage.setItem('today-sections', JSON.stringify(s));
+}
+// The One Thing is once-per-day: its state (done / waiting / in-progress) persists
+// for the day so a reload doesn't re-nag or surface a fresh task. Resets next day.
+function getOneThing(kind) {
+  const s = JSON.parse(localStorage.getItem('today-onething') || '{}');
+  return s._date === todayISO() ? (s[kind] || null) : null;
+}
+function setOneThing(kind, val) {
+  let s = JSON.parse(localStorage.getItem('today-onething') || '{}');
+  if (s._date !== todayISO()) s = { _date: todayISO() };
+  if (val == null) delete s[kind]; else s[kind] = val;
+  localStorage.setItem('today-onething', JSON.stringify(s));
 }
 function toggleCard(el) {
   const c = el.closest('.t-card, .streak-card, .onething');
@@ -1789,10 +1818,8 @@ function renderPlan() {
   const totalCt = visible.length + rc.total;
   document.getElementById('planCount').textContent = `· ${doneCt} of ${totalCt} done`;
   const shown = state.hideDone ? visible.filter(t => !t.done) : visible;
-  const actionable = shown.filter(t => t.status !== 'Waiting');
-  const waiting = shown.filter(t => t.status === 'Waiting');
 
-  const rowHtml = (t, isWaiting) => {
+  const rowHtml = (t, collapsedRow) => {
     const origIdx = plan.indexOf(t);
     const statusKey = (t.status || 'Planned').toLowerCase().replace(/\s+/g, '-');
     const pr = (t.priority || '').toLowerCase();
@@ -1805,7 +1832,7 @@ function renderPlan() {
       : new Date(t.dueStart + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
     const star = `<button class="qstar on" data-act="star" title="Remove from My Day" aria-label="Remove from My Day"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>`;
     return `
-    <div class="qrow ${t.done ? 'done' : ''} ${isWaiting ? 'qrow-waiting' : ''}" data-plan-idx="${origIdx}" data-task-id="${t.id || ''}">
+    <div class="qrow ${t.done ? 'done' : ''} ${collapsedRow ? 'qrow-hidden' : ''}" data-plan-idx="${origIdx}" data-task-id="${t.id || ''}">
       <div class="qcheck ${t.done ? 'checked' : ''}" data-act="check"></div>
       <span class="qdot status-${statusKey}" title="${escName(t.status || 'Planned')}"></span>
       <div class="qbody" data-act="open">
@@ -1817,14 +1844,21 @@ function renderPlan() {
     </div>`;
   };
 
-  let html = actionable.map(t => rowHtml(t)).join('');
-  const waitingCollapsed = getSection('waiting');
-  if (waiting.length) {
-    html += `<div class="plan-waiting-div" data-no-drag onclick="toggleWaiting()"><span><span class="wchev">${waitingCollapsed ? '▶' : '▼'}</span> Waiting on · ${waiting.length}</span></div>`;
-    html += waiting.map(t => rowHtml(t, true)).join('');
-  }
+  // Group by status, render each as a collapsible, color-coded, drop-target section.
+  const groups = {};
+  shown.forEach(t => { const s = PLAN_STATUS_LABEL(t.status); (groups[s] = groups[s] || []).push(t); });
+  const order = PLAN_STATUS_ORDER.filter(s => groups[s]?.length);
+  Object.keys(groups).forEach(s => { if (!order.includes(s)) order.push(s); }); // any non-standard statuses last
+  let html = '';
+  order.forEach(status => {
+    const sk = status.toLowerCase().replace(/\s+/g, '-');
+    const collapsed = getSection('status-' + sk);
+    const color = PLAN_STATUS_COLOR[sk] || 'var(--text-4)';
+    html += `<div class="plan-status-div" data-no-drag data-status="${escName(status)}" onclick="toggleStatusSection('${sk}')" style="--sdiv:${color}">
+      <span style="color:${color}"><span class="wchev">${collapsed ? '▶' : '▼'}</span> ${escName(status)} · ${groups[status].length}</span></div>`;
+    html += groups[status].map(t => rowHtml(t, collapsed)).join('');
+  });
   const list = document.getElementById('planList');
-  list.classList.toggle('waiting-collapsed', waitingCollapsed);
   list.innerHTML = html || `<div style="padding:10px 4px;color:var(--text-3);font-size:var(--fs-body-sm)">Nothing on My Day yet.</div>`;
   if (!list._clickBound) {
     list.addEventListener('click', (e) => {
@@ -1841,8 +1875,16 @@ function renderPlan() {
   initSortable();
 }
 
-function toggleWaiting() {
-  setSection('waiting', !getSection('waiting'));
+// Plan status sections — order (top→bottom), colors (match the Notion status dots),
+// and label normalization. Unknown statuses keep their own label and sort last.
+const PLAN_STATUS_ORDER = ['Doing', 'Planned', 'Agenda', 'Waiting', 'Billing', 'Done'];
+const PLAN_STATUS_COLOR = { doing:'var(--green)', planned:'var(--text-4)', agenda:'#5d9cec', waiting:'var(--amber)', billing:'var(--accent)', done:'var(--text-4)' };
+function PLAN_STATUS_LABEL(s) {
+  const match = PLAN_STATUS_ORDER.find(x => x.toLowerCase() === (s || '').toLowerCase());
+  return match || (s && s.trim() ? s : 'Planned');
+}
+function toggleStatusSection(sk) {
+  setSection('status-' + sk, !getSection('status-' + sk));
   renderPlan();
 }
 
@@ -1860,6 +1902,7 @@ function togglePlan(i) {
 }
 
 let _sortable = null;
+let _dragging = false;
 function initSortable() {
   const list = document.getElementById('planList');
   if (!list || typeof Sortable === 'undefined') return;
@@ -1867,29 +1910,36 @@ function initSortable() {
   _sortable = Sortable.create(list, {
     animation: 150,
     draggable: '.qrow',          // whole row is draggable — no grab handle
-    filter: '[data-no-drag]',    // the WAITING divider isn't draggable
+    filter: '[data-no-drag]',    // status dividers aren't draggable
     delay: 140, delayOnTouchOnly: true, // tap opens the task; long-press drags (touch only)
     ghostClass: 'sortable-ghost',
+    onStart() { _dragging = true; },
+    onMove(evt) {
+      // Highlight a divider when a row is dragged onto/just under it (drop = that status).
+      list.querySelectorAll('.plan-status-div.drop-target').forEach(d => d.classList.remove('drop-target'));
+      const related = evt.related;
+      if (related && related.classList.contains('plan-status-div')) related.classList.add('drop-target');
+    },
     onEnd() {
-      // Drop position vs. the "Waiting on" divider decides status: rows that land
-      // below it become Waiting; rows dragged back above it leave Waiting.
+      _dragging = false;
+      list.querySelectorAll('.plan-status-div.drop-target').forEach(d => d.classList.remove('drop-target'));
+      // A row's new status = the status of the nearest divider above it. Dropping a
+      // row right under a (collapsed) divider therefore assigns that status.
       const children = Array.from(list.children);
-      const divIdx = children.findIndex(c => c.classList.contains('plan-waiting-div'));
       const rows = Array.from(list.querySelectorAll('.qrow'));
-      if (divIdx >= 0) {
-        rows.forEach(row => {
-          const t = plan[parseInt(row.dataset.planIdx)];
-          if (!t || t.done) return;
-          const inWaiting = children.indexOf(row) > divIdx;
-          let next = null;
-          if (inWaiting && t.status !== 'Waiting') next = 'Waiting';
-          else if (!inWaiting && t.status === 'Waiting') next = 'Doing';
-          if (next) {
-            t.status = next;
-            if (t.id) fetch('/api/tasks/' + t.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status: next }) }).catch(() => {});
-          }
-        });
-      }
+      rows.forEach(row => {
+        const t = plan[parseInt(row.dataset.planIdx)];
+        if (!t) return;
+        let status = null;
+        for (let i = children.indexOf(row) - 1; i >= 0; i--) {
+          if (children[i].classList.contains('plan-status-div')) { status = children[i].dataset.status; break; }
+        }
+        if (status && status !== PLAN_STATUS_LABEL(t.status)) {
+          t.status = status;
+          t.done = status === 'Done';
+          if (t.id) fetch('/api/tasks/' + t.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status }) }).catch(() => {});
+        }
+      });
       // Rebuild plan array to match new DOM order
       const reordered = rows.map(row => plan[parseInt(row.dataset.planIdx)]).filter(Boolean);
       plan.length = 0;
@@ -2801,6 +2851,68 @@ async function refreshData() {
   }
 }
 
+// Apply a tasks+goals payload to the in-memory model (plan, rocks, One Thing),
+// restoring the persisted One Thing state. Shared by the full load and the
+// lightweight auto-refresh.
+function applyTasksGoals(goalsV, workV, lifeV) {
+  const ok = v => v && !v.error;
+  if (ok(goalsV)) {
+    _loadedGoals = goalsV.goals || [];
+    rocks.length = 0;
+    _loadedGoals.forEach(g => rocks.push(goalToRock(g)));
+  }
+  if (ok(workV) || ok(lifeV)) {
+    const wt = ok(workV) ? (workV.tasks || []) : [];
+    const lt = ok(lifeV) ? (lifeV.tasks || []) : [];
+    plan.length = 0;
+    [...wt, ...lt].forEach(t => plan.push(taskToPlanItem(t)));
+    _oneThingTask = pickOneThing(wt, _loadedGoals, 'work');
+    _personalOneThingTask = pickOneThing(lt, _loadedGoals, 'personal');
+    const wState = getOneThing('work');
+    if (wState) {
+      if (wState.taskId) _oneThingTask = plan.find(p => p.id === wState.taskId) || { id: wState.taskId, name: wState.name, status: wState.prevStatus || 'Doing' };
+      if (wState.status === 'done') {
+        state.oneThing = 'done';
+        _oneThingDone = { name: wState.name, rock: wState.rockName ? { name: wState.rockName } : null, prevStatus: wState.prevStatus, taskId: wState.taskId };
+      }
+    }
+    const pState = getOneThing('personal');
+    if (pState) {
+      if (pState.taskId) _personalOneThingTask = plan.find(p => p.id === pState.taskId) || { id: pState.taskId, name: pState.name };
+      state.personalOneThing = pState.status || 'active';
+    }
+  }
+}
+
+// Don't auto-refresh mid-interaction (would wipe a drag, an open editor, etc.).
+function _refreshBusy() {
+  if (_dragging) return true;
+  if (document.getElementById('taskModal')?.classList.contains('open')) return true;
+  if (document.querySelector('.qc-overlay:not(.hidden)')) return true;
+  if (document.querySelector('.ci-overlay:not(.hidden)')) return true;
+  const dp = document.getElementById('datePicker');
+  if (dp && !dp.classList.contains('hidden')) return true;
+  return false;
+}
+
+// Lightweight live sync: re-pull tasks + goals (cache-busted) and re-render, so
+// edits made in Notion show up without a manual refresh. Triggered when the tab
+// regains focus and on a slow background poll. Skips the heavy Xero/brief calls.
+let _softRefreshing = false;
+async function softRefresh() {
+  if (!_dataLoaded || _softRefreshing || document.hidden || _refreshBusy()) return;
+  _softRefreshing = true;
+  try {
+    await fetch('/api/refresh-tasks').catch(() => {});
+    const j = url => fetch(url).then(r => r.json()).catch(() => ({ error: true }));
+    const [g, w, l] = await Promise.all([j('/api/goals'), j('/api/tasks/work-myday'), j('/api/tasks/life-myday')]);
+    applyTasksGoals(g, w, l);
+    _reRenderAll();
+    _updateRefreshStamp();
+  } catch (e) { /* keep last good state */ }
+  finally { _softRefreshing = false; }
+}
+
 // Master loader — every call fires in parallel, but the dashboard is revealed
 // as soon as the CORE data (tasks + goals) lands instead of waiting for the
 // slowest call (projects/Xero/pipeline). Slower sections patch in as they
@@ -2832,19 +2944,7 @@ async function loadTodayData() {
 
   // ── CORE: tasks + goals → reveal the dashboard as soon as these resolve ──
   const [goalsV, workV, lifeV] = await Promise.all([pGoals, pWork, pLife]);
-  if (ok(goalsV)) {
-    _loadedGoals = goalsV.goals || [];
-    rocks.length = 0;
-    _loadedGoals.forEach(g => rocks.push(goalToRock(g)));
-  }
-  if (ok(workV) || ok(lifeV)) {
-    const wt = ok(workV) ? (workV.tasks || []) : [];
-    const lt = ok(lifeV) ? (lifeV.tasks || []) : [];
-    plan.length = 0;
-    [...wt, ...lt].forEach(t => plan.push(taskToPlanItem(t)));
-    _oneThingTask = pickOneThing(wt, _loadedGoals, 'work');
-    _personalOneThingTask = pickOneThing(lt, _loadedGoals, 'personal');
-  }
+  applyTasksGoals(goalsV, workV, lifeV);
   _dataLoaded = true;
   _reRenderAll();
   // Reveal the dashboard now — no sample-data flash, no waiting on the tail.
@@ -2976,6 +3076,12 @@ function init() {
     .then(_updateRefreshStamp)
     .catch(() => {})
     .finally(() => { _dataLoaded = true; document.body.classList.remove('app-loading'); _reRenderAll(); });
+
+  // Live-ish sync with Notion: refresh tasks/rocks when the tab regains focus
+  // (e.g. returning from editing in Notion) and on a slow background poll.
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') softRefresh(); });
+  window.addEventListener('focus', softRefresh);
+  setInterval(softRefresh, 60000);
 }
 
 // ── Daily Check-in Modal ──

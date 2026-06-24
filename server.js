@@ -758,6 +758,14 @@ function invalidateTaskCaches() {
   }
 }
 
+// Lightweight cache-bust for the Today view's auto-refresh: clears only the
+// task + goal caches (NOT the expensive Xero/brief/rings caches), so polling and
+// tab-focus pick up Notion-side task/status edits without hammering slow APIs.
+app.get('/api/refresh-tasks', (_req, res) => {
+  ['work-myday', 'life-myday', 'work-all', 'life-all', 'goals'].forEach(clearCached);
+  res.json({ ok: true });
+});
+
 async function fetchGoalsForSource(projectsDs, tasksDs, source, projectPropName) {
   let projectsRes;
   try {
