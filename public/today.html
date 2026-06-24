@@ -734,7 +734,7 @@ body.app-loading #appLoading { display: flex; }
       <div class="streak-strip" id="streakStrip"></div>
       <div id="oneThingArea"></div>
 
-      <div class="t-card" id="card-rocks">
+      <div class="t-card" id="card-rocks" data-persist-key="rocks">
         <div class="sec-head">
           <div class="card-toggle" onclick="toggleCard(this)">
             <span class="chev">▾</span>
@@ -777,7 +777,7 @@ body.app-loading #appLoading { display: flex; }
     </div>
 
     <div class="side-col">
-      <div class="t-card">
+      <div class="t-card" data-persist-key="campaign">
         <div class="side-sec-title card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><span id="progressTitle">Campaign Progress</span></div>
         <div class="t-body">
           <div class="rings" id="rings"></div>
@@ -787,14 +787,14 @@ body.app-loading #appLoading { display: flex; }
           </div>
         </div>
       </div>
-      <div class="t-card">
+      <div class="t-card" data-persist-key="schedule">
         <div class="side-sec-title card-toggle" onclick="toggleCard(this)" style="display:flex;align-items:center;justify-content:space-between;">
           <span style="display:flex;align-items:center;gap:8px;"><span class="chev">▾</span>Today's Schedule</span>
           <span class="wx-chip" id="wxChip"></span>
         </div>
         <div class="t-body"><div class="vcal" id="vcal"></div></div>
       </div>
-      <div class="t-card">
+      <div class="t-card" data-persist-key="snapshot">
         <div class="side-sec-title card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span>Snapshot</div>
         <div class="t-body"><div class="snap-grid" id="snapGrid"></div></div>
       </div>
