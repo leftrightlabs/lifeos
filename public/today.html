@@ -1178,6 +1178,13 @@ function renderOneThing() {
   if (!_oneThingTask && state.oneThing !== 'done') { area.innerHTML = oneThingEmpty('work'); return; }
 
   if (state.oneThing === 'done') {
+    const doneName = escName(_oneThingDone?.name || _oneThingTask?.name || 'Done');
+    const doneRock = _oneThingDone?.rock;
+    const doneSub = [
+      `Work streak → <strong style="color:var(--work);">${state.workStreak} day${state.workStreak === 1 ? '' : 's'}</strong>`,
+      doneRock ? `${escName(doneRock.name)} moved forward` : null,
+      'This was your highest-leverage move today.',
+    ].filter(Boolean).join(' · ');
     area.innerHTML = `
       <div class="onething completed" id="otCard" data-persist-key="onething">
         <div class="sec-head">
@@ -1188,8 +1195,8 @@ function renderOneThing() {
           <div class="payoff">
             <div class="payoff-check">✓</div>
             <div class="payoff-text">
-              <div class="payoff-title">Hardaway decision sent 🎉</div>
-              <div class="payoff-sub">Work streak → <strong style="color:var(--work);">${state.workStreak} days</strong> · Rock 1 moved forward · This was your highest-leverage move today.</div>
+              <div class="payoff-title">${doneName} 🎉</div>
+              <div class="payoff-sub">${doneSub}</div>
             </div>
           </div>
           <div class="onething-actions" style="margin-top:18px;">
@@ -1263,8 +1270,19 @@ function markDone() {
   state.workStreak += 1;
   state.workSatisfied = true;
   workStreakSave(state.workStreak);
-  if (_oneThingTask?.id) fetch('/api/tasks/' + _oneThingTask.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'Done' }) }).catch(() => {});
+  // Capture what was completed so the done card shows the real task (not a placeholder).
+  _oneThingDone = {
+    name: _oneThingTask?.name || null,
+    rock: _oneThingTask ? _loadedGoals.find(g => g.id === _oneThingTask.projectId) : null,
+  };
+  if (_oneThingTask?.id) {
+    fetch('/api/tasks/' + _oneThingTask.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'Done' }) }).catch(() => {});
+    // The One Thing is usually also a Today's Plan row — check it off there too.
+    const pt = plan.find(t => t.id === _oneThingTask.id);
+    if (pt) { pt.done = true; pt.status = 'Done'; }
+  }
   renderOneThing();
+  renderPlan();
   renderStreaks();
 }
 
@@ -2153,6 +2171,7 @@ function _reRenderAll() {
 const WORK_STREAK_KEY = 'lrl-today-work-streak';
 let _projectMap = {};
 let _oneThingTask = null;
+let _oneThingDone = null;   // {name, rock} captured when the work One Thing is marked done
 let _personalOneThingTask = null;
 let _loadedGoals = [];
 let _dataLoaded = false; // gates the loading overlay; flips true after first load
