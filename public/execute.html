@@ -733,6 +733,36 @@
     60%  { transform: scale(1.06) translateY(0); opacity: 1; }
     100% { transform: scale(1) translateY(0); opacity: 1; }
   }
+/* ── Edit Task modal ── */
+.task-modal { position: fixed; inset: 0; background: rgba(5,8,14,.78); backdrop-filter: blur(4px); display: none; align-items: flex-start; justify-content: center; padding: 56px 18px; z-index: 400; overflow-y: auto; }
+.task-modal.open { display: flex; }
+.tm-content { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; max-width: 520px; width: 100%; box-shadow: 0 24px 60px rgba(0,0,0,.6); }
+.tm-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.tm-title { font-size: 24px; font-weight: 700; color: var(--text); }
+.tm-close { background: none; border: 1px solid var(--border); color: var(--navy-dim); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 18px; line-height: 1; }
+.tm-close:hover { color: var(--text); }
+.tm-pill { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; padding: 5px 12px; border-radius: 999px; margin-bottom: 16px; }
+.tm-pill.work { background: rgba(37,99,235,.13); color: #7FA8FF; }
+.tm-pill.personal { background: rgba(6,182,212,.13); color: #06B6D4; }
+.tm-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.tm-field { margin-bottom: 14px; }
+.tm-field label { display: block; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--navy-dim); margin-bottom: 6px; }
+.tm-field input, .tm-field select, .tm-field textarea { width: 100%; background: #0A0F1E; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: inherit; font-size: 16px; color: var(--text); }
+.tm-field textarea { resize: vertical; min-height: 54px; }
+.tm-field input:focus, .tm-field select:focus, .tm-field textarea:focus { outline: none; border-color: var(--accent); }
+.tm-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tm-check { display: flex; align-items: center; gap: 9px; font-size: 14px; color: var(--text-2); margin-bottom: 14px; cursor: pointer; }
+.tm-check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.tm-clear { float: right; background: none; border: none; color: var(--navy-dim); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; cursor: pointer; font-weight: 700; }
+.tm-clear:hover { color: var(--text); }
+.tm-actions { display: flex; gap: 8px; align-items: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
+.tm-trash { background: none; border: 1px solid var(--border); color: var(--navy-dim); width: 38px; height: 38px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.tm-trash:hover { color: #F26D6D; border-color: rgba(242,109,109,.3); }
+.tm-btn { padding: 10px 18px; border-radius: 8px; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; border: 1px solid transparent; }
+.tm-btn.ghost { background: none; border-color: var(--border); color: var(--text-2); }
+.tm-btn.ghost:hover { color: var(--text); border-color: var(--navy-dim); }
+.tm-btn.primary { background: var(--accent); color: #fff; margin-left: auto; }
+.tm-btn.primary:hover { filter: brightness(1.1); }
 </style>
 </head><body class="exec-root">
 <div class="topbar-wrap"><div class="topbar">
@@ -846,7 +876,7 @@ window.escapeHtml = escapeHtml;
 var mode = localStorage.getItem('lrl-mode') || 'all';
 if (mode === 'combined') { mode = 'all'; try { localStorage.setItem('lrl-mode','all'); } catch(e){} }
 document.body.dataset.mode = mode;
-// Lightweight task-edit stub: open in Notion (full editor lives on the Today page)
+// Task edit modal — shared by Tasks tab and Review tab
 let _editTask = null;
 window.openTaskEdit = function(t) {
   _editTask = t;
@@ -854,18 +884,31 @@ window.openTaskEdit = function(t) {
   document.getElementById('tmPill').className = 'tm-pill ' + (isPersonal ? 'personal' : 'work');
   document.getElementById('tmPillLabel').textContent = isPersonal ? 'Personal' : 'Work';
   document.getElementById('tmName').value = t.name || '';
+  // Populate project dropdown — use REVIEW_PROJECTS if loaded, otherwise fetch
   const sel = document.getElementById('tmProject');
-  const projs = REVIEW_PROJECTS || [];
-  sel.innerHTML = '<option value="">— none —</option>' + projs.map(p =>
-    `<option value="${p.id}"${t.projectId === p.id ? ' selected' : ''}>${escapeHtml(p.name)}</option>`
-  ).join('');
+  const fillProjects = (projs) => {
+    sel.innerHTML = '<option value="">— none —</option>' + (projs || []).map(p =>
+      `<option value="${p.id}"${t.projectId === p.id ? ' selected' : ''}>${escapeHtml(p.name)}</option>`
+    ).join('');
+  };
+  if (REVIEW_PROJECTS) {
+    fillProjects(REVIEW_PROJECTS);
+  } else {
+    fillProjects([]);
+    fetch('/api/projects').then(r => r.json()).then(d => {
+      REVIEW_PROJECTS = d.projects || [];
+      fillProjects(REVIEW_PROJECTS);
+    }).catch(() => {});
+  }
   document.getElementById('tmMyDay').checked = !!t.myDay;
   const validStatus = ['Planned','Doing','Waiting','Agenda','Billing','Done'];
   document.getElementById('tmStatus').value = validStatus.includes(t.status) ? t.status : 'Planned';
   const up = (t.priority || '').toUpperCase();
   document.getElementById('tmPriority').value = ['URGENT','HIGH','MEDIUM','LOW','NONE'].includes(up) ? up : '';
   document.getElementById('tmEstField').style.display = isPersonal ? 'none' : '';
-  document.getElementById('tmEst').value = t.est != null ? t.est : '';
+  // estHours field name varies by caller (tasks tab uses estHours, review tab uses est)
+  const estVal = t.estHours ?? t.est;
+  document.getElementById('tmEst').value = estVal != null ? estVal : '';
   document.getElementById('tmDue').value = t.dueStart || '';
   document.getElementById('taskModal').classList.add('open');
 };
@@ -886,30 +929,50 @@ function saveTaskModal() {
     fetch('/api/tasks/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, projectId, status, priority, estHours, dueStart, myDay }) }).catch(() => {});
   }
+  // Update tasks tab store
+  if (typeof BASE !== 'undefined' && BASE && id && BASE[id]) {
+    Object.assign(BASE[id], { name: name || BASE[id].name, projectId, status, priority, estHours, dueStart, myDay });
+    if (typeof state !== 'undefined' && state.edits) {
+      state.edits[id] = Object.assign({}, state.edits[id], { name: name || BASE[id].name, projectId, status, priority, estHours, dueStart, myDay });
+      if (typeof saveState === 'function') saveState();
+    }
+    if (typeof render === 'function') render();
+  }
+  // Update review tab store
   if (REVIEW_DATA) {
     for (const key of Object.keys(REVIEW_DATA)) {
       if (!Array.isArray(REVIEW_DATA[key])) continue;
       const item = REVIEW_DATA[key].find(t => t.id === id);
       if (item) Object.assign(item, { name: name || item.name, projectId, status, priority, dueStart, myDay });
     }
+    if (typeof renderReview === 'function') renderReview({ skipVictory: true });
   }
   closeTaskModal();
-  renderReview({ skipVictory: true });
 }
 function deleteTaskModal() {
   if (!_editTask) return;
   if (!confirm('Delete this task in Notion? This cannot be undone.')) return;
   const id = _editTask.id;
   if (id) fetch('/api/tasks/' + id, { method: 'DELETE' }).catch(() => {});
+  // Remove from tasks tab store
+  if (typeof BASE !== 'undefined' && BASE && id) {
+    delete BASE[id];
+    if (typeof SEED_TASKS !== 'undefined') {
+      const idx = SEED_TASKS.findIndex(t => t.id === id);
+      if (idx !== -1) SEED_TASKS.splice(idx, 1);
+    }
+    if (typeof render === 'function') render();
+  }
+  // Remove from review tab store
   if (REVIEW_DATA) {
     for (const key of Object.keys(REVIEW_DATA)) {
       if (!Array.isArray(REVIEW_DATA[key])) continue;
       const idx = REVIEW_DATA[key].findIndex(t => t.id === id);
       if (idx !== -1) REVIEW_DATA[key].splice(idx, 1);
     }
+    if (typeof renderReview === 'function') renderReview({ skipVictory: true });
   }
   closeTaskModal();
-  renderReview({ skipVictory: true });
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -2543,4 +2606,29 @@ window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderRevie
   showExecPanel(start);
 })();
 </script>
+<!-- Edit Task modal -->
+<div class="task-modal" id="taskModal" onclick="if(event.target===this)closeTaskModal()">
+  <div class="tm-content">
+    <div class="tm-head"><div class="tm-title">Edit Task</div><button class="tm-close" onclick="closeTaskModal()" aria-label="Close">×</button></div>
+    <div class="tm-pill work" id="tmPill"><span class="dot"></span><span id="tmPillLabel">Work</span></div>
+    <div class="tm-field"><label>Task</label><textarea id="tmName" rows="2" placeholder="Task name"></textarea></div>
+    <div class="tm-field"><label>Project</label><select id="tmProject"></select></div>
+    <label class="tm-check"><input type="checkbox" id="tmMyDay"> Pin to My Day</label>
+    <div class="tm-2col">
+      <div class="tm-field"><label>Status</label><select id="tmStatus">
+        <option>Planned</option><option>Doing</option><option>Waiting</option><option>Agenda</option><option>Billing</option><option>Done</option>
+      </select></div>
+      <div class="tm-field"><label>Priority</label><select id="tmPriority">
+        <option value="">— none —</option><option value="URGENT">Urgent</option><option value="HIGH">High</option><option value="MEDIUM">Medium</option><option value="LOW">Low</option><option value="NONE">None</option>
+      </select></div>
+    </div>
+    <div class="tm-field" id="tmEstField"><label>Est. hours</label><input type="number" id="tmEst" min="0" step="0.5" inputmode="decimal" placeholder="e.g. 2"></div>
+    <div class="tm-field"><label>Due date <button type="button" class="tm-clear" onclick="document.getElementById('tmDue').value=''">Clear</button></label><input type="date" id="tmDue"></div>
+    <div class="tm-actions">
+      <button class="tm-trash" onclick="deleteTaskModal()" title="Delete task">🗑</button>
+      <button class="tm-btn ghost" onclick="openInNotionFromModal()">Open in Notion ↗</button>
+      <button class="tm-btn primary" onclick="saveTaskModal()">Save</button>
+    </div>
+  </div>
+</div>
 </body></html>
