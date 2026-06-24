@@ -81,6 +81,28 @@
     return mode === 'personal' ? NAV_PERSONAL : mode === 'all' ? NAV_ALL : NAV_WORK;
   }
 
+  // ── ME MODE ──
+  // A global "show only items assigned to me" filter. Persists across pages and
+  // both view modes (work/personal); pages react via window.onMeModeChange(on).
+  function getMe() {
+    try { return localStorage.getItem('lrl-me-mode') === '1'; } catch (e) { return false; }
+  }
+  function setMe(on) {
+    on = !!on;
+    try { localStorage.setItem('lrl-me-mode', on ? '1' : '0'); } catch (e) {}
+    syncMePill(on);
+    if (typeof window.onMeModeChange === 'function') window.onMeModeChange(on);
+  }
+  function toggleMe() { setMe(!getMe()); }
+  function syncMePill(on, root) {
+    var scope = root || document;
+    var pills = scope.querySelectorAll('.me-pill');
+    for (var i = 0; i < pills.length; i++) {
+      pills[i].classList.toggle('active', !!on);
+      if (pills[i].setAttribute) pills[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+  }
+
   function hasHref(list, href) {
     for (var i = 0; i < list.length; i++) if (list[i].href === href) return true;
     return false;
@@ -116,7 +138,7 @@
         '<a href="/today" class="logo"><span class="logo-mark">◆</span> LRL OS</a>' +
         '<div class="topbar-right">' +
           modeToggleHTML() +
-          '<span class="me-pill" onclick="window.location=\'/today\'">ME</span>' +
+          '<button type="button" class="me-pill" id="mePill" aria-pressed="false" title="Show only items assigned to me">ME</button>' +
         '</div>' +
       '</div></div>' +
       '<div class="nav-wrap"><nav class="nav" id="nav"></nav></div>';
@@ -193,11 +215,16 @@
     }
 
     host.addEventListener('click', function (e) {
-      var btn = e.target.closest ? e.target.closest('.mode-btn') : null;
-      if (btn && btn.dataset.mode) onToggle(btn.dataset.mode);
+      if (!e.target.closest) return;
+      var btn = e.target.closest('.mode-btn');
+      if (btn && btn.dataset.mode) { onToggle(btn.dataset.mode); return; }
+      if (e.target.closest('.me-pill')) toggleMe();
     });
 
     applyMode();
+    // Sync the ME pill and notify the page of the persisted me-mode on load.
+    syncMePill(getMe());
+    if (typeof window.onMeModeChange === 'function') window.onMeModeChange(getMe());
 
     // Refine the personal gate from the server, then re-render if it changed.
     fetch('/api/me').then(function (r) { return r.json(); }).then(function (me) {
@@ -230,6 +257,11 @@
     syncModeButtons: syncModeButtons,
     getMode: getMode,
     modeToggleHTML: modeToggleHTML,
+    // ME mode (global "assigned to me" filter)
+    meMode: getMe,
+    setMe: setMe,
+    toggleMe: toggleMe,
+    syncMePill: syncMePill,
   };
 
   if (document.readyState === 'loading') {

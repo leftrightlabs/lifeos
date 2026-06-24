@@ -115,8 +115,10 @@ const STATUS_KIND = { green: 'on', amber: 'at-risk', red: 'behind', unknown: 'un
 
 export function registerScaleRoutes(app, {
   notion, cached, clearCached, computeXeroFinance, computeXeroQuotes, chicagoToday, currentQuarter,
-  WORK_PROJECTS_DS, WORK_TASKS_DS,
+  WORK_PROJECTS_DS, WORK_TASKS_DS, currentNotionUserId, GRETCHEN_USER_ID,
 }) {
+  // Notion id of the signed-in user, for the global "assigned to me" filter.
+  const meNotionId = () => (typeof currentNotionUserId === 'function' ? currentNotionUserId() : null) || GRETCHEN_USER_ID;
   // ── Systems (BUSINESS FUNCTIONS) ──
   // Ranks systems needing attention (urgency → priority → impact/effort), flags
   // quick wins, splits into fix-first / quick-wins, and counts the healthy ones.
@@ -266,6 +268,7 @@ export function registerScaleRoutes(app, {
       return {
         name: r.name,
         owner: r.owner,
+        mine: (r.ownerIds || []).includes(meNotionId()),
         function: r.function,
         status: r.statusKey,         // complete|onTrack|atRisk|offTrack|notStarted
         notionStatus: r.status,
@@ -391,7 +394,7 @@ export function registerScaleRoutes(app, {
       const scorecard = val(scR);
       const finRaw = val(finR);
       const quotes = val(quoteR);
-      const teamIssues = val(issR) || [];
+      const teamIssues = (val(issR) || []).map((i) => ({ ...i, mine: (i.assignedIds || []).includes(meNotionId()) }));
       const rawRocks = val(rockR) || [];
 
       const finance = buildFinance(finRaw, quotes);

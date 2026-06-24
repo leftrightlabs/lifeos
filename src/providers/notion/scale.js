@@ -87,6 +87,7 @@ export function serializeIssue(page) {
     status: p.Status?.status?.name || p.Status?.select?.name || null,
     priority,
     assigned: (p.Assigned?.people || []).map((u) => u.name).filter(Boolean).join(', ') || null,
+    assignedIds: (p.Assigned?.people || []).map((u) => u.id),
     due: p.Due?.date?.start || null,
   };
 }
@@ -121,6 +122,7 @@ export function serializeRock(page) {
     notionUrl: page.url,
     name: txt(p.Name?.title) || '(untitled)',
     owner: p.Assigned?.people?.[0]?.name || null,
+    ownerIds: (p.Assigned?.people || []).map((u) => u.id),
     function: p.Function?.select?.name || null,
     status: p.Status?.status?.name || null,
     deadline: p['Target Deadline']?.date?.start || p['Target Deadline']?.date?.end || p.Due?.date?.start || null,

@@ -139,7 +139,8 @@ export function registerDeliverRoutes(app, ctx) {
   // Derive the full page payload for a given Me-scope from the cached raw data.
   function derive(data, me) {
     const today = data.today;
-    const meId = GRETCHEN_USER_ID;
+    // Session-aware: "mine" means assigned to the signed-in user, not always Gretchen.
+    const meId = (typeof currentNotionUserId === 'function' ? currentNotionUserId() : null) || GRETCHEN_USER_ID;
     const monday = mondayISO(today);
     const projName = {}; data.projects.forEach((p) => { projName[p.id] = p.name; });
     const avatar = (ids, names) => {

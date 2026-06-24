@@ -3686,7 +3686,7 @@ app.post('/api/ai/triage/apply', async (req, res) => {
 });
 
 // ===== Convert / Sales domain — routes in src/routes/convert.js; data in src/providers/notion/convert.js =====
-registerConvertRoutes(app, { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID, computeXeroFinance, anthropic });
+registerConvertRoutes(app, { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID, currentNotionUserId, computeXeroFinance, anthropic });
 
 function dashifyId(id) {
   const s = String(id || '').replace(/-/g, '');
@@ -3697,11 +3697,11 @@ function dashifyId(id) {
 
 // ===== Attract / Marketing domain — extracted to src/routes/attract.js =====
 const { MARKETING_ASSETS_DS, fetchMarketingChannelMap, serializeMarketingAsset } =
-  registerAttractRoutes(app, { notion, cache, cached, currentQuarter, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, anthropic, userContext });
+  registerAttractRoutes(app, { notion, cache, cached, currentQuarter, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, anthropic, userContext, currentNotionUserId, GRETCHEN_USER_ID });
 registerWealthRoutes(app, { cached, cache, userContext });
 registerScaleRoutes(app, {
   notion, cached, clearCached, computeXeroFinance, computeXeroQuotes, chicagoToday, currentQuarter,
-  WORK_PROJECTS_DS, WORK_TASKS_DS,
+  WORK_PROJECTS_DS, WORK_TASKS_DS, currentNotionUserId, GRETCHEN_USER_ID,
 });
 // Reuses the existing Slack user-token OAuth (/auth/slack) + currentSlackToken().
 // The Messages zone reads unreads, so the OAuth user_scope was widened to include

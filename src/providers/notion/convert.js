@@ -35,6 +35,7 @@ export function serializeDeal(page, productMap, opts = {}) {
     dateLost: p['Date Lost']?.date?.start || null,
     lastTouched: p['Last Touched']?.rollup?.date?.start || p['Last Touched']?.rollup?.array?.[0]?.date?.start || p['Last Touched']?.date?.start || null,
     assignedTo: meKey((p['Assigned To']?.people || [])[0]?.name || ''),
+    assignedIds: (p['Assigned To']?.people || []).map((u) => u.id),
     products: (p['Product Interest']?.relation || []).map((r) => productMap[r.id.replace(/-/g, '')]).filter(Boolean),
     archived: archivedName === '__YES__',
     created: page.created_time || null,
@@ -80,6 +81,7 @@ export function serializeContactRow(page) {
     source: p['Source']?.select?.name || null,
     assignedTo: meKey(assignedName),
     assignedToName: assignedName || null,
+    assignedIds: (p['Assigned To']?.people || []).map((u) => u.id),
     lastTouched: lt,
   };
 }

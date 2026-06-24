@@ -2,7 +2,9 @@ import { whatsWorkingAll, gaConfigured } from '../providers/google/analytics.js'
 import { ytWhatsWorking, ytConfigured } from '../providers/google/youtube.js';
 
 export function registerAttractRoutes(app, ctx) {
-  const { notion, cache, cached, currentQuarter, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, anthropic, userContext } = ctx;
+  const { notion, cache, cached, currentQuarter, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, anthropic, userContext, currentNotionUserId, GRETCHEN_USER_ID } = ctx;
+  // Notion id of the signed-in user, for the global "assigned to me" filter.
+  const meNotionId = () => (typeof currentNotionUserId === 'function' ? currentNotionUserId() : null) || GRETCHEN_USER_ID;
 
 // =========================== MARKETING PUBLISHING ===========================
 const MARKETING_ASSETS_DS = '4170ff99-ce76-42b5-bcf2-7f672c362ec4';
@@ -215,7 +217,7 @@ app.get('/api/attract/stats', async (req, res) => {
       } while (cursor);
       const assets = pages.map((pg) => serializeMarketingAsset(pg, channelMap));
       // Trimmed shape for the stat-card drill-down lists (and future "me" filtering).
-      const trim = (a) => ({ id: a.id, name: a.name, publishDate: a.publishDate, status: a.status, url: a.url, assigned: a.assigned || [] });
+      const trim = (a) => ({ id: a.id, name: a.name, publishDate: a.publishDate, status: a.status, url: a.url, assigned: a.assigned || [], mine: (a.assigned || []).some((u) => u.id === meNotionId()) });
       let publishedYear = 0, publishedQuarter = 0, publishedMonth = 0;
       const yearAssets = [], quarterAssets = [], monthAssets = [];
       const channelTally = {};
@@ -268,7 +270,7 @@ app.get('/api/attract/calendar', async (req, res) => {
         });
         for (const pg of r.results) {
           const a = serializeMarketingAsset(pg, channelMap);
-          out.push({ id: a.id, url: a.url, name: a.name, status: a.status, publishDate: a.publishDate, formats: a.formats, contentType: a.contentType, hasMedia: a.media.length > 0, assigned: a.assigned });
+          out.push({ id: a.id, url: a.url, name: a.name, status: a.status, publishDate: a.publishDate, formats: a.formats, contentType: a.contentType, hasMedia: a.media.length > 0, assigned: a.assigned, mine: (a.assigned || []).some((u) => u.id === meNotionId()) });
         }
         cursor = r.has_more ? r.next_cursor : null;
       } while (cursor);

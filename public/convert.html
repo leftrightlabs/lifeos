@@ -371,9 +371,19 @@ function classify(c) {
   if (c.relationship === 'Referral' || WARM_SOURCES.includes(c.source)) return 'warm';
   return 'cold';
 }
-// Me-mode filter: keep items for the selected person; unassigned items show in every mode.
-function mineContact(c) { return ME === 'all' || c.assignedTo === ME || !c.assignedTo; }
-function mineDeal(d) { return ME === 'all' || d.assignedTo === ME || !d.assignedTo; }
+// Two filters combine here: the per-person picker (#me-mode: gretchen|trina|all)
+// and the GLOBAL ME toggle (shell.js). The picker wins when it names a specific
+// person; otherwise the global toggle scopes to the signed-in user ('self').
+// Unassigned items always stay visible.
+function effectiveScope() {
+  if (ME !== 'all') return ME;                                  // explicit person picked
+  if (window.LRLShell && LRLShell.meMode()) return 'self';      // global ME → just me
+  return 'all';
+}
+function mineContact(c) { const s = effectiveScope(); if (s === 'all') return true; if (s === 'self') return c.mine || !c.assignedTo; return c.assignedTo === s || !c.assignedTo; }
+function mineDeal(d) { const s = effectiveScope(); if (s === 'all') return true; if (s === 'self') return d.mine || !d.assignedTo; return d.assignedTo === s || !d.assignedTo; }
+// Re-render when the global ME toggle flips (shell.js calls this on load + change).
+window.onMeModeChange = function(){ renderAll(); };
 
 // ─── Calm conditions ──────────────────────────────────────────────────────────
 function computeConditions() {

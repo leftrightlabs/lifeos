@@ -161,10 +161,6 @@ body:not([data-state]) .dv-content { display:none; }
       <div class="dv-eyebrow">Work · Deliver</div>
       <span class="dv-title scotch">Deliver</span>
     </div>
-    <div class="me-toggle" id="me-toggle">
-      <button data-me="0" class="active">All</button>
-      <button data-me="1">Just me</button>
-    </div>
   </div>
 
   <div id="dv-error"></div>
@@ -470,15 +466,14 @@ async function load(me) {
     const er = document.getElementById('dv-error'); er.style.display = 'block'; er.textContent = "Couldn't load Deliver: " + e.message;
   }
 }
-document.getElementById('me-toggle').addEventListener('click', (e) => {
-  const btn = e.target.closest('button'); if (!btn) return;
-  ME = btn.dataset.me === '1' ? 1 : 0;
-  [...document.querySelectorAll('#me-toggle button')].forEach((bb) => bb.classList.toggle('active', bb === btn));
+// The global ME toggle (shell.js) drives the "just me" filter; re-fetch on change.
+window.onMeModeChange = function(){
+  ME = (window.LRLShell && LRLShell.meMode()) ? 1 : 0;
   document.getElementById('dv-loading').style.display = 'block';
   load(ME);
-});
-fetch('/api/deliver/me').then((r) => r.json()).then((m) => { if (m.owner) document.body.classList.add('owner'); }).catch(() => {});
-load(0);
+};
+ME = (window.LRLShell && LRLShell.meMode()) ? 1 : 0;
+load(ME);
 </script>
 <script src="/shell.js"></script>
 </body></html>

@@ -280,6 +280,10 @@ body[data-state="calm"] .vto-group-head span { color:var(--green); }
 
 <script>
 let DATA = null;
+// Global ME toggle (shell.js): keep items assigned to me, plus unassigned ones.
+// Issues carry `assigned` (name) + `mine`; rocks carry `owner` (name) + `mine`.
+function scaleMine(x){ return !(window.LRLShell && LRLShell.meMode()) || x.mine || !(x.assigned || x.owner); }
+window.onMeModeChange = function(){ if (DATA) renderAll(DATA); };
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
 const money = (v) => v == null ? '—' : (v < 0 ? '−$' : '$') + Math.abs(Math.round(v)).toLocaleString();
 const moneyK = (v) => { if (v == null) return '—'; const a = Math.abs(v); const s = v < 0 ? '−$' : '$'; return a >= 1000 ? s + (a/1000).toFixed(a >= 10000 ? 0 : 1) + 'k' : s + Math.round(a); };
@@ -314,7 +318,7 @@ function showTab(name){
 function renderPulse(d){
   const calm = d.state==='calm';
   const flags = d.pulse?.autoFlags||[];
-  const issues = d.pulse?.teamIssues||[];
+  const issues = (d.pulse?.teamIssues||[]).filter(scaleMine);
   const hero = d.pulse?.heroIssue;
   let h='';
 
@@ -520,8 +524,8 @@ function renderSystems(d){
 // ── VTO ──
 function renderVto(d){
   const el = document.getElementById('tab-vto');
-  const rocks = d.vto?.rocks||[];
-  const off = d.vto?.rocksOffTrack||0;
+  const rocks = (d.vto?.rocks||[]).filter(scaleMine);
+  const off = rocks.filter(r=>r.status==='offTrack'||r.status==='atRisk').length;
   const done = rocks.filter(r=>r.status==='complete').length;
   let h = `<div class="eyebrow-row"><span class="eyebrow ${d.state==='calm'?'green':'zone'}">${esc(d.vto?.quarter||'')} Rocks</span><span class="eyebrow-count ${off?'red':(done?'green':'zone')}">${off?off+' off track':(done?done+' done':rocks.length)}</span></div>`;
   if(rocks.length){
@@ -569,10 +573,10 @@ function unavail(title,msg){ return `<div class="unavail"><b>${esc(title)}</b>${
 function renderBadges(d){
   const set=(id,n,show)=>{ const e=document.getElementById(id); if(!e)return; if(show && n){ e.textContent=n; e.style.display=''; } else e.style.display='none'; };
   const stressed = d.state==='stressed';
-  set('badge-pulse', (d.pulse?.teamIssues||[]).length, stressed);
+  set('badge-pulse', (d.pulse?.teamIssues||[]).filter(scaleMine).length, stressed);
   set('badge-scorecard', d.scorecard?.offTrackCount||0, stressed);
   set('badge-systems', d.systems?.counts?.needsAttention||0, stressed);
-  set('badge-vto', d.vto?.rocksOffTrack||0, stressed);
+  set('badge-vto', (d.vto?.rocks||[]).filter(scaleMine).filter(r=>r.status==='offTrack'||r.status==='atRisk').length, stressed);
 }
 
 function renderAll(d){

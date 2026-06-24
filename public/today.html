@@ -86,7 +86,9 @@ body {
 .mode-btn:hover { color: var(--text-2); }
 .mode-btn[data-mode="work"].active { background: var(--work); color: #fff; }
 .mode-btn[data-mode="personal"].active { background: var(--personal); color: #fff; }
-.me-pill { background: var(--accent); color: #fff; font-size: var(--fs-caption); font-weight: 600; padding: 5px 13px; border-radius: 22px; white-space: nowrap; cursor: pointer; }
+.me-pill { background: none; color: var(--text-3); font-size: var(--fs-caption); font-weight: 700; letter-spacing: .06em; padding: 5px 13px; border-radius: 22px; white-space: nowrap; cursor: pointer; border: 1px solid var(--border); font-family: inherit; transition: all .2s; }
+.me-pill:hover { color: var(--text-2); border-color: var(--text-4); }
+.me-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 /* NAV */
 .nav { display: flex; padding: 0 22px; border-bottom: 1px solid var(--border-soft); overflow-x: auto; scrollbar-width: none; }
@@ -729,7 +731,7 @@ body.app-loading #appLoading { display: flex; }
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
         </button>
       </div>
-      <div class="me-pill" onclick="window.location='/'">ME</div>
+      <button type="button" class="me-pill" id="mePill" aria-pressed="false" onclick="LRLShell.toggleMe()" title="Show only items assigned to me">ME</button>
     </div>
   </div>
 
@@ -3189,6 +3191,10 @@ async function loadWeather(fresh){
 function init() {
   // Sync mode toggle buttons to match computed default
   syncModeButtons(state.mode);
+  // Reflect the global ME toggle (shell.js) on this page's pill. Today's content
+  // (your goals, your My Day plan, your One Thing) is already self-scoped, so the
+  // toggle persists the global state for the work zones rather than filtering here.
+  if (window.LRLShell) LRLShell.syncMePill(LRLShell.meMode());
 
   loadCurrentUser();
   renderGreeting();

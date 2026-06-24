@@ -2,7 +2,7 @@ import { SALES_STAGES, SALES_STAGE_GROUP, CONTACTS_DS, SALES_ACTIVITY_DS, TRINA_
 import { serializeDeal, serializeContactRow, queryAllDeals, fetchSalesProductMap } from '../providers/notion/convert.js';
 
 export function registerConvertRoutes(app, ctx) {
-  const { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID, computeXeroFinance, anthropic } = ctx;
+  const { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID, currentNotionUserId, computeXeroFinance, anthropic } = ctx;
 
 
 // GET /api/convert/pipeline — open deals grouped by stage + headline metrics.
@@ -420,15 +420,17 @@ app.get('/api/convert', async (req, res) => {
         contactPages.push(...r.results);
         c1 = r.has_more ? r.next_cursor : null;
       } while (c1);
+      // Notion id of the signed-in user, for the global "assigned to me" filter.
+      const nid = (typeof currentNotionUserId === 'function' ? currentNotionUserId() : null) || GRETCHEN_USER_ID;
       const contacts = contactPages.map(serializeContactRow)
-        .map((c) => ({ ...c, activeConvo: CONVERT_FOLLOWUP_STAGES.includes(c.stage) }));
+        .map((c) => ({ ...c, activeConvo: CONVERT_FOLLOWUP_STAGES.includes(c.stage), mine: (c.assignedIds || []).includes(nid) }));
 
       // Open deals.
       const productMap = await fetchSalesProductMap(notion, cached).catch(() => ({}));
       const deals = (await queryAllDeals(notion))
         .map((pg) => serializeDeal(pg, productMap))
         .filter((d) => !d.archived && !['Closed Won', 'Closed Lost'].includes(d.status))
-        .map((d) => ({ url: d.url, id: d.id, name: d.name, stage: d.status, value: d.value, lastTouched: d.lastTouched, assignedTo: d.assignedTo }));
+        .map((d) => ({ url: d.url, id: d.id, name: d.name, stage: d.status, value: d.value, lastTouched: d.lastTouched, assignedTo: d.assignedTo, mine: (d.assignedIds || []).includes(nid) }));
 
       // Touchpoints logged this week (SALES ACTIVITY entries since Monday).
       let touchpointsThisWeek = 0, c2;

@@ -815,9 +815,6 @@
             </div>
           </div>
           <div class="af-icon-sep"></div>
-          <button type="button" class="af-tbar-btn" id="tg-mine" title="My tasks only">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-          </button>
           <button type="button" class="af-tbar-btn" id="tg-routines" title="Show recurring tasks">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
           </button>
@@ -1285,7 +1282,12 @@ function recurLabel(t){
 const el=id=>document.getElementById(id);
 const ui={src:'all',sort:'due',group:'bucket',q:'',routines:false,showdone:false,statFilter:null,owner:'all'};
 try { const sf = localStorage.getItem('lrl-stat-filter'); if (sf) ui.statFilter = sf; } catch(e){}
-try { const sc = localStorage.getItem('lrl-task-scope'); if (sc) ui.owner = sc; } catch(e){}
+// owner is now only 'all' or 'following' (the page-level Following tile). The
+// "Me" dimension comes from the GLOBAL ME toggle (shell.js) layered on top.
+try { const sc = localStorage.getItem('lrl-task-scope'); if (sc === 'following') ui.owner = 'following'; } catch(e){}
+function meActive(){ return !!(window.LRLShell && LRLShell.meMode()); }
+// "Mine" = assigned to me OR unassigned (unassigned items stay visible by design).
+function mineTask(t){ return t.assignedToMe || !(t.assigneeNames && t.assigneeNames.length); }
 
 function visible(){
   const sf=ui.statFilter;
@@ -1294,8 +1296,8 @@ function visible(){
     if(t.done&&!ui.showdone)return false;
     if(ui.src!=='all'&&t.source!==ui.src)return false;
     if(ui.src!=='personal'){
-      if(ui.owner==='me'&&!t.assignedToMe)return false;
-      if(ui.owner==='following'&&!t.followingMe)return false;
+      if(ui.owner==='following'){ if(!t.followingMe)return false; }
+      else if(meActive()&&!mineTask(t))return false;
     }
     // A search is a global find within the current work/personal + owner scope:
     // match by name/project and ignore the date-bucket view filters (routines,
@@ -1447,8 +1449,8 @@ function updateHeader(){
   if (ui.src !== 'all') base = base.filter(t => t.source === ui.src);
   let live = base;
   if (ui.src !== 'personal'){
-    if (ui.owner === 'me') live = base.filter(t => t.assignedToMe);
-    else if (ui.owner === 'following') live = base.filter(t => t.followingMe);
+    if (ui.owner === 'following') live = base.filter(t => t.followingMe);
+    else if (meActive()) live = base.filter(mineTask);
   }
   const work=live.filter(t=>t.source==='work').length, pers=live.filter(t=>t.source==='personal').length;
   const od=live.filter(t=>{const e=effDate(t);return e&&daysFrom(e)<0;}).length;
@@ -1459,8 +1461,8 @@ function updateHeader(){
   let recurBase=allTasks().filter(t=>!t.done&&t.recurring);
   if (ui.src!=='all') recurBase=recurBase.filter(t=>t.source===ui.src);
   if (ui.src!=='personal'){
-    if (ui.owner==='me') recurBase=recurBase.filter(t=>t.assignedToMe);
-    else if (ui.owner==='following') recurBase=recurBase.filter(t=>t.followingMe);
+    if (ui.owner==='following') recurBase=recurBase.filter(t=>t.followingMe);
+    else if (meActive()) recurBase=recurBase.filter(mineTask);
   }
   const rc=recurBase.length;
   const tile=(n,label,cls,filter)=>{
@@ -1670,13 +1672,12 @@ function setOwner(val){
   render();
 }
 function applyScopeUI(){
-  el('tg-mine')?.classList.toggle('on', ui.owner === 'me');
-  // "Me" is redundant in Personal mode (all personal tasks are yours) — hide it there.
-  const mineBtn = el('tg-mine'); if (mineBtn) mineBtn.style.display = (ui.src === 'personal') ? 'none' : '';
   // The "Following" stat card's active state is re-rendered by updateHeader (via render()).
 }
-// "Me" toggle: on → my tasks only, off → everything.
-el('tg-mine')?.addEventListener('click', () => setOwner(ui.owner === 'me' ? 'all' : 'me'));
+// The global ME toggle (shell.js) drives the "my tasks only" filter now; re-render
+// when it changes. Other parts of this page also listen for 'lrl-me-changed'.
+window.onMeModeChange = function(){ window.dispatchEvent(new CustomEvent('lrl-me-changed')); };
+window.addEventListener('lrl-me-changed', () => render());
 el('expandall').addEventListener('click',()=>{state.collapsed[ui.group]={};saveState();render();});
 el('collapseall').addEventListener('click',()=>{document.querySelectorAll('.ghead').forEach(h=>setCollapsed(h.dataset.gkey,true));render();});
 
@@ -2106,8 +2107,9 @@ window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderRevie
 </script>
 <script>
 (function(){
-  const P = { data: null, statusFilter: 'Active', areaFilter: null, groupBy: 'area', search: '', collapsed: {}, undatedOpen: false, expanded: {}, meOnly: false };
-  try { P.meOnly = localStorage.getItem('lrl-proj-me') === '1'; } catch(e){}
+  const P = { data: null, statusFilter: 'Active', areaFilter: null, groupBy: 'area', search: '', collapsed: {}, undatedOpen: false, expanded: {} };
+  // The global ME toggle (shell.js) scopes projects to the signed-in user; re-render on change.
+  window.addEventListener('lrl-me-changed', () => { if (P.data) render(); });
   const TL_KEY = 'lrl-proj-timeline-collapsed';
   // Status options per source, for the inline status editor.
   const STATUS_OPTS = { work: ['Planned','On Hold','Active','Ongoing','Billing','Done'], personal: ['Planned','On Hold','Active','Ongoing','Done'] };
@@ -2129,7 +2131,8 @@ window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderRevie
     const m = curMode();
     if (m === 'work') ps = ps.filter((p) => p.source === 'work');
     else if (m === 'personal') ps = ps.filter((p) => p.source === 'personal');
-    if (P.meOnly) ps = ps.filter((p) => p.assignedToMe);
+    // Global ME toggle: assigned to me OR unassigned (unassigned stays visible).
+    if (window.LRLShell && LRLShell.meMode()) ps = ps.filter((p) => p.assignedToMe || !(p.owners && p.owners.length));
     return ps;
   }
   const openUrl = (url) => { if (!url) return; (window.openNotion ? openNotion(url) : window.open(url, '_blank', 'noopener')); };
@@ -2243,10 +2246,8 @@ window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderRevie
     }
     const search = '<div class="proj-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>'
       + `<input id="proj-search-input" type="text" placeholder="Search projects…" autocomplete="off" value="${esc(P.search)}"></div>`;
-    const meBtn = `<button class="proj-me-btn ${P.meOnly ? 'on' : ''}" id="proj-me-btn" title="Show only projects assigned to me" aria-label="Show only projects assigned to me" aria-pressed="${P.meOnly ? 'true' : 'false'}">`
-      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
-      + '</button>';
-    return '<div class="proj-controls">' + search + meBtn + '<div class="proj-ctl-group"><span class="proj-ctl-label">Group by</span><div class="proj-seg">' + seg + '</div></div>' + areaChips + '</div>';
+    // Per-page "me" button removed — the global ME toggle (shell.js) now scopes projects.
+    return '<div class="proj-controls">' + search + '<div class="proj-ctl-group"><span class="proj-ctl-label">Group by</span><div class="proj-seg">' + seg + '</div></div>' + areaChips + '</div>';
   }
 
   function undatedHTML(undatedList){
@@ -2491,12 +2492,6 @@ window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderRevie
       el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fire(); } });
     });
     body.querySelectorAll('.proj-seg button').forEach((b) => b.addEventListener('click', () => { P.groupBy = b.dataset.group; render(); }));
-    const meBtn = body.querySelector('#proj-me-btn');
-    if (meBtn) meBtn.addEventListener('click', () => {
-      P.meOnly = !P.meOnly;
-      try { localStorage.setItem('lrl-proj-me', P.meOnly ? '1' : '0'); } catch(e){}
-      render();
-    });
     body.querySelectorAll('.proj-chip').forEach((b) => b.addEventListener('click', () => {
       const a = b.dataset.area;
       P.areaFilter = (a === '') ? null : (P.areaFilter === a ? null : a);
