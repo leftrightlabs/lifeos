@@ -310,6 +310,9 @@ function relTime(ms){ if(!ms) return ''; const d=Date.now()-ms; const m=Math.rou
 function initials(n){ return String(n||'?').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase()||'?'; }
 const AVC = ['#6366F1','#2563EB','#06B6D4','#059669','#D97706','#DC2626','#7C3AED','#DB2777'];
 function avColor(n){ let h=0; for(const c of String(n||'')) h=(h*31+c.charCodeAt(0))&0xffffffff; return AVC[Math.abs(h)%AVC.length]; }
+// Notion URL → notion:// deep link so it opens in the Notion desktop/mobile app.
+function toNotionLink(url){ if(!url) return url; const m=url.match(/([a-f0-9]{32})/i); if(m) return `notion://www.notion.so/${m[1]}`; if(url.startsWith('https://www.notion.so/')) return url.replace('https://','notion://'); if(url.startsWith('https://app.notion.com/')) return url.replace('https://app.notion.com/','notion://www.notion.so/'); return url; }
+function openNotionLink(url){ const link=toNotionLink(url); if(link&&link.startsWith('notion://')){ window.location.href=link; } else { window.open(url,'_blank','noopener'); } return false; }
 
 const state = { tab:'gmail', filter:'all', selected:new Set(), openId:null, openSrc:null,
   cache:{ gmail:{data:[],t:0}, slack:{data:null,t:0}, notion:{data:[],t:0} } };
@@ -492,7 +495,7 @@ function openNotion(id){ const n=(state.cache.notion.data||[]).find(x=>x.id===id
   document.getElementById('dp-from').textContent=n.commenter; document.getElementById('dp-email').textContent='Notion'; document.getElementById('dp-date').textContent=n.time+' ago';
   setAv('dp-av', n.commenter);
   document.getElementById('dp-body-text').innerHTML = esc(n.text).split('\n').filter(Boolean).map(l=>`<p>${l.replace(/@gretchen/gi,'<span class="notion-mention">@gretchen</span>')}</p>`).join('')
-    + (n.notionUrl?`<a class="open-external" href="${esc(n.notionUrl)}" target="_blank">↗ Open in Notion</a>`:'');
+    + (n.notionUrl?`<a class="open-external" href="${esc(toNotionLink(n.notionUrl))}" onclick="return openNotionLink('${esc(n.notionUrl)}')">↗ Open in Notion</a>`:'');
   showPanel(); renderNotion(); updateBadges();
 }
 function navMsg(dir){ if(state.openSrc!=='gmail'||!state.openId) return; const live=(state.cache.gmail.data||[]).filter(m=>!m.archived&&!m.deleted); const i=live.findIndex(m=>m.id===state.openId); const nx=live[i+dir]; if(nx) openGmail(nx.id); }
