@@ -55,23 +55,57 @@
 .msg-cb { width:18px; height:18px; flex-shrink:0; border:2px solid var(--border); border-radius:4px; margin-right:10px; margin-top:1px; display:flex; align-items:center; justify-content:center; transition:all .15s; font-size:11px; color:transparent; }
 .msg-row:hover .msg-cb, .msg-row.selected .msg-cb { border-color:var(--accent); background:var(--accent-soft); }
 .msg-row.selected .msg-cb { color:var(--accent); }
-.msg-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; margin-top:5px; margin-right:10px; background:transparent; }
-.msg-row.unread .msg-dot { background:var(--accent); }
 .msg-av { width:36px; height:36px; border-radius:50%; flex-shrink:0; margin-right:11px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; position:relative; }
 .msg-av.vip::after { content:''; position:absolute; inset:-2px; border-radius:50%; border:2px solid var(--amber); }
 .msg-body { flex:1; min-width:0; }
-.msg-r1 { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
-.msg-sender { font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* Title (sender) wraps instead of truncating. */
+.msg-sender { font-size:13px; font-weight:600; color:var(--text); line-height:1.3; overflow-wrap:anywhere; }
 .msg-row:not(.unread) .msg-sender { font-weight:500; color:var(--text-2); }
+.msg-subject { font-size:13px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:2px 0 0; }
+.msg-row:not(.unread) .msg-subject { color:var(--text-2); font-weight:400; }
+/* Meta line: short preview + age + work/personal icon + send-to-tasks icon. */
+.msg-meta { display:flex; align-items:center; gap:8px; margin-top:4px; }
+.msg-preview { font-size:12px; color:var(--text-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; }
+.msg-time { flex-shrink:0; font-size:11px; color:var(--text-3); }
+.msg-row.unread .msg-time { color:var(--accent); font-weight:600; }
+.msg-cat-ic { flex-shrink:0; display:inline-flex; }
+.msg-cat-ic svg { width:14px; height:14px; display:block; }
+.msg-cat-ic.work { color:var(--work); } .msg-cat-ic.personal { color:var(--personal); }
+.msg-todo { flex-shrink:0; background:none; border:none; padding:1px; color:var(--text-4); cursor:pointer; display:inline-flex; line-height:1; }
+.msg-todo:hover { color:var(--accent); }
+.msg-todo svg { width:16px; height:16px; display:block; }
 .msg-tag { font-size:10px; font-weight:800; padding:2px 6px; border-radius:3px; text-transform:uppercase; letter-spacing:.05em; flex-shrink:0; white-space:nowrap; }
 .msg-tag.personal { background:var(--personal-soft); color:var(--personal); }
 .msg-tag.work2 { background:var(--work-soft); color:var(--work); }
 .msg-tag.reply { background:var(--amber-soft); color:var(--amber); }
-.msg-time { margin-left:auto; flex-shrink:0; font-size:11px; color:var(--text-3); }
-.msg-row.unread .msg-time { color:var(--accent); font-weight:600; }
-.msg-subject { font-size:13px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px; }
-.msg-row:not(.unread) .msg-subject { color:var(--text-2); font-weight:400; }
-.msg-preview { font-size:12px; color:var(--text-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* New Task modal (opened from a row's clipboard icon) */
+.task-modal { position:fixed; inset:0; background:rgba(5,8,14,.78); backdrop-filter:blur(4px); display:none; align-items:flex-start; justify-content:center; padding:56px 18px; z-index:400; overflow-y:auto; }
+.task-modal.open { display:flex; }
+.tm-content { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:24px; max-width:520px; width:100%; box-shadow:0 24px 60px rgba(0,0,0,.6); }
+.tm-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.tm-title { font-size:20px; font-weight:800; color:var(--text); }
+.tm-close { background:none; border:1px solid var(--border); color:var(--text-3); width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px; line-height:1; }
+.tm-close:hover { color:var(--text); }
+.tm-seg { display:inline-flex; gap:8px; margin-bottom:16px; }
+.tm-seg button { background:var(--surface-2); border:1px solid var(--border); color:var(--text-3); font-family:inherit; font-size:13px; font-weight:600; padding:7px 18px; border-radius:999px; cursor:pointer; transition:all .15s; }
+.tm-seg button.active { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
+.tm-field { margin-bottom:14px; }
+.tm-field label { display:block; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); margin-bottom:6px; }
+.tm-field input, .tm-field select, .tm-field textarea { width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-family:inherit; font-size:14px; color:var(--text); }
+.tm-field textarea { resize:vertical; min-height:54px; }
+.tm-field input:focus, .tm-field select:focus, .tm-field textarea:focus { outline:none; border-color:var(--accent); }
+.tm-2col { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.tm-check { display:flex; align-items:center; gap:9px; font-size:13px; color:var(--text-2); margin-bottom:14px; cursor:pointer; }
+.tm-check input { width:18px; height:18px; accent-color:var(--accent); }
+.tm-clear { float:right; background:none; border:none; color:var(--text-3); font-size:11px; text-transform:uppercase; letter-spacing:.06em; cursor:pointer; font-weight:700; }
+.tm-clear:hover { color:var(--text); }
+.tm-actions { display:flex; gap:8px; align-items:center; justify-content:flex-end; margin-top:18px; padding-top:14px; border-top:1px solid var(--border-soft); }
+.tm-btn { padding:10px 18px; border-radius:8px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; border:1px solid transparent; }
+.tm-btn.ghost { background:none; border-color:var(--border); color:var(--text-2); }
+.tm-btn.ghost:hover { color:var(--text); border-color:var(--text-3); }
+.tm-btn.primary { background:var(--accent); color:#fff; }
+.tm-btn.primary:hover { filter:brightness(1.1); }
 .hover-acts { position:absolute; right:14px; top:50%; transform:translateY(-50%); display:flex; gap:3px; opacity:0; pointer-events:none; background:var(--surface); padding:3px 5px; border-radius:var(--rs); border:1px solid var(--border); transition:opacity .15s; }
 .msg-row:hover .hover-acts { opacity:1; pointer-events:all; }
 .hact { width:28px; height:28px; border-radius:4px; border:none; background:transparent; color:var(--text-3); font-size:13px; display:flex; align-items:center; justify-content:center; transition:all .1s; }
@@ -285,6 +319,33 @@
 </div>
 
 <div class="toast-wrap" id="toast-wrap"></div>
+
+<!-- New Task modal — opened from a row's clipboard icon, prefilled from the email -->
+<div class="task-modal" id="taskModal" onclick="if(event.target===this)closeTaskModal()">
+  <div class="tm-content">
+    <div class="tm-head"><div class="tm-title">New Task</div><button class="tm-close" onclick="closeTaskModal()" aria-label="Close">×</button></div>
+    <div class="tm-seg" id="tmSeg">
+      <button type="button" data-src="work" onclick="setTaskSource('work')">Work</button>
+      <button type="button" data-src="personal" onclick="setTaskSource('personal')">Personal</button>
+    </div>
+    <div class="tm-field"><label>Task</label><textarea id="tmName" rows="2" placeholder="Task name"></textarea></div>
+    <div class="tm-field"><label>Project</label><select id="tmProject"><option value="">Choose a project… (optional)</option></select></div>
+    <label class="tm-check"><input type="checkbox" id="tmMyDay" checked> Pin to My Day</label>
+    <div class="tm-2col">
+      <div class="tm-field"><label>Status</label><select id="tmStatus">
+        <option>Planned</option><option>Doing</option><option>Waiting</option><option>Agenda</option><option>Billing</option><option>Done</option>
+      </select></div>
+      <div class="tm-field"><label>Priority</label><select id="tmPriority">
+        <option value="">— none —</option><option value="URGENT">Urgent</option><option value="HIGH">High</option><option value="MEDIUM">Medium</option><option value="LOW">Low</option>
+      </select></div>
+    </div>
+    <div class="tm-field"><label>Due date <button type="button" class="tm-clear" onclick="document.getElementById('tmDue').value=''">Clear</button></label><input type="date" id="tmDue"></div>
+    <div class="tm-actions">
+      <button class="tm-btn ghost" onclick="closeTaskModal()">Cancel</button>
+      <button class="tm-btn primary" onclick="createTaskSubmit()">Create</button>
+    </div>
+  </div>
+</div>
 <a href="/" class="fab" title="Back to Today">⚡</a>
 
 <script>
@@ -382,19 +443,92 @@ function renderGmail(){
   const p = inMode.filter(m=>m.cat==='PERSONAL').length;
   document.getElementById('account-label').textContent = `${p} PERSONAL · ${inMode.length-p} WORK`;
 }
+// Work/personal icon (matches the mode toggle). Shown only in ALL mode — it's
+// redundant when you're already filtered to work or personal.
+function catIconHtml(cat){
+  if (state.mode !== 'all') return '';
+  const personal = cat === 'PERSONAL';
+  const path = personal
+    ? '<circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>'
+    : '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>';
+  return `<span class="msg-cat-ic ${personal?'personal':'work'}" title="${personal?'Personal':'Work'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</svg></span>`;
+}
+
 function gmailRow(m){
   const col=avColor(m.from), sel=state.selected.has(m.id);
   let cls='msg-row'; if(m.unread)cls+=' unread'; if(importantGmail(m))cls+=' needs-attention'; if(sel)cls+=' selected';
-  const tags = (m.needsReply?`<span class="msg-tag reply">Needs Reply</span>`:'') + `<span class="msg-tag ${m.cat==='PERSONAL'?'personal':'work2'}">${esc(m.cat)}</span>`;
+  const reply = m.needsReply ? `<span class="msg-tag reply">Needs Reply</span>` : '';
+  const todoIc = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="m9 13 2 2 4-4"/></svg>`;
   return `<div class="${cls}" id="row-${m.id}" data-id="${m.id}" onclick="openGmail('${m.id}')">
-    <div class="msg-cb" onclick="toggleSel(event,'${m.id}')">✓</div><div class="msg-dot"></div>
+    <div class="msg-cb" onclick="toggleSel(event,'${m.id}')">✓</div>
     <div class="msg-av${m.isVIP?' vip':''}" style="background:${col}1f;color:${col}">${esc(initials(m.from))}</div>
-    <div class="msg-body"><div class="msg-r1"><span class="msg-sender">${esc(m.from)}</span>${tags}<span class="msg-time">${esc(m.time)}</span></div>
-      <div class="msg-subject">${esc(m.subject)}</div><div class="msg-preview">${esc(m.preview)}</div></div>
+    <div class="msg-body">
+      <div class="msg-sender">${esc(m.from)}</div>
+      <div class="msg-subject">${esc(m.subject)}</div>
+      <div class="msg-meta">
+        ${reply}
+        <span class="msg-preview">${esc(m.preview)}</span>
+        <span class="msg-time">${esc(m.time)}</span>
+        ${catIconHtml(m.cat)}
+        <button class="msg-todo" onclick="taskFromEmail(event,'${m.id}')" title="Add to tasks">${todoIc}</button>
+      </div>
+    </div>
     <div class="hover-acts" onclick="event.stopPropagation()">
       <button class="hact" onclick="archiveMsg('${m.id}')" title="Archive">📥</button>
       <button class="hact" onclick="snoozeMsg('${m.id}',event)" title="Snooze">⏰</button>
       <button class="hact del" onclick="deleteMsg('${m.id}')" title="Delete">🗑</button></div></div>`;
+}
+
+// Clipboard icon → open a prefilled "New Task" modal so the email can be edited
+// before it's sent to Notion as a to-do.
+let _taskSource = 'work';
+let _allProjects = null;
+function taskFromEmail(e, id){
+  if (e) e.stopPropagation();
+  const m = findG(id); if(!m) return;
+  setTaskSource(m.cat==='PERSONAL' ? 'personal' : 'work');
+  document.getElementById('tmName').value = m.subject || m.from || '';
+  document.getElementById('tmMyDay').checked = true;
+  document.getElementById('tmStatus').value = 'Planned';
+  document.getElementById('tmPriority').value = '';
+  document.getElementById('tmDue').value = '';
+  document.getElementById('taskModal').classList.add('open');
+  setTimeout(()=>document.getElementById('tmName').focus(), 30);
+}
+function closeTaskModal(){ document.getElementById('taskModal').classList.remove('open'); }
+function setTaskSource(s){
+  _taskSource = s;
+  document.querySelectorAll('#tmSeg button').forEach(b=>b.classList.toggle('active', b.dataset.src===s));
+  loadTaskProjects(s);
+}
+async function loadTaskProjects(src){
+  const sel = document.getElementById('tmProject'); if(!sel) return;
+  try {
+    if(!_allProjects){ const r = await fetch('/api/projects'); const d = await r.json(); _allProjects = d.projects || []; }
+    const ps = _allProjects.filter(p => !src || p.source === src);
+    sel.innerHTML = '<option value="">Choose a project… (optional)</option>' +
+      ps.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  } catch { sel.innerHTML = '<option value="">Choose a project… (optional)</option>'; }
+}
+async function createTaskSubmit(){
+  const name = document.getElementById('tmName').value.trim();
+  if(!name){ toast('Add a task name'); return; }
+  const body = {
+    source: _taskSource, name,
+    projectId: document.getElementById('tmProject').value || undefined,
+    myDay: document.getElementById('tmMyDay').checked,
+    status: document.getElementById('tmStatus').value,
+    priority: document.getElementById('tmPriority').value || undefined,
+    dueStart: document.getElementById('tmDue').value || undefined,
+  };
+  const btn = document.querySelector('#taskModal .tm-btn.primary');
+  if(btn){ btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const r = await fetch('/api/tasks', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    if(!r.ok) throw new Error('failed');
+    closeTaskModal(); toast('✓ Added to tasks');
+  } catch { toast('Couldn\'t add task'); }
+  finally { if(btn){ btn.disabled = false; btn.textContent = 'Create'; } }
 }
 
 function renderSlack(){
