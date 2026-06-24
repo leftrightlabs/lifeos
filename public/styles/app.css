@@ -27,7 +27,8 @@ a { color: inherit; text-decoration: none; }
   background: var(--bg);
   border-bottom: 1px solid var(--border-soft);
 }
-.logo { color: var(--accent); font-weight: 800; font-size: var(--fs-body-sm); letter-spacing: .09em; white-space: nowrap; }
+.logo { color: var(--text); font-weight: 800; font-size: var(--fs-body-sm); letter-spacing: .09em; white-space: nowrap; text-decoration: none; }
+.logo .logo-mark { color: #5D9CEC; }
 .topbar-right { display: flex; align-items: center; gap: 7px; }
 .mode-toggle { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 3px; gap: 2px; }
 .mode-btn {
@@ -60,12 +61,14 @@ a { color: inherit; text-decoration: none; }
   background: none; border: none; border-bottom: 2px solid transparent;
   font-size: var(--fs-caption); font-weight: 600; letter-spacing: .05em;
   padding: 11px 14px; cursor: pointer; color: var(--text-3);
-  white-space: nowrap; font-family: inherit;
+  white-space: nowrap; font-family: inherit; gap: 6px;
   text-decoration: none; display: inline-flex; align-items: center;
   transition: color .15s;
 }
 .nav-btn:hover { color: var(--text-2); }
 .nav-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+.nav-ic { display: inline-flex; flex-shrink: 0; }
+.nav-ic svg { width: 15px; height: 15px; display: block; }
 .nav-sep { width: 1px; background: var(--border); margin: 9px 6px; flex-shrink: 0; }
 .nav-domain {
   font-size: var(--fs-caption); color: var(--text-4); padding: 11px 6px 11px 3px;

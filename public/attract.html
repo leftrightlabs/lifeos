@@ -9,13 +9,14 @@
 @import url('https://use.typekit.net/uwk2elu.css');
 :root {
   --zone: var(--work); --zone-soft: var(--work-soft);
-  --font-display: 'scotch-display','Playfair Display',Georgia,serif;
-  --font-body: 'sweet-sans-pro','Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  --radius: 10px; --radius-sm: 6px; --radius-xs: 4px;
+  /* Match the Today view: one system-sans stack, no serif display. */
+  --font-display: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  --font-body: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  --radius: 12px; --radius-sm: 8px; --radius-xs: 5px;
 }
 /* Attract page container (the reference mockup's ".page", renamed to avoid any
    collision with the shared shell). Body font matches the reference. */
-.attract-page { max-width:880px; margin:0 auto; padding:24px 28px 80px; font-family:var(--font-body); font-size:14px; line-height:1.5; color:var(--text); }
+.attract-page { max-width:880px; margin:0 auto; padding:24px 28px 80px; font-family:var(--font-body); font-size:var(--fs-body-sm); line-height:1.5; color:var(--text); }
 /* ─── Attract component styles — ported verbatim from the design reference ─── */
   /* ─── WEEKLY PULSE ─── */
   .weekly-pulse { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; margin-bottom:18px; }
@@ -59,8 +60,8 @@
   /* SECTION LABELS */
   .section-label { display:flex; align-items:center; gap:8px; margin-bottom:10px; margin-top:22px; }
   .section-label h3 { font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--text-2); }
-  .section-label .sl-action { margin-left:auto; background:none; border:none; color:var(--text-2); font-family:var(--font-body); font-size:11px; cursor:pointer; text-decoration:underline; }
-  .section-label .sl-action:hover { color:var(--text); }
+  .section-label .sl-action, .sec-head .sl-action { margin-left:auto; background:none; border:none; color:var(--text-2); font-family:var(--font-body); font-size:11px; cursor:pointer; text-decoration:underline; flex-shrink:0; }
+  .section-label .sl-action:hover, .sec-head .sl-action:hover { color:var(--text); }
 
   /* ─── FEATURED CARD ─── */
   .featured-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:8px; }
@@ -86,8 +87,8 @@
 
   .card-body { padding:10px 18px 0; }
   .card-series { font-size:11px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; color:var(--text-2); margin-bottom:6px; }
-  .card-title { font-family:var(--font-display); font-weight:700; font-size:21px; line-height:1.15; color:var(--text); margin-bottom:8px; }
-  .card-title span { display:inline-block; transform:scaleY(1.2); transform-origin:top left; }
+  .card-title { font-family:var(--font-body); font-weight:700; font-size:var(--fs-title); line-height:1.25; letter-spacing:-.01em; color:var(--text); margin-bottom:8px; }
+  .card-title span { display:inline-block; }
   .card-headline-preview { font-size:13px; color:var(--text); background:var(--surface-2); border-left:2px solid var(--zone); padding:9px 13px; border-radius:0 var(--radius-sm) var(--radius-sm) 0; margin-bottom:10px; font-style:italic; }
   .card-caption-preview { font-size:13px; color:var(--text-2); line-height:1.7; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:4px; }
   .card-caption-preview.expanded { -webkit-line-clamp:unset; overflow:visible; }
@@ -291,7 +292,7 @@
   .funnel-strip { padding:18px 18px 6px; }
   .funnel-flow { display:flex; align-items:center; gap:0; overflow-x:auto; padding-bottom:12px; }
   .funnel-stage { text-align:center; flex-shrink:0; min-width:100px; }
-  .funnel-stage-num { font-family:var(--font-display); font-size:26px; font-weight:700; line-height:1; display:inline-block; transform:scaleY(1.15); transform-origin:top center; }
+  .funnel-stage-num { font-family:var(--font-display); font-size:var(--fs-display); font-weight:700; line-height:1; display:inline-block; }
   .funnel-stage-num.dim { color:var(--text); }
   .funnel-stage-num.highlight { color:var(--zone); }
   .funnel-stage-label { font-size:10px; color:var(--text-2); font-weight:600; letter-spacing:.07em; text-transform:uppercase; margin-top:4px; }
@@ -316,7 +317,7 @@
   .signal-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .signal-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; }
   .signal-icon { font-size:18px; margin-bottom:8px; }
-  .signal-num { font-family:var(--font-display); font-size:28px; font-weight:700; line-height:1; display:inline-block; transform:scaleY(1.15); transform-origin:top left; }
+  .signal-num { font-family:var(--font-display); font-size:var(--fs-display); font-weight:700; line-height:1; display:inline-block; }
   .signal-num.zone { color:var(--zone); }
   .signal-num.red { color:var(--red); }
   .signal-num.amber { color:var(--amber); }
@@ -408,9 +409,8 @@
   }
   .ci-stat-num {
     font-family: var(--font-display);
-    font-size: 22px; font-weight: 700; line-height: 1;
-    color: var(--text); display: block;
-    transform: scaleY(1.15); transform-origin: top left;
+    font-size: var(--fs-heading); font-weight: 700; line-height: 1;
+    color: var(--text);
     display: inline-block; margin-bottom: 4px;
   }
   .ci-stat-label {
@@ -465,11 +465,10 @@
     font-size: 11px; color: var(--text-3);
   }
   .ci-create-title {
-    font-family: var(--font-display);
-    font-size: 16px; font-weight: 700; color: var(--text);
-    line-height: 1.2; margin-bottom: 10px;
+    font-family: var(--font-body);
+    font-size: var(--fs-title); font-weight: 700; color: var(--text);
+    line-height: 1.25; margin-bottom: 10px;
     display: inline-block;
-    transform: scaleY(1.15); transform-origin: top left;
   }
   .ci-create-rationale {
     display: flex; flex-direction: column; gap: 4px;
@@ -551,7 +550,7 @@
   .achievement-flash { position:relative; overflow:hidden; background:linear-gradient(135deg, rgba(79,214,160,.18) 0%, rgba(79,214,160,.08) 100%); border:1px solid rgba(79,214,160,.35); border-radius:var(--radius); padding:18px 24px; margin-bottom:18px; align-items:center; gap:16px; animation:flash-in 3.5s ease forwards; }
   .achievement-flash.settled { animation:none; opacity:0; height:0; padding:0; margin:0; border:none; overflow:hidden; }
   .af-tick { width:40px; height:40px; border-radius:50%; background:var(--green); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; animation:tick-pop .5s .2s cubic-bezier(.34,1.56,.64,1) both; box-shadow:0 0 24px rgba(79,214,160,.4); }
-  .af-text h2 { font-family:var(--font-display); font-size:18px; font-weight:700; color:var(--green); display:inline-block; transform:scaleY(1.2); transform-origin:top left; line-height:1.1; margin-bottom:4px; }
+  .af-text h2 { font-family:var(--font-display); font-size:var(--fs-title); font-weight:700; color:var(--green); display:inline-block; line-height:1.2; margin-bottom:4px; }
   .af-text p { font-size:13px; color:var(--text-2); }
 
   .pulse-slot.done .slot-label { color:var(--green); }
@@ -583,6 +582,27 @@
 
   .runway-header.healthy { animation:breathe 3s 1s ease-in-out 2; }
 
+  /* ── Today-style section cards (replaces the old floating eyebrow labels) ── */
+  .sec-card { background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--radius); padding:15px 17px; margin-bottom:18px; }
+  .sec-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:13px; }
+  .sec-card.collapsed .sec-head { margin-bottom:0; }
+  .card-toggle { display:flex; align-items:center; gap:8px; cursor:pointer; flex:1; min-width:0; user-select:none; }
+  .sec-title { font-size:var(--fs-caption); font-weight:700; color:var(--text-3); letter-spacing:.09em; text-transform:uppercase; }
+  .chev { font-size:9px; color:var(--text-4); transition:transform .2s; flex-shrink:0; }
+  .sec-card.collapsed .chev { transform:rotate(-90deg); }
+  .sec-card.collapsed .sec-body { display:none; }
+  /* Sections that were already cards lose their own chrome when wrapped in .sec-card */
+  .sec-card > .sec-body > .weekly-pulse,
+  .sec-card > .sec-body > .featured-card,
+  .sec-card > .sec-body > .done-state,
+  .sec-card > .sec-body > .ahead-card,
+  .sec-card > .sec-body > .runway-section,
+  .sec-card > .sec-body > .funnel-section,
+  .sec-card > .sec-body > .channel-insights-block,
+  .sec-card > .sec-body > .insight-callout { background:transparent; border:none; border-radius:0; margin:0; padding:0; }
+  /* The channel-insights block has overflow:hidden + an internal tab bar; keep it edge-to-edge inside the card */
+  .sec-card > .sec-body > .channel-insights-block { overflow:visible; }
+
   /* ── State visibility — a single body class (.state-*) drives the layout ── */
   .ahead-card, .pulse-compact, .label-healthy, .achievement-flash { display:none; }
   .state-healthy .featured-card,
@@ -602,7 +622,7 @@
 </style>
 </head><body>
 <div class="topbar-wrap"><div class="topbar">
-  <a href="/" class="logo">◆ LRL OS</a>
+  <a href="/" class="logo"><span class="logo-mark">◆</span> LRL OS</a>
   <div class="topbar-right">
     <div class="mode-toggle" style="display:none">
       <a href="/?mode=work" class="mode-btn">WORK</a>
@@ -642,6 +662,14 @@
   </div>
 
   <!-- ══ 1. WEEKLY PULSE ══ -->
+  <div class="sec-card" data-sec="pulse">
+    <div class="sec-head">
+      <div class="card-toggle" onclick="toggleSec(this)">
+        <span class="chev">▾</span>
+        <span class="sec-title">Weekly Pulse</span>
+      </div>
+    </div>
+    <div class="sec-body">
   <div class="weekly-pulse">
     <div class="pulse-row-1">
       <span class="pulse-week">Jun 21–27</span>
@@ -687,17 +715,21 @@
       <span class="runway-status-text warn">3.5w ⚠</span>
     </div>
   </div>
+    </div><!-- /sec-body -->
+  </div><!-- /sec-card pulse -->
 
   <!-- ══ 2. POST THIS NOW / UP NEXT ══ -->
-  <div class="section-label label-stressed">
-    <h3>Post This Now</h3>
-    <button class="sl-action" onclick="toggleQueue()">2 more in queue ↓</button>
-  </div>
-  <div class="section-label label-healthy">
-    <h3>Up Next</h3>
-    <button class="sl-action" onclick="toggleQueue()">View full queue ↓</button>
-  </div>
-
+  <div class="sec-card" data-sec="post-now">
+    <div class="sec-head">
+      <div class="card-toggle" onclick="toggleSec(this)">
+        <span class="chev">▾</span>
+        <span class="sec-title label-stressed">Post This Now</span>
+        <span class="sec-title label-healthy">Up Next</span>
+      </div>
+      <button class="sl-action label-stressed" onclick="event.stopPropagation(); toggleQueue()">2 more in queue ↓</button>
+      <button class="sl-action label-healthy" onclick="event.stopPropagation(); toggleQueue()">View full queue ↓</button>
+    </div>
+    <div class="sec-body">
   <div class="featured-card" id="featured-card">
     <div class="urgency-bar red"></div>
 
@@ -883,12 +915,18 @@
       </div>
     </div>
   </div>
+    </div><!-- /sec-body -->
+  </div><!-- /sec-card post-now -->
 
   <!-- ══ 3. CONTENT RUNWAY ══ -->
-  <div class="section-label">
-    <h3>Content Runway</h3>
-  </div>
-
+  <div class="sec-card" data-sec="runway">
+    <div class="sec-head">
+      <div class="card-toggle" onclick="toggleSec(this)">
+        <span class="chev">▾</span>
+        <span class="sec-title">Content Runway</span>
+      </div>
+    </div>
+    <div class="sec-body">
   <div class="runway-section">
     <div class="runway-header" onclick="toggleRunway()">
       <div class="runway-header-left">
@@ -1084,12 +1122,18 @@
 
     </div><!-- /runway-body -->
   </div><!-- /runway-section -->
+    </div><!-- /sec-body -->
+  </div><!-- /sec-card runway -->
 
   <!-- ══ 4. FUNNEL METRICS ══ -->
-  <div class="section-label">
-    <h3>Funnel · June</h3>
-  </div>
-
+  <div class="sec-card" data-sec="funnel">
+    <div class="sec-head">
+      <div class="card-toggle" onclick="toggleSec(this)">
+        <span class="chev">▾</span>
+        <span class="sec-title">Funnel · June</span>
+      </div>
+    </div>
+    <div class="sec-body">
   <div class="funnel-section">
     <div class="funnel-header" onclick="toggleFunnel()">
       <h3>Posts → Leads Pipeline</h3>
@@ -1161,12 +1205,18 @@
       </div>
     </div>
   </div>
+    </div><!-- /sec-body -->
+  </div><!-- /sec-card funnel -->
 
   <!-- ══ 5. CHANNEL INSIGHTS ══ -->
-  <div class="section-label">
-    <h3>Channel Insights</h3>
-  </div>
-
+  <div class="sec-card" data-sec="channels">
+    <div class="sec-head">
+      <div class="card-toggle" onclick="toggleSec(this)">
+        <span class="chev">▾</span>
+        <span class="sec-title">Channel Insights</span>
+      </div>
+    </div>
+    <div class="sec-body">
   <div class="channel-insights-block">
 
     <!-- Tab bar -->
@@ -1515,11 +1565,18 @@
       </div>
     </div>
   </div><!-- /channel-insights-block -->
-  <!-- ══ 5. WHAT'S WORKING ══ -->
-  <div class="section-label">
-    <h3>What's Working</h3>
-  </div>
+    </div><!-- /sec-body -->
+  </div><!-- /sec-card channels -->
 
+  <!-- ══ 5. WHAT'S WORKING ══ -->
+  <div class="sec-card" data-sec="working">
+    <div class="sec-head">
+      <div class="card-toggle" onclick="toggleSec(this)">
+        <span class="chev">▾</span>
+        <span class="sec-title">What's Working</span>
+      </div>
+    </div>
+    <div class="sec-body">
   <div class="insight-callout" style="margin-bottom:12px">
     <div class="ic-icon">📡</div>
     <div class="insight-text">
@@ -1542,11 +1599,18 @@
       <div class="signal-sub">1 ready · 1 needs copy · 1 needs image</div>
     </div>
   </div>
+    </div><!-- /sec-body -->
+  </div><!-- /sec-card working -->
 
   <!-- ══ 6. THIS WEEK ══ -->
-  <div class="section-label">
-    <h3>This Week</h3>
-  </div>
+  <div class="sec-card" data-sec="thisweek">
+    <div class="sec-head">
+      <div class="card-toggle" onclick="toggleSec(this)">
+        <span class="chev">▾</span>
+        <span class="sec-title">This Week</span>
+      </div>
+    </div>
+    <div class="sec-body">
   <div class="week-list">
     <div class="week-row">
       <span class="week-row-date">Jun 22</span>
@@ -1564,6 +1628,8 @@
       <span class="status-pill scheduled" style="flex-shrink:0">Scheduled</span>
     </div>
   </div>
+    </div><!-- /sec-body -->
+  </div><!-- /sec-card thisweek -->
 </div><!-- /attract-page -->
 
 <div class="toast lime" id="toast">
@@ -1619,6 +1685,18 @@ The expertise was the hard part. This last piece is mostly translation. We built
     funnelOpen = !funnelOpen;
     document.getElementById('funnel-body').classList.toggle('open', funnelOpen);
     document.getElementById('funnel-arrow').classList.toggle('open', funnelOpen);
+  }
+
+  // Collapsible Today-style section cards; collapse state persists (durable UI pref).
+  function toggleSec(el){
+    const c = el.closest('.sec-card'); if(!c) return;
+    c.classList.toggle('collapsed');
+    const k = c.dataset.sec; if(!k) return;
+    try { const s = JSON.parse(localStorage.getItem('attract-sections')||'{}'); s[k] = c.classList.contains('collapsed'); localStorage.setItem('attract-sections', JSON.stringify(s)); } catch {}
+  }
+  function restoreSecCollapse(){
+    let s={}; try { s = JSON.parse(localStorage.getItem('attract-sections')||'{}'); } catch {}
+    document.querySelectorAll('.sec-card[data-sec]').forEach(c=>{ if(s[c.dataset.sec]) c.classList.add('collapsed'); });
   }
 
   function copyCaption() {
@@ -1962,6 +2040,7 @@ The expertise was the hard part. This last piece is mostly translation. We built
   // pageState. ?state=… still overrides for testing. The flash/transition only
   // fire from triggerHealthyTransition() on a live publish, never on load.
   applyPageState('stressed');
+  restoreSecCollapse();   // restore persisted section-card collapse state
   hydrate();
   hydrateChannels();   // channel insights load independently (slower live APIs)
 
