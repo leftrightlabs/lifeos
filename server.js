@@ -4000,6 +4000,14 @@ app.get('/api/needle/today', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ── 404 — branded not-found page ──
+// Fell through every route + static file. JSON for API paths; the branded page
+// (with a button back to /today) for everything else.
+app.use((req, res) => {
+  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
+  res.status(404).sendFile(join(__dirname, 'public', '404.html'));
+});
+
 const server = app.listen(PORT, () => {
   console.log(`LRL OS listening on port ${PORT}`);
   // Phase 0 (multi-user foundation): bring up the per-user store if DATABASE_URL

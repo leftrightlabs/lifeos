@@ -1,0 +1,82 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>404 · LRL OS</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/styles/tokens.css">
+<style>
+  @import url('https://use.typekit.net/uwk2elu.css');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text); min-height: 100vh;
+    font-family: 'sweet-sans-pro', -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 32px 22px calc(32px + env(safe-area-inset-bottom));
+    overflow: hidden; position: relative;
+  }
+  /* soft brand glows */
+  .glow { position: fixed; border-radius: 50%; filter: blur(80px); opacity: .22; pointer-events: none; z-index: 0; }
+  .glow.a { width: 420px; height: 420px; background: var(--accent); top: -120px; left: -100px; }
+  .glow.b { width: 380px; height: 380px; background: var(--work, #2563eb); bottom: -120px; right: -90px; }
+  .wrap { position: relative; z-index: 1; max-width: 540px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .logo { font-weight: 800; font-size: 14px; letter-spacing: .12em; color: var(--text-2); display: flex; align-items: center; gap: 7px; }
+  .logo .mark { color: #5D9CEC; font-size: 16px; }
+  .big {
+    font-family: 'scotch-display', 'Playfair Display', Georgia, serif;
+    font-weight: 800; font-size: clamp(96px, 26vw, 200px); line-height: .9; letter-spacing: -.02em;
+    background: linear-gradient(135deg, var(--accent) 0%, #5D9CEC 60%, var(--teal, #06b6d4) 100%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    margin: 4px 0;
+  }
+  .msg {
+    font-size: clamp(18px, 4.5vw, 24px); font-weight: 600; color: var(--text); line-height: 1.35;
+    min-height: 2.6em; display: flex; align-items: center; justify-content: center;
+    transition: opacity .4s ease; max-width: 480px;
+  }
+  .msg.fade { opacity: 0; }
+  .sub { font-size: 14px; color: var(--text-3); line-height: 1.5; max-width: 400px; }
+  .btn {
+    margin-top: 10px; display: inline-flex; align-items: center; gap: 9px;
+    background: var(--accent); color: #fff; text-decoration: none;
+    font-weight: 700; font-size: 14px; letter-spacing: .03em;
+    padding: 13px 26px; border-radius: 999px; transition: transform .15s, filter .2s;
+    box-shadow: 0 6px 22px rgba(99,102,241,.38);
+  }
+  .btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .btn svg { width: 17px; height: 17px; }
+  .hint { font-size: 12px; color: var(--text-4); margin-top: 4px; }
+  .hint a { color: var(--text-3); text-decoration: underline; text-underline-offset: 2px; }
+</style>
+</head><body>
+  <div class="glow a"></div><div class="glow b"></div>
+  <div class="wrap">
+    <div class="logo"><span class="mark">◆</span> LRL OS</div>
+    <div class="big">404</div>
+    <div class="msg" id="msg"></div>
+    <div class="sub">That link doesn't exist (or wandered off). Let's get you back to the one screen that matters.</div>
+    <a class="btn" href="/today">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Back to Today
+    </a>
+    <div class="hint">Lost something specific? Try <a href="/reference">Reference</a> or <a href="/messages">Messages</a>.</div>
+  </div>
+<script>
+  var MESSAGES = [
+    "This page took a personal day. 🌴",
+    "404: this isn't The One Thing you were looking for.",
+    "We looked everywhere — even under the LEGO. Nothing here.",
+    "You've reached the edge of the map. Here be dragons (and zero data).",
+    "Plot twist: this URL ghosted us. Let's get you back on track."
+  ];
+  var el = document.getElementById('msg');
+  var i = Math.floor(Math.random() * MESSAGES.length);
+  el.textContent = MESSAGES[i];
+  setInterval(function () {
+    el.classList.add('fade');
+    setTimeout(function () {
+      i = (i + 1) % MESSAGES.length;
+      el.textContent = MESSAGES[i];
+      el.classList.remove('fade');
+    }, 400);
+  }, 3800);
+</script>
+</body></html>
