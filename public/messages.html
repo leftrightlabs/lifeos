@@ -325,6 +325,7 @@ function setSnooze(id, until){ try { const s=snoozeStore(); s[id]=until; localSt
 function nArchiveStore(){ try { return JSON.parse(localStorage.getItem('lrl-msg-notion-archived')||'[]'); } catch { return []; } }
 function isNotionArchived(id){ return nArchiveStore().includes(id); }
 function addNotionArchive(ids){ try { const s=new Set(nArchiveStore()); (Array.isArray(ids)?ids:[ids]).forEach(i=>s.add(i)); localStorage.setItem('lrl-msg-notion-archived', JSON.stringify([...s])); } catch {} }
+function restoreNotionArchive(){ try { localStorage.removeItem('lrl-msg-notion-archived'); } catch {} state.cache.notion.t=0; loadTab('notion'); toast('↩ Restored archived comments'); }
 
 function toast(msg){ const w=document.getElementById('toast-wrap'); const t=document.createElement('div'); t.className='toast'; t.textContent=msg; w.appendChild(t); setTimeout(()=>t.remove(),2800); }
 function showError(msg){ const e=document.getElementById('msg-error'); e.style.display='block'; e.innerHTML=esc(msg)+' <button onclick="reloadTab()">Retry</button>'; }
@@ -420,8 +421,9 @@ function renderSlack(){
 function renderNotion(){
   const list = state.cache.notion.data || [];
   const el = document.getElementById('notion-list');
-  if (!list.length){ el.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">All caught up</div><div class="empty-body">No team comments needing your attention. Comments you've archived here won't reappear.</div></div>`; return; }
-  el.innerHTML = `<div class="section-head urgent" style="justify-content:space-between">Team Comments &nbsp;(${list.length})<button class="archive-all" onclick="archiveAllNotion(event)" style="text-transform:none;letter-spacing:0">📥 Archive all</button></div>` + list.map(n=>`
+  const archivedCount = nArchiveStore().length;
+  if (!list.length){ el.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">All caught up</div><div class="empty-body">No team comments needing your attention.${archivedCount?` ${archivedCount} archived here.`:''}</div>${archivedCount?`<button class="btn-connect" onclick="restoreNotionArchive()">↩ Restore ${archivedCount} archived</button>`:''}</div>`; return; }
+  el.innerHTML = `<div class="section-head urgent" style="justify-content:space-between">Team Comments &nbsp;(${list.length})<span style="display:flex;gap:8px">${archivedCount?`<button class="archive-all" onclick="restoreNotionArchive()" style="text-transform:none;letter-spacing:0">↩ Restore ${archivedCount}</button>`:''}<button class="archive-all" onclick="archiveAllNotion(event)" style="text-transform:none;letter-spacing:0">📥 Archive all</button></span></div>` + list.map(n=>`
     <div class="notion-comment${n.unread?' unread':''}" onclick="openNotion('${esc(n.id)}')">
       <div class="notion-av" style="background:${n.commenterColor}1f;color:${n.commenterColor}">${esc(n.commenterInitials)}</div>
       <div class="notion-meta"><div class="notion-page-chip">📄 ${esc(n.pageTitle)}</div>

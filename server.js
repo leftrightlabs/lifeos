@@ -325,16 +325,31 @@ function configuredAccounts() {
   return ACCOUNTS.filter((a) => !!process.env[ACCOUNT_ENVS[a]]);
 }
 
+// Persisted Slack user token (owner / single-user). Written by the OAuth callback
+// so re-authorizing with new scopes takes effect immediately — no manual env paste.
+// Disk survives within a Railway deploy; the env var is the cross-deploy fallback.
+const SLACK_STATE_FILE = process.env.SLACK_STATE_FILE || join(process.cwd(), 'data', 'slack-state.json');
+function loadSlackFileToken() {
+  try { if (existsSync(SLACK_STATE_FILE)) { const s = JSON.parse(readFileSync(SLACK_STATE_FILE, 'utf8')); if (s?.user_token) return s.user_token; } }
+  catch (e) { console.warn('[slack] load state failed:', e.message); }
+  return null;
+}
+function saveSlackFileToken(tok) {
+  try { const dir = dirname(SLACK_STATE_FILE); if (!existsSync(dir)) mkdirSync(dir, { recursive: true }); writeFileSync(SLACK_STATE_FILE, JSON.stringify({ user_token: tok, savedAt: new Date().toISOString() }, null, 2)); }
+  catch (e) { console.warn('[slack] save state failed:', e.message); }
+}
+
 // Resolve the Slack user token to post as. The signed-in user's own connected
-// token wins; the owner (and single-user / background) falls back to the env
-// token. A member who hasn't connected Slack gets none — never the owner's, so
-// a check-in is never posted under someone else's identity.
+// token wins; the owner (and single-user / background) falls back to the most
+// recently authorized token on disk, then the env token. A member who hasn't
+// connected Slack gets none — never the owner's, so a check-in is never posted
+// under someone else's identity.
 function currentSlackToken() {
   const u = currentUser();
   if (u && u.slack_user_token) {
     try { return decrypt(u.slack_user_token); } catch (e) { /* fall through */ }
   }
-  if (!u || u.role === 'owner') return process.env.SLACK_USER_TOKEN || null;
+  if (!u || u.role === 'owner') return loadSlackFileToken() || process.env.SLACK_USER_TOKEN || null;
   return null;
 }
 
@@ -680,20 +695,15 @@ app.get('/auth/slack/callback', async (req, res) => {
     // The user token (xoxp-…) lives under authed_user.access_token.
     const userToken = data.authed_user?.access_token;
     if (!userToken) throw new Error('no user token returned (check the user_scope)');
+    // Persist to disk so the new token takes effect immediately (the Messages zone
+    // reads it via currentSlackToken) — no manual env paste / redeploy needed.
+    saveSlackFileToken(userToken);
+    clearCached('messages-slack');
     if (dbEnabled() && req.session?.userId && secretsConfigured()) {
       await dbUsers.setSlackToken(req.session.userId, encrypt(userToken));
       clearUserCache(req.session.userId);
-      return res.redirect('/?connected=slack');
     }
-    // Single-user / no-store fallback: show the token to paste as SLACK_USER_TOKEN.
-    res.type('html').send(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"/><title>LRL OS — Slack auth</title></head>
-<body style="background:#0a0f1e;color:#f5f5f7;font-family:ui-monospace,Menlo,monospace;padding:2rem;line-height:1.5">
-  <h1 style="color:#a7c140;font-family:Georgia,serif">Slack user token captured</h1>
-  <p>Copy this and add to Railway as <code style="background:#131a30;padding:0.1rem 0.4rem;border-radius:4px">SLACK_USER_TOKEN</code>:</p>
-  <pre style="background:#131a30;padding:1rem;border-radius:8px;overflow-x:auto;user-select:all">${userToken}</pre>
-  <p style="opacity:0.6;font-size:0.85rem">Then redeploy. Do not share this token.</p>
-</body></html>`);
+    return res.redirect('/messages?connected=slack');
   } catch (err) {
     res.status(500).send('Slack OAuth error: ' + err.message);
   }

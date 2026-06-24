@@ -128,23 +128,36 @@ export function registerMessagesRoutes(app, { notion, cached, clearCached, getSl
   });
 
   // ── Notion comments (team members only) ──
-  app.get('/api/messages/notion-comments', async (_req, res) => {
+  // Notion has no "list all comments" endpoint, so we scan recent pages in
+  // PROJECTS + TASKS and read each one's comments. We do NOT filter by
+  // last_edited_time — adding a comment doesn't bump a page's edit time, so a
+  // time filter silently drops fresh comments on older pages. Instead we take the
+  // most-recently-edited PAGES_SCAN pages and read comments for all of them.
+  const PAGES_SCAN = 80;
+  app.get('/api/messages/notion-comments', async (req, res) => {
     if (!notion) return res.status(500).json({ error: 'Notion not configured' });
+    const debug = req.query.debug === '1';
+    const diag = { pagesFetched: 0, pagesScanned: 0, pagesWithComments: 0, totalRawComments: 0, kept: 0, errors: [] };
     try {
-      const data = await cached('messages-notion-comments', async () => {
-        const since = new Date(Date.now() - 7 * 86400000).toISOString();
-        const pages = [];
+      if ((req.query.fresh === '1' || debug) && clearCached) clearCached('messages-notion-comments');
+      const run = async () => {
+        // 1) Collect candidate pages (metadata only — cheap), newest first.
+        let pages = [];
         for (const ds of [WORK_PROJECTS_DS, WORK_TASKS_DS].filter(Boolean)) {
           try {
             const r = await notion.dataSources.query({
               data_source_id: ds,
-              filter: { timestamp: 'last_edited_time', last_edited_time: { on_or_after: since } },
               sorts: [{ timestamp: 'last_edited_time', direction: 'descending' }],
-              page_size: 20,
+              page_size: 100,
             });
-            for (const p of r.results) pages.push(p);
-          } catch (e) { console.error('notion-comments page query failed:', e.message); }
+            pages.push(...r.results);
+          } catch (e) { diag.errors.push(`page query: ${e.message}`); }
         }
+        diag.pagesFetched = pages.length;
+        pages.sort((a, b) => Date.parse(b.last_edited_time || 0) - Date.parse(a.last_edited_time || 0));
+        pages = pages.slice(0, PAGES_SCAN);
+        diag.pagesScanned = pages.length;
+
         const userCache = new Map();
         const userName = async (uid) => {
           if (userCache.has(uid)) return userCache.get(uid);
@@ -156,41 +169,46 @@ export function registerMessagesRoutes(app, { notion, cached, clearCached, getSl
           const t = Object.values(props).find((v) => v?.type === 'title');
           return t?.title?.map((x) => x.plain_text).join('') || 'Untitled';
         };
+
+        // 2) Fetch comments per page, in small concurrent batches (faster, still
+        //    within Notion's rate limits with the client's built-in retry).
         const out = [];
-        for (const p of pages) {
-          let cs;
-          try { cs = await notion.comments.list({ block_id: p.id }); }
-          catch { continue; }
-          for (const c of (cs.results || [])) {
-            const uid = c.created_by?.id;
-            if (uid === ownNotionUserId) continue;            // hide my own comments
-            if (NOTION_BOT_IDS.includes(uid)) continue;
-            if (NOTION_TEAM_IDS.length && !NOTION_TEAM_IDS.includes(uid)) continue;
-            const text = (c.rich_text || []).map((x) => x.plain_text).join('');
-            if (!text.trim()) continue;
-            const commenter = await userName(uid);
-            out.push({
-              id: c.id,
-              pageId: p.id,
-              pageTitle: titleOf(p),
-              commenter,
-              commenterInitials: initials(commenter),
-              commenterColor: avatarColor(commenter),
-              text,
-              createdAt: c.created_time,
-              time: relTime(Date.parse(c.created_time)),
-              unread: true,
-              notionUrl: p.url,
-            });
+        for (let i = 0; i < pages.length; i += 6) {
+          const batch = pages.slice(i, i + 6);
+          const results = await Promise.all(batch.map(async (p) => {
+            try { const cs = await notion.comments.list({ block_id: p.id }); return { p, comments: cs.results || [] }; }
+            catch (e) { diag.errors.push(`comments ${p.id}: ${e.message}`); return { p, comments: [] }; }
+          }));
+          for (const { p, comments } of results) {
+            if (comments.length) diag.pagesWithComments++;
+            diag.totalRawComments += comments.length;
+            for (const c of comments) {
+              const uid = c.created_by?.id;
+              if (uid === ownNotionUserId) continue;            // hide my own comments
+              if (NOTION_BOT_IDS.includes(uid)) continue;
+              if (NOTION_TEAM_IDS.length && !NOTION_TEAM_IDS.includes(uid)) continue;
+              const text = (c.rich_text || []).map((x) => x.plain_text).join('');
+              if (!text.trim()) continue;
+              const commenter = await userName(uid);
+              out.push({
+                id: c.id, pageId: p.id, pageTitle: titleOf(p),
+                commenter, commenterInitials: initials(commenter), commenterColor: avatarColor(commenter),
+                text, createdAt: c.created_time, time: relTime(Date.parse(c.created_time)),
+                unread: true, notionUrl: p.url,
+              });
+            }
           }
         }
+        diag.kept = out.length;
         out.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
         return { comments: out };
-      });
+      };
+      const data = debug ? await run() : await cached('messages-notion-comments', run);
+      if (debug) return res.json({ ...data, diag });
       res.json(data);
     } catch (err) {
       console.error('messages/notion-comments error:', err.message);
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ error: err.message, diag });
     }
   });
 }
