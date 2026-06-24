@@ -9,14 +9,15 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.webmanifest">
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-<meta name="theme-color" content="#0A0D16">
+<meta name="theme-color" content="#0A0F1E">
 <style>
 :root {
-  --bg: #0A0D16;
-  --surface: #111826;
-  --surface-2: #0D131F;
-  --border: #1C2536;
-  --border-soft: #161E2C;
+  /* Indigo/navy theme — matches the /index page. */
+  --bg: #0A0F1E;
+  --surface: #131A30;
+  --surface-2: #0F1526;
+  --border: #232C4A;
+  --border-soft: #1A2240;
 
   /* Type scale — one normalized ladder (~1.25 ratio, 4px-aligned). Every
      font-size references a token; never hardcode px. */
@@ -48,10 +49,10 @@
   --teal:      var(--personal);
   --teal-soft: var(--personal-soft);
 
-  --text: #DCE3EC;
-  --text-2: #8A9BB0;
-  --text-3: #54667E;
-  --text-4: #364457;
+  --text: #F5F5F7;
+  --text-2: #9AA6BC;
+  --text-3: #5E6B84;
+  --text-4: #3E4862;
 
   /* Semantic */
   --red:   #F26D6D;  --red-soft:   rgba(242,109,109,.12);
@@ -408,7 +409,7 @@ body {
 .snap-val { font-size: var(--fs-body-sm); font-weight: 700; }
 
 /* ── WEEKEND SCREEN ── */
-.weekend-screen { position: fixed; inset: 0; z-index: 100; background: linear-gradient(160deg, #0A0D16 0%, #141029 45%, #1A1433 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; overflow: hidden; }
+.weekend-screen { position: fixed; inset: 0; z-index: 100; background: linear-gradient(160deg, #0A0F1E 0%, #141029 45%, #1A1433 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; overflow: hidden; }
 .weekend-screen.hidden { display: none; }
 .wk-glow { position: absolute; width: 600px; height: 600px; border-radius: 50%; background: radial-gradient(circle, rgba(99,102,241,.12) 0%, transparent 60%); top: -150px; pointer-events: none; }
 .wk-glow.two { background: radial-gradient(circle, rgba(56,189,248,.1) 0%, transparent 60%); bottom: -200px; right: -100px; top: auto; }
@@ -436,7 +437,7 @@ body {
 .ritual-chip:hover { border-color: var(--text-4); }
 .ritual-chip.checked { background: var(--green-soft); border-color: rgba(79,214,160,.25); color: var(--green); }
 .ritual-chip .rc-box { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--text-4); display: flex; align-items: center; justify-content: center; font-size: var(--fs-caption); flex-shrink: 0; }
-.ritual-chip.checked .rc-box { border-color: var(--green); background: var(--green); color: #0A0D16; }
+.ritual-chip.checked .rc-box { border-color: var(--green); background: var(--green); color: #0A0F1E; }
 .ritual-reward { font-size: var(--fs-caption); color: var(--green); margin-top: 8px; display: none; align-items: center; gap: 5px; }
 .ritual-reward.show { display: flex; }
 .rc-input-group { display: flex; align-items: center; gap: 3px; margin-left: auto; }
@@ -1125,11 +1126,11 @@ function renderOneThing() {
       const accent = isDoing ? 'var(--amber)' : 'var(--text-3)';
       const nextPersonal = plan.find(t => t.type === 'personal' && !t.done && t.status !== 'Waiting' && t.id !== _personalOneThingTask?.id);
       const waitingActions = `
-        <button class="btn-go" style="background:var(--teal);color:#0A0D16;" onclick="countEffort()">✓ Count today's effort</button>
+        <button class="btn-go" style="background:var(--teal);color:#0A0F1E;" onclick="countEffort()">✓ Count today's effort</button>
         ${nextPersonal ? `<button class="btn-ghost" onclick="showNextPersonalTask()">→ Try another task</button>` : ''}
         <button class="btn-ghost" style="font-size:var(--fs-caption);padding:8px 14px;" onclick="undoPersonalDone()">↩ Undo</button>`;
       const doingActions = `
-        <button class="btn-go" style="background:var(--teal);color:#0A0D16;" onclick="markPersonalDone()">✓ Done now</button>
+        <button class="btn-go" style="background:var(--teal);color:#0A0F1E;" onclick="markPersonalDone()">✓ Done now</button>
         <button class="btn-ghost" style="font-size:var(--fs-caption);padding:8px 14px;" onclick="undoPersonalDone()">↩ Undo</button>`;
       area.innerHTML = `
         <div class="onething" id="otCard" data-persist-key="onething" style="border-left-color:${accent};">
@@ -1168,7 +1169,7 @@ function renderOneThing() {
           <div class="onething-title">${ptTitle}</div>
           <div class="onething-why">${ptWhy}</div>
           <div class="onething-actions">
-            <button class="btn-go" style="background:var(--teal);color:#0A0D16;" onclick="markPersonalDone()">✓ I did this</button>
+            <button class="btn-go" style="background:var(--teal);color:#0A0F1E;" onclick="markPersonalDone()">✓ I did this</button>
             <button class="btn-ghost" onclick="setPersonalOneThingStatus('Doing')">→ In progress</button>
             <button class="btn-ghost" onclick="setPersonalOneThingStatus('Waiting')">⏸ Waiting</button>
           </div>
@@ -1998,7 +1999,7 @@ function renderRings() {
         <circle cx="40" cy="40" r="28" fill="none" stroke="${r.c}" stroke-width="6"
           stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"
           stroke-linecap="round" transform="rotate(-90 40 40)"/>
-        <text x="40" y="38" text-anchor="middle" fill="#DCE3EC" font-size="15" font-weight="700" font-family="system-ui">${r.pct}%</text>
+        <text x="40" y="38" text-anchor="middle" fill="#F5F5F7" font-size="15" font-weight="700" font-family="system-ui">${r.pct}%</text>
         <text x="40" y="50" text-anchor="middle" fill="#54667E" font-size="9" font-family="system-ui">${r.val}</text>
       </svg>
       <div class="ring-lbl">${lbl}</div>
@@ -2919,8 +2920,10 @@ async function softRefresh() {
   try {
     await fetch('/api/refresh-tasks').catch(() => {});
     const j = url => fetch(url).then(r => r.json()).catch(() => ({ error: true }));
-    const [g, w, l] = await Promise.all([j('/api/goals'), j('/api/tasks/work-myday'), j('/api/tasks/life-myday')]);
-    applyTasksGoals(g, w, l);
+    // Tasks only — goals/rocks are left as-is (kept in _loadedGoals) so the poll
+    // stays light and never triggers Notion's per-rock milestone rate limit.
+    const [w, l] = await Promise.all([j('/api/tasks/work-myday'), j('/api/tasks/life-myday')]);
+    applyTasksGoals(undefined, w, l);
     _reRenderAll();
     _updateRefreshStamp();
   } catch (e) { /* keep last good state */ }
@@ -3086,10 +3089,20 @@ function init() {
 
   // Always lift the loading gate once the load settles, even on error, so the
   // dashboard never gets stuck behind the overlay.
+  const _revealApp = () => {
+    if (_dataLoaded) return;
+    _dataLoaded = true;
+    document.body.classList.remove('app-loading');
+    _reRenderAll();
+  };
+  // Safety net: if Notion is slow/rate-limited the fetches can retry for many
+  // seconds — reveal the shell anyway so the page is never stuck on the spinner.
+  // Late-arriving data fills in via _reRenderAll in the finally below.
+  const _revealTimer = setTimeout(_revealApp, 7000);
   loadTodayData()
     .then(_updateRefreshStamp)
     .catch(() => {})
-    .finally(() => { _dataLoaded = true; document.body.classList.remove('app-loading'); _reRenderAll(); });
+    .finally(() => { clearTimeout(_revealTimer); _revealApp(); _reRenderAll(); });
 
   // Live-ish sync with Notion: refresh tasks/rocks when the tab regains focus
   // (e.g. returning from editing in Notion) and on a slow background poll.

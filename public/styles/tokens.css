@@ -1,10 +1,11 @@
 /* LRL OS — Design tokens. Import this on every page. */
 :root {
-  --bg: #0A0D16;
-  --surface: #111826;
-  --surface-2: #0D131F;
-  --border: #1C2536;
-  --border-soft: #161E2C;
+  /* Indigo/navy theme — matches the /index page. */
+  --bg: #0A0F1E;
+  --surface: #131A30;
+  --surface-2: #0F1526;
+  --border: #232C4A;
+  --border-soft: #1A2240;
 
   /* Anchor — indigo */
   --accent:       #6366F1;
@@ -25,10 +26,10 @@
   --teal:      var(--personal);
   --teal-soft: var(--personal-soft);
 
-  --text: #DCE3EC;
-  --text-2: #8A9BB0;
-  --text-3: #54667E;
-  --text-4: #364457;
+  --text: #F5F5F7;
+  --text-2: #9AA6BC;
+  --text-3: #5E6B84;
+  --text-4: #3E4862;
 
   /* Type scale — one normalized ladder (~1.25 ratio, 4px-aligned). Reference a
      token for every font-size; never hardcode px. */

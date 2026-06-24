@@ -17,7 +17,7 @@
 .src-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
 .src-tab .src-icon { width:15px; height:15px; flex-shrink:0; }
 .cnt { min-width:18px; height:18px; border-radius:9px; padding:0 5px; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; background:var(--accent); color:#fff; }
-.cnt.red { background:var(--red); } .cnt.amber { background:var(--amber); color:#0A0D16; } .cnt.work { background:var(--work); } .cnt.none { display:none; }
+.cnt.red { background:var(--red); } .cnt.amber { background:var(--amber); color:#0A0F1E; } .cnt.work { background:var(--work); } .cnt.none { display:none; }
 
 /* toolbar */
 .toolbar { display:flex; align-items:center; gap:8px; padding:10px 20px 9px; border-bottom:1px solid var(--border-soft); }
@@ -194,7 +194,14 @@
 </head><body>
 <div class="topbar-wrap"><div class="topbar">
   <a href="/" class="logo">◆ LRL OS</a>
-  <div class="topbar-right"><span class="me-pill">ME</span></div>
+  <div class="topbar-right">
+    <div class="mode-toggle" id="modeToggle">
+      <button class="mode-btn" data-mode="work" onclick="setMode('work')">WORK</button>
+      <button class="mode-btn all" data-mode="all" onclick="setMode('all')">ALL</button>
+      <button class="mode-btn" data-mode="personal" onclick="setMode('personal')">PERSONAL</button>
+    </div>
+    <span class="me-pill" onclick="window.location='/'">ME</span>
+  </div>
 </div></div>
 <div class="nav-wrap"><nav class="nav">
   <a href="/today" class="nav-btn">TODAY</a>
@@ -315,8 +322,16 @@ function avColor(n){ let h=0; for(const c of String(n||'')) h=(h*31+c.charCodeAt
 function toNotionLink(url){ if(!url) return url; const m=url.match(/([a-f0-9]{32})/i); if(m) return `notion://www.notion.so/${m[1]}`; if(url.startsWith('https://www.notion.so/')) return url.replace('https://','notion://'); if(url.startsWith('https://app.notion.com/')) return url.replace('https://app.notion.com/','notion://www.notion.so/'); return url; }
 function openNotionLink(url){ const link=toNotionLink(url); if(link&&link.startsWith('notion://')){ window.location.href=link; } else { window.open(url,'_blank','noopener'); } return false; }
 
-const state = { tab:'gmail', filter:'all', selected:new Set(), openId:null, openSrc:null,
+const state = { tab:'gmail', filter:'all', mode:'all', selected:new Set(), openId:null, openSrc:null,
   cache:{ gmail:{data:[],t:0}, slack:{data:null,t:0}, notion:{data:[],t:0} } };
+
+/* WORK / ALL / PERSONAL — Gmail is split by category; Slack & Notion are work
+   tools, so they're hidden in PERSONAL mode. */
+function setMode(m){ state.mode=m; syncModeButtons(m); render(); updateBadges(); }
+function syncModeButtons(m){ document.querySelectorAll('#modeToggle .mode-btn').forEach(b=>{ b.classList.remove('work','all','personal'); if(b.dataset.mode===m) b.classList.add(m); }); }
+function modeGmail(m){ if(state.mode==='work') return m.cat!=='PERSONAL'; if(state.mode==='personal') return m.cat==='PERSONAL'; return true; }
+function modeHidesWorkSource(){ return state.mode==='personal'; }
+function workSourceEmpty(label){ return `<div class="empty"><div class="empty-icon">💼</div><div class="empty-title">Work only</div><div class="empty-body">${label} is a work tool — switch to WORK or ALL to see it.</div></div>`; }
 const TTL = 60000;
 let detail = null; // full open message (with messageId/references for reply)
 
@@ -379,17 +394,17 @@ function render(){ if(state.tab==='gmail') renderGmail(); else if(state.tab==='s
 
 function renderGmail(){
   const all = state.cache.gmail.data || [];
-  const visible = all.filter(m=>{ if(m.archived||m.deleted) return false; if(state.filter==='unread') return m.unread; if(state.filter==='important') return importantGmail(m); return true; });
+  const inMode = all.filter(m=>!m.archived&&!m.deleted&&modeGmail(m));
+  const visible = inMode.filter(m=>{ if(state.filter==='unread') return m.unread; if(state.filter==='important') return importantGmail(m); return true; });
   const imp = visible.filter(importantGmail), normal = visible.filter(m=>!importantGmail(m));
   let html='';
   if (imp.length){ html += `<div class="section-head urgent">⚑ Needs Attention &nbsp;(${imp.length})</div>` + imp.map(gmailRow).join(''); }
   if (normal.length && state.filter!=='important'){ if(imp.length) html += `<div class="section-head normal">Other &nbsp;(${normal.length})</div>`; html += normal.map(gmailRow).join(''); }
   if (!visible.length) html = `<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">All clear</div><div class="empty-body">Nothing matches this filter.</div></div>`;
   document.getElementById('gmail-list').innerHTML = html;
-  const live = all.filter(m=>!m.archived&&!m.deleted);
-  document.getElementById('inbox-label').textContent = `INBOX (${live.length})`;
-  const p = live.filter(m=>m.cat==='PERSONAL').length;
-  document.getElementById('account-label').textContent = `${p} PERSONAL · ${live.length-p} WORK`;
+  document.getElementById('inbox-label').textContent = `INBOX (${inMode.length})`;
+  const p = inMode.filter(m=>m.cat==='PERSONAL').length;
+  document.getElementById('account-label').textContent = `${p} PERSONAL · ${inMode.length-p} WORK`;
 }
 function gmailRow(m){
   const col=avColor(m.from), sel=state.selected.has(m.id);
@@ -409,6 +424,7 @@ function gmailRow(m){
 function renderSlack(){
   const d = state.cache.slack.data;
   const el = document.getElementById('slack-list');
+  if (modeHidesWorkSource()){ el.innerHTML = workSourceEmpty('Slack'); return; }
   if (d && d.connected===false){ el.innerHTML = `<div class="empty"><div class="empty-icon">💬</div><div class="empty-title">Connect Slack</div><div class="empty-body">Sign in with Slack to see your unread DMs and channel messages here.</div><a class="btn-connect" href="/auth/slack">Connect Slack</a></div>`; return; }
   let channels = (d&&d.channels)||[];
   if (state.filter==='unread') channels = channels.map(c=>({...c,messages:c.messages.filter(m=>m.unread)})).filter(c=>c.messages.length);
@@ -425,6 +441,7 @@ function renderSlack(){
 function renderNotion(){
   const list = state.cache.notion.data || [];
   const el = document.getElementById('notion-list');
+  if (modeHidesWorkSource()){ el.innerHTML = workSourceEmpty('Notion'); return; }
   const archivedCount = nArchiveStore().length;
   if (!list.length){ el.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">All caught up</div><div class="empty-body">No team comments needing your attention.${archivedCount?` ${archivedCount} archived here.`:''}</div>${archivedCount?`<button class="btn-connect" onclick="restoreNotionArchive()">↩ Restore ${archivedCount} archived</button>`:''}</div>`; return; }
   el.innerHTML = `<div class="section-head urgent" style="justify-content:space-between">Team Comments &nbsp;(${list.length})<span style="display:flex;gap:8px">${archivedCount?`<button class="archive-all" onclick="restoreNotionArchive()" style="text-transform:none;letter-spacing:0">↩ Restore ${archivedCount}</button>`:''}<button class="archive-all" onclick="archiveAllNotion(event)" style="text-transform:none;letter-spacing:0">📥 Archive all</button></span></div>` + list.map(n=>`
@@ -565,12 +582,12 @@ function wake(hour, addDays=1){ const d=new Date(); d.setDate(d.getDate()+addDay
 
 /* ── badges ── */
 function updateBadges(){
-  const g=(state.cache.gmail.data||[]).filter(m=>m.unread&&!m.archived&&!m.deleted);
+  const g=(state.cache.gmail.data||[]).filter(m=>m.unread&&!m.archived&&!m.deleted&&modeGmail(m));
   const gNeeds=g.some(m=>importantGmail(m));
   const gc=document.getElementById('g-cnt'); gc.textContent=g.length; gc.className='cnt '+(gNeeds?'red':'')+(g.length?'':' none');
-  const sd=state.cache.slack.data; const su=sd&&sd.channels?sd.channels.reduce((a,c)=>a+c.messages.filter(m=>m.unread).length,0):0;
+  const sd=state.cache.slack.data; const su=modeHidesWorkSource()?0:(sd&&sd.channels?sd.channels.reduce((a,c)=>a+c.messages.filter(m=>m.unread).length,0):0);
   const sc=document.getElementById('s-cnt'); sc.textContent=su; sc.className='cnt work'+(su?'':' none');
-  const nu=(state.cache.notion.data||[]).filter(n=>n.unread).length;
+  const nu=modeHidesWorkSource()?0:(state.cache.notion.data||[]).filter(n=>n.unread).length;
   const nc=document.getElementById('n-cnt'); nc.textContent=nu; nc.className='cnt'+(nu?'':' none');
 }
 
