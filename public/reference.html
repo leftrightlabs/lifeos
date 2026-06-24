@@ -1,0 +1,293 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>LRL OS · Reference</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/styles/tokens.css">
+<link rel="stylesheet" href="/styles/app.css">
+<script defer src="/zone-scope.js"></script>
+<style>
+:root { --zone: var(--accent); --zone-soft: var(--accent-soft); }
+.ref-page { max-width: 1100px; margin: 0 auto; padding: 32px 36px 80px; font-size: 14px; }
+
+.page-header { margin-bottom: 28px; }
+.zone-eye { display:inline-flex; align-items:center; gap:7px; font-size:10px; font-weight:800; letter-spacing:.14em; color:var(--zone); margin-bottom:8px; }
+.zone-eye::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--zone); }
+.page-title { font-family:'scotch-display','Playfair Display',Georgia,serif; font-size:34px; font-weight:700; color:var(--text); letter-spacing:-.01em; transform:scaleY(1.18); display:inline-block; transform-origin:top left; line-height:1; }
+.page-sub { font-size:13px; color:var(--text-3); margin-top:12px; }
+
+/* search hero */
+.s-wrap { position:relative; margin-bottom:12px; }
+.s-input { width:100%; height:54px; background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:0 100px 0 52px; color:var(--text); font-size:16px; font-family:inherit; outline:none; transition:border-color .2s, box-shadow .2s; }
+.s-input::placeholder { color:var(--text-4); }
+.s-input:focus { border-color:var(--zone); box-shadow:0 0 0 3px var(--zone-soft); }
+.s-ico { position:absolute; left:18px; top:50%; transform:translateY(-50%); color:var(--text-3); pointer-events:none; transition:color .2s; }
+.s-wrap:focus-within .s-ico { color:var(--zone); }
+.s-right { position:absolute; right:14px; top:50%; transform:translateY(-50%); display:flex; align-items:center; gap:8px; }
+.s-shortcut { font-size:10px; font-weight:700; letter-spacing:.06em; color:var(--text-4); background:var(--surface-2); border:1px solid var(--border); padding:3px 8px; border-radius:5px; pointer-events:none; }
+.s-clear { width:20px; height:20px; border-radius:50%; background:var(--text-4); border:none; color:var(--bg); cursor:pointer; font-size:10px; font-weight:700; display:none; align-items:center; justify-content:center; transition:background .15s; font-family:inherit; }
+.s-clear.on { display:flex; } .s-clear:hover { background:var(--text-3); }
+
+.chips { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:28px; }
+.chip { padding:5px 12px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:.04em; border:1px solid var(--border); background:transparent; color:var(--text-3); cursor:pointer; transition:all .15s; display:flex; align-items:center; gap:5px; font-family:inherit; }
+.chip:hover { border-color:var(--text-3); color:var(--text-2); }
+.chip.on { border-color:var(--zone); background:var(--zone-soft); color:var(--zone); }
+.chip[data-s="drive"].on { border-color:var(--green); background:var(--green-soft); color:var(--green); }
+.chip[data-s="slack"].on { border-color:var(--amber); background:var(--amber-soft); color:var(--amber); }
+.chip[data-s="gmail"].on { border-color:var(--red); background:var(--red-soft); color:var(--red); }
+.chip[data-s="contacts"].on { border-color:var(--personal); background:var(--personal-soft); color:var(--personal); }
+.cdot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.cdot.notion{background:var(--accent)} .cdot.drive{background:var(--green)} .cdot.slack{background:var(--amber)} .cdot.gmail{background:var(--red)} .cdot.contacts{background:var(--personal)}
+
+.sec-lbl { font-size:10px; font-weight:800; letter-spacing:.12em; color:var(--text-4); margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; }
+
+.two-col { display:grid; grid-template-columns:1fr 320px; gap:20px; align-items:start; }
+@media (max-width:800px){ .two-col{ grid-template-columns:1fr; } .ref-page{ padding:24px 18px 70px; } .page-title{ font-size:26px; } }
+
+.col-main { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; }
+.mtabs { display:flex; gap:4px; }
+.mtab { padding:3px 10px; border-radius:5px; font-size:10px; font-weight:700; letter-spacing:.04em; border:1px solid var(--border); background:transparent; color:var(--text-3); cursor:pointer; transition:all .15s; font-family:inherit; }
+.mtab.on[data-m="work"] { background:var(--work-soft); border-color:var(--work); color:#7FA8FF; }
+.mtab.on[data-m="personal"] { background:var(--personal-soft); border-color:var(--personal); color:var(--personal); }
+
+.doc-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+@media (max-width:900px){ .doc-grid{ grid-template-columns:repeat(2,1fr); } }
+.doc-card { background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:12px 13px; cursor:pointer; transition:all .18s; text-decoration:none; display:block; }
+.doc-card:hover { border-color:var(--zone); background:var(--zone-soft); transform:translateY(-2px); }
+.dc-type { font-size:9px; font-weight:800; letter-spacing:.12em; color:var(--text-4); margin-bottom:5px; }
+.dc-title { font-size:12px; font-weight:600; color:var(--text); line-height:1.35; margin-bottom:6px; }
+.dc-meta { font-size:10px; color:var(--text-4); }
+.grid-empty { grid-column:1/-1; font-size:12px; color:var(--text-4); padding:18px 4px; text-align:center; }
+
+.t-sep { border:none; border-top:1px solid var(--border-soft); margin:16px 0 14px; }
+.tcard { background:var(--surface-2); border:1px solid var(--border); border-left:3px solid var(--amber); border-radius:10px; padding:13px 15px; cursor:pointer; transition:all .18s; display:flex; align-items:flex-start; gap:10px; margin-bottom:8px; }
+.tcard:hover { border-left-color:var(--zone); background:var(--zone-soft); }
+.tmark { font-size:28px; color:var(--amber); opacity:.35; line-height:1; flex-shrink:0; margin-top:-4px; font-family:Georgia,serif; }
+.tcard-quote { font-size:12px; font-style:italic; color:var(--text-2); line-height:1.5; margin-bottom:6px; }
+.tcard-author { font-size:10px; font-weight:700; color:var(--text-3); }
+
+.col-side { display:flex; flex-direction:column; gap:14px; }
+.side-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px; }
+.contact-row { display:flex; align-items:center; gap:10px; padding:8px 6px; border-radius:8px; cursor:pointer; transition:background .15s; }
+.contact-row:hover { background:var(--surface-2); }
+.c-av { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; flex-shrink:0; }
+.c-name { font-size:13px; font-weight:600; color:var(--text); }
+.c-sub { font-size:11px; color:var(--text-3); margin-top:1px; }
+.side-empty { font-size:12px; color:var(--text-4); padding:8px 4px; }
+
+/* results */
+.res-count { font-size:12px; color:var(--text-3); margin-bottom:16px; }
+.res-count strong { color:var(--text); font-weight:700; }
+.res-group-label { font-size:10px; font-weight:800; letter-spacing:.12em; color:var(--text-4); padding:10px 0 8px; display:flex; align-items:center; gap:8px; }
+.res-group-label::after { content:''; flex:1; height:1px; background:var(--border-soft); }
+.result-item { display:flex; align-items:flex-start; gap:12px; padding:12px 14px; border-radius:10px; cursor:pointer; transition:all .15s; border:1px solid transparent; margin-bottom:3px; background:var(--surface); }
+.result-item:hover { background:var(--surface-2); border-color:var(--border); transform:translateX(2px); }
+.r-badge { width:30px; height:30px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:900; flex-shrink:0; margin-top:1px; }
+.r-badge.notion { background:var(--accent-soft); color:var(--accent); } .r-badge.drive { background:var(--green-soft); color:var(--green); } .r-badge.slack { background:var(--amber-soft); color:var(--amber); } .r-badge.gmail { background:var(--red-soft); color:var(--red); } .r-badge.contacts { background:var(--personal-soft); color:var(--personal); }
+.r-body { flex:1; min-width:0; }
+.r-title { font-size:14px; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px; }
+.r-meta { font-size:11px; color:var(--text-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.r-type { display:inline-block; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:800; letter-spacing:.06em; margin-right:5px; }
+.r-type.notion { background:var(--accent-soft); color:var(--accent); } .r-type.drive { background:var(--green-soft); color:var(--green); } .r-type.slack { background:var(--amber-soft); color:var(--amber); } .r-type.gmail { background:var(--red-soft); color:var(--red); } .r-type.contacts { background:var(--personal-soft); color:var(--personal); }
+.r-time { font-size:10px; color:var(--text-4); flex-shrink:0; margin-top:3px; min-width:34px; text-align:right; }
+
+.loading { display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:48px 0; color:var(--text-3); font-size:13px; }
+.loading.on { display:flex; }
+.spin { width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--zone); border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.ldots { display:flex; gap:8px; }
+.ld { width:7px; height:7px; border-radius:50%; animation:pulse 1.4s ease-in-out infinite; }
+.ld.notion{background:var(--accent)} .ld.drive{background:var(--green)} .ld.slack{background:var(--amber)} .ld.gmail{background:var(--red)} .ld.contacts{background:var(--personal)}
+.ld:nth-child(2){animation-delay:.2s} .ld:nth-child(3){animation-delay:.4s} .ld:nth-child(4){animation-delay:.6s} .ld:nth-child(5){animation-delay:.8s}
+@keyframes pulse { 0%,100%{opacity:.3;transform:scale(.8)} 50%{opacity:1;transform:scale(1.1)} }
+.no-results { text-align:center; padding:56px 0; color:var(--text-4); font-size:13px; line-height:1.8; }
+.no-results-icon { font-size:36px; margin-bottom:12px; opacity:.3; display:block; }
+#searchState { display:none; }
+</style>
+</head><body>
+<div class="topbar-wrap"><div class="topbar">
+  <a href="/" class="logo">◆ LRL OS</a>
+  <div class="topbar-right"><span class="me-pill">ME</span></div>
+</div></div>
+<div class="nav-wrap"><nav class="nav">
+  <a href="/today" class="nav-btn">TODAY</a>
+  <a href="/messages" class="nav-btn">MESSAGES</a>
+  <a href="/execute" class="nav-btn">EXECUTE</a>
+  <div class="nav-sep"></div>
+  <span class="nav-domain">WORK</span>
+  <a href="/attract" class="nav-btn">ATTRACT</a>
+  <a href="/convert" class="nav-btn">CONVERT</a>
+  <a href="/deliver" class="nav-btn">DELIVER</a>
+  <a href="/scale" class="nav-btn">SCALE</a>
+  <a href="/reference" class="nav-btn active">REFERENCE</a>
+  <div class="nav-sep"></div>
+  <span class="nav-domain">LIFE</span>
+  <a href="/health" class="nav-btn">HEALTH</a>
+  <a href="/wealth" class="nav-btn">WEALTH</a>
+  <a href="/lego" class="nav-btn">LEGO</a>
+</nav></div>
+
+<div class="ref-page">
+  <header class="page-header">
+    <div class="zone-eye">REFERENCE</div>
+    <div class="page-title">Find It Fast</div>
+    <div class="page-sub">Search across Notion, Drive, Gmail, and your contacts — all from one place</div>
+  </header>
+
+  <div class="s-wrap">
+    <span class="s-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
+    <input id="sInput" class="s-input" type="text" placeholder="Search docs, people, messages..." autocomplete="off" oninput="handleSearch(this.value)" autofocus>
+    <div class="s-right"><button id="sClear" class="s-clear" onclick="clearSearch()">✕</button><span class="s-shortcut">⌘K</span></div>
+  </div>
+  <div class="chips">
+    <button class="chip on" data-s="all" onclick="setChip(this)">All sources</button>
+    <button class="chip" data-s="notion" onclick="setChip(this)"><span class="cdot notion"></span>Notion</button>
+    <button class="chip" data-s="drive" onclick="setChip(this)"><span class="cdot drive"></span>Drive</button>
+    <button class="chip" data-s="gmail" onclick="setChip(this)"><span class="cdot gmail"></span>Gmail</button>
+    <button class="chip" data-s="contacts" onclick="setChip(this)"><span class="cdot contacts"></span>Contacts</button>
+  </div>
+
+  <div id="emptyState">
+    <div class="two-col">
+      <div class="col-main">
+        <div class="sec-lbl">PINNED DOCS
+          <div class="mtabs">
+            <button class="mtab on" data-m="work" onclick="switchPinned(this)">Work</button>
+            <button class="mtab" data-m="personal" onclick="switchPinned(this)">Personal</button>
+          </div>
+        </div>
+        <div id="docGrid" class="doc-grid"></div>
+        <div id="docTestimonials"></div>
+      </div>
+      <div class="col-side">
+        <div class="side-card">
+          <div class="sec-lbl" style="margin-bottom:12px">CONTACTS</div>
+          <div id="contactsList"></div>
+        </div>
+        <div class="side-card" id="testimonialsCard">
+          <div class="sec-lbl" style="margin-bottom:12px">TESTIMONIALS</div>
+          <div id="testimonialsList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="loadingState" class="loading">
+    <div style="display:flex;align-items:center;gap:10px;"><div class="spin"></div> Searching all sources…</div>
+    <div class="ldots"><div class="ld notion"></div><div class="ld drive"></div><div class="ld slack"></div><div class="ld gmail"></div><div class="ld contacts"></div></div>
+  </div>
+
+  <div id="searchState">
+    <div class="res-count" id="resCount"></div>
+    <div id="results"></div>
+  </div>
+</div>
+
+<script>
+const esc = (s) => String(s==null?'':s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const AVC = ['#6366F1','#2563EB','#06B6D4','#059669','#D97706','#DC2626','#7C3AED','#DB2777'];
+function avColor(n){ let h=0; for(const c of String(n||'')) h=(h*31+c.charCodeAt(0))&0xffffffff; return AVC[Math.abs(h)%AVC.length]; }
+function initials(n){ return String(n||'?').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase()||'?'; }
+function relTime(iso){ if(!iso) return ''; const d=Date.now()-new Date(iso).getTime(); const m=Math.floor(d/60000),h=Math.floor(d/3600000),dy=Math.floor(d/86400000); if(m<60)return Math.max(0,m)+'m'; if(h<24)return h+'h'; if(dy<7)return dy+'d'; if(dy<30)return Math.floor(dy/7)+'w'; return Math.floor(dy/30)+'mo'; }
+
+let activeChip='all', activePinned='work', searchTimer=null;
+
+function handleSearch(val){
+  document.getElementById('sClear').classList.toggle('on', val.length>0);
+  if (val.trim().length < 2){ showEmpty(); clearTimeout(searchTimer); return; }
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('searchState').style.display='none';
+  document.getElementById('loadingState').classList.add('on');
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(()=>runSearch(val), 500);
+}
+function showEmpty(){ document.getElementById('emptyState').style.display=''; document.getElementById('loadingState').classList.remove('on'); document.getElementById('searchState').style.display='none'; }
+
+async function runSearch(val){
+  const q = val.trim();
+  try {
+    const r = await fetch(`/api/reference/search?q=${encodeURIComponent(q)}&source=${activeChip}`);
+    const data = await r.json();
+    document.getElementById('loadingState').classList.remove('on');
+    document.getElementById('searchState').style.display='block';
+    if (data.error) { renderResults([], q, true); return; }
+    renderResults(Array.isArray(data)?data:[], q);
+  } catch(e){
+    document.getElementById('loadingState').classList.remove('on');
+    document.getElementById('searchState').style.display='';
+    renderResults([], q, true);
+  }
+}
+
+const ICO={notion:'N',drive:'D',slack:'#',gmail:'M',contacts:'C'};
+const LBL={notion:'NOTION',drive:'GOOGLE DRIVE',slack:'SLACK',gmail:'GMAIL',contacts:'CONTACTS'};
+function rowHTML(i){
+  return `<div class="result-item" onclick="window.open('${esc(i.url)}','_blank','noopener')">
+    <div class="r-badge ${i.source}">${ICO[i.source]||'●'}</div>
+    <div class="r-body"><div class="r-title">${esc(i.title)}</div>
+      <div class="r-meta"><span class="r-type ${i.source}">${esc((i.type||'').toUpperCase())}</span>${esc(i.meta||'')}</div></div>
+    <div class="r-time">${esc(relTime(i.updatedAt))}</div>
+  </div>`;
+}
+function renderResults(items, query, errored){
+  if (errored){ document.getElementById('resCount').innerHTML=''; document.getElementById('results').innerHTML=`<div class="no-results"><span class="no-results-icon">⚠️</span>Search is temporarily unavailable.<br><span style="font-size:12px;color:var(--text-4)">Try again in a moment.</span></div>`; return; }
+  document.getElementById('resCount').innerHTML = items.length ? `<strong>${items.length}</strong> result${items.length!==1?'s':''} for "<strong>${esc(query)}</strong>"` : `No results for "<strong>${esc(query)}</strong>"`;
+  if (!items.length){ document.getElementById('results').innerHTML=`<div class="no-results"><span class="no-results-icon">🔍</span>Nothing found across your sources.<br><span style="font-size:12px;color:var(--text-4)">Try a different term or source filter.</span></div>`; return; }
+  let html='';
+  if (activeChip==='all'){
+    const groups={}; items.forEach(i=>{ (groups[i.source]=groups[i.source]||[]).push(i); });
+    ['notion','drive','gmail'].forEach(s=>{ if(!groups[s]) return; html+=`<div class="res-group-label">${LBL[s]} &nbsp; ${groups[s].length}</div>`+groups[s].map(rowHTML).join(''); });
+  } else { html = items.map(rowHTML).join(''); }
+  document.getElementById('results').innerHTML = html;
+}
+
+function setChip(btn){ activeChip=btn.dataset.s; document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on', c.dataset.s===activeChip)); const q=document.getElementById('sInput').value; if(q.trim().length>=2) handleSearch(q); }
+function clearSearch(){ const inp=document.getElementById('sInput'); inp.value=''; inp.focus(); handleSearch(''); }
+
+// ── empty-state data (live) ──
+async function loadPinned(mode){
+  const grid=document.getElementById('docGrid');
+  grid.innerHTML='';
+  try {
+    const docs = await (await fetch(`/api/reference/pinned?mode=${mode}`)).json();
+    if (!Array.isArray(docs) || !docs.length){ grid.innerHTML=`<div class="grid-empty">No pinned docs yet.</div>`; return; }
+    grid.innerHTML = docs.map(d=>`<a class="doc-card" href="${esc(d.url||'#')}" target="_blank" rel="noopener"><div class="dc-type">${esc(d.type||'DOC')}</div><div class="dc-title">${esc(d.title)}</div><div class="dc-meta">${esc(d.meta||'')}</div></a>`).join('');
+  } catch { grid.innerHTML=`<div class="grid-empty">Couldn't load pinned docs.</div>`; }
+}
+async function loadContacts(mode){
+  const el=document.getElementById('contactsList');
+  try {
+    const cs = await (await fetch(`/api/reference/contacts?mode=${mode}`)).json();
+    if (!Array.isArray(cs) || !cs.length){ el.innerHTML=`<div class="side-empty">No contacts found.</div>`; return; }
+    el.innerHTML = cs.map(c=>{ const col=avColor(c.name); return `<div class="contact-row" onclick="window.open('${esc(c.url||'#')}','_blank','noopener')"><div class="c-av" style="background:${col}1f;color:${col}">${esc(initials(c.name))}</div><div><div class="c-name">${esc(c.name)}</div><div class="c-sub">${esc(c.sub||'')}</div></div></div>`; }).join('');
+  } catch { el.innerHTML=`<div class="side-empty">Unable to load contacts.</div>`; }
+}
+async function loadTestimonials(){
+  let ts=[];
+  try { ts = await (await fetch('/api/reference/testimonials')).json(); } catch {}
+  const card=document.getElementById('testimonialsList');
+  const inline=document.getElementById('docTestimonials');
+  if (!Array.isArray(ts) || !ts.length){ card.innerHTML=`<div class="side-empty">No testimonials yet.</div>`; inline.innerHTML=''; return; }
+  card.innerHTML = ts.map(t=>tcardHTML(t)).join('');
+  // also surface up to 2 in the main column under a divider (Work tab only)
+  inline.innerHTML = `<hr class="t-sep">` + ts.slice(0,2).map(t=>tcardHTML(t)).join('');
+}
+function tcardHTML(t){ return `<div class="tcard" onclick="${t.url?`window.open('${esc(t.url)}','_blank','noopener')`:''}"><div class="tmark">"</div><div><div class="tcard-quote">${esc(t.quote)}</div><div class="tcard-author">${esc(t.author||'')}${t.role?` · <span style="font-weight:400;color:var(--text-4)">${esc(t.role)}</span>`:''}</div></div></div>`; }
+
+function switchPinned(btn){
+  activePinned=btn.dataset.m;
+  document.querySelectorAll('.mtab').forEach(t=>t.classList.toggle('on', t.dataset.m===activePinned));
+  loadPinned(activePinned); loadContacts(activePinned);
+  const personal = activePinned==='personal';
+  document.getElementById('testimonialsCard').style.display = personal?'none':'';
+  document.getElementById('docTestimonials').style.display = personal?'none':'';
+}
+
+document.addEventListener('keydown', e=>{
+  if ((e.metaKey||e.ctrlKey) && e.key==='k'){ e.preventDefault(); const i=document.getElementById('sInput'); i.focus(); i.select(); }
+  if (e.key==='Escape' && document.getElementById('sInput').value) clearSearch();
+});
+
+// init
+loadPinned('work'); loadContacts('work'); loadTestimonials();
+</script>
+</body></html>

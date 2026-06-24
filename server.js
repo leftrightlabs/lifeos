@@ -16,6 +16,7 @@ import { registerAttractRoutes } from './src/routes/attract.js';
 import { registerWealthRoutes } from './src/routes/wealth.js';
 import { registerScaleRoutes } from './src/routes/scale.js';
 import { registerMessagesRoutes } from './src/routes/messages.js';
+import { registerReferenceRoutes } from './src/routes/reference.js';
 import { registerLegoRoutes } from './src/routes/lego.js';
 import { registerDeliverRoutes } from './src/routes/deliver.js';
 
@@ -59,6 +60,7 @@ const DATA_SCOPES = [
   'https://www.googleapis.com/auth/gmail.readonly',
   'https://www.googleapis.com/auth/gmail.send',
   'https://www.googleapis.com/auth/gmail.modify',
+  'https://www.googleapis.com/auth/drive.metadata.readonly', // Reference zone — Drive file search (re-auth Google after deploy)
 ];
 const LOGIN_SCOPES = ['openid', 'email', 'profile'];
 
@@ -587,7 +589,7 @@ function serveZone(zone) {
 }
 
 // Work zones — available to every authenticated team member.
-['attract','convert','deliver','scale','messages','execute'].forEach(zone => {
+['attract','convert','deliver','scale','messages','execute','reference'].forEach(zone => {
   app.get(`/${zone}`, serveZone(zone));
 });
 
@@ -3689,6 +3691,7 @@ registerScaleRoutes(app, {
 // The Messages zone reads unreads, so the OAuth user_scope was widened to include
 // the history/read scopes (see /auth/slack above).
 registerMessagesRoutes(app, { notion, cached, clearCached, getSlackUserToken: currentSlackToken, ownNotionUserId: GRETCHEN_USER_ID, WORK_PROJECTS_DS, WORK_TASKS_DS });
+registerReferenceRoutes(app, { notion, cached, authedClient, configuredAccounts, fetchInbox, google });
 registerLegoRoutes(app, { notion, cache, cached, userContext });
 
 // ===== Deliver domain — wired sections (offers + care-plan renewals); project sections render client-side =====
