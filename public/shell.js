@@ -132,6 +132,20 @@
       '</div>';
   }
 
+  // Triple-state privacy toggle (off → blur → sample). Logic lives in privacy.js
+  // (window.LRLPrivacy). Rendered in the shared footer so it sits in the same place
+  // (the footer) on every page, matching today.html.
+  function privacyBtnHTML() {
+    return '<button type="button" class="footer-btn privacy-btn" id="privacyBtn" title="Privacy" onclick="window.LRLPrivacy&&LRLPrivacy.cycle()">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>' +
+      '<span class="privacy-label"></span>' +
+    '</button>';
+  }
+
+  function footerHTML() {
+    return '<div class="app-footer">' + privacyBtnHTML() + '</div>';
+  }
+
   function shellHTML() {
     return '' +
       '<div class="topbar-wrap"><div class="topbar">' +
@@ -183,6 +197,12 @@
     if (!host) return;
 
     host.innerHTML = shellHTML();
+    // Shared footer (privacy toggle) at the end of the page — same spot as today.html.
+    if (!document.querySelector('.app-footer')) {
+      var ft = document.createElement('div');
+      ft.innerHTML = footerHTML();
+      document.body.appendChild(ft.firstChild);
+    }
     var navEl = document.getElementById('nav');
     var active = activeHref();
     var state = { mode: getMode(), canPersonal: true, active: active };
@@ -225,6 +245,8 @@
     // Sync the ME pill and notify the page of the persisted me-mode on load.
     syncMePill(getMe());
     if (typeof window.onMeModeChange === 'function') window.onMeModeChange(getMe());
+    // Reflect the persisted privacy mode on the shell-rendered button.
+    if (window.LRLPrivacy) window.LRLPrivacy.sync();
 
     // Refine the personal gate from the server, then re-render if it changed.
     fetch('/api/me').then(function (r) { return r.json(); }).then(function (me) {

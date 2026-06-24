@@ -49,6 +49,71 @@ a { color: inherit; text-decoration: none; }
 .me-pill:hover { color: var(--text-2); border-color: var(--text-4); }
 .me-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
+/* Privacy triple-toggle (off → blur → sample) */
+.privacy-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: none; border: 1px solid var(--border); color: var(--text-3);
+  border-radius: 22px; padding: 5px 9px; cursor: pointer; font-family: inherit;
+  transition: all .2s; line-height: 1;
+}
+.privacy-btn:hover { color: var(--text-2); border-color: var(--text-4); }
+.privacy-btn svg { display: block; }
+.privacy-btn .privacy-label { font-size: var(--fs-caption); font-weight: 800; letter-spacing: .08em; }
+.privacy-btn[data-privacy="off"] .privacy-label { display: none; }
+.privacy-btn[data-privacy="blur"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+.privacy-btn[data-privacy="sample"] { background: var(--amber); color: #0A0F1E; border-color: var(--amber); }
+
+/* ── SHARED FOOTER ── (shell-rendered; hosts the privacy toggle on zone pages) */
+.app-footer {
+  max-width: 1080px; margin: 0 auto; padding: 18px 22px 40px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.footer-btn {
+  background: none; border: none; color: var(--text-4); font-size: var(--fs-body);
+  cursor: pointer; padding: 7px 9px; border-radius: 9px; font-family: inherit;
+  line-height: 1; transition: color .15s, background .15s;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.footer-btn:hover { color: var(--text-2); background: var(--surface); }
+/* In the footer, drop the pill border so it reads as an icon button until active. */
+.footer-btn.privacy-btn { border: none; padding: 7px 9px; }
+.footer-btn.privacy-btn[data-privacy="off"] { color: var(--text-4); background: none; }
+
+/* ── PRIVACY: BLUR ──
+   Hide sensitive numbers + names for screen-sharing. Tag anything new with
+   [data-private] or .lrl-private to have it caught automatically. Press-and-hold
+   any blurred value to peek. */
+html.privacy-blur :is(
+  [data-private], .lrl-private,
+  /* Attract */
+  .ci-stat-num, .ci-stat-delta, .funnel-stage-num, .signal-num, .rw-count,
+  .runway-gauge, .runway-header-stat, .rwh-gauge-track, .runway-status-text,
+  .queue-title, .post-title, .post-caption, .nudge-item-title, .featured-title,
+  /* Convert */
+  .dtn-name, .fu-name, .fu-count, .kan-card-name, .kan-card-val, .kan-col-count,
+  .pulse-stat-num, .rev-amount, .rev-goal, .calm-head-score,
+  .sales-card-name, .sales-card-val, .contact-name, .deal-name, .deal-val,
+  /* Deliver */
+  .row .title, .pulsecard .val, .pulsecard .valsub, .hero h1,
+  /* Scale */
+  .fin-value, .fin-pct, .acc-name, .acc-val, .proj-total, .rock-name, .rock-pct,
+  .sc-name, .sc-val, .sys-name, .issue-name, .issue-meta, .eyebrow-count,
+  .chart-bars, .rev-chart, .scale-pl-bar, .scale-chart-plot, .metric-val,
+  /* Execute */
+  .quest-text, .quest-sub, .statn, .proj-row-name, .proj-row-sub, .proj-prog-pct,
+  .review-item-name,
+  /* Messages */
+  .msg-sender, .msg-subject, .msg-preview, .slack-text, .comment-text,
+  /* Wealth */
+  .w-kpi-val, .w-amount, .net-worth-val
+) {
+  filter: blur(7px) !important;
+  -webkit-user-select: none; user-select: none;
+  border-radius: 4px;
+}
+/* Press-and-hold to peek a single value. */
+html.privacy-blur :active { filter: none !important; }
+
 /* ── NAV ── */
 .nav-wrap {
   border-bottom: 1px solid var(--border-soft);

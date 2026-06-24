@@ -89,6 +89,13 @@ body {
 .me-pill { background: none; color: var(--text-3); font-size: var(--fs-caption); font-weight: 700; letter-spacing: .06em; padding: 5px 13px; border-radius: 22px; white-space: nowrap; cursor: pointer; border: 1px solid var(--border); font-family: inherit; transition: all .2s; }
 .me-pill:hover { color: var(--text-2); border-color: var(--text-4); }
 .me-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.privacy-btn { display: inline-flex; align-items: center; gap: 5px; background: none; border: 1px solid var(--border); color: var(--text-3); border-radius: 22px; padding: 5px 9px; cursor: pointer; font-family: inherit; transition: all .2s; line-height: 1; }
+.privacy-btn:hover { color: var(--text-2); border-color: var(--text-4); }
+.privacy-btn svg { display: block; }
+.privacy-btn .privacy-label { font-size: var(--fs-caption); font-weight: 800; letter-spacing: .08em; }
+.privacy-btn[data-privacy="off"] .privacy-label { display: none; }
+.privacy-btn[data-privacy="blur"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+.privacy-btn[data-privacy="sample"] { background: var(--amber); color: #0A0F1E; border-color: var(--amber); }
 
 /* NAV */
 .nav { display: flex; padding: 0 22px; border-bottom: 1px solid var(--border-soft); overflow-x: auto; scrollbar-width: none; }
@@ -530,6 +537,9 @@ body {
 .footer-btn { background: none; border: none; color: var(--text-4); font-size: var(--fs-body); cursor: pointer; padding: 7px 9px; border-radius: 9px; transition: color .15s, background .15s; line-height: 1; font-family: inherit; }
 .footer-btn:hover { color: var(--text-2); background: var(--surface); }
 .footer-btn.active { color: var(--accent); background: var(--accent-soft); }
+/* Privacy lives in the footer here; drop the pill border so it matches the icon buttons. */
+.footer-btn.privacy-btn { border: none; padding: 7px 9px; gap: 5px; }
+.footer-btn.privacy-btn[data-privacy="off"] { color: var(--text-4); }
 .footer-stamp { font-size: var(--fs-caption); font-weight: 600; color: var(--text-4); letter-spacing: .05em; text-transform: uppercase; margin-left: 6px; white-space: nowrap; }
 
 /* ── QUICK CAPTURE MODAL ── */
@@ -607,9 +617,22 @@ body {
   .qc-messages:empty { flex: 0; min-height: 0; }
 }
 
-/* ── PRIVACY MODE ── */
-body.privacy .snap-val,
-body.privacy .streak-num { filter: blur(5px); user-select: none; }
+/* ── PRIVACY MODE (blur) ── global triple-toggle via privacy.js (html.privacy-blur).
+   Press-and-hold any blurred value to peek. Tag new elements with [data-private]. */
+html.privacy-blur :is(
+  [data-private], .lrl-private,
+  .snap-val, .streak-num, .streak-count,
+  .qtitle, .qproject, .qest,
+  .rock-name, .rock-frac, .rock-next, .rock-owner,
+  .brief-line, .ot-item-name, .ot-item-sub, .ot-rocklink,
+  .onething-title, .onething-why, .onething-meta,
+  .weather-temp, .count, .rock-mini-bar
+) {
+  filter: blur(7px) !important;
+  -webkit-user-select: none; user-select: none;
+  border-radius: 4px;
+}
+html.privacy-blur :active { filter: none !important; }
 
 /* ── REFRESH SPIN ── */
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -698,6 +721,8 @@ body.app-loading #appLoading { display: flex; }
    gentle spatial bump only (was 1.25 before normalization). Mobile stays 1×. */
 @media (min-width: 1024px) { body { zoom: var(--ui-scale, 1.1); } }
 </style>
+<script src="/sample-data.js"></script>
+<script src="/privacy.js"></script>
 </head>
 <body class="app-loading">
 
@@ -840,8 +865,11 @@ body.app-loading #appLoading { display: flex; }
 
   <!-- Footer -->
   <div class="today-footer">
-    <button class="footer-btn" data-action="privacy" onclick="togglePrivacy()" title="Privacy mode">👁</button>
     <button class="footer-btn" data-action="theme"   onclick="toggleTheme()"   title="Toggle theme">🌙</button>
+    <button class="footer-btn privacy-btn" id="privacyBtn" onclick="LRLPrivacy.cycle()" title="Privacy">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      <span class="privacy-label"></span>
+    </button>
     <button class="footer-btn" data-action="refresh" onclick="refreshData()"   title="Refresh data">↻</button>
     <span class="footer-stamp" id="footerStamp"></span>
   </div>
@@ -1232,7 +1260,13 @@ function renderOneThing() {
   let otTitle = 'Push Jason Hardaway to a decision today';
   let otMeta = `<span class="ot-chip" style="background:var(--accent-soft);color:#A99EFF;">CONVERT</span><span class="ot-chip" style="background:var(--green-soft);color:var(--green);">$9,450</span><span class="ot-rocklink">Advances <b>Rock 1 · Tier 2 Journey</b></span>`;
   let otWhy = 'This is the single highest-value move available to you. Closing it changes your whole month — and it directly feeds your at-risk Q2 rock. Everything else can wait until this is sent.';
-  if (_oneThingTask) {
+  const _otSample = window.LRLPrivacy && LRLPrivacy.get() === 'sample';
+  if (_otSample) {
+    // Demo-safe One Thing (real task names can reference clients).
+    otTitle = 'Send the Northpeak Wellness proposal';
+    otMeta = `<span class="ot-chip" style="background:var(--accent-soft);color:#A99EFF;">TASK</span><span class="ot-rocklink">Advances <b>Launch LRLOS App</b></span>`;
+    otWhy = 'Completing this advances "Launch LRLOS App" (3/9 milestones done). Everything else can wait.';
+  } else if (_oneThingTask) {
     const t = _oneThingTask, today = todayISO();
     const rock = _loadedGoals.find(g => g.id === t.projectId);
     const isOverdue = t.dueStart && t.dueStart < today;
@@ -2388,8 +2422,16 @@ function saveRitualInput(which, i, rawValue) {
 // Seeded empty — workBrief is filled by applyBrief() from /api/ai/daily-focus.
 const workBrief = [];
 const personalBrief = [];
+// Demo-mode brief (privacy "sample") — the real focus line is AI prose that can
+// name real clients, so swap in safe demo copy when demoing.
+const DEMO_BRIEF = [
+  { c: 'var(--red)',   html: '<strong>Northpeak Wellness — Brand Sprint</strong> is your highest-leverage move today. Start here this morning.' },
+  { c: 'var(--amber)', html: 'Two <strong>Launch LRLOS App</strong> milestones are due this week — block time right after the sprint.' },
+  { c: 'var(--teal)',  html: "You're clear until a <strong>4:30 sync</strong>, so protect the deep-work block." },
+];
 function renderBrief() {
-  document.getElementById('briefLines').innerHTML = workBrief.map(l =>
+  const lines = (window.LRLPrivacy && LRLPrivacy.get() === 'sample') ? DEMO_BRIEF : workBrief;
+  document.getElementById('briefLines').innerHTML = lines.map(l =>
     `<div class="brief-line"><span class="brief-marker" style="background:${l.c};"></span><span>${l.html}</span></div>`
   ).join('');
 }
@@ -2957,11 +2999,7 @@ document.getElementById('qcNewConv')?.addEventListener('click', () => {
 });
 
 // ── FOOTER ACTIONS ──
-function togglePrivacy() {
-  state.privacyMode = !state.privacyMode;
-  document.body.classList.toggle('privacy', state.privacyMode);
-  document.querySelector('.footer-btn[data-action="privacy"]')?.classList.toggle('active', state.privacyMode);
-}
+// Privacy is now the global triple-toggle in the topbar (privacy.js / LRLPrivacy).
 
 function toggleTheme() {
   const isLight = document.documentElement.classList.toggle('light');
