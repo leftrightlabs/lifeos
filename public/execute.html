@@ -845,6 +845,16 @@ window.escapeHtml = escapeHtml;
 var mode = localStorage.getItem('lrl-mode') || 'all';
 if (mode === 'combined') { mode = 'all'; try { localStorage.setItem('lrl-mode','all'); } catch(e){} }
 document.body.dataset.mode = mode;
+// The shared shell (shell.js) owns the work/personal toggle and calls this hook
+// on load + every change. Refresh the mode all three Execute views read from
+// (global `mode` for Review, body.dataset.mode for Projects, ui.src for Tasks),
+// then broadcast so each view re-renders.
+window.onShellModeChange = function(m){
+  mode = (m || localStorage.getItem('lrl-mode') || 'all');
+  if (mode === 'combined') mode = 'all';
+  document.body.dataset.mode = mode;
+  window.dispatchEvent(new CustomEvent('lrl-mode-changed'));
+};
 // Task edit modal — shared by Tasks tab and Review tab
 let _editTask = null;
 window.openTaskEdit = function(t) {
@@ -1660,6 +1670,8 @@ function syncAutofocusToMode(){
   applyScopeUI();
   render();
 }
+// The shell's onShellModeChange (defined above) broadcasts 'lrl-mode-changed';
+// this re-syncs the Tasks view's source filter + stat tiles.
 window.addEventListener('lrl-mode-changed', syncAutofocusToMode);
 function bindTog(id,key){el(id).addEventListener('click',()=>{ui[key]=!ui[key];el(id).classList.toggle('on',ui[key]);render();});}
 bindTog('tg-routines','routines');bindTog('tg-done','showdone');
@@ -1701,6 +1713,9 @@ function reviewModeFilter(items){
   if (mode === 'all') return items;
   return items.filter(i => i.source === mode);
 }
+// Re-render Review when the shell's work/personal toggle changes (reviewModeFilter
+// reads the refreshed global `mode`). Broadcast by onShellModeChange.
+window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA && typeof renderReview === 'function') renderReview(); });
 
 function reviewItemKey(t){ return t.id; }
 
@@ -2110,6 +2125,8 @@ window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderRevie
   const P = { data: null, statusFilter: 'Active', areaFilter: null, groupBy: 'area', search: '', collapsed: {}, undatedOpen: false, expanded: {} };
   // The global ME toggle (shell.js) scopes projects to the signed-in user; re-render on change.
   window.addEventListener('lrl-me-changed', () => { if (P.data) render(); });
+  // Work/personal mode change (curMode() reads body.dataset.mode) — re-render.
+  window.addEventListener('lrl-mode-changed', () => { if (P.data) render(); });
   const TL_KEY = 'lrl-proj-timeline-collapsed';
   // Status options per source, for the inline status editor.
   const STATUS_OPTS = { work: ['Planned','On Hold','Active','Ongoing','Billing','Done'], personal: ['Planned','On Hold','Active','Ongoing','Done'] };
