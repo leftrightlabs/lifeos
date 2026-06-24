@@ -1270,11 +1270,22 @@ function renderOneThing() {
   _restoreCardCollapse('onething', '#otCard');
 }
 
+// Fill / clear today's pip in the WORK week strip when the day is locked in.
+function fillWorkTodayPip() {
+  const i = workWeek.findIndex(d => d.state === 'today');
+  if (i >= 0) workWeek[i] = { ...workWeek[i], state: 'hit', _wasToday: true };
+}
+function clearWorkTodayPip() {
+  const i = workWeek.findIndex(d => d._wasToday);
+  if (i >= 0) workWeek[i] = { d: workWeek[i].d, state: 'today' };
+}
+
 function markDone() {
   state.oneThing = 'done';
   state.workStreak += 1;
   state.workSatisfied = true;
   workStreakSave(state.workStreak);
+  fillWorkTodayPip();
   // Capture what was completed so the done card shows the real task (not a placeholder).
   const rock = _oneThingTask ? _loadedGoals.find(g => g.id === _oneThingTask.projectId) : null;
   _oneThingDone = {
@@ -1303,6 +1314,7 @@ function undoOneThing() {
   if (state.workStreak > 0) state.workStreak -= 1;
   state.workSatisfied = false;
   workStreakSave(state.workStreak);
+  clearWorkTodayPip();
   const prevStatus = _oneThingDone?.prevStatus || 'Doing';
   const undoId = _oneThingDone?.taskId || _oneThingTask?.id;
   setOneThing('work', null);
@@ -2873,6 +2885,8 @@ function applyTasksGoals(goalsV, workV, lifeV) {
       if (wState.taskId) _oneThingTask = plan.find(p => p.id === wState.taskId) || { id: wState.taskId, name: wState.name, status: wState.prevStatus || 'Doing' };
       if (wState.status === 'done') {
         state.oneThing = 'done';
+        state.workSatisfied = true;   // keep "locked in" + today's pip filled across reloads
+        fillWorkTodayPip();
         _oneThingDone = { name: wState.name, rock: wState.rockName ? { name: wState.rockName } : null, prevStatus: wState.prevStatus, taskId: wState.taskId };
       }
     }
