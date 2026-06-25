@@ -1770,6 +1770,9 @@ function openRockEdit(id) {
 // ── PLAN ──
 // Seeded empty — filled by loadTodayData() from /api/tasks. No sample data.
 const plan = [];
+// Tasks marked done this session: survive soft refreshes so the done count
+// doesn't reset when Notion filters them out of the My Day query (Status≠Done).
+const _sessionDone = {};
 
 // Track which plan row has its menu open
 let _openMenuIdx = null;
@@ -1992,34 +1995,19 @@ function rescheduleTask(i, newDate) {
   const oldDate = task.dueStart || null;
   const oldTags = [...task.tags];
   const today = todayISO();
-  const isFuture = newDate > today;
 
-  if (isFuture) {
-    // Remove from today's plan
-    if (task.id) fetch('/api/tasks/' + task.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dueStart: newDate, myDay: false }) }).catch(() => {});
-    plan.splice(i, 1);
+  // Always keep the task in Today's Plan — My Day is independent of due date.
+  if (task.id) fetch('/api/tasks/' + task.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dueStart: newDate, myDay: true }) }).catch(() => {});
+  task.dueStart = newDate;
+  task.tags = task.tags.filter(tg => tg.t !== 'Overdue');
+  if (newDate < today) task.tags.unshift({ t: 'Overdue', c: 'pt-late' });
+  renderPlan();
+  const label = newDate === today ? 'today' : new Date(newDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  showUndo(`Due date set to ${label}`, () => {
+    if (task.id) fetch('/api/tasks/' + task.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dueStart: oldDate || null }) }).catch(() => {});
+    task.dueStart = oldDate; task.tags = oldTags;
     renderPlan();
-    const label = new Date(newDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    showUndo(`Rescheduled to ${label}`, () => {
-      if (task.id) fetch('/api/tasks/' + task.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(oldDate ? { dueStart: oldDate, myDay: true } : { myDay: true }) }).catch(() => {});
-      task.dueStart = oldDate; task.tags = oldTags;
-      plan.splice(i, 0, task);
-      renderPlan();
-    });
-  } else {
-    // Keep in plan — update due date and refresh overdue tag
-    if (task.id) fetch('/api/tasks/' + task.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dueStart: newDate, myDay: true }) }).catch(() => {});
-    task.dueStart = newDate;
-    task.tags = task.tags.filter(tg => tg.t !== 'Overdue');
-    if (newDate < today) task.tags.unshift({ t: 'Overdue', c: 'pt-late' });
-    renderPlan();
-    const label = newDate === today ? 'today' : new Date(newDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    showUndo(`Due date set to ${label}`, () => {
-      if (task.id) fetch('/api/tasks/' + task.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dueStart: oldDate || null }) }).catch(() => {});
-      task.dueStart = oldDate; task.tags = oldTags;
-      renderPlan();
-    });
-  }
+  });
 }
 
 // ── CUSTOM DATE PICKER ──
@@ -2173,6 +2161,8 @@ function togglePlan(i) {
   plan[i].done = !plan[i].done;
   plan[i].status = plan[i].done ? 'Done' : 'Doing';   // 'Doing' is a valid status; 'In Progress' was not
   if (plan[i].id) {
+    if (plan[i].done) _sessionDone[plan[i].id] = { ...plan[i] };
+    else delete _sessionDone[plan[i].id];
     fetch('/api/tasks/' + plan[i].id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status: plan[i].status }) }).catch(() => {});
   }
   if (plan[i].done && plan[i].rockLinked) {
@@ -3125,6 +3115,11 @@ function applyTasksGoals(goalsV, workV, lifeV) {
     const lt = ok(lifeV) ? (lifeV.tasks || []) : [];
     plan.length = 0;
     [...wt, ...lt].forEach(t => plan.push(taskToPlanItem(t)));
+    // Merge back tasks marked done this session: the server filters them out
+    // (Status≠Done) so without this they'd disappear and the count would reset.
+    Object.values(_sessionDone).forEach(d => {
+      if (!plan.find(t => t.id === d.id)) plan.push({ ...d, done: true });
+    });
     _oneThingTask = pickOneThing(wt, _loadedGoals, 'work');
     _personalOneThingTask = pickOneThing(lt, _loadedGoals, 'personal');
     const wState = getOneThing('work');
