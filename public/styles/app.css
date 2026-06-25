@@ -88,7 +88,7 @@ html.privacy-blur :is(
   /* Deliver */
   .row .title, .pulsecard .val, .pulsecard .valsub, .hero h1,
   /* Scale */
-  .fin-value, .fin-pct, .acc-name, .acc-val, .proj-total, .rock-name, .rock-pct,
+  .fin-value, .fin-pct, .acc-name, .acc-val, .cap-months, .cap-amount, .cap-goal, .cap-accts, .proj-total, .rock-name, .rock-pct,
   .sc-name, .sc-val, .sys-name, .issue-name, .issue-meta, .eyebrow-count,
   .chart-bars, .rev-chart, .scale-pl-bar, .scale-chart-plot, .metric-val,
   /* Execute */

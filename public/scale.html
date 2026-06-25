@@ -174,6 +174,13 @@ body[data-state="calm"] .hero .next { border-left-color:var(--green); }
 .acc-row:last-child { border-bottom:none; } .acc-row.total { background:var(--surface-2); }
 .acc-name { color:var(--text-2); } .acc-name.bold { color:var(--text); font-weight:700; }
 .acc-val { font-weight:700; color:var(--text); } .acc-val.pos { color:var(--green); } .acc-val.neg { color:var(--red); }
+/* Inside the collapsible Bank accounts card, render flat tables (no nested-card
+   chrome) — just the labeled rows + total. */
+.t-card .accounts { background:transparent; border:none; border-radius:0; overflow:visible; }
+.t-card .accounts + .accounts { margin-top:16px; }
+.t-card .acc-head { padding-left:0; padding-right:0; background:none; }
+.t-card .acc-row { padding-left:0; padding-right:0; }
+.t-card .acc-row.total { background:none; }
 
 .rev-chart { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; margin-bottom:14px; }
 .rev-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
@@ -328,6 +335,12 @@ function showTab(name){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  try { localStorage.setItem('scale-tab', name); } catch {}
+}
+// Restore the last tab the user was on (persists across leaving + returning to Scale).
+function restoreScaleTab(){
+  let t; try { t = localStorage.getItem('scale-tab'); } catch {}
+  if (t && document.getElementById('tab-'+t)) showTab(t);
 }
 
 // ── PULSE ──
@@ -457,16 +470,13 @@ function finBoard(el, d){
     return `<div class="fin-card"><div class="fin-label">${label}</div><div class="fin-value ${c}">${moneyK(actual)}</div><div class="fin-sub">vs ${moneyK(goal)} goal</div><div class="fin-bar"><i style="width:${w}%;background:${p==null?'var(--text-4)':(p>=90?'var(--green)':p>=65?'var(--amber)':'var(--red)')}"></i></div><div class="fin-pct ${p==null?'':pctClass(p)}">${p==null?'—':p+'%'}</div></div>`;
   };
   const nBank = (d.bankAccounts || []).length, nCard = (d.creditCards || []).length;
-  const rw = d.runwayMonths;
 
+  // Runway is dropped here (redundant with Cash Capacity below); A/P is dropped
+  // (bills are paid as they come in, never outstanding).
   let h = `<div class="fin-grid-3">
     ${card('Cash on Hand', moneyK(d.bankTotal), `${nBank} account${nBank===1?'':'s'}`, (d.bankTotal||0)<0?'neg':'')}
     ${card('Credit Cards', moneyK(d.creditTotal), `${nCard} card${nCard===1?'':'s'}`, (d.creditTotal||0)<0?'warn':'')}
-    ${card('Runway', rw==null?'∞':rw+' mo', d.monthlyBurn?`at ${moneyK(d.monthlyBurn)}/mo burn`:'at current burn', rw!=null&&rw<3?'warn':(rw==null?'':'pos'))}
-  </div>`;
-  h += `<div class="fin-grid-3">
     ${card('A/R — Owed to Us', moneyK(d.accountsReceivable), 'outstanding invoices')}
-    ${card('A/P — We Owe', moneyK(d.accountsPayable), 'bills due')}
     ${card('MTD Net', moneyK(d.mtdNet), (d.mtdNet||0)>=0?'in the black':'in the red', (d.mtdNet||0)>=0?'pos':'neg')}
   </div>`;
 
@@ -610,6 +620,7 @@ function renderAll(d){
   renderBadges(d);
   renderPulse(d); renderScorecard(d); renderFinance(d); renderSystems(d); renderVto(d);
   if(window.restoreCards) restoreCards();
+  restoreScaleTab();
   const t = d.refreshedAt? new Date(d.refreshedAt).toLocaleString('en-US',{ month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : '';
   document.getElementById('refreshed').textContent = `REFRESHED ${t} · Scale — LRL OS`;
   document.getElementById('sc-loading').style.display='none';
