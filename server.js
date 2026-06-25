@@ -562,13 +562,14 @@ app.get('/api/me', async (req, res) => {
 
 // Root route must come BEFORE express.static so it sets no-cache headers
 // consistently (express.static would otherwise serve index.html for "/").
-app.get('/', (_req, res) => {
-  res.setHeader('Cache-Control', 'no-store, must-revalidate');
-  res.sendFile(join(__dirname, 'public', 'index.html'));
-});
-app.get('/today', (_req, res) => {
+// Home is now the Today view; the legacy dashboard stays reachable at /index.
+app.get(['/', '/today'], (_req, res) => {
   res.setHeader('Cache-Control', 'no-store, must-revalidate');
   res.sendFile(join(__dirname, 'public', 'today.html'));
+});
+app.get('/index', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store, must-revalidate');
+  res.sendFile(join(__dirname, 'public', 'index.html'));
 });
 
 // Whether the signed-in request belongs to a personal-enabled user (the owner).
