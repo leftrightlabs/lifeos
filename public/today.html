@@ -161,9 +161,11 @@ body {
 
 /* ── LAYOUT ── */
 .layout { display: grid; grid-template-columns: 1fr 1.1fr 1fr; align-items: start; }
-.col-left  { padding: 24px 16px 24px 22px; display: flex; flex-direction: column; gap: 16px; }
-.col-mid   { padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; border-left: 1px solid var(--border-soft); border-right: 1px solid var(--border-soft); }
-.col-right { padding: 24px 22px 24px 16px; display: flex; flex-direction: column; gap: 16px; }
+/* min-width:0 lets grid cells shrink below their content's natural minimum,
+   which is required for Safari to honour the responsive breakpoint correctly. */
+.col-left  { padding: 24px 16px 24px 22px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.col-mid   { padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; border-left: 1px solid var(--border-soft); border-right: 1px solid var(--border-soft); min-width: 0; }
+.col-right { padding: 24px 22px 24px 16px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 /* 2-col below: Campaign Progress + Q2 Rocks */
 .layout-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 22px 24px; }
 /* Financial snapshot badges */
@@ -728,7 +730,10 @@ body.app-loading #appLoading { display: flex; }
 @keyframes appLoadingPulse { 0%, 100% { opacity: .3; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
 /* Desktop UI scale — type size now lives in the --fs-* tokens, so this is a
    gentle spatial bump only (was 1.25 before normalization). Mobile stays 1×. */
-@media (min-width: 1024px) { body { zoom: var(--ui-scale, 1.1); } }
+/* Raise zoom threshold to 1280px so iPad (1024px) never overflows,
+   and so the 960px breakpoint fires at its true CSS pixel value. */
+@media (min-width: 1280px) { body { zoom: var(--ui-scale, 1.1); } }
+body { overflow-x: hidden; }
 </style>
 <script src="/sample-data.js"></script>
 <script src="/privacy.js"></script>
