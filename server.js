@@ -241,7 +241,7 @@ function simplifyTask(page, source) {
     priority: props.Priority?.select?.name || null,
     project: null,
     projectId: (props.Project?.relation || [])[0]?.id || null,
-    assigneeIds,
+    assigneeIds: assignees,
     assigneeNames: (props.Assigned?.people || []).map((u) => u.name).filter(Boolean),
     assignedToMe: source === 'personal' ? (currentNotionUserId() === GRETCHEN_USER_ID) : assignees.includes(currentNotionUserId()),
     followingMe: following.includes(currentNotionUserId()),
