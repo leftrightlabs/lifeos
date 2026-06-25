@@ -136,6 +136,19 @@ body[data-state="calm"] .hero .next { border-left-color:var(--green); }
 .fin-label { font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); margin-bottom:8px; }
 .fin-value { font-family:var(--font-display); font-size:24px; font-weight:700; color:var(--text); letter-spacing:-.01em; line-height:1; }
 .fin-value.pos { color:var(--green); } .fin-value.warn { color:var(--amber); } .fin-value.neg { color:var(--red); }
+/* Cash Capacity card (ported from the /index finance board) */
+.cap-card { background:var(--surface); border:1px solid var(--border-soft); border-radius:12px; padding:16px 18px; margin-bottom:14px; }
+.cap-label { font-size:var(--fs-caption); font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--label,var(--text-2)); margin-bottom:8px; }
+.cap-row { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+.cap-months { font-size:44px; font-weight:800; color:var(--green); line-height:1; letter-spacing:-.02em; }
+.cap-months span { font-size:16px; color:var(--text-3); font-weight:600; margin-left:4px; text-transform:uppercase; }
+.cap-amount { font-size:20px; font-weight:800; color:var(--text); }
+.cap-goal { font-size:12px; color:var(--text-3); margin-top:2px; }
+.cap-bar { height:8px; background:var(--surface-2); border-radius:4px; overflow:hidden; margin:12px 0 6px; }
+.cap-bar i { display:block; height:100%; background:var(--green); border-radius:4px; }
+.cap-card.cap-warn .cap-months { color:var(--amber); } .cap-card.cap-warn .cap-bar i { background:var(--amber); }
+.cap-card.cap-short .cap-months { color:var(--red); } .cap-card.cap-short .cap-bar i { background:var(--red); }
+.cap-accts { font-size:12px; color:var(--text-3); margin-top:8px; padding-top:8px; border-top:1px solid var(--border-soft); }
 .fin-sub { font-size:11px; color:var(--text-3); margin-top:6px; }
 .fin-bar { margin-top:10px; height:4px; border-radius:99px; background:var(--surface-2); overflow:hidden; }
 .fin-bar i { display:block; height:100%; border-radius:99px; }
@@ -416,74 +429,78 @@ function renderScorecard(d){
 }
 
 // ── FINANCE ──
-function renderFinance(d){
+// Reads the SAME source as the /index finance board (/api/finance/xero, the raw
+// computeXeroFinance), so the numbers match exactly — incl. Cash on Hand from the
+// sum of bank accounts (bankTotal), not Xero's netted "Total" row.
+let _finRaw = null, _finLoading = false;
+function renderFinance(){
   const el = document.getElementById('tab-finance');
-  const f = d.finance;
-  if(!f){ el.innerHTML = unavail('Finance unavailable','Connect Xero at /auth/xero to populate cash, runway, and revenue.'); return; }
-  const pctClass=(p)=> p>=90?'c-green': p>=65?'c-amber':'c-red';
-  const revPct=(o)=> (o && o.goal)? Math.round((o.actual/o.goal)*100): null;
-  const card=(label,val,sub,cls)=>`<div class="fin-card"><div class="fin-label">${label}</div><div class="fin-value ${cls||''}">${val}</div><div class="fin-sub">${sub||''}</div></div>`;
-  const revCard=(label,o)=>{ const p=revPct(o); const w=p==null?0:Math.max(2,Math.min(100,p)); const c= p==null?'':(p>=90?'pos':p>=65?'warn':'neg'); return `<div class="fin-card"><div class="fin-label">${label}</div><div class="fin-value ${c}">${moneyK(o?.actual)}</div><div class="fin-sub">vs ${moneyK(o?.goal)} goal</div><div class="fin-bar"><i style="width:${w}%;background:${p==null?'var(--text-4)':(p>=90?'var(--green)':p>=65?'var(--amber)':'var(--red)')}"></i></div><div class="fin-pct ${p==null?'':pctClass(p)}">${p==null?'—':p+'%'}</div></div>`; };
+  if (_finRaw) { finBoard(el, _finRaw); return; }
+  if (_finLoading) return;
+  _finLoading = true;
+  el.innerHTML = `<div style="padding:22px 4px;color:var(--text-3);font-size:13px;text-align:center;">Loading finance…</div>`;
+  fetch('/api/finance/xero').then(r => r.json()).then(d => {
+    _finLoading = false;
+    if (!d || d.error) { el.innerHTML = unavail('Finance unavailable', d && d.needsAuth ? 'Connect Xero at /auth/xero to populate cash, runway, and revenue.' : 'Could not load Xero data.'); return; }
+    _finRaw = d; finBoard(el, d);
+  }).catch(() => { _finLoading = false; el.innerHTML = unavail('Finance unavailable', 'Could not load Xero data.'); });
+}
 
-  const months = f.runway?.months;
+function finBoard(el, d){
+  const pctClass = (p) => p >= 90 ? 'c-green' : p >= 65 ? 'c-amber' : 'c-red';
+  const card = (label, val, sub, cls) => `<div class="fin-card"><div class="fin-label">${label}</div><div class="fin-value ${cls||''}">${val}</div><div class="fin-sub">${sub||''}</div></div>`;
+  const revCard = (label, actual, goalObj) => {
+    const goal = goalObj && goalObj.goal || 0;
+    const p = goal ? Math.round((actual / goal) * 100) : null;
+    const w = p == null ? 0 : Math.max(2, Math.min(100, p));
+    const c = p == null ? '' : (p >= 90 ? 'pos' : p >= 65 ? 'warn' : 'neg');
+    return `<div class="fin-card"><div class="fin-label">${label}</div><div class="fin-value ${c}">${moneyK(actual)}</div><div class="fin-sub">vs ${moneyK(goal)} goal</div><div class="fin-bar"><i style="width:${w}%;background:${p==null?'var(--text-4)':(p>=90?'var(--green)':p>=65?'var(--amber)':'var(--red)')}"></i></div><div class="fin-pct ${p==null?'':pctClass(p)}">${p==null?'—':p+'%'}</div></div>`;
+  };
+  const nBank = (d.bankAccounts || []).length, nCard = (d.creditCards || []).length;
+  const rw = d.runwayMonths;
+
   let h = `<div class="fin-grid-3">
-    ${card('Cash on Hand', moneyK(f.cashOnHand), `${(f.bankAccounts||[]).length} account${(f.bankAccounts||[]).length===1?'':'s'}`)}
-    ${card('Credit Cards', moneyK(f.creditCards), `${(f.creditCardAccounts||[]).length} card${(f.creditCardAccounts||[]).length===1?'':'s'}`, f.creditCards<0?'warn':'')}
-    ${card('Runway', months==null?'—':months+' mo', f.runway?.burnRate?`at ${moneyK(f.runway.burnRate)}/mo burn`:'', months==null?'':(months<3?'warn':'pos'))}
+    ${card('Cash on Hand', moneyK(d.bankTotal), `${nBank} account${nBank===1?'':'s'}`, (d.bankTotal||0)<0?'neg':'')}
+    ${card('Credit Cards', moneyK(d.creditTotal), `${nCard} card${nCard===1?'':'s'}`, (d.creditTotal||0)<0?'warn':'')}
+    ${card('Runway', rw==null?'∞':rw+' mo', d.monthlyBurn?`at ${moneyK(d.monthlyBurn)}/mo burn`:'at current burn', rw!=null&&rw<3?'warn':(rw==null?'':'pos'))}
   </div>`;
   h += `<div class="fin-grid-3">
-    ${card('A/R — Owed to Us', moneyK(f.ar), 'outstanding invoices')}
-    ${card('A/P — We Owe', moneyK(f.ap), 'bills due')}
-    ${card('MTD Net', moneyK(f.mtdNet), (f.mtdNet||0)>=0?'profitable this month':'in the red', (f.mtdNet||0)>=0?'pos':'neg')}
+    ${card('A/R — Owed to Us', moneyK(d.accountsReceivable), 'outstanding invoices')}
+    ${card('A/P — We Owe', moneyK(d.accountsPayable), 'bills due')}
+    ${card('MTD Net', moneyK(d.mtdNet), (d.mtdNet||0)>=0?'in the black':'in the red', (d.mtdNet||0)>=0?'pos':'neg')}
   </div>`;
 
-  h += `<div class="eyebrow-row"><span class="eyebrow">Revenue tracking — ${esc(d.vto?.quarter||'')}</span></div>`;
-  h += `<div class="fin-grid-3">${revCard('YTD Revenue',f.ytdRevenue)}${revCard('QTD Revenue',f.qtdRevenue)}${revCard('MTD Revenue',f.mtdRevenue)}</div>`;
+  h += `<div class="eyebrow-row"><span class="eyebrow">Revenue tracking</span></div>`;
+  h += `<div class="fin-grid-3">${revCard('YTD Revenue', d.ytdRevenue, d.goals?.revenue?.ytd)}${revCard('QTD Revenue', d.qtdRevenue, d.goals?.revenue?.qtd)}${revCard('MTD Revenue', d.mtdRevenue, d.goals?.revenue?.mtd)}</div>`;
 
-  // projection
-  const pj = f.projection||{};
-  h += `<div class="eyebrow-row"><span class="eyebrow">Projected — quarter remaining</span></div>`;
-  h += `<div class="proj"><div class="proj-head"><div><div class="proj-title">Revenue Forecast</div><div class="proj-subtitle">Recurring avg + accepted quotes spread across the quarter + 20% of open pipeline</div></div><span class="badge b-projected">PROJECTED</span></div>
-    <div class="proj-grid">
-      <div class="proj-item"><div class="pl">Avg Recurring</div><div class="pv">${moneyK(pj.recurring)}</div><div class="ps">avg monthly from Xero</div></div>
-      <div class="proj-item"><div class="pl">Accepted Quotes</div><div class="pv">${moneyK(pj.acceptedQuotes)}</div><div class="ps">${pj.quotesAvailable?'spread to quarter end':'connect quotes scope'}</div></div>
-      <div class="proj-item"><div class="pl">Pipeline (20%)</div><div class="pv" style="color:var(--text-3)">${moneyK(pj.pipeline)}</div><div class="ps">est. from open quotes</div></div>
-    </div>
-    <div class="proj-total"><div><div class="tl">Quarter Projected Total</div><div class="tsub">${moneyK(pj.collected)} collected + ${moneyK(pj.projectedRemaining)} projected</div></div>
-    <div><div class="tv">${moneyK(pj.total)}</div><div class="ton">${pj.goal?Math.round((pj.total/pj.goal)*100)+'% of '+moneyK(pj.goal)+' goal':''}</div></div></div>
+  // Cash Capacity
+  const cc = d.cashCapacity || {}; const ccM = cc.months ?? 0;
+  const ccTier = ccM >= 3 ? '' : ccM >= 1 ? 'cap-warn' : 'cap-short';
+  h += `<div class="cap-card ${ccTier}">
+    <div class="cap-label">Cash Capacity</div>
+    <div class="cap-row"><div class="cap-months">${ccM}<span>mo</span></div>
+      <div><div class="cap-amount">${money(cc.amount)}</div><div class="cap-goal">of ${money(cc.goalAmount||90000)} goal · ${cc.goalMonths||3} mo target</div></div></div>
+    <div class="cap-bar"><i style="width:${Math.min(100, cc.pctToGoal||0)}%"></i></div>
+    ${cc.accounts && cc.accounts.length ? `<div class="cap-accts">From ${cc.accounts.map(a=>esc(a.name)+' ('+money(a.balance)+')').join(' + ')}</div>` : ''}
+    ${cc.accountsFound === false ? `<div class="cap-accts" style="color:var(--amber)">⚠ Couldn't find both "Relay OPEX" and "Relay Revenue" accounts in Xero. Check the names match.</div>` : ''}
   </div>`;
-  if(!pj.quotesAvailable){
-    h += `<div class="xero-tip"><strong>Note:</strong> Xero quote data isn't available on the current connection (the quotes API scope isn't enabled for this app), so this projection uses your recurring-revenue average only.</div>`;
-  } else {
-    h += `<div class="xero-tip"><strong>Xero tip:</strong> Set an <strong>Expiry Date</strong> on each accepted quote to mark its expected invoice date — this lets the projection spread revenue accurately across the quarter.</div>`;
-  }
 
-  // revenue chart
-  const rbm = f.revenueByMonth||[];
-  const goal = f.monthlyGoal||0;
-  const max = Math.max(goal, ...rbm.map(m=>m.amount||0), 1);
-  h += `<div class="rev-chart"><div class="rev-head"><div class="rev-label">Revenue by Month</div><div class="rev-meta">${goal?moneyK(goal)+' goal':''}${f.breakEven?' · '+moneyK(f.breakEven)+' break-even':''}</div></div><div class="chart-bars">`;
-  h += rbm.map(m=>{
-    const ht = Math.max(2, Math.round(((m.amount||0)/max)*92));
-    const cls = m.isProjected?'proj': m.partial?'current': ((m.amount||0)>=goal?'above':'below');
-    const lblCls = m.isProjected?'proj': m.partial?'current':'';
-    return `<div class="cb-wrap"><div class="cb-bar ${cls}" style="height:${ht}px" title="${esc(m.month)}: ${moneyK(m.amount)}"></div><div class="cb-lbl ${lblCls}">${esc(m.month)}${m.partial?'*':''}</div></div>`;
-  }).join('');
-  h += `</div></div>`;
-
-  // bank accounts
+  // Bank + credit-card accounts
   let bankBody = '';
-  if((f.bankAccounts||[]).length){
-    bankBody += `<div class="accounts"><div class="acc-head"><span>Account</span><span>Balance</span></div>`;
-    bankBody += f.bankAccounts.map(a=>`<div class="acc-row"><span class="acc-name">${esc(a.name)}</span><span class="acc-val">${money(a.balance)}</span></div>`).join('');
-    bankBody += `<div class="acc-row total"><span class="acc-name bold">Total</span><span class="acc-val pos">${money(f.cashOnHand)}</span></div></div>`;
+  if (nBank) {
+    bankBody += `<div class="accounts"><div class="acc-head"><span>Account</span><span>Balance</span></div>`
+      + d.bankAccounts.map(a => `<div class="acc-row"><span class="acc-name">${esc(a.name)}</span><span class="acc-val">${money(a.balance)}</span></div>`).join('')
+      + `<div class="acc-row total"><span class="acc-name bold">Total</span><span class="acc-val pos">${money(d.bankTotal)}</span></div></div>`;
   }
-  if((f.creditCardAccounts||[]).length){
-    bankBody += `<div class="accounts"><div class="acc-head"><span>Credit Card</span><span>Balance</span></div>`;
-    bankBody += f.creditCardAccounts.map(a=>`<div class="acc-row"><span class="acc-name">${esc(a.name)}</span><span class="acc-val neg">${money(a.balance)}</span></div>`).join('') + `</div>`;
+  if (nCard) {
+    bankBody += `<div class="accounts"><div class="acc-head"><span>Credit Card</span><span>Balance</span></div>`
+      + d.creditCards.map(a => `<div class="acc-row"><span class="acc-name">${esc(a.name)}</span><span class="acc-val neg">${money(a.balance)}</span></div>`).join('') + `</div>`;
   }
-  if(bankBody) h += scCard('Bank accounts', bankBody, {key:'scale-bank'});
+  if (bankBody) h += scCard('Bank accounts', bankBody, { key: 'scale-bank' });
+
+  if (d.asOf) h += `<div style="font-size:11px;color:var(--text-4);text-align:center;margin-top:4px;">As of ${new Date(d.asOf).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</div>`;
   el.innerHTML = h;
+  if (window.restoreCards) restoreCards();
 }
 
 // ── SYSTEMS ──
