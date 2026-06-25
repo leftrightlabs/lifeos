@@ -11,17 +11,17 @@
 @import url('https://use.typekit.net/uwk2elu.css');
 :root {
   --zone: var(--work); --zone-soft: var(--work-soft);
-  --font-display: 'scotch-display','Playfair Display',Georgia,serif;
+  --font-display: var(--font-body); /* unified: sans like today (was scotch-display serif) */
   --font-body: 'sweet-sans-pro','Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   --radius: 12px; --radius-sm: 8px; --radius-xs: 5px;
 }
 .scale-page { max-width:920px; margin:0 auto; padding:24px 24px 100px; font-family:var(--font-body); font-size:14px; line-height:1.5; color:var(--text); }
-.scotch { display:inline-block; transform:scaleY(1.16); transform-origin:center left; }
+.scotch { display:inline-block; } /* serif stretch removed — unified sans */
 
 /* header */
 .sc-head { margin-bottom:18px; }
 .sc-eyebrow { font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--text-3); margin-bottom:5px; }
-.sc-title { font-family:var(--font-display); font-weight:700; font-size:34px; line-height:1; color:var(--text); }
+.sc-title { font-weight:800; font-size:28px; line-height:1.05; letter-spacing:-.01em; color:var(--text); }
 .sc-sub { font-size:12.5px; color:var(--text-2); margin-top:6px; max-width:620px; }
 
 /* tabs */
@@ -244,6 +244,9 @@ body[data-state="calm"] .vto-group-head span { color:var(--green); }
   .vto-row { grid-template-columns:1fr auto; gap:4px 10px; }
   .vto-row .vto-be, .vto-row .vto-goal { display:none; }
 }
+/* List sections wrapped in shared collapsible .t-card */
+.tab-panel .t-card { margin-bottom:16px; }
+.tab-panel .t-card .issue-list, .tab-panel .t-card .sys-list, .tab-panel .t-card .rocks, .tab-panel .t-card .accounts { margin-bottom:0; }
 </style>
 <script src="/sample-data.js"></script>
 <script src="/privacy.js"></script>
@@ -252,8 +255,7 @@ body[data-state="calm"] .vto-group-head span { color:var(--green); }
 
 <div class="scale-page">
   <div class="sc-head">
-    <div class="sc-eyebrow">Work · Scale</div>
-    <span class="sc-title scotch">Scale</span>
+    <span class="sc-title">Scale</span>
     <div class="sc-sub">The operating view — scorecard vs. targets, finances, issues, and the systems holding growth back.</div>
   </div>
 
@@ -319,6 +321,14 @@ function showTab(name){
 }
 
 // ── PULSE ──
+// Wrap a list section in a shared collapsible card (title inside, count on right).
+function scCard(title, body, opts){
+  opts = opts || {};
+  const count = opts.count != null ? `<span class="eyebrow-count ${opts.tone||''}">${opts.count}</span>` : '';
+  const key = opts.key ? ` data-persist-key="${opts.key}"` : '';
+  return `<div class="t-card"${key}><div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">${title}</div></div>${count}</div><div class="t-body">${body}</div></div>`;
+}
+
 function renderPulse(d){
   const calm = d.state==='calm';
   const flags = d.pulse?.autoFlags||[];
@@ -362,21 +372,19 @@ function renderPulse(d){
 
   // auto-flags (stressed only — calm shows the green empty state instead)
   if(flags.length){
-    h += `<div class="eyebrow-row"><span class="eyebrow">⚑ Auto-flags</span><span class="eyebrow-count red">${flags.length}</span></div>`;
-    h += `<div class="issue-list">`+ flags.map(f=>`
+    const flagsBody = `<div class="issue-list">`+ flags.map(f=>`
       <div class="flag-card ${f.severity==='red'?'red':''}"><span class="fi">${f.severity==='red'?'🔴':'🟡'}</span><div><div class="ft">${esc(f.message)}</div><div class="fs">${esc(f.source)}</div></div></div>`).join('') +`</div>`;
+    h += scCard('⚑ Auto-flags', flagsBody, {count:flags.length, tone:'red', key:'scale-flags'});
   }
 
   // IDS queue
-  h += `<div class="eyebrow-row"><span class="eyebrow ${calm?'green':''}">Issues — IDS queue</span><span class="eyebrow-count ${calm?'green':'zone'}">${issues.length}</span></div>`;
-  if(issues.length){
-    h += `<div class="issue-list">`+ issues.map(i=>{
-      const meta=[i.assigned?('Assigned '+esc(i.assigned)):null, i.status?('Status: '+esc(i.status)):null, i.due?relDate(i.due):'No due date'].filter(Boolean).join(' · ');
-      return `<div class="issue-card">${prioBadge(i.priority)}<div class="issue-body"><div class="issue-name">${esc(i.name)}</div><div class="issue-meta">${meta}</div></div><div class="issue-tail">${i.notionUrl?`<a class="open-link" href="${esc(i.notionUrl)}" target="_blank">→ Open</a>`:''}</div></div>`;
-    }).join('') +`</div>`;
-  } else {
-    h += `<div class="empty-line">No open issues in the IDS queue.</div>`;
-  }
+  const issuesBody = issues.length
+    ? `<div class="issue-list">`+ issues.map(i=>{
+        const meta=[i.assigned?('Assigned '+esc(i.assigned)):null, i.status?('Status: '+esc(i.status)):null, i.due?relDate(i.due):'No due date'].filter(Boolean).join(' · ');
+        return `<div class="issue-card">${prioBadge(i.priority)}<div class="issue-body"><div class="issue-name">${esc(i.name)}</div><div class="issue-meta">${meta}</div></div><div class="issue-tail">${i.notionUrl?`<a class="open-link" href="${esc(i.notionUrl)}" target="_blank">→ Open</a>`:''}</div></div>`;
+      }).join('') +`</div>`
+    : `<div class="empty-line">No open issues in the IDS queue.</div>`;
+  h += scCard('Issues — IDS queue', issuesBody, {count:issues.length, tone:calm?'green':'zone', key:'scale-issues'});
 
   if(calm && !flags.length){
     h += `<div class="empty-state"><div class="ei">✓</div><div class="et">No auto-flags</div><div>Scorecard metrics are on track. No critical system gaps. Revenue pacing to goal.</div></div>`;
@@ -467,15 +475,17 @@ function renderFinance(d){
   h += `</div></div>`;
 
   // bank accounts
+  let bankBody = '';
   if((f.bankAccounts||[]).length){
-    h += `<div class="eyebrow-row"><span class="eyebrow">Bank accounts</span></div><div class="accounts"><div class="acc-head"><span>Account</span><span>Balance</span></div>`;
-    h += f.bankAccounts.map(a=>`<div class="acc-row"><span class="acc-name">${esc(a.name)}</span><span class="acc-val">${money(a.balance)}</span></div>`).join('');
-    h += `<div class="acc-row total"><span class="acc-name bold">Total</span><span class="acc-val pos">${money(f.cashOnHand)}</span></div></div>`;
+    bankBody += `<div class="accounts"><div class="acc-head"><span>Account</span><span>Balance</span></div>`;
+    bankBody += f.bankAccounts.map(a=>`<div class="acc-row"><span class="acc-name">${esc(a.name)}</span><span class="acc-val">${money(a.balance)}</span></div>`).join('');
+    bankBody += `<div class="acc-row total"><span class="acc-name bold">Total</span><span class="acc-val pos">${money(f.cashOnHand)}</span></div></div>`;
   }
   if((f.creditCardAccounts||[]).length){
-    h += `<div class="accounts"><div class="acc-head"><span>Credit Card</span><span>Balance</span></div>`;
-    h += f.creditCardAccounts.map(a=>`<div class="acc-row"><span class="acc-name">${esc(a.name)}</span><span class="acc-val neg">${money(a.balance)}</span></div>`).join('') + `</div>`;
+    bankBody += `<div class="accounts"><div class="acc-head"><span>Credit Card</span><span>Balance</span></div>`;
+    bankBody += f.creditCardAccounts.map(a=>`<div class="acc-row"><span class="acc-name">${esc(a.name)}</span><span class="acc-val neg">${money(a.balance)}</span></div>`).join('') + `</div>`;
   }
+  if(bankBody) h += scCard('Bank accounts', bankBody, {key:'scale-bank'});
   el.innerHTML = h;
 }
 
@@ -507,18 +517,18 @@ function renderSystems(d){
   // Calm leads with healthy; stressed leads with fix-first.
   const fixSection = () => {
     let s='';
-    if(fixFirst.length){ s+=`<div class="eyebrow-row"><span class="eyebrow" style="color:var(--red)">Fix first — critical</span><span class="eyebrow-count red">${fixFirst.length}</span></div><div class="sys-list">${fixFirst.map(sysCard).join('')}</div>`; }
-    if(quickWins.length){ s+=`<div class="eyebrow-row"><span class="eyebrow zone">Quick wins — high impact, low effort</span><span class="eyebrow-count zone">${quickWins.length}</span></div><div class="sys-list">${quickWins.map(sysCard).join('')}</div>`; }
-    if(needsReview.length){ s+=`<div class="eyebrow-row"><span class="eyebrow" style="color:var(--amber)">Needs review</span><span class="eyebrow-count amber">${needsReview.length}</span></div><div class="sys-list">${needsReview.map(sysCard).join('')}</div>`; }
+    if(fixFirst.length){ s+=scCard('Fix first — critical', `<div class="sys-list">${fixFirst.map(sysCard).join('')}</div>`, {count:fixFirst.length, tone:'red', key:'scale-fixfirst'}); }
+    if(quickWins.length){ s+=scCard('Quick wins — high impact, low effort', `<div class="sys-list">${quickWins.map(sysCard).join('')}</div>`, {count:quickWins.length, tone:'zone', key:'scale-quickwins'}); }
+    if(needsReview.length){ s+=scCard('Needs review', `<div class="sys-list">${needsReview.map(sysCard).join('')}</div>`, {count:needsReview.length, tone:'amber', key:'scale-needsreview'}); }
     if(!fixFirst.length && !quickWins.length && !needsReview.length){ s+=`<div class="empty-line">Every business system is healthy. ✓</div>`; }
     return s;
   };
   const healthySection = () => {
     if(!healthy.length) return '';
     const shown = healthy.slice(0,5);
-    let s=`<div class="eyebrow-row"><span class="eyebrow green">Healthy systems</span><span class="eyebrow-count green">${healthy.length}</span></div><div class="sys-list">${shown.map(healthyCard).join('')}</div>`;
-    if(healthy.length>5) s+=`<button class="view-all-btn" style="margin-bottom:22px" onclick="toast('Open BUSINESS FUNCTIONS [DB] in Notion')">+ ${healthy.length-5} more healthy systems</button>`;
-    return s;
+    let body=`<div class="sys-list">${shown.map(healthyCard).join('')}</div>`;
+    if(healthy.length>5) body+=`<button class="view-all-btn" onclick="toast('Open BUSINESS FUNCTIONS [DB] in Notion')">+ ${healthy.length-5} more healthy systems</button>`;
+    return scCard('Healthy systems', body, {count:healthy.length, tone:'green', key:'scale-healthy'});
   };
 
   h += calm ? (healthySection()+fixSection()) : (fixSection()+healthySection());
@@ -531,21 +541,19 @@ function renderVto(d){
   const rocks = (d.vto?.rocks||[]).filter(scaleMine);
   const off = rocks.filter(r=>r.status==='offTrack'||r.status==='atRisk').length;
   const done = rocks.filter(r=>r.status==='complete').length;
-  let h = `<div class="eyebrow-row"><span class="eyebrow ${d.state==='calm'?'green':'zone'}">${esc(d.vto?.quarter||'')} Rocks</span><span class="eyebrow-count ${off?'red':(done?'green':'zone')}">${off?off+' off track':(done?done+' done':rocks.length)}</span></div>`;
-  if(rocks.length){
-    h += `<div class="rocks">`+ rocks.map(r=>{
-      const [label,cls]=ROCK_BADGE[r.status]||['',''];
-      const w = r.pct==null?0:Math.max(2,Math.min(100,r.pct));
-      const metaBits=[r.owner?('Owner: '+esc(r.owner)):null, r.function?esc(r.function):null, (r.milestonesTotal?`${r.milestonesDone}/${r.milestonesTotal} milestones`:null), r.dueDate?('Due '+relDate(r.dueDate)):null].filter(Boolean).join(' · ');
-      return `<div class="rock ${ROCK_BORDER[r.status]||'l-gray'}">
-        <div class="rock-top"><div><div class="rock-name">${r.notionUrl?`<a href="${esc(r.notionUrl)}" target="_blank" style="color:inherit;text-decoration:none">${esc(r.name)}</a>`:esc(r.name)}</div><div class="rock-meta">${metaBits}</div></div><span class="badge ${cls}" style="flex-shrink:0">${label}</span></div>
-        <div class="rock-prog"><div class="rock-bar"><i style="width:${w}%;background:${rockBarColor(r.status)}"></i></div><span class="rock-pct" style="color:${rockBarColor(r.status)}">${r.pct==null?'—':r.pct+'%'}</span></div>
-        ${r.nextAction?`<div class="rock-next">→ ${esc(r.nextAction)}</div>`:''}
-      </div>`;
-    }).join('') +`</div>`;
-  } else {
-    h += `<div class="empty-line">No rocks flagged for this quarter in PROJECTS [DB].</div>`;
-  }
+  const rocksBody = rocks.length
+    ? `<div class="rocks">`+ rocks.map(r=>{
+        const [label,cls]=ROCK_BADGE[r.status]||['',''];
+        const w = r.pct==null?0:Math.max(2,Math.min(100,r.pct));
+        const metaBits=[r.owner?('Owner: '+esc(r.owner)):null, r.function?esc(r.function):null, (r.milestonesTotal?`${r.milestonesDone}/${r.milestonesTotal} milestones`:null), r.dueDate?('Due '+relDate(r.dueDate)):null].filter(Boolean).join(' · ');
+        return `<div class="rock ${ROCK_BORDER[r.status]||'l-gray'}">
+          <div class="rock-top"><div><div class="rock-name">${r.notionUrl?`<a href="${esc(r.notionUrl)}" target="_blank" style="color:inherit;text-decoration:none">${esc(r.name)}</a>`:esc(r.name)}</div><div class="rock-meta">${metaBits}</div></div><span class="badge ${cls}" style="flex-shrink:0">${label}</span></div>
+          <div class="rock-prog"><div class="rock-bar"><i style="width:${w}%;background:${rockBarColor(r.status)}"></i></div><span class="rock-pct" style="color:${rockBarColor(r.status)}">${r.pct==null?'—':r.pct+'%'}</span></div>
+          ${r.nextAction?`<div class="rock-next">→ ${esc(r.nextAction)}</div>`:''}
+        </div>`;
+      }).join('') +`</div>`
+    : `<div class="empty-line">No rocks flagged for this quarter in PROJECTS [DB].</div>`;
+  let h = scCard(`${esc(d.vto?.quarter||'')} Rocks`, rocksBody, {count:(off?off+' off track':(done?done+' done':rocks.length)), tone:off?'red':(done?'green':'zone'), key:'scale-rocks'});
 
   // 1-year plan (scorecard metrics grouped by category)
   const metrics = d.vto?.metrics||[];
@@ -587,6 +595,7 @@ function renderAll(d){
   document.body.setAttribute('data-state', d.state||'stressed');
   renderBadges(d);
   renderPulse(d); renderScorecard(d); renderFinance(d); renderSystems(d); renderVto(d);
+  if(window.restoreCards) restoreCards();
   const t = d.refreshedAt? new Date(d.refreshedAt).toLocaleString('en-US',{ month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : '';
   document.getElementById('refreshed').textContent = `REFRESHED ${t} · Scale — LRL OS`;
   document.getElementById('sc-loading').style.display='none';
