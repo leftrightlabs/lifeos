@@ -67,29 +67,9 @@ a { color: inherit; text-decoration: none; }
 .privacy-btn[data-privacy="blur"] { background: var(--accent); color: #fff; border-color: var(--accent); }
 .privacy-btn[data-privacy="sample"] { background: var(--amber); color: #0A0F1E; border-color: var(--amber); }
 
-/* ── SHARED FOOTER ── (shell-rendered; hosts the privacy toggle on zone pages) */
-.app-footer {
-  position: relative;
-  max-width: 1080px; margin: 0 auto; padding: 18px 22px 40px;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-}
-.footer-logout {
-  position: absolute; right: 22px; top: 18px;
-  display: inline-flex; align-items: center; gap: 6px;
-  color: var(--text-4); font-size: var(--fs-caption); font-weight: 600;
-  letter-spacing: .04em; text-decoration: none; transition: color .15s;
-}
-.footer-logout:hover { color: var(--red); }
-.footer-btn {
-  background: none; border: none; color: var(--text-4); font-size: var(--fs-body);
-  cursor: pointer; padding: 7px 9px; border-radius: 9px; font-family: inherit;
-  line-height: 1; transition: color .15s, background .15s;
-  display: inline-flex; align-items: center; gap: 5px;
-}
-.footer-btn:hover { color: var(--text-2); background: var(--surface); }
-/* In the footer, drop the pill border so it reads as an icon button until active. */
-.footer-btn.privacy-btn { border: none; padding: 7px 9px; }
-.footer-btn.privacy-btn[data-privacy="off"] { color: var(--text-4); background: none; }
+/* ── SHARED FOOTER ──
+   Styles now live in styles/cards.css (.app-footer …), loaded on every shell.js
+   page so today + zone pages share one footer. Edit there to restyle once. */
 
 /* ── PRIVACY: BLUR ──
    Hide sensitive numbers + names for screen-sharing. Tag anything new with

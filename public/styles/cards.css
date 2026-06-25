@@ -40,3 +40,20 @@
 
 /* Shared page title (sans, like today). */
 .page-title { font-weight: 800; font-size: 28px; line-height: 1.05; letter-spacing: -.01em; color: var(--text); margin: 0; }
+
+/* ── Shared app footer ──
+   One footer on today + every zone page (theme · privacy · refresh · stamp ·
+   log out). Markup is rendered by shell.js (mountFooter); edit here + there to
+   change it everywhere. */
+.app-footer { display: flex; align-items: center; justify-content: flex-start; gap: 4px; max-width: 1080px; margin: 0 auto; padding: 10px 18px 28px; border-top: 1px solid var(--border-soft); }
+.app-footer .footer-btn { background: none; border: none; color: var(--text-4); font-size: var(--fs-body); cursor: pointer; padding: 7px 9px; border-radius: 9px; line-height: 1; font-family: inherit; transition: color .15s, background .15s; display: inline-flex; align-items: center; gap: 5px; }
+.app-footer .footer-btn:hover { color: var(--text-2); background: var(--surface); }
+.app-footer .footer-btn.active { color: var(--accent); background: var(--accent-soft); }
+.app-footer .footer-btn.privacy-btn { border: none; padding: 7px 9px; gap: 5px; }
+.app-footer .footer-btn.privacy-btn[data-privacy="off"] { color: var(--text-4); background: none; }
+.app-footer .footer-stamp { font-size: var(--fs-caption); font-weight: 600; color: var(--text-4); letter-spacing: .05em; text-transform: uppercase; margin-left: 6px; white-space: nowrap; }
+.app-footer .footer-logout { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: var(--text-4); font-size: var(--fs-caption); font-weight: 600; letter-spacing: .04em; text-decoration: none; transition: color .15s; white-space: nowrap; }
+.app-footer .footer-logout:hover { color: var(--red); }
+.app-footer .spin { display: inline-block; animation: lrl-foot-spin .7s linear infinite; }
+@keyframes lrl-foot-spin { to { transform: rotate(360deg); } }
+html.light .app-footer .footer-stamp { color: var(--text-3); }

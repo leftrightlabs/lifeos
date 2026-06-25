@@ -142,13 +142,60 @@
     '</button>';
   }
 
+  // The shared app footer — same component on today + every zone page (matches the
+  // today.html footer: theme · privacy · refresh · refreshed-stamp · log out).
   function footerHTML() {
-    return '<div class="app-footer">' + privacyBtnHTML() +
+    return '<div class="app-footer">' +
+      '<button type="button" class="footer-btn" data-action="theme" onclick="window.LRLShell&&LRLShell.toggleTheme()" title="Toggle theme">🌙</button>' +
+      privacyBtnHTML() +
+      '<button type="button" class="footer-btn" data-action="refresh" onclick="window.LRLShell&&LRLShell.refresh()" title="Refresh">↻</button>' +
+      '<span class="footer-stamp" id="footerStamp"></span>' +
       '<a class="footer-logout" href="/auth/logout" title="Log out">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>' +
         '<span>Log out</span>' +
       '</a>' +
     '</div>';
+  }
+
+  // Theme toggle (parity with today's footer — toggles the .light class + swaps icon).
+  function toggleTheme() {
+    var isLight = document.documentElement.classList.toggle('light');
+    var b = document.querySelector('.app-footer .footer-btn[data-action="theme"]');
+    if (b) { b.textContent = isLight ? '☀️' : '🌙'; b.classList.toggle('active', isLight); }
+  }
+
+  // "Refreshed <date> · <time>" stamp.
+  function stampRefreshed() {
+    var el = document.getElementById('footerStamp');
+    if (!el) return;
+    var now = new Date();
+    var mo = now.toLocaleString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+    var ti = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    el.textContent = 'Refreshed ' + mo + ' · ' + ti;
+  }
+
+  // Refresh button. A page can expose window.lrlFooterRefresh() for an in-place data
+  // reload (today does); otherwise we fall back to a full page reload.
+  function refresh() {
+    var b = document.querySelector('.app-footer .footer-btn[data-action="refresh"]');
+    if (!window.lrlFooterRefresh) { location.reload(); return; }
+    if (b) { b.innerHTML = '<span class="spin">↻</span>'; b.disabled = true; }
+    Promise.resolve().then(window.lrlFooterRefresh).then(stampRefreshed).catch(function (e) { console.error('footer refresh', e); }).then(function () {
+      if (b) { b.innerHTML = '↻'; b.disabled = false; }
+    });
+  }
+
+  // Append the shared footer once, on every shell.js page (today + zones), regardless
+  // of whether the topbar shell is mounted. Edit footerHTML/cards.css to restyle once.
+  function mountFooter() {
+    if (document.querySelector('.app-footer')) return;
+    var ft = document.createElement('div');
+    ft.innerHTML = footerHTML();
+    document.body.appendChild(ft.firstChild);
+    var tb = document.querySelector('.app-footer .footer-btn[data-action="theme"]');
+    if (tb && document.documentElement.classList.contains('light')) { tb.textContent = '☀️'; tb.classList.add('active'); }
+    stampRefreshed();
+    if (window.LRLPrivacy && LRLPrivacy.sync) LRLPrivacy.sync();
   }
 
   // Live date + quarter + days-left, shown in the top bar on every page.
@@ -216,12 +263,6 @@
     if (!host) return;
 
     host.innerHTML = shellHTML();
-    // Shared footer (privacy toggle) at the end of the page — same spot as today.html.
-    if (!document.querySelector('.app-footer')) {
-      var ft = document.createElement('div');
-      ft.innerHTML = footerHTML();
-      document.body.appendChild(ft.firstChild);
-    }
     var navEl = document.getElementById('nav');
     var active = activeHref();
     var state = { mode: getMode(), canPersonal: true, active: active };
@@ -304,11 +345,19 @@
     setMe: setMe,
     toggleMe: toggleMe,
     syncMePill: syncMePill,
+    // Shared footer
+    mountFooter: mountFooter,
+    toggleTheme: toggleTheme,
+    refresh: refresh,
+    stampRefreshed: stampRefreshed,
   };
 
+  // mount() draws the topbar/nav only when a #lrl-shell host exists (zone pages);
+  // mountFooter() runs on every shell.js page (today included) so the footer is global.
+  function init() { mount(); mountFooter(); }
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', mount);
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    mount();
+    init();
   }
 })();

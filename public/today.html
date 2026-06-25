@@ -528,17 +528,7 @@ body {
 .fab:hover { filter: brightness(1.12); transform: scale(1.06); }
 .fab:active { transform: scale(.93); }
 
-/* ── FOOTER ── */
-.today-footer { display: flex; align-items: center; justify-content: flex-start; gap: 4px; padding: 10px 18px 20px; border-top: 1px solid var(--border-soft); }
-.footer-btn { background: none; border: none; color: var(--text-4); font-size: var(--fs-body); cursor: pointer; padding: 7px 9px; border-radius: 9px; transition: color .15s, background .15s; line-height: 1; font-family: inherit; }
-.footer-btn:hover { color: var(--text-2); background: var(--surface); }
-.footer-btn.active { color: var(--accent); background: var(--accent-soft); }
-/* Privacy lives in the footer here; drop the pill border so it matches the icon buttons. */
-.footer-btn.privacy-btn { border: none; padding: 7px 9px; gap: 5px; }
-.footer-btn.privacy-btn[data-privacy="off"] { color: var(--text-4); }
-.footer-stamp { font-size: var(--fs-caption); font-weight: 600; color: var(--text-4); letter-spacing: .05em; text-transform: uppercase; margin-left: 6px; white-space: nowrap; }
-.footer-logout { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: var(--text-4); font-size: var(--fs-caption); font-weight: 600; letter-spacing: .04em; text-decoration: none; transition: color .15s; white-space: nowrap; }
-.footer-logout:hover { color: var(--red); }
+/* Footer styles now live in styles/cards.css (.app-footer …), rendered by shell.js. */
 
 /* ── QUICK CAPTURE MODAL ── */
 .qc-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.72); backdrop-filter: blur(4px); display: none; align-items: flex-start; justify-content: center; padding: 60px 20px 20px; z-index: 200; overflow-y: auto; }
@@ -672,7 +662,6 @@ html.light .ritual-item { color: var(--text-2); }
 /* Snapshot values */
 html.light .snap-val { color: var(--text); }
 /* Footer stamp */
-html.light .footer-stamp { color: var(--text-3); }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 540px) {
@@ -868,19 +857,8 @@ body.app-loading #appLoading { display: flex; }
   </div>
 
   <!-- Footer -->
-  <div class="today-footer">
-    <button class="footer-btn" data-action="theme"   onclick="toggleTheme()"   title="Toggle theme">🌙</button>
-    <button class="footer-btn privacy-btn" id="privacyBtn" onclick="LRLPrivacy.cycle()" title="Privacy">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-      <span class="privacy-label"></span>
-    </button>
-    <button class="footer-btn" data-action="refresh" onclick="refreshData()"   title="Refresh data">↻</button>
-    <span class="footer-stamp" id="footerStamp"></span>
-    <a class="footer-logout" href="/auth/logout" title="Log out">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      <span>Log out</span>
-    </a>
-  </div>
+  <!-- Footer (theme · privacy · refresh · stamp · log out) is the shared component
+       rendered by shell.js (mountFooter) — same on every page. -->
 </div>
 
 <!-- Edit Task modal -->
@@ -3020,30 +2998,16 @@ document.getElementById('qcNewConv')?.addEventListener('click', () => {
 });
 
 // ── FOOTER ACTIONS ──
-// Privacy is now the global triple-toggle in the topbar (privacy.js / LRLPrivacy).
-
-function toggleTheme() {
-  const isLight = document.documentElement.classList.toggle('light');
-  const btn = document.querySelector('.footer-btn[data-action="theme"]');
-  if (btn) { btn.textContent = isLight ? '☀️' : '🌙'; btn.classList.toggle('active', isLight); }
-}
+// The footer (theme · privacy · refresh · stamp · log out) is the shared component
+// rendered by shell.js. Theme + refresh-button spinner are handled there; today
+// just exposes its in-place data reload as the refresh hook.
 
 function _updateRefreshStamp() {
-  const el = document.getElementById('footerStamp');
-  if (!el) return;
-  const now = new Date();
-  const mo = now.toLocaleString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
-  const ti = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  el.textContent = `Refreshed ${mo} · ${ti}`;
+  if (window.LRLShell && LRLShell.stampRefreshed) LRLShell.stampRefreshed();
 }
 
-async function refreshData() {
-  const btn = document.querySelector('.footer-btn[data-action="refresh"]');
-  if (btn) { btn.innerHTML = '<span class="spin">↻</span>'; btn.disabled = true; }
-  try { await loadTodayData(); _updateRefreshStamp(); } finally {
-    if (btn) { btn.innerHTML = '↻'; btn.disabled = false; }
-  }
-}
+async function refreshData() { await loadTodayData(); _updateRefreshStamp(); }
+window.lrlFooterRefresh = refreshData;
 
 // Apply a tasks+goals payload to the in-memory model (plan, rocks, One Thing),
 // restoring the persisted One Thing state. Shared by the full load and the
