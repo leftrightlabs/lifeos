@@ -143,13 +143,32 @@
   }
 
   function footerHTML() {
-    return '<div class="app-footer">' + privacyBtnHTML() + '</div>';
+    return '<div class="app-footer">' + privacyBtnHTML() +
+      '<a class="footer-logout" href="/auth/logout" title="Log out">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>' +
+        '<span>Log out</span>' +
+      '</a>' +
+    '</div>';
+  }
+
+  // Live date + quarter + days-left, shown in the top bar on every page.
+  function metaText() {
+    var now = new Date();
+    var wd = now.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+    var mo = now.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+    var q = Math.floor(now.getMonth() / 3) + 1;
+    var qEnd = new Date(now.getFullYear(), q * 3, 0);          // last day of the quarter
+    var daysLeft = Math.max(0, Math.ceil((qEnd - now) / 86400000));
+    return wd + ' ' + mo + ' ' + now.getDate() + ' · Q' + q + ' · ' + daysLeft + ' DAYS LEFT';
   }
 
   function shellHTML() {
     return '' +
       '<div class="topbar-wrap"><div class="topbar">' +
-        '<a href="/today" class="logo"><span class="logo-mark">◆</span> LRL OS</a>' +
+        '<div class="topbar-left">' +
+          '<a href="/today" class="logo"><span class="logo-mark">◆</span> LRL OS</a>' +
+          '<span class="app-meta" id="appMeta">' + metaText() + '</span>' +
+        '</div>' +
         '<div class="topbar-right">' +
           modeToggleHTML() +
           '<button type="button" class="me-pill" id="mePill" aria-pressed="false" title="Show only items assigned to me">ME</button>' +
@@ -279,6 +298,7 @@
     syncModeButtons: syncModeButtons,
     getMode: getMode,
     modeToggleHTML: modeToggleHTML,
+    metaText: metaText,
     // ME mode (global "assigned to me" filter)
     meMode: getMe,
     setMe: setMe,

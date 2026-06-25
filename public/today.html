@@ -77,9 +77,11 @@ body {
 .app { max-width: 1080px; margin: 0 auto; position: relative; }
 
 /* TOP BAR */
-.topbar { display: flex; align-items: center; justify-content: space-between; padding: 13px 22px; padding-top: max(13px, env(safe-area-inset-top)); gap: 12px; border-bottom: 1px solid var(--border-soft); }
+.topbar { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 13px 22px; padding-top: max(13px, env(safe-area-inset-top)); gap: 12px; border-bottom: 1px solid var(--border-soft); }
 .logo { color: var(--text); font-weight: 800; font-size: var(--fs-body-sm); letter-spacing: .09em; white-space: nowrap; }
 .logo .logo-mark { color: #5D9CEC; }
+.topbar-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.app-meta { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: var(--fs-caption); color: var(--text-3); letter-spacing: .04em; white-space: nowrap; pointer-events: none; }
 .topbar-right { display: flex; align-items: center; gap: 7px; }
 .mode-toggle { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 3px; gap: 2px; }
 .mode-btn { display: flex; align-items: center; justify-content: center; background: none; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: var(--text-3); font-family: inherit; transition: all .2s; }
@@ -108,12 +110,12 @@ body {
 .nav-domain { font-size: var(--fs-caption); color: var(--text-4); padding: 11px 6px 11px 3px; text-transform: uppercase; letter-spacing: .09em; align-self: center; white-space: nowrap; }
 
 /* GREETING */
-.greeting-zone { padding: 20px 22px 14px; background: radial-gradient(120% 100% at 0% 0%, rgba(99,102,241,.05) 0%, transparent 55%); }
-.greeting-top { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.greeting-zone { padding: 20px 22px 0; background: radial-gradient(120% 100% at 0% 0%, rgba(99,102,241,.05) 0%, transparent 55%); }
+.greeting-top { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 0; }
 .greeting { font-size: var(--fs-heading); font-weight: 700; letter-spacing: -.01em; }
 .greeting .name { color: var(--accent); }
 .greeting-meta { font-size: var(--fs-caption); color: var(--text-3); letter-spacing: .04em; }
-.weather-display { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-body-sm); color: var(--text-3); margin-top: 4px; }
+.weather-display { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-body-sm); color: var(--text-3); }
 .weather-display .weather-icon { display: inline-flex; width: 15px; height: 15px; color: var(--text-3); }
 .weather-display .weather-icon svg { width: 100%; height: 100%; }
 .weather-display .weather-temp { font-weight: 600; }
@@ -152,7 +154,7 @@ body {
 
 /* ── LAYOUT ── */
 .layout { display: grid; grid-template-columns: 1fr 264px; }
-.main-col { padding: 22px; border-right: 1px solid var(--border-soft); display: flex; flex-direction: column; gap: 24px; }
+.main-col { padding: 24px 22px 22px; border-right: 1px solid var(--border-soft); display: flex; flex-direction: column; gap: 24px; }
 .side-col { padding: 22px 16px; display: flex; flex-direction: column; gap: 24px; }
 .sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; }
 .sec-title { font-size: var(--fs-caption); font-weight: 700; color: var(--label); letter-spacing: .09em; text-transform: uppercase; }
@@ -245,7 +247,8 @@ body {
 
 /* ── ROCKS ── */
 .rocks-list { display: flex; flex-direction: column; gap: 6px; }
-.rock-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 10px; padding: 13px 15px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 4px 12px; align-items: center; cursor: pointer; border-left: 3px solid var(--border); transition: transform .12s; }
+.rock-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 10px; padding: 13px 15px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 4px 12px; align-items: center; cursor: pointer; border-left: 3px solid var(--border); transition: transform .12s, border-color .15s; }
+.rock-card:hover { border-color: var(--accent); }
 .rock-card:hover { transform: translateX(2px); }
 .rock-card.risk { border-left-color: var(--red); }
 .rock-card.track { border-left-color: var(--green); }
@@ -541,6 +544,8 @@ body {
 .footer-btn.privacy-btn { border: none; padding: 7px 9px; gap: 5px; }
 .footer-btn.privacy-btn[data-privacy="off"] { color: var(--text-4); }
 .footer-stamp { font-size: var(--fs-caption); font-weight: 600; color: var(--text-4); letter-spacing: .05em; text-transform: uppercase; margin-left: 6px; white-space: nowrap; }
+.footer-logout { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: var(--text-4); font-size: var(--fs-caption); font-weight: 600; letter-spacing: .04em; text-decoration: none; transition: color .15s; white-space: nowrap; }
+.footer-logout:hover { color: var(--red); }
 
 /* ── QUICK CAPTURE MODAL ── */
 .qc-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.72); backdrop-filter: blur(4px); display: none; align-items: flex-start; justify-content: center; padding: 60px 20px 20px; z-index: 200; overflow-y: auto; }
@@ -677,9 +682,14 @@ html.light .snap-val { color: var(--text); }
 html.light .footer-stamp { color: var(--text-3); }
 
 /* ── RESPONSIVE ── */
+@media (max-width: 540px) {
+  /* Phone only: stack the date under the logo (it's centered on wider screens). */
+  .topbar-left { flex-direction: column; align-items: flex-start; gap: 1px; }
+  .app-meta { position: static; transform: none; font-size: 9px; letter-spacing: .03em; }
+}
 @media (max-width: 720px) {
   .layout { grid-template-columns: 1fr; row-gap: 24px; }
-  .main-col { border-right: none; padding: 18px 18px 0; }
+  .main-col { border-right: none; padding: 24px 18px 0; }
   .side-col { border-top: none; padding: 0 16px 18px; }
   .greeting { font-size: var(--fs-title); }
   .onething-title { font-size: var(--fs-title); }
@@ -694,9 +704,9 @@ html.light .footer-stamp { color: var(--text-3); }
 }
 @media (max-width: 420px) {
   .topbar { padding: 11px 14px; padding-top: max(11px, env(safe-area-inset-top)); }
-  .main-col { padding: 14px 14px 0; }
+  .main-col { padding: 24px 14px 0; }
   .side-col { padding: 0 14px 14px; }
-  .greeting-zone { padding: 16px 14px 10px; }
+  .greeting-zone { padding: 16px 14px 0; }
   .streak-strip { padding: 0; }
   .qrow { flex-wrap: wrap; align-items: flex-start; }
   .qcheck, .qdot { margin-top: 2px; }
@@ -723,6 +733,7 @@ body.app-loading #appLoading { display: flex; }
 </style>
 <script src="/sample-data.js"></script>
 <script src="/privacy.js"></script>
+<script src="/project-modal.js"></script>
 </head>
 <body class="app-loading">
 
@@ -746,7 +757,10 @@ body.app-loading #appLoading { display: flex; }
 
   <!-- TOP BAR -->
   <div class="topbar">
-    <div class="logo"><span class="logo-mark">◆</span> LRL OS</div>
+    <div class="topbar-left">
+      <div class="logo"><span class="logo-mark">◆</span> LRL OS</div>
+      <span class="app-meta" id="appMeta"></span>
+    </div>
     <div class="topbar-right">
       <div class="mode-toggle" id="modeToggle" style="display:none">
         <button class="mode-btn active" data-mode="work" onclick="toggleMode('work')" title="Work mode">
@@ -767,10 +781,7 @@ body.app-loading #appLoading { display: flex; }
   <div class="greeting-zone">
     <div class="greeting-top">
       <div class="greeting" id="greeting"></div>
-      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-        <div class="greeting-meta" id="greetingMeta">SUN JUN 21 · Q2 · 9 DAYS LEFT</div>
-        <div class="weather-display" id="weatherDisplay" style="display: none;"></div>
-      </div>
+      <div class="weather-display" id="weatherDisplay" style="display: none;"></div>
     </div>
   </div>
 
@@ -872,6 +883,10 @@ body.app-loading #appLoading { display: flex; }
     </button>
     <button class="footer-btn" data-action="refresh" onclick="refreshData()"   title="Refresh data">↻</button>
     <span class="footer-stamp" id="footerStamp"></span>
+    <a class="footer-logout" href="/auth/logout" title="Log out">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span>Log out</span>
+    </a>
   </div>
 </div>
 
@@ -1679,7 +1694,7 @@ function renderRocks() {
 
   document.getElementById('rocksList').innerHTML = visible.map(r => {
     const pct = Math.round((r.done / r.total) * 100);
-    return `<div class="rock-card ${r.cls}">
+    return `<div class="rock-card ${r.cls}" onclick="openRockEdit('${r.id}')" title="Edit project">
       <div class="rock-title-row"><span class="rock-name${r.cls==='done'?' struck':''}">${r.name}</span><span class="rock-status-tag ${r.tagCls}">${r.tag}</span></div>
       <div class="rock-next"><span class="arr">→</span>${r.next}</div>
       <div class="rock-right">
@@ -1688,6 +1703,28 @@ function renderRocks() {
       </div>
     </div>`;
   }).join('');
+}
+
+// Click a rock card → reusable project-edit modal (project-modal.js). Rocks are
+// Notion projects/goals, so this edits the project (name/status/deadline) and
+// re-derives the card on save.
+function openRockEdit(id) {
+  if (!window.openProjectModal) return;
+  const g = _loadedGoals.find(x => x.id === id);
+  const r = rocks.find(x => x.id === id);
+  openProjectModal({
+    id,
+    name: (g && g.name) || (r && r.name) || '',
+    source: (r && r.type) || (g && g.source) || 'work',
+    status: (g && g.status) || (r && r.status) || '',
+    end: (g && g.targetDeadline) || (r && r.end) || null,
+    url: (g && g.url) || (r && r.url) || '',
+  }, { onSaved: (saved) => {
+    if (g) { if (saved.name) g.name = saved.name; g.status = saved.status; g.targetDeadline = saved.end; }
+    rocks.length = 0;
+    _loadedGoals.forEach(x => rocks.push(goalToRock(x)));
+    renderRocks();
+  }});
 }
 
 // ── PLAN ──
@@ -2528,7 +2565,7 @@ function goalToRock(g) {
   const nextM = g.milestones.find(m => !m.done);
   const next = nextM ? nextM.name : isDone ? 'All milestones complete' : 'No milestones defined';
   const barC = g.source === 'personal' ? 'var(--teal)' : atRisk ? 'var(--red)' : 'var(--green)';
-  return { id: g.id, name: g.name, type: g.source, cls, tag, tagCls, next, owner: 'G', done: g.progress.done, total: g.progress.total, barC, url: g.url };
+  return { id: g.id, name: g.name, type: g.source, cls, tag, tagCls, next, owner: 'G', done: g.progress.done, total: g.progress.total, barC, url: g.url, status: g.status || '', end: g.targetDeadline || null };
 }
 
 // Apply YNAB wealth to personalSnap
@@ -3220,6 +3257,9 @@ async function loadWeather(fresh){
 function init() {
   // Sync mode toggle buttons to match computed default
   syncModeButtons(state.mode);
+  // Live date · quarter · days-left in the top bar (global, matches zone pages).
+  const _meta = document.getElementById('appMeta');
+  if (_meta && window.LRLShell) _meta.textContent = LRLShell.metaText();
   // Reflect the global ME toggle (shell.js) on this page's pill. Today's content
   // (your goals, your My Day plan, your One Thing) is already self-scoped, so the
   // toggle persists the global state for the work zones rather than filtering here.

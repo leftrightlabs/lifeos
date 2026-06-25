@@ -22,6 +22,7 @@ a { color: inherit; text-decoration: none; }
   background: var(--bg);
   max-width: 1080px; margin: 0 auto;
 }
+.topbar { position: relative; }
 .topbar-wrap {
   position: sticky; top: 0; z-index: 20;
   background: var(--bg);
@@ -30,6 +31,9 @@ a { color: inherit; text-decoration: none; }
 }
 .logo { color: var(--text); font-weight: 800; font-size: var(--fs-body-sm); letter-spacing: .09em; white-space: nowrap; text-decoration: none; }
 .logo .logo-mark { color: #5D9CEC; }
+.topbar-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+/* Date · quarter · days-left, centered in the bar. */
+.app-meta { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: var(--fs-caption); color: var(--text-3); letter-spacing: .04em; white-space: nowrap; pointer-events: none; }
 .topbar-right { display: flex; align-items: center; gap: 7px; }
 .mode-toggle { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 3px; gap: 2px; }
 .mode-btn {
@@ -65,9 +69,17 @@ a { color: inherit; text-decoration: none; }
 
 /* ── SHARED FOOTER ── (shell-rendered; hosts the privacy toggle on zone pages) */
 .app-footer {
+  position: relative;
   max-width: 1080px; margin: 0 auto; padding: 18px 22px 40px;
   display: flex; align-items: center; justify-content: center; gap: 8px;
 }
+.footer-logout {
+  position: absolute; right: 22px; top: 18px;
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--text-4); font-size: var(--fs-caption); font-weight: 600;
+  letter-spacing: .04em; text-decoration: none; transition: color .15s;
+}
+.footer-logout:hover { color: var(--red); }
 .footer-btn {
   background: none; border: none; color: var(--text-4); font-size: var(--fs-body);
   cursor: pointer; padding: 7px 9px; border-radius: 9px; font-family: inherit;
@@ -208,6 +220,11 @@ html.light .zone-card { background: var(--surface); }
   .nav-ic svg { width: 18px; height: 18px; }
   .nav-domain { display: none; }
   .nav-sep { display: none; }
+}
+/* Phone only: the centered date would crowd the narrow bar, so stack it under the logo. */
+@media (max-width: 540px) {
+  .topbar-left { flex-direction: column; align-items: flex-start; gap: 1px; }
+  .app-meta { position: static; transform: none; font-size: 9px; letter-spacing: .03em; }
 }
 
 /* ── DESKTOP UI SCALE ──

@@ -1204,9 +1204,12 @@ app.get('/api/weather', async (req, res) => {
 app.patch('/api/projects/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { id } = req.params;
-  const { status, deadlineStart, deadlineEnd, area, system, source } = req.body || {};
+  const { name, status, deadlineStart, deadlineEnd, area, system, source } = req.body || {};
   try {
     const properties = {};
+    if (name !== undefined && name !== null && String(name).trim()) {
+      properties.Name = { title: [{ text: { content: String(name).trim() } }] };
+    }
     if (status !== undefined) properties.Status = { status: { name: status } };
     // deadlineStart + optional deadlineEnd → Target Deadline (range when both set).
     if (deadlineStart !== undefined || deadlineEnd !== undefined) {
