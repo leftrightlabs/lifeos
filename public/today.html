@@ -2278,10 +2278,17 @@ function renderVcal() {
   }
   document.getElementById('vcal').innerHTML = vcalItems.map(e => {
     if (e.now) return `<div class="vcal-now"><div class="vcal-now-dot"></div><div class="vcal-now-line"></div><span class="vcal-now-lbl">${e.lbl}</span></div>`;
-    return `<div class="vcal-row">
+    const nowOverlay = e.inProgress && e.progress != null ? `
+      <div style="position:absolute;top:${e.progress*100}%;left:0;right:0;display:flex;align-items:center;pointer-events:none;z-index:2">
+        <div class="vcal-now-dot" style="margin-left:38px"></div>
+        <div class="vcal-now-line"></div>
+        <span class="vcal-now-lbl">${e.nowLbl}</span>
+      </div>` : '';
+    return `<div class="vcal-row" style="${e.inProgress ? 'position:relative;overflow:visible' : ''}">
       <div class="vcal-time">${e.time}</div>
       <div class="vcal-line"></div>
       <div class="vcal-content"><div class="vcal-event" style="background:${e.bg};border-left-color:${e.c};${e.italic?'font-style:italic;color:var(--text-3);':''}">${e.name}<span class="sub">${e.sub}</span></div></div>
+      ${nowOverlay}
     </div>`;
   }).join('');
 }
@@ -2759,13 +2766,19 @@ function applyCalendar(events) {
     }
     const mins = e.end ? Math.round((new Date(e.end) - new Date(e.start)) / 60000) : 0;
     const sub = mins >= 60 ? (mins/60) + 'h' : mins ? mins + 'min' : '';
-    timed.push({ time, name: e.title, sub, c, bg, isPast, _start: d });
+    const inProgress = !isPast && d <= now;
+    const progress = (inProgress && e.end)
+      ? Math.min(0.95, Math.max(0.05, (now - d) / (endTime - d)))
+      : null;
+    timed.push({ time, name: e.title, sub, c, bg, isPast, _start: d, inProgress, progress, nowLbl: 'NOW · ' + nowStr });
   }
   timed.sort((a, b) => a._start - b._start);
-  // Show future events only — past events drop off automatically
+  // Show future + in-progress events. In-progress events carry the NOW indicator
+  // embedded at the proportional position; put it before the first purely-future event.
   const future = timed.filter(e => !e.isPast);
+  const hasInProgress = future.some(e => e.inProgress);
   const items = future.length
-    ? [{ now: true, lbl: 'NOW · ' + nowStr }, ...future]
+    ? (hasInProgress ? [...future] : [{ now: true, lbl: 'NOW · ' + nowStr }, ...future])
     : [];
   vcalItems.length = 0;
   items.forEach(i => vcalItems.push(i));

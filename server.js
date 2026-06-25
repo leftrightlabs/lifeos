@@ -189,13 +189,23 @@ function makeOAuthClient(req, callbackPath = '/auth/google/callback') {
   );
 }
 
-async function queryTasks(dataSourceId, { peopleProp, myDayOnly } = {}) {
+async function queryTasks(dataSourceId, { peopleProp, myDayOnly, includeFollowing } = {}) {
   const and = [{ property: 'Status', status: { does_not_equal: 'Done' } }];
   if (myDayOnly) and.push({ property: 'My Day', checkbox: { equals: true } });
   if (peopleProp) {
     const nid = currentNotionUserId();
+    const fallback = '00000000-0000-0000-0000-000000000000';
     // Member without a resolved Notion id → match nothing (never the owner's tasks).
-    and.push({ property: peopleProp, people: { contains: nid || '00000000-0000-0000-0000-000000000000' } });
+    if (includeFollowing) {
+      // My Day tasks: match if assigned OR following — so starred tasks show
+      // in Today's Plan regardless of whether you're primary assignee.
+      and.push({ or: [
+        { property: peopleProp,    people: { contains: nid || fallback } },
+        { property: 'Following',   people: { contains: nid || fallback } },
+      ]});
+    } else {
+      and.push({ property: peopleProp, people: { contains: nid || fallback } });
+    }
   }
   // Page through every match — a single 100-row page silently dropped tasks once
   // a database had more than 100 non-done tasks (they just never appeared in any
@@ -250,7 +260,11 @@ function simplifyTask(page, source) {
 }
 
 async function workTasks({ myDayOnly, allAssignees }) {
-  const data = await queryTasks(WORK_TASKS_DS, { peopleProp: allAssignees ? undefined : 'Assigned', myDayOnly });
+  const data = await queryTasks(WORK_TASKS_DS, {
+    peopleProp: allAssignees ? undefined : 'Assigned',
+    myDayOnly,
+    includeFollowing: !!myDayOnly,
+  });
   return data.results.map((p) => simplifyTask(p, 'work'));
 }
 async function lifeTasks({ myDayOnly }) {
