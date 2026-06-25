@@ -174,6 +174,15 @@
   .review-btn:hover { background: var(--lime); color: var(--navy-accent); }
   .review-btn.subtle { background: transparent; border-color: rgba(var(--edge-rgb), 0.12); color: var(--navy-dim); }
   .review-btn.subtle:hover { color: var(--navy); border-color: rgba(var(--edge-rgb), 0.25); }
+  .proj-picker { position: relative; }
+  .proj-search { background: transparent; border: 1px solid rgba(var(--edge-rgb), 0.12); color: var(--navy); font-size: var(--fs-caption); padding: 4px 10px; border-radius: 999px; font-family: var(--font-body); min-width: 180px; }
+  .proj-search::placeholder { color: var(--navy-dim); }
+  .proj-search:focus { outline: none; border-color: var(--lime); }
+  .proj-list { position: absolute; top: calc(100% + 4px); left: 0; z-index: 100; background: var(--white); border: 1px solid var(--navy-faint); border-radius: 10px; min-width: 280px; max-height: 210px; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,.22); display: none; }
+  .proj-list.open { display: block; }
+  .proj-list-item { padding: 7px 14px; cursor: pointer; font-size: var(--fs-body-sm); color: var(--navy); }
+  .proj-list-item:hover { background: rgba(var(--edge-rgb), 0.04); color: var(--lime); }
+  .proj-list-empty { padding: 8px 14px; font-size: var(--fs-body-sm); color: var(--navy-dim); font-style: italic; }
   .review-empty { padding: 20px 18px; color: var(--navy-dim); font-size: var(--fs-body-sm); font-style: italic; text-align: center; }
   .review-celebrate { padding: 30px 20px; text-align: center; color: var(--lime); font-family: var(--font-display); font-size: var(--fs-title); font-weight: 700; }
   /* === AUTOFOCUS TOOL — scoped to .autofocus-app ===
@@ -1943,12 +1952,6 @@ function renderReviewStreak(opts){
     : null;
 }
 
-function projectOptionsHtml(currentId){
-  const projs = REVIEW_PROJECTS || [];
-  const opts = ['<option value="">— pick project —</option>']
-    .concat(projs.map(p => `<option value="${p.id}" ${currentId === p.id ? 'selected' : ''}>[${p.source}] ${escapeHtml(p.name)}</option>`));
-  return opts.join('');
-}
 
 function reviewItemHtml(item, sectionKey){
   const cleared = getClearedSet().has(item.id);
@@ -1973,7 +1976,7 @@ function reviewItemHtml(item, sectionKey){
     controls += `<input type="date" data-act="set-date" data-id="${item.id}" value="${due}" title="Set due date"/>`;
   }
   if (showProject) {
-    controls += `<select class="project" data-act="set-project" data-id="${item.id}">${projectOptionsHtml(null)}</select>`;
+    controls += `<div class="proj-picker" data-id="${item.id}" data-source="${item.source}"><input class="proj-search" type="text" placeholder="Search projects…" autocomplete="off" aria-label="Search projects"><div class="proj-list"></div></div>`;
   }
   if (showWaitingActions) {
     controls += `<select data-act="set-status" data-id="${item.id}">
@@ -2109,17 +2112,39 @@ function attachReviewHandlers(){
       } catch(err){ window.lrl.toast('Failed: '+err.message,'error'); }
     });
   });
-  body.querySelectorAll('[data-act="set-project"]').forEach(el => {
-    el.addEventListener('change', async (e) => {
-      e.stopPropagation();
-      const id = el.dataset.id;
-      const projectId = el.value;
-      if (!projectId) return;
+  body.querySelectorAll('.proj-picker').forEach(picker => {
+    const taskId = picker.dataset.id;
+    const source = picker.dataset.source;
+    const input = picker.querySelector('.proj-search');
+    const list = picker.querySelector('.proj-list');
+    const projects = (REVIEW_PROJECTS || []).filter(p => p.source === source);
+
+    const renderList = (query) => {
+      const q = (query || '').toLowerCase().trim();
+      const filtered = q ? projects.filter(p => p.name.toLowerCase().includes(q)) : projects;
+      list.innerHTML = filtered.length
+        ? filtered.slice(0, 25).map(p => `<div class="proj-list-item" data-proj-id="${p.id}">${escapeHtml(p.name)}</div>`).join('')
+        : `<div class="proj-list-empty">No matches</div>`;
+      list.classList.add('open');
+    };
+
+    input.addEventListener('focus', () => renderList(input.value));
+    input.addEventListener('input', () => renderList(input.value));
+    input.addEventListener('blur', () => {
+      setTimeout(() => { if (!picker.contains(document.activeElement)) list.classList.remove('open'); }, 160);
+    });
+
+    list.addEventListener('mousedown', async (e) => {
+      const item = e.target.closest('.proj-list-item');
+      if (!item) return;
+      e.preventDefault();
+      const projectId = item.dataset.projId;
+      input.value = item.textContent;
+      list.classList.remove('open');
       try {
-        // PATCH endpoint doesn't support project yet — mark cleared locally for v1.
-        await fetch('/api/ai/triage/apply', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actions: [{ type: 'update_task', taskId: id, label: 'set project' }] }) });
+        await fetch(`/api/tasks/${taskId}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ projectId }) });
         window.lrl.haptic('success');
-        clearReviewRow(el, id);
+        clearReviewRow(input, taskId);
       } catch(err){ window.lrl.toast('Failed: '+err.message,'error'); }
     });
   });
