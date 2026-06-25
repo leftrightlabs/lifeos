@@ -584,26 +584,19 @@
 
   .runway-header.healthy { animation:breathe 3s 1s ease-in-out 2; }
 
-  /* ── Today-style section cards (replaces the old floating eyebrow labels) ── */
-  .sec-card { background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--radius); padding:15px 17px; margin-bottom:18px; }
-  .sec-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:13px; }
-  .sec-card.collapsed .sec-head { margin-bottom:0; }
-  .card-toggle { display:flex; align-items:center; gap:8px; cursor:pointer; flex:1; min-width:0; user-select:none; }
-  .sec-title { font-size:var(--fs-caption); font-weight:700; color:var(--label); letter-spacing:.09em; text-transform:uppercase; }
-  .chev { font-size:9px; color:var(--text-4); transition:transform .2s; flex-shrink:0; }
-  .sec-card.collapsed .chev { transform:rotate(-90deg); }
-  .sec-card.collapsed .sec-body { display:none; }
-  /* Sections that were already cards lose their own chrome when wrapped in .sec-card */
-  .sec-card > .sec-body > .weekly-pulse,
-  .sec-card > .sec-body > .featured-card,
-  .sec-card > .sec-body > .done-state,
-  .sec-card > .sec-body > .ahead-card,
-  .sec-card > .sec-body > .runway-section,
-  .sec-card > .sec-body > .funnel-section,
-  .sec-card > .sec-body > .channel-insights-block,
-  .sec-card > .sec-body > .insight-callout { background:transparent; border:none; border-radius:0; margin:0; padding:0; }
+  /* ── Section cards use the shared collapsible system (see styles/cards.css) ── */
+  .attract-page .t-card { margin-bottom:18px; }
+  /* Sections that were already cards lose their own chrome when wrapped in .t-card */
+  .t-card > .t-body > .weekly-pulse,
+  .t-card > .t-body > .featured-card,
+  .t-card > .t-body > .done-state,
+  .t-card > .t-body > .ahead-card,
+  .t-card > .t-body > .runway-section,
+  .t-card > .t-body > .funnel-section,
+  .t-card > .t-body > .channel-insights-block,
+  .t-card > .t-body > .insight-callout { background:transparent; border:none; border-radius:0; margin:0; padding:0; }
   /* The channel-insights block has overflow:hidden + an internal tab bar; keep it edge-to-edge inside the card */
-  .sec-card > .sec-body > .channel-insights-block { overflow:visible; }
+  .t-card > .t-body > .channel-insights-block { overflow:visible; }
 
   /* ── State visibility — a single body class (.state-*) drives the layout ── */
   .ahead-card, .pulse-compact, .label-healthy, .achievement-flash { display:none; }
@@ -639,14 +632,14 @@
   </div>
 
   <!-- ══ 1. WEEKLY PULSE ══ -->
-  <div class="sec-card" data-sec="pulse">
+  <div class="t-card" data-persist-key="attract-pulse">
     <div class="sec-head">
-      <div class="card-toggle" onclick="toggleSec(this)">
+      <div class="card-toggle" onclick="toggleCard(this)">
         <span class="chev">▾</span>
         <span class="sec-title">Weekly Pulse</span>
       </div>
     </div>
-    <div class="sec-body">
+    <div class="t-body">
   <div class="weekly-pulse">
     <div class="pulse-row-1">
       <span class="pulse-week">Jun 21–27</span>
@@ -692,13 +685,13 @@
       <span class="runway-status-text warn">3.5w ⚠</span>
     </div>
   </div>
-    </div><!-- /sec-body -->
-  </div><!-- /sec-card pulse -->
+    </div><!-- /t-body -->
+  </div><!-- /t-card pulse -->
 
   <!-- ══ 2. POST THIS NOW / UP NEXT ══ -->
-  <div class="sec-card" data-sec="post-now">
+  <div class="t-card" data-persist-key="attract-post-now">
     <div class="sec-head">
-      <div class="card-toggle" onclick="toggleSec(this)">
+      <div class="card-toggle" onclick="toggleCard(this)">
         <span class="chev">▾</span>
         <span class="sec-title label-stressed">Post This Now</span>
         <span class="sec-title label-healthy">Up Next</span>
@@ -706,7 +699,7 @@
       <button class="sl-action label-stressed" onclick="event.stopPropagation(); toggleQueue()">2 more in queue ↓</button>
       <button class="sl-action label-healthy" onclick="event.stopPropagation(); toggleQueue()">View full queue ↓</button>
     </div>
-    <div class="sec-body">
+    <div class="t-body">
   <div class="featured-card" id="featured-card">
     <div class="urgency-bar red"></div>
 
@@ -892,18 +885,18 @@
       </div>
     </div>
   </div>
-    </div><!-- /sec-body -->
-  </div><!-- /sec-card post-now -->
+    </div><!-- /t-body -->
+  </div><!-- /t-card post-now -->
 
   <!-- ══ 3. CONTENT RUNWAY ══ -->
-  <div class="sec-card" data-sec="runway">
+  <div class="t-card" data-persist-key="attract-runway">
     <div class="sec-head">
-      <div class="card-toggle" onclick="toggleSec(this)">
+      <div class="card-toggle" onclick="toggleCard(this)">
         <span class="chev">▾</span>
         <span class="sec-title">Content Runway</span>
       </div>
     </div>
-    <div class="sec-body">
+    <div class="t-body">
   <div class="runway-section">
     <div class="runway-header" onclick="toggleRunway()">
       <div class="runway-header-left">
@@ -1099,18 +1092,18 @@
 
     </div><!-- /runway-body -->
   </div><!-- /runway-section -->
-    </div><!-- /sec-body -->
-  </div><!-- /sec-card runway -->
+    </div><!-- /t-body -->
+  </div><!-- /t-card runway -->
 
   <!-- ══ 4. FUNNEL METRICS ══ -->
-  <div class="sec-card" data-sec="funnel">
+  <div class="t-card" data-persist-key="attract-funnel">
     <div class="sec-head">
-      <div class="card-toggle" onclick="toggleSec(this)">
+      <div class="card-toggle" onclick="toggleCard(this)">
         <span class="chev">▾</span>
         <span class="sec-title">Funnel · June</span>
       </div>
     </div>
-    <div class="sec-body">
+    <div class="t-body">
   <div class="funnel-section">
     <div class="funnel-header" onclick="toggleFunnel()">
       <h3>Posts → Leads Pipeline</h3>
@@ -1182,18 +1175,18 @@
       </div>
     </div>
   </div>
-    </div><!-- /sec-body -->
-  </div><!-- /sec-card funnel -->
+    </div><!-- /t-body -->
+  </div><!-- /t-card funnel -->
 
   <!-- ══ 5. CHANNEL INSIGHTS ══ -->
-  <div class="sec-card" data-sec="channels">
+  <div class="t-card" data-persist-key="attract-channels">
     <div class="sec-head">
-      <div class="card-toggle" onclick="toggleSec(this)">
+      <div class="card-toggle" onclick="toggleCard(this)">
         <span class="chev">▾</span>
         <span class="sec-title">Channel Insights</span>
       </div>
     </div>
-    <div class="sec-body">
+    <div class="t-body">
   <div class="channel-insights-block">
 
     <!-- Tab bar -->
@@ -1542,18 +1535,18 @@
       </div>
     </div>
   </div><!-- /channel-insights-block -->
-    </div><!-- /sec-body -->
-  </div><!-- /sec-card channels -->
+    </div><!-- /t-body -->
+  </div><!-- /t-card channels -->
 
   <!-- ══ 5. WHAT'S WORKING ══ -->
-  <div class="sec-card" data-sec="working">
+  <div class="t-card" data-persist-key="attract-working">
     <div class="sec-head">
-      <div class="card-toggle" onclick="toggleSec(this)">
+      <div class="card-toggle" onclick="toggleCard(this)">
         <span class="chev">▾</span>
         <span class="sec-title">What's Working</span>
       </div>
     </div>
-    <div class="sec-body">
+    <div class="t-body">
   <div class="insight-callout" style="margin-bottom:12px">
     <div class="ic-icon">📡</div>
     <div class="insight-text">
@@ -1576,18 +1569,18 @@
       <div class="signal-sub">1 ready · 1 needs copy · 1 needs image</div>
     </div>
   </div>
-    </div><!-- /sec-body -->
-  </div><!-- /sec-card working -->
+    </div><!-- /t-body -->
+  </div><!-- /t-card working -->
 
   <!-- ══ 6. THIS WEEK ══ -->
-  <div class="sec-card" data-sec="thisweek">
+  <div class="t-card" data-persist-key="attract-thisweek">
     <div class="sec-head">
-      <div class="card-toggle" onclick="toggleSec(this)">
+      <div class="card-toggle" onclick="toggleCard(this)">
         <span class="chev">▾</span>
         <span class="sec-title">This Week</span>
       </div>
     </div>
-    <div class="sec-body">
+    <div class="t-body">
   <div class="week-list">
     <div class="week-row">
       <span class="week-row-date">Jun 22</span>
@@ -1605,8 +1598,8 @@
       <span class="status-pill scheduled" style="flex-shrink:0">Scheduled</span>
     </div>
   </div>
-    </div><!-- /sec-body -->
-  </div><!-- /sec-card thisweek -->
+    </div><!-- /t-body -->
+  </div><!-- /t-card thisweek -->
 </div><!-- /attract-page -->
 
 <div class="toast lime" id="toast">
@@ -1664,17 +1657,7 @@ The expertise was the hard part. This last piece is mostly translation. We built
     document.getElementById('funnel-arrow').classList.toggle('open', funnelOpen);
   }
 
-  // Collapsible Today-style section cards; collapse state persists (durable UI pref).
-  function toggleSec(el){
-    const c = el.closest('.sec-card'); if(!c) return;
-    c.classList.toggle('collapsed');
-    const k = c.dataset.sec; if(!k) return;
-    try { const s = JSON.parse(localStorage.getItem('attract-sections')||'{}'); s[k] = c.classList.contains('collapsed'); localStorage.setItem('attract-sections', JSON.stringify(s)); } catch {}
-  }
-  function restoreSecCollapse(){
-    let s={}; try { s = JSON.parse(localStorage.getItem('attract-sections')||'{}'); } catch {}
-    document.querySelectorAll('.sec-card[data-sec]').forEach(c=>{ if(s[c.dataset.sec]) c.classList.add('collapsed'); });
-  }
+  // Section cards collapse via the shared system (toggleCard + restoreCards from cards.js).
 
   function copyCaption() {
     navigator.clipboard.writeText(currentCaption).catch(()=>{});
@@ -2017,7 +2000,7 @@ The expertise was the hard part. This last piece is mostly translation. We built
   // pageState. ?state=… still overrides for testing. The flash/transition only
   // fire from triggerHealthyTransition() on a live publish, never on load.
   applyPageState('stressed');
-  restoreSecCollapse();   // restore persisted section-card collapse state
+  if (window.restoreCards) restoreCards();   // restore persisted section-card collapse state
   hydrate();
   hydrateChannels();   // channel insights load independently (slower live APIs)
 

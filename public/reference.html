@@ -14,7 +14,7 @@
 .page-header { margin-bottom: 28px; }
 .zone-eye { display:inline-flex; align-items:center; gap:7px; font-size:10px; font-weight:800; letter-spacing:.14em; color:var(--zone); margin-bottom:8px; }
 .zone-eye::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--zone); }
-.page-title { font-family:'scotch-display','Playfair Display',Georgia,serif; font-size:34px; font-weight:700; color:var(--text); letter-spacing:-.01em; transform:scaleY(1.18); display:inline-block; transform-origin:top left; line-height:1; }
+.page-title { font-weight:800; font-size:28px; color:var(--text); letter-spacing:-.01em; line-height:1.05; margin:0; }
 .page-sub { font-size:13px; color:var(--text-3); margin-top:12px; }
 
 /* search hero */
@@ -45,8 +45,8 @@
 .two-col { display:grid; grid-template-columns:1fr 320px; gap:20px; align-items:start; }
 @media (max-width:800px){ .two-col{ grid-template-columns:1fr; } .ref-page{ padding:24px 18px 70px; } .page-title{ font-size:26px; } }
 
-.col-main { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; }
-.mtabs { display:flex; gap:4px; }
+.col-main { /* chrome comes from shared .t-card */ }
+.mtabs { display:flex; gap:4px; flex-shrink:0; }
 .mtab { padding:3px 10px; border-radius:5px; font-size:10px; font-weight:700; letter-spacing:.04em; border:1px solid var(--border); background:transparent; color:var(--text-3); cursor:pointer; transition:all .15s; font-family:inherit; }
 .mtab.on[data-m="work"] { background:var(--work-soft); border-color:var(--work); color:#7FA8FF; }
 .mtab.on[data-m="personal"] { background:var(--personal-soft); border-color:var(--personal); color:var(--personal); }
@@ -68,7 +68,7 @@
 .tcard-author { font-size:10px; font-weight:700; color:var(--text-3); }
 
 .col-side { display:flex; flex-direction:column; gap:14px; }
-.side-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px; }
+.side-card { /* chrome comes from shared .t-card */ }
 .contact-row { display:flex; align-items:center; gap:10px; padding:8px 6px; border-radius:8px; cursor:pointer; transition:background .15s; }
 .contact-row:hover { background:var(--surface-2); }
 .c-av { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; flex-shrink:0; }
@@ -112,8 +112,7 @@
 
 <div class="ref-page">
   <header class="page-header">
-    <div class="zone-eye">REFERENCE</div>
-    <div class="page-title">Find It Fast</div>
+    <h1 class="page-title">Find It Fast</h1>
     <div class="page-sub">Search across Notion, Drive, Gmail, and your contacts — all from one place</div>
   </header>
 
@@ -132,24 +131,27 @@
 
   <div id="emptyState">
     <div class="two-col">
-      <div class="col-main">
-        <div class="sec-lbl">PINNED DOCS
+      <div class="t-card col-main" data-persist-key="ref-pinned">
+        <div class="sec-head">
+          <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Pinned Docs</div></div>
           <div class="mtabs">
             <button class="mtab on" data-m="work" onclick="switchPinned(this)">Work</button>
             <button class="mtab" data-m="personal" onclick="switchPinned(this)">Personal</button>
           </div>
         </div>
-        <div id="docGrid" class="doc-grid"></div>
-        <div id="docTestimonials"></div>
+        <div class="t-body">
+          <div id="docGrid" class="doc-grid"></div>
+          <div id="docTestimonials"></div>
+        </div>
       </div>
       <div class="col-side">
-        <div class="side-card">
-          <div class="sec-lbl" style="margin-bottom:12px">CONTACTS</div>
-          <div id="contactsList"></div>
+        <div class="t-card side-card" data-persist-key="ref-contacts">
+          <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Contacts</div></div></div>
+          <div class="t-body"><div id="contactsList"></div></div>
         </div>
-        <div class="side-card" id="testimonialsCard">
-          <div class="sec-lbl" style="margin-bottom:12px">TESTIMONIALS</div>
-          <div id="testimonialsList"></div>
+        <div class="t-card side-card" id="testimonialsCard" data-persist-key="ref-testimonials">
+          <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Testimonials</div></div></div>
+          <div class="t-body"><div id="testimonialsList"></div></div>
         </div>
       </div>
     </div>
