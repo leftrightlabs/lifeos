@@ -6,7 +6,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { initDb, isEnabled as dbEnabled, users as dbUsers } from './db.js';
+import { initDb, isEnabled as dbEnabled, users as dbUsers, prefs as dbPrefs } from './db.js';
 import { decrypt, encrypt, isConfigured as secretsConfigured } from './secrets.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { registerConvertRoutes } from './src/routes/convert.js';
@@ -600,6 +600,26 @@ function serveZone(zone) {
     if (!(await reqPersonalEnabled(req))) return res.redirect('/today');
     serveZone(zone)(req, res);
   });
+});
+
+// ── Today UI state (One Thing pick + status) — synced across a user's devices.
+// Falls back to a no-op (client keeps its localStorage) when the DB is dormant
+// or there's no signed-in user, so single-user/dev still works.
+app.get('/api/today/state', async (req, res) => {
+  try {
+    if (!dbEnabled() || !req.session?.userId) return res.json({});
+    const v = await dbPrefs.get(req.session.userId, 'today-state');
+    res.json(v || {});
+  } catch (e) { res.json({}); }
+});
+app.put('/api/today/state', async (req, res) => {
+  try {
+    if (!dbEnabled() || !req.session?.userId) return res.json({ ok: false, stored: false });
+    const b = req.body || {};
+    const clean = { date: String(b.date || ''), otOverride: b.otOverride ?? null, onething: b.onething ?? null };
+    await dbPrefs.set(req.session.userId, 'today-state', clean);
+    res.json({ ok: true, stored: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.use(express.static(join(__dirname, 'public'), staticOpts));

@@ -1356,8 +1356,35 @@ function undoOneThing() {
 // ── ONE THING OVERRIDE ──
 function _otKey() { return 'lrl-ot-override-' + todayISO(); }
 function getOTOverride() { try { return JSON.parse(localStorage.getItem(_otKey())); } catch { return null; } }
-function setOTOverride(o) { try { localStorage.setItem(_otKey(), JSON.stringify(o)); } catch {} }
-function clearOTOverride() { try { localStorage.removeItem(_otKey()); } catch {} }
+function setOTOverride(o) { try { localStorage.setItem(_otKey(), JSON.stringify(o)); } catch {} syncTodayState(); }
+function clearOTOverride() { try { localStorage.removeItem(_otKey()); } catch {} syncTodayState(); }
+
+// ── Cross-device sync for the One Thing (pick + status) ──
+// The pick (override) and status live in localStorage per device; we mirror them
+// to the server (per user/day) so the same One Thing shows on phone + desktop.
+let _stateSyncT;
+function syncTodayState() {
+  clearTimeout(_stateSyncT);
+  _stateSyncT = setTimeout(() => {
+    let onething = {};
+    try { onething = JSON.parse(localStorage.getItem('today-onething') || '{}'); } catch {}
+    fetch('/api/today/state', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: todayISO(), otOverride: getOTOverride(), onething }),
+    }).catch(() => {});
+  }, 250);
+}
+// Pull the server copy into localStorage so render/restore reflects other devices.
+// No-op when there's no record yet (never clobbers an unsynced local pick).
+async function loadTodayStateFromServer() {
+  try {
+    const d = await fetch('/api/today/state').then(r => r.json());
+    if (!d || !d.date || d.date !== todayISO()) return;
+    if (d.otOverride) localStorage.setItem(_otKey(), JSON.stringify(d.otOverride));
+    else localStorage.removeItem(_otKey());
+    if (d.onething) localStorage.setItem('today-onething', JSON.stringify(d.onething));
+  } catch {}
+}
 
 let _pickerTab = 'tasks', _dealCache = null, _postCache = null, _pickerItems = [];
 
@@ -1776,6 +1803,7 @@ function setOneThing(kind, val) {
   if (s._date !== todayISO()) s = { _date: todayISO() };
   if (val == null) delete s[kind]; else s[kind] = val;
   localStorage.setItem('today-onething', JSON.stringify(s));
+  syncTodayState();
 }
 function toggleCard(el) {
   const c = el.closest('.t-card, .streak-card, .onething');
@@ -3073,7 +3101,8 @@ async function softRefresh() {
     const j = url => fetch(url).then(r => r.json()).catch(() => ({ error: true }));
     // Tasks only — goals/rocks are left as-is (kept in _loadedGoals) so the poll
     // stays light and never triggers Notion's per-rock milestone rate limit.
-    const [w, l] = await Promise.all([j('/api/tasks/work-myday'), j('/api/tasks/life-myday')]);
+    // Also re-pull the One Thing pick/status so a change on another device shows.
+    const [w, l] = await Promise.all([j('/api/tasks/work-myday'), j('/api/tasks/life-myday'), loadTodayStateFromServer()]);
     applyTasksGoals(undefined, w, l);
     _reRenderAll();
     _updateRefreshStamp();
@@ -3101,6 +3130,7 @@ async function loadTodayData() {
   const pWealth = j('/api/wealth/summary');
   const pFin    = j('/api/finance/xero');
   const pPipe   = j('/api/convert/pipeline');
+  const pState  = loadTodayStateFromServer(); // cross-device One Thing pick/status
 
   // Projects only decorate task rows with a project label — patch in when ready.
   pProj.then(v => {
@@ -3112,6 +3142,7 @@ async function loadTodayData() {
 
   // ── CORE: tasks + goals → reveal the dashboard as soon as these resolve ──
   const [goalsV, workV, lifeV] = await Promise.all([pGoals, pWork, pLife]);
+  await pState; // ensure the synced One Thing pick/status is in localStorage first
   applyTasksGoals(goalsV, workV, lifeV);
   _dataLoaded = true;
   _reRenderAll();

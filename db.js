@@ -37,6 +37,16 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at                    TIMESTAMPTZ NOT NULL DEFAULT now(),
   last_login_at                 TIMESTAMPTZ
 );
+
+-- Small per-user key/value store for cross-device UI state (e.g. the Today
+-- "One Thing" pick + status). Synced across a user's devices.
+CREATE TABLE IF NOT EXISTS user_prefs (
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  key        TEXT NOT NULL,
+  value      JSONB,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, key)
+);
 `;
 
 async function ensureSchema() {
@@ -147,5 +157,21 @@ export const users = {
   },
   async setNotionUserId(id, notionId) {
     await query('UPDATE users SET notion_user_id = $2, updated_at = now() WHERE id = $1', [id, notionId]);
+  },
+};
+
+// ── Per-user key/value prefs (cross-device UI state) ───────────────────────
+export const prefs = {
+  async get(userId, key) {
+    const { rows } = await query('SELECT value FROM user_prefs WHERE user_id = $1 AND key = $2', [userId, key]);
+    return rows[0] ? rows[0].value : null;
+  },
+  async set(userId, key, value) {
+    await query(
+      `INSERT INTO user_prefs (user_id, key, value)
+       VALUES ($1, $2, $3::jsonb)
+       ON CONFLICT (user_id, key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+      [userId, key, JSON.stringify(value)],
+    );
   },
 };
