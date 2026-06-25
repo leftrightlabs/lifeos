@@ -117,7 +117,7 @@ html.privacy-blur :is(
   /* Messages */
   .msg-sender, .msg-subject, .msg-preview, .slack-text, .comment-text,
   /* Wealth */
-  .w-kpi-val, .w-amount, .net-worth-val
+  .w-value, .w-goal-meta, .w-kpi-val, .w-amount, .net-worth-val
 ) {
   filter: blur(7px) !important;
   -webkit-user-select: none; user-select: none;

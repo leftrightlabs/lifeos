@@ -7,26 +7,331 @@
 <link rel="stylesheet" href="/styles/cards.css">
 <script defer src="/cards.js"></script>
 <script defer src="/zone-scope.js"></script>
-<style>:root { --zone: var(--personal); --zone-soft: var(--personal-soft); }</style>
+<style>
+:root {
+  --zone: var(--personal); --zone-soft: var(--personal-soft);
+  /* Map the legacy /index health tokens onto the shared zone token system so the
+     ported styles below work unchanged. */
+  --white: var(--surface);
+  --navy-faint: var(--border-soft);
+  --navy: var(--text);
+  --navy-dim: var(--text-3);
+  --navy-accent: var(--bg);
+  --lime: var(--green);
+  --lime-light: var(--green);
+  --font-display: inherit;
+  --ink-rgb: 245,245,247;   /* ~ --text, for rgba() text tints */
+  --edge-rgb: 94,107,132;   /* ~ --text-3, for subtle fills/borders */
+}
+.health-page { max-width: 1000px; margin: 0 auto; padding: 24px 28px 80px; }
+.page-sub { font-size: 13px; color: var(--text-3); margin: 8px 0 20px; }
+@media (max-width: 600px) { .health-page { padding: 20px 16px 70px; } }
+
+/* ===== Health rings + streaks (ported from /index, retokenized) ===== */
+.health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.health-card { background: var(--white); border: 1px solid var(--navy-faint); border-radius: 12px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.health-card:hover { border-color: rgba(79,214,160,0.3); background: rgba(79,214,160,0.04); }
+.health-card.full { grid-column: 1 / -1; }
+.ring-wrap { position: relative; width: 72px; height: 72px; flex-shrink: 0; }
+.ring-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring-track { fill: none; stroke: rgba(var(--edge-rgb), 0.18); stroke-width: 8; }
+.ring-fill { fill: none; stroke: var(--lime); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
+.ring-fill.protein { stroke: #d97a5e; }
+.ring-fill.sleep   { stroke: #7aa9d8; }
+.ring-fill.complete { filter: drop-shadow(0 0 6px currentColor); }
+.ring-pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: var(--fs-body); font-weight: 800; color: var(--navy); letter-spacing: -0.01em; }
+.health-body { flex: 1; min-width: 0; }
+.health-label { font-size: var(--fs-caption); letter-spacing: 0.12em; text-transform: uppercase; color: rgba(var(--ink-rgb), 0.6); font-weight: 700; margin-bottom: 4px; }
+.health-value { font-size: var(--fs-heading); color: var(--navy); font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+.health-value .target { font-size: var(--fs-body-sm); color: rgba(var(--ink-rgb), 0.5); font-weight: 500; margin-left: 4px; letter-spacing: 0; }
+.health-sub { font-size: var(--fs-body-sm); color: rgba(var(--ink-rgb), 0.6); margin-top: 5px; line-height: 1.35; }
+.health-sub.win { color: var(--lime); }
+
+.streak-card { background: var(--white); border: 1px solid var(--navy-faint); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; transition: border-color 0.15s, background 0.15s; min-height: 96px; justify-content: center; }
+.streak-card:hover { border-color: rgba(79,214,160,0.3); background: rgba(79,214,160,0.04); }
+.streak-card.hit { border-color: rgba(79,214,160,0.45); background: linear-gradient(135deg, rgba(79,214,160,0.08), rgba(79,214,160,0.02)); }
+.streak-top { display: flex; align-items: baseline; gap: 8px; }
+.streak-num { font-size: var(--fs-display); font-weight: 800; color: var(--lime); line-height: 1; letter-spacing: -0.02em; }
+.streak-unit { font-size: var(--fs-caption); color: rgba(var(--ink-rgb), 0.6); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+.streak-label { font-size: var(--fs-body-sm); color: var(--navy); font-weight: 600; letter-spacing: 0.02em; }
+.streak-status { font-size: var(--fs-caption); letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; padding: 2px 8px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; margin-top: 2px; }
+.streak-status.hit { background: rgba(79,214,160,0.18); color: var(--lime); }
+.streak-status.miss { background: rgba(var(--edge-rgb), 0.12); color: rgba(var(--ink-rgb), 0.5); }
+.streak-flame { display: inline-block; }
+
+.hrv-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.hrv-now { font-size: var(--fs-display); font-weight: 700; color: var(--navy); line-height: 1; }
+.hrv-now .unit { font-size: var(--fs-body-sm); color: rgba(var(--ink-rgb), 0.5); font-weight: 500; margin-left: 4px; }
+.hrv-avg { font-size: var(--fs-caption); color: rgba(var(--ink-rgb), 0.55); }
+.hrv-spark { display: flex; align-items: flex-end; gap: 4px; height: 36px; }
+.hrv-bar { flex: 1; background: rgba(79,214,160,0.4); border-radius: 2px; min-height: 2px; transition: height 0.4s; }
+.hrv-bar.today { background: var(--lime); box-shadow: 0 0 8px rgba(79,214,160,0.4); }
+.hrv-bar.empty { background: rgba(var(--edge-rgb), 0.1); }
+
+.q-row { display: grid; grid-template-columns: 110px 1fr 72px; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid rgba(var(--edge-rgb), 0.1); }
+.q-row:first-of-type { border-top: none; padding-top: 4px; }
+.q-row-label { font-size: var(--fs-body-sm); color: var(--navy); font-weight: 600; letter-spacing: 0.02em; }
+.q-row-label .target { color: rgba(var(--ink-rgb), 0.5); font-weight: 500; font-size: var(--fs-caption); margin-left: 3px; }
+.q-row-pct { font-size: var(--fs-title); font-weight: 800; color: var(--lime); text-align: right; line-height: 1; letter-spacing: -0.02em; }
+.q-row-pct .small { font-size: var(--fs-caption); color: rgba(var(--ink-rgb), 0.55); font-weight: 600; display: block; margin-top: 3px; letter-spacing: 0.02em; }
+.q-grid { display: flex; gap: 2px; flex-wrap: nowrap; align-items: stretch; height: 22px; min-width: 0; }
+.q-cell { flex: 1; min-width: 0; border-radius: 2px; background: rgba(var(--edge-rgb), 0.1); position: relative; transition: background 0.2s; cursor: pointer; }
+.q-cell.hit { background: var(--lime); }
+.q-cell.partial { background: rgba(79,214,160,0.35); }
+.q-cell.miss { background: rgba(var(--edge-rgb), 0.18); }
+.q-cell.today { box-shadow: 0 0 0 1.5px var(--lime), 0 0 6px rgba(79,214,160,0.6); z-index: 2; }
+.q-cell.future { background: transparent; }
+.q-hrv-card { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(var(--edge-rgb), 0.12); }
+.q-hrv-stat { text-align: center; }
+.q-hrv-stat .num { font-size: var(--fs-title); font-weight: 700; color: var(--navy); line-height: 1; }
+.q-hrv-stat .lab { font-size: var(--fs-caption); letter-spacing: 0.1em; text-transform: uppercase; color: rgba(var(--ink-rgb), 0.5); font-weight: 600; margin-top: 4px; }
+@media (max-width: 600px) {
+  .q-row { grid-template-columns: 80px 1fr 56px; gap: 8px; }
+  .q-row-label { font-size: var(--fs-caption); }
+  .q-row-pct { font-size: var(--fs-body); }
+  .q-grid { height: 18px; }
+}
+
+.health-log-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.health-log-field { display: flex; flex-direction: column; gap: 4px; }
+.health-log-field label { font-size: var(--fs-caption); letter-spacing: 0.1em; text-transform: uppercase; color: rgba(var(--ink-rgb), 0.5); font-weight: 600; }
+.health-log-field input { background: rgba(var(--edge-rgb), 0.1); border: 1px solid rgba(var(--edge-rgb), 0.2); color: var(--navy); padding: 9px 12px; border-radius: 8px; font-family: inherit; font-size: var(--fs-body); color-scheme: dark; width: 100%; }
+.health-log-field input:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
+.health-log-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; }
+.health-log-save { background: var(--lime); color: var(--navy-accent); border: none; font-family: inherit; font-size: var(--fs-body-sm); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 9px 18px; border-radius: 999px; cursor: pointer; }
+.health-log-save:hover { filter: brightness(1.08); }
+.health-log-save:disabled { opacity: 0.5; cursor: not-allowed; }
+.health-log-hint { font-size: var(--fs-caption); color: rgba(var(--ink-rgb), 0.45); margin-right: auto; }
+
+/* Tiles read as cells inside the shared .t-card panel */
+.t-card .health-card, .t-card .streak-card { background: var(--surface-2); }
+.t-body .health-grid:last-child { margin-bottom: 0; }
+.h-status { font-size: 13px; color: var(--text-3); padding: 22px 4px; text-align: center; }
+
+.h-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; z-index: 999; transition: transform .25s, opacity .25s; opacity: 0; pointer-events: none; }
+.h-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+</style>
 <script src="/sample-data.js"></script>
 <script src="/privacy.js"></script>
 </head><body>
 <div id="lrl-shell"></div>
-<div class="zone-wrap">
-  <div class="zone-hero">
-    <div class="zone-heading">
-      <div class="zone-icon">🏃</div>
-      <h1 class="zone-title">Health</h1>
-    </div>
-    <p class="zone-desc">Swim streaks, walking, journaling. Track the habits that keep energy and focus high.</p>
-    <span class="zone-badge">⚙ Building this zone</span>
-  </div>
-  <div class="zone-placeholder">
-    <div class="zone-card"><div class="zone-card-label">Movement</div><div class="zone-card-title">Swim 3×/week</div><div class="zone-card-body">Session log, Q2 progress, and streak history.</div></div>
-    <div class="zone-card"><div class="zone-card-label">Habits</div><div class="zone-card-title">Daily Rings</div><div class="zone-card-body">Swimming, walking, and journaling streaks week-over-week.</div></div>
-    <div class="zone-card"><div class="zone-card-label">Reflection</div><div class="zone-card-title">Journal Log</div><div class="zone-card-body">Recent entries, mood trends, and weekly review prompts.</div></div>
-  </div>
+
+<div class="health-page">
+  <h1 class="page-title">Health</h1>
+  <div class="page-sub">Close the rings. Keep the streaks alive.</div>
+  <div id="health-body" class="card-stack"><div class="h-status">Loading…</div></div>
 </div>
+
 <a href="/" class="fab" title="Back to Today">⚡</a>
+
+<script>
+let HEALTH_DATA = null;
+
+function toast(msg){
+  let t = document.getElementById('h-toast');
+  if (!t){ t = document.createElement('div'); t.id='h-toast'; t.className='h-toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+function tCard(title, bodyHtml, key, rightHtml){
+  return '<div class="t-card" data-persist-key="'+key+'"><div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">'+title+'</div></div>'+(rightHtml||'')+'</div><div class="t-body">'+bodyHtml+'</div></div>';
+}
+
+function ringSvg(pct, variant){
+  const radius = 32;
+  const circ = 2 * Math.PI * radius;
+  const clamped = Math.max(0, Math.min(100, pct));
+  const dashoffset = circ - (circ * clamped / 100);
+  const complete = clamped >= 100 ? ' complete' : '';
+  return `<div class="ring-wrap">
+    <svg class="ring-svg" viewBox="0 0 80 80">
+      <circle class="ring-track" cx="40" cy="40" r="${radius}"></circle>
+      <circle class="ring-fill ${variant || ''}${complete}" cx="40" cy="40" r="${radius}"
+        stroke-dasharray="${circ}" stroke-dashoffset="${dashoffset}"></circle>
+    </svg>
+    <div class="ring-pct">${Math.round(clamped)}%</div>
+  </div>`;
+}
+
+function streakCardHtml(opts){
+  const cls = opts.didToday ? ' hit' : '';
+  const status = opts.didToday
+    ? '<span class="streak-status hit"><span class="streak-flame">✓</span> Logged today</span>'
+    : '<span class="streak-status miss">Not yet today</span>';
+  return `<div class="streak-card${cls}" data-streak="${opts.key}">
+    <div class="streak-top">
+      <span class="streak-num">${opts.days}</span>
+      <span class="streak-unit">${opts.unit || 'day streak'}</span>
+    </div>
+    <div class="streak-label">${opts.label}</div>
+    ${status}
+  </div>`;
+}
+
+function hrvInner(hrv){
+  const today = hrv?.today;
+  const avg = hrv?.avg7;
+  const trend = hrv?.trend || [];
+  const trendData = trend.slice().reverse();
+  const max = Math.max(...trendData.map(d => d.hrv || 0), avg || 0, today || 0) || 100;
+  const bars = trendData.map(d => {
+    if (d.hrv == null) return `<div class="hrv-bar empty" style="height:6%"></div>`;
+    const h = Math.max(8, Math.round((d.hrv / max) * 100));
+    const isToday = d.date === new Date().toLocaleDateString('en-CA', { timeZone:'America/Chicago' });
+    return `<div class="hrv-bar ${isToday ? 'today' : ''}" style="height:${h}%" title="${d.date}: ${d.hrv}ms"></div>`;
+  }).join('');
+  const nowText = today != null ? `${today}<span class="unit">ms</span>` : `—<span class="unit">no reading today</span>`;
+  const avgText = avg != null ? `7-day avg ${avg}ms` : 'No data yet';
+  return `<div class="hrv-row"><div class="hrv-now">${nowText}</div><div class="hrv-avg">${avgText}</div></div><div class="hrv-spark">${bars}</div>`;
+}
+
+function quarterInner(d){
+  const q = d.quarter;
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone:'America/Chicago' });
+  const t = d.targets || { protein: 120, sleepHours: 8 };
+  const rows = [
+    { key:'protein', label:'Protein', meta:`≥ ${t.protein}g`,
+      classify:(day)=>{ if(day.date>todayStr) return 'future'; if(day.protein==null) return 'miss'; if(day.protein>=t.protein) return 'hit'; if(day.protein>0) return 'partial'; return 'miss'; }, hit:q.attainment.protein },
+    { key:'sleep', label:'Sleep', meta:`≥ ${t.sleepHours}h`,
+      classify:(day)=>{ if(day.date>todayStr) return 'future'; if(day.sleepHours==null) return 'miss'; if(day.sleepHours>=t.sleepHours) return 'hit'; if(day.sleepHours>0) return 'partial'; return 'miss'; }, hit:q.attainment.sleep },
+    { key:'walking', label:'Walking', meta:'any',
+      classify:(day)=>{ if(day.date>todayStr) return 'future'; return (day.walkMinutes||0)>0 ? 'hit':'miss'; }, hit:q.attainment.walking },
+    { key:'swimming', label:'Swimming', meta:'any',
+      classify:(day)=>{ if(day.date>todayStr) return 'future'; return (day.swimMinutes||0)>0 ? 'hit':'miss'; }, hit:q.attainment.swimming },
+    { key:'journal', label:'Journal', meta:'has body text',
+      classify:(day)=>{ if(day.date>todayStr) return 'future'; return day.hasBody ? 'hit':'miss'; }, hit:q.attainment.journal },
+  ];
+  const fmtDate = (iso) => { const [y,m,dd]=iso.split('-').map(Number); return new Date(y,m-1,dd).toLocaleDateString('en-US',{month:'short',day:'numeric',weekday:'short'}); };
+  const rowsHtml = rows.map(r => {
+    const cells = q.series.map(day => {
+      const cls = r.classify(day);
+      const todayCls = day.date === todayStr ? ' today' : '';
+      const valLabel = (() => {
+        if (r.key==='protein') return day.protein!=null ? `${day.protein}g protein` : 'no protein logged';
+        if (r.key==='sleep') return day.sleepHours!=null ? `${day.sleepHours}h sleep` : 'no sleep logged';
+        if (r.key==='walking') return day.walkMinutes ? `${day.walkMinutes} min walk` : 'no walk';
+        if (r.key==='swimming') return day.swimMinutes ? `${day.swimMinutes} min swim` : 'no swim';
+        if (r.key==='journal') return day.hasBody ? 'journal written ✓' : (day.logged ? 'row exists, no body' : 'no entry');
+        return '';
+      })();
+      const hover = `${fmtDate(day.date)} · ${valLabel}`;
+      return `<div class="q-cell ${cls}${todayCls}" title="${hover}" data-readout="${hover}"></div>`;
+    }).join('');
+    const pct = r.hit.days ? Math.round((r.hit.hit / r.hit.days) * 100) : 0;
+    return `<div class="q-row"><div class="q-row-label">${r.label}<span class="target">${r.meta}</span></div><div class="q-grid">${cells}</div><div class="q-row-pct">${pct}%<span class="small">${r.hit.hit}/${r.hit.days}d</span></div></div>`;
+  }).join('');
+  const hrvQ = d.hrv?.quarter;
+  const hrvBlock = hrvQ ? `<div class="q-hrv-card">
+      <div class="q-hrv-stat"><div class="num">${hrvQ.avg}<span style="font-size:11px;color:var(--text-3);font-weight:500;margin-left:2px">ms</span></div><div class="lab">Quarter avg</div></div>
+      <div class="q-hrv-stat"><div class="num">${hrvQ.min}<span style="font-size:11px;color:var(--text-3);font-weight:500;margin-left:2px">ms</span></div><div class="lab">Low</div></div>
+      <div class="q-hrv-stat"><div class="num">${hrvQ.max}<span style="font-size:11px;color:var(--text-3);font-weight:500;margin-left:2px">ms</span></div><div class="lab">High</div></div>
+    </div>` : '';
+  return rowsHtml + hrvBlock;
+}
+
+function renderHealth(){
+  const body = document.getElementById('health-body');
+  if (!body) return;
+  if (!HEALTH_DATA){ body.innerHTML = '<div class="h-status">Loading…</div>'; return; }
+  const d = HEALTH_DATA;
+  const today = d.today || {};
+  const t = d.targets || { protein: 120, sleepHours: 8 };
+  const proteinPct = today.protein ? (today.protein / t.protein) * 100 : 0;
+  const sleepPct = today.sleepHours ? (today.sleepHours / t.sleepHours) * 100 : 0;
+  const proteinSub = today.protein != null
+    ? (proteinPct >= 100 ? `<span class="win">Hit ✓</span>` : `${Math.max(0, t.protein - (today.protein||0))}g to target`)
+    : 'Not logged today';
+  const sleepSub = today.sleepHours != null
+    ? (sleepPct >= 100 ? `<span class="win">Hit ✓</span>` : `${(t.sleepHours - (today.sleepHours||0)).toFixed(1)}h to target`)
+    : 'Not logged today';
+
+  const ringsGrid = `<div class="health-grid">
+      <div class="health-card" data-act="focus-log" data-field="protein">
+        ${ringSvg(proteinPct, 'protein')}
+        <div class="health-body"><div class="health-label">Protein</div><div class="health-value">${today.protein || 0}<span class="target">/ ${t.protein}g</span></div><div class="health-sub ${proteinPct >= 100 ? 'win' : ''}">${proteinSub}</div></div>
+      </div>
+      <div class="health-card" data-act="focus-log" data-field="sleepHours">
+        ${ringSvg(sleepPct, 'sleep')}
+        <div class="health-body"><div class="health-label">Sleep</div><div class="health-value">${today.sleepHours != null ? today.sleepHours : 0}<span class="target">/ ${t.sleepHours}h</span></div><div class="health-sub ${sleepPct >= 100 ? 'win' : ''}">${sleepSub}</div></div>
+      </div>
+    </div>`;
+  const streaksGrid = `<div class="health-grid">
+      ${streakCardHtml({ key:'walking',  label:'Walking',       days:d.streaks.walking,  didToday:(today.walkMinutes||0)>0 })}
+      ${streakCardHtml({ key:'swimming', label:'Swimming',      days:d.streaks.swimming, didToday:(today.swimMinutes||0)>0 })}
+      ${streakCardHtml({ key:'journal',  label:'Journal Entry', days:d.streaks.journal,  didToday:!!d.today?.hasBody })}
+    </div>`;
+
+  const logInner = `<div class="health-log-grid">
+        <div class="health-log-field"><label>Protein (g)</label><input type="number" id="log-protein" inputmode="decimal" placeholder="0" value="${today.protein ?? ''}"/></div>
+        <div class="health-log-field"><label>Sleep (h)</label><input type="number" id="log-sleepHours" inputmode="decimal" step="0.1" placeholder="0" value="${today.sleepHours ?? ''}"/></div>
+        <div class="health-log-field"><label>Walk (min)</label><input type="number" id="log-walkMinutes" inputmode="numeric" placeholder="0" value="${today.walkMinutes ?? ''}"/></div>
+        <div class="health-log-field"><label>Swim (min)</label><input type="number" id="log-swimMinutes" inputmode="numeric" placeholder="0" value="${today.swimMinutes ?? ''}"/></div>
+        <div class="health-log-field"><label>HRV (ms)</label><input type="number" id="log-hrv" inputmode="numeric" placeholder="0" value="${today.hrv ?? ''}"/></div>
+      </div>
+      <div class="health-log-actions"><span class="health-log-hint">Saves to today's JOURNAL row, creates it if needed.</span><button class="health-log-save" id="health-save-btn">Save</button></div>`;
+
+  let h = tCard('Today', ringsGrid + streaksGrid, 'health-today');
+  if (d.hrv && (d.hrv.today != null || (d.hrv.trend||[]).length)) h += tCard('HRV', hrvInner(d.hrv), 'health-hrv');
+  if (d.quarter && d.quarter.series?.length) h += tCard((d.quarter.label||'Quarter') + ' Progress', quarterInner(d), 'health-quarter', '<span class="count">Day ' + d.quarter.elapsedDays + ' of ' + d.quarter.totalDays + '</span>');
+  h += tCard('Quick Log — Today', logInner, 'health-log');
+
+  body.innerHTML = h;
+  attachHealthHandlers();
+  if (window.restoreCards) restoreCards();
+}
+
+function attachHealthHandlers(){
+  const saveBtn = document.getElementById('health-save-btn');
+  if (saveBtn) saveBtn.addEventListener('click', saveHealthLog);
+  document.querySelectorAll('#health-body [data-act="focus-log"]').forEach(el => {
+    el.addEventListener('click', () => {
+      const input = document.getElementById('log-' + el.dataset.field);
+      if (input){ input.focus(); input.select?.(); }
+    });
+  });
+  document.querySelectorAll('#health-body input').forEach(input => {
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter'){ e.preventDefault(); saveHealthLog(); } });
+  });
+  document.querySelectorAll('#health-body .q-cell[data-readout]').forEach(cell => {
+    cell.addEventListener('click', (e) => { e.stopPropagation(); if (cell.dataset.readout) toast(cell.dataset.readout); });
+  });
+}
+
+async function saveHealthLog(){
+  const btn = document.getElementById('health-save-btn');
+  if (!btn) return;
+  const payload = {};
+  ['protein','sleepHours','walkMinutes','swimMinutes','hrv'].forEach(f => {
+    const v = document.getElementById('log-' + f)?.value;
+    payload[f] = (v !== '' && v != null) ? Number(v) : null;
+  });
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await fetch('/api/journal/today', { method:'PATCH', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+    if (!r.ok){ const j = await r.json().catch(()=>({})); throw new Error(j.error || 'save failed'); }
+    toast('Logged to JOURNAL');
+    await fetchHealth();
+    renderHealth();
+  } catch (err) {
+    toast('Save failed: ' + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+}
+
+async function fetchHealth(){
+  try {
+    const r = await fetch('/api/journal/rings');
+    const d = await r.json();
+    if (d.error){ document.getElementById('health-body').innerHTML = '<div class="h-status">' + d.error + '</div>'; return; }
+    HEALTH_DATA = d;
+  } catch(e){
+    document.getElementById('health-body').innerHTML = '<div class="h-status">Couldn\'t load health data.</div>';
+  }
+}
+
+fetchHealth().then(renderHealth);
+</script>
 <script src="/shell.js"></script>
 </body></html>
