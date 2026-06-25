@@ -16,8 +16,8 @@
   // ── NAV DATA ──
   var NAV_WORK = [
     { label: 'TODAY',      href: '/today' },
-    { label: 'MESSAGES',   href: '/messages' },
     { label: 'PLANNING',   href: '/planning' },
+    { label: 'MESSAGES',   href: '/messages' },
     { sep: true },
     { domain: 'WORK' },
     { label: 'ATTRACT',    href: '/attract' },
@@ -28,8 +28,8 @@
   ];
   var NAV_PERSONAL = [
     { label: 'TODAY',      href: '/today' },
-    { label: 'MESSAGES',   href: '/messages' },
     { label: 'PLANNING',   href: '/planning' },
+    { label: 'MESSAGES',   href: '/messages' },
     { label: 'REFERENCE',  href: '/reference' },
     { sep: true },
     { domain: 'LIFE' },
@@ -40,8 +40,8 @@
   ];
   var NAV_ALL = [
     { label: 'TODAY',    href: '/today' },
-    { label: 'MESSAGES', href: '/messages' },
     { label: 'PLANNING', href: '/planning' },
+    { label: 'MESSAGES', href: '/messages' },
   ];
 
   // Lucide-style nav icons (stroke, currentColor) keyed by route.
