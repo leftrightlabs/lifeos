@@ -11,6 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script src="/shell.js"></script>
 <meta name="theme-color" content="#0A0F1E">
+<link rel="stylesheet" href="/styles/cards.css">
 <style>
 :root {
   /* Indigo/navy theme — matches the /index page. */
@@ -156,24 +157,16 @@ body {
 .layout { display: grid; grid-template-columns: 1fr 264px; }
 .main-col { padding: 24px 22px 22px; border-right: 1px solid var(--border-soft); display: flex; flex-direction: column; gap: 24px; }
 .side-col { padding: 22px 16px; display: flex; flex-direction: column; gap: 24px; }
-.sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; }
-.sec-title { font-size: var(--fs-caption); font-weight: 700; color: var(--label); letter-spacing: .09em; text-transform: uppercase; }
-.sec-title .count { color: var(--text-4); font-weight: 500; margin-left: 4px; }
+/* .sec-head / .sec-title / .count → shared in styles/cards.css */
 .mini-btn { background: none; border: 1px solid var(--border); border-radius: 5px; font-size: var(--fs-caption); font-weight: 600; color: var(--text-3); padding: 4px 9px; cursor: pointer; font-family: inherit; letter-spacing: .03em; }
 .mini-btn.on { background: var(--accent-soft); color: var(--accent); border-color: rgba(99,102,241,.3); }
 
-/* ── COLLAPSIBLE SECTION CARDS (contained like /index) ── */
-.t-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 12px; padding: 15px 17px; }
-.t-card .sec-head { margin-bottom: 12px; }
-.t-card.collapsed .sec-head { margin-bottom: 0; }
-.card-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1; min-width: 0; user-select: none; }
-.chev { display: none; }
-.t-card.collapsed .t-body { display: none; }
+/* ── COLLAPSIBLE SECTION CARDS ── base .t-card / .sec-head / .card-toggle / .chev
+   now live in styles/cards.css (shared with every page). Below: today-only variants. */
 .streak-card .sec-head { margin-bottom: 12px; }
 .streak-card.collapsed { border-left-color: var(--border); border-left-width: 1px; }
 .streak-card.collapsed .freeze-btn,
 .streak-card.collapsed .sec-head > span { display: none; }
-.t-card.collapsed .mini-btn { display: none; }
 .t-card.collapsed .side-sec-title { margin-bottom: 0; }
 .streak-card.collapsed .sec-head { margin-bottom: 0; }
 .streak-card.collapsed .chev { transform: rotate(-90deg); }

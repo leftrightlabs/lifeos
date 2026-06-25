@@ -1,0 +1,42 @@
+/* LRL OS — Shared collapsible-card design system.
+   The single source of truth for cards + section headers across today AND every
+   zone page. Edit here to restyle cards everywhere.
+
+   Markup pattern (title lives INSIDE the card; click the title row to collapse):
+     <div class="t-card" data-persist-key="UNIQUE_KEY">
+       <div class="sec-head">
+         <div class="card-toggle" onclick="toggleCard(this)">
+           <span class="chev">▾</span>
+           <div class="sec-title">SECTION TITLE <span class="count">· 3</span></div>
+         </div>
+         <!-- optional right-aligned action button here -->
+       </div>
+       <div class="t-body"> …content… </div>
+     </div>
+   Collapse state persists per day (see cards.js). */
+
+/* Section header (the title row) */
+.sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; }
+.sec-title { font-size: var(--fs-caption); font-weight: 700; color: var(--label, var(--text-2)); letter-spacing: .09em; text-transform: uppercase; }
+.sec-title .count { color: var(--text-4); font-weight: 500; margin-left: 4px; }
+
+/* The card shell */
+.t-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 12px; padding: 15px 17px; }
+.t-card .sec-head { margin-bottom: 12px; }
+.t-card.collapsed .sec-head { margin-bottom: 0; }
+.t-card.collapsed .t-body { display: none; }
+
+/* Click target around the title; chevron is present but hidden (matches today —
+   the whole title row is the toggle). Flip the next line to `inline-block` to
+   show a rotating chevron everywhere. */
+.card-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1; min-width: 0; user-select: none; }
+.chev { display: none; font-size: 11px; color: var(--text-4); transition: transform .15s; flex-shrink: 0; }
+.t-card.collapsed .chev { transform: rotate(-90deg); }
+.t-card.collapsed .mini-btn { display: none; }
+
+/* Vertical rhythm between stacked cards (matches today's column gap). Add
+   .card-stack to a page's content wrapper so its cards space out evenly. */
+.card-stack { display: flex; flex-direction: column; gap: 16px; }
+
+/* Shared page title (sans, like today). */
+.page-title { font-weight: 800; font-size: 28px; line-height: 1.05; letter-spacing: -.01em; color: var(--text); margin: 0; }

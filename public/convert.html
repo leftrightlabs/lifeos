@@ -4,22 +4,24 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="stylesheet" href="/styles/tokens.css">
 <link rel="stylesheet" href="/styles/app.css">
+<link rel="stylesheet" href="/styles/cards.css">
+<script defer src="/cards.js"></script>
 <script defer src="/zone-scope.js"></script>
 <style>
 @import url('https://use.typekit.net/uwk2elu.css');
 :root {
   --zone: var(--work); --zone-soft: var(--work-soft);
-  --font-display: 'scotch-display','Playfair Display',Georgia,serif;
+  --font-display: var(--font-body); /* unified: sans like today (was scotch-display serif) */
   --font-body: 'sweet-sans-pro','Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   --radius: 10px; --radius-sm: 6px; --radius-xs: 4px;
 }
 .convert-page { max-width:880px; margin:0 auto; padding:24px 28px 80px; font-family:var(--font-body); font-size:14px; line-height:1.5; color:var(--text); }
 
 /* ─── PAGE HEADER ─── */
-.cv-head { display:flex; align-items:flex-end; gap:16px; margin-bottom:18px; flex-wrap:wrap; }
+.cv-head { display:flex; align-items:flex-end; gap:16px; margin-bottom:0; flex-wrap:wrap; }
 .cv-head-left { flex:1; min-width:200px; }
 .cv-eyebrow { font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--text-2); margin-bottom:5px; }
-.cv-title { font-family:var(--font-display); font-weight:700; font-size:32px; line-height:1; color:var(--text); display:inline-block; transform:scaleY(1.12); transform-origin:top left; }
+.cv-title { font-weight:800; font-size:28px; line-height:1.05; letter-spacing:-.01em; color:var(--text); }
 .cv-head-right { display:flex; align-items:center; gap:10px; }
 .me-mode { display:inline-flex; background:var(--surface-2); border:1px solid var(--border); border-radius:20px; padding:3px; }
 .me-mode button { background:none; border:none; font-family:var(--font-body); font-size:11px; font-weight:700; letter-spacing:.04em; color:var(--text-3); padding:5px 13px; border-radius:16px; cursor:pointer; transition:all .15s; }
@@ -52,7 +54,7 @@
 /* Calm hero banner (all conditions met) */
 .calm-hero { display:none; align-items:center; gap:16px; background:linear-gradient(135deg, rgba(79,214,160,.16) 0%, rgba(79,214,160,.06) 100%); border:1px solid rgba(79,214,160,.35); border-radius:var(--radius); padding:18px 22px; margin-bottom:18px; }
 .calm-hero .ch-tick { width:38px; height:38px; border-radius:50%; background:var(--green); display:flex; align-items:center; justify-content:center; font-size:19px; flex-shrink:0; box-shadow:0 0 22px rgba(79,214,160,.35); }
-.calm-hero h2 { font-family:var(--font-display); font-size:18px; font-weight:700; color:var(--green); display:inline-block; transform:scaleY(1.18); transform-origin:top left; line-height:1.1; margin-bottom:3px; }
+.calm-hero h2 { font-family:var(--font-display); font-size:18px; font-weight:800; color:var(--green); line-height:1.1; margin-bottom:3px; }
 .calm-hero p { font-size:13px; color:var(--text-2); }
 body.state-calm .calm-hero { display:flex; }
 
@@ -88,7 +90,7 @@ body.state-calm .calm-hero { display:flex; }
 /* ─── REVENUE BAR ─── */
 .rev-block { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; }
 .rev-top { display:flex; align-items:baseline; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
-.rev-amount { font-family:var(--font-display); font-size:28px; font-weight:700; color:var(--text); line-height:1; display:inline-block; transform:scaleY(1.12); transform-origin:top left; }
+.rev-amount { font-family:var(--font-display); font-size:28px; font-weight:800; color:var(--text); line-height:1; }
 .rev-goal { font-size:13px; color:var(--text-3); }
 .rev-status { margin-left:auto; font-size:12px; font-weight:700; }
 .rev-status.good { color:var(--green); } .rev-status.warn { color:var(--amber); }
@@ -148,9 +150,9 @@ body.state-calm .calm-hero { display:flex; }
 .kan-empty { font-size:11px; color:var(--text-3); padding:6px 2px; }
 
 /* ─── WEEKLY PULSE ─── */
-.pulse-block { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+.pulse-block { display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
 .pulse-stat { display:flex; flex-direction:column; gap:2px; }
-.pulse-stat-num { font-family:var(--font-display); font-size:26px; font-weight:700; line-height:1; display:inline-block; transform:scaleY(1.12); transform-origin:top left; }
+.pulse-stat-num { font-family:var(--font-display); font-size:26px; font-weight:800; line-height:1; }
 .pulse-stat-num.good { color:var(--green); } .pulse-stat-num.warn { color:var(--amber); } .pulse-stat-num.neutral { color:var(--text); }
 .pulse-stat-label { font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--text-3); }
 .pulse-divider { width:1px; align-self:stretch; background:var(--border); }
@@ -198,12 +200,11 @@ body.state-calm .calm-hero { display:flex; }
 </head><body>
 <div id="lrl-shell"></div>
 
-<div class="convert-page">
+<div class="convert-page card-stack">
 
   <!-- HEADER -->
   <div class="cv-head">
     <div class="cv-head-left">
-      <div class="cv-eyebrow">Work · Convert</div>
       <span class="cv-title">Convert</span>
     </div>
     <div class="cv-head-right">
@@ -228,62 +229,72 @@ body.state-calm .calm-hero { display:flex; }
   <div id="load-error">Couldn't load Convert data. <span id="load-error-msg"></span></div>
 
   <!-- CALM CONDITIONS -->
-  <div class="calm-block">
-    <div class="calm-head">
-      <span class="calm-head-title">Pipeline Health</span>
+  <div class="t-card" data-persist-key="convert-health">
+    <div class="sec-head">
+      <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Pipeline Health</div></div>
       <span class="calm-head-score" id="calm-score">— / 6</span>
     </div>
-    <div class="calm-grid" id="calm-grid">
-      <!-- rendered -->
-    </div>
+    <div class="t-body"><div class="calm-grid" id="calm-grid"></div></div>
   </div>
 
   <!-- DO THIS NEXT -->
-  <div class="section-label"><h3>Do This Next</h3><span class="sl-meta" id="dtn-meta"></span></div>
-  <div id="dtn-mount"></div>
+  <div class="t-card" data-persist-key="convert-donext">
+    <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Do This Next</div></div><span class="sl-meta" id="dtn-meta"></span></div>
+    <div class="t-body"><div id="dtn-mount"></div></div>
+  </div>
 
   <!-- REVENUE -->
-  <div class="section-label"><h3>Revenue · <span id="rev-quarter">This Quarter</span></h3></div>
-  <div class="rev-block" id="rev-block">
-    <div class="rev-top">
-      <span class="rev-amount" id="rev-amount">$—</span>
-      <span class="rev-goal">of $120k goal</span>
-      <span class="rev-status" id="rev-status"></span>
+  <div class="t-card" data-persist-key="convert-revenue">
+    <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Revenue · <span id="rev-quarter">This Quarter</span></div></div></div>
+    <div class="t-body" id="rev-block">
+      <div class="rev-top">
+        <span class="rev-amount" id="rev-amount">$—</span>
+        <span class="rev-goal">of $120k goal</span>
+        <span class="rev-status" id="rev-status"></span>
+      </div>
+      <div class="rev-track" id="rev-track"></div>
+      <div class="rev-legend" id="rev-legend"></div>
+      <div class="rev-demo" id="rev-demo" style="display:none">⚠ <span>Xero not connected — revenue unavailable</span></div>
     </div>
-    <div class="rev-track" id="rev-track"></div>
-    <div class="rev-legend" id="rev-legend"></div>
-    <div class="rev-demo" id="rev-demo" style="display:none">⚠ <span>Xero not connected — revenue unavailable</span></div>
   </div>
 
   <!-- FOLLOW-UPS -->
-  <div class="section-label"><h3>Follow-Ups</h3><span class="sl-meta" id="fu-meta"></span></div>
-  <div class="fu-block">
-    <div class="fu-tabs" id="fu-tabs">
-      <button class="fu-tab active" data-fu="warm">Warm <span class="fu-count" id="fc-warm">0</span></button>
-      <button class="fu-tab" data-fu="cold">Cold <span class="fu-count" id="fc-cold">0</span></button>
-      <button class="fu-tab" data-fu="client">Clients <span class="fu-count" id="fc-client">0</span></button>
+  <div class="t-card" data-persist-key="convert-followups">
+    <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Follow-Ups</div></div><span class="sl-meta" id="fu-meta"></span></div>
+    <div class="t-body">
+      <div class="fu-tabs" id="fu-tabs">
+        <button class="fu-tab active" data-fu="warm">Warm <span class="fu-count" id="fc-warm">0</span></button>
+        <button class="fu-tab" data-fu="cold">Cold <span class="fu-count" id="fc-cold">0</span></button>
+        <button class="fu-tab" data-fu="client">Clients <span class="fu-count" id="fc-client">0</span></button>
+      </div>
+      <div class="fu-panel active" id="fp-warm"></div>
+      <div class="fu-panel" id="fp-cold"></div>
+      <div class="fu-panel" id="fp-client"></div>
     </div>
-    <div class="fu-panel active" id="fp-warm"></div>
-    <div class="fu-panel" id="fp-cold"></div>
-    <div class="fu-panel" id="fp-client"></div>
   </div>
 
   <!-- PIPELINE -->
-  <div class="section-label"><h3>Pipeline</h3><span class="sl-meta" id="pipe-meta"></span></div>
-  <div class="kanban" id="kanban"></div>
+  <div class="t-card" data-persist-key="convert-pipeline">
+    <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Pipeline</div></div><span class="sl-meta" id="pipe-meta"></span></div>
+    <div class="t-body"><div class="kanban" id="kanban"></div></div>
+  </div>
 
   <!-- WEEKLY PULSE -->
-  <div class="section-label"><h3>Weekly Pulse</h3></div>
-  <div class="pulse-block" id="pulse-block">
-    <div class="pulse-stat">
-      <span class="pulse-stat-num neutral" id="pulse-num">—</span>
-      <span class="pulse-stat-label">Touchpoints</span>
-    </div>
-    <div class="pulse-divider"></div>
-    <div class="pulse-bar-wrap">
-      <div class="pulse-bar-top"><span id="pulse-bar-label">This week</span><span id="pulse-bar-goal"></span></div>
-      <div class="pulse-bar"><div class="pulse-bar-fill" id="pulse-bar-fill" style="width:0%"></div></div>
-      <div class="pulse-streak" id="pulse-streak"></div>
+  <div class="t-card" data-persist-key="convert-weekly-pulse">
+    <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Weekly Pulse</div></div></div>
+    <div class="t-body">
+      <div class="pulse-block" id="pulse-block">
+        <div class="pulse-stat">
+          <span class="pulse-stat-num neutral" id="pulse-num">—</span>
+          <span class="pulse-stat-label">Touchpoints</span>
+        </div>
+        <div class="pulse-divider"></div>
+        <div class="pulse-bar-wrap">
+          <div class="pulse-bar-top"><span id="pulse-bar-label">This week</span><span id="pulse-bar-goal"></span></div>
+          <div class="pulse-bar"><div class="pulse-bar-fill" id="pulse-bar-fill" style="width:0%"></div></div>
+          <div class="pulse-streak" id="pulse-streak"></div>
+        </div>
+      </div>
     </div>
   </div>
 

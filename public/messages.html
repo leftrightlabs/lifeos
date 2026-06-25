@@ -4,6 +4,8 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="stylesheet" href="/styles/tokens.css">
 <link rel="stylesheet" href="/styles/app.css">
+<link rel="stylesheet" href="/styles/cards.css">
+<script defer src="/cards.js"></script>
 <script defer src="/zone-scope.js"></script>
 <style>
 :root { --zone: var(--accent); --zone-soft: var(--accent-soft); --r:8px; --rs:5px; }
@@ -231,6 +233,7 @@
 <div id="lrl-shell"></div>
 
 <div class="msg-zone">
+  <h1 class="page-title" style="padding:18px 20px 12px">Messages</h1>
   <div class="source-tabs">
     <button class="src-tab active" data-tab="gmail" onclick="switchTab('gmail')">
       <svg class="src-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4C2.9 4 2 4.9 2 6v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/></svg>
