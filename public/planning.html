@@ -1993,7 +1993,7 @@ function reviewItemHtml(item, sectionKey){
   return `<div class="review-item${cleared ? ' clearing' : ''}" data-id="${item.id}">
     <div class="review-item-row">
       <div class="review-item-name" data-act="open-edit" data-id="${item.id}" role="button" tabindex="0" title="Edit task">${escapeHtml(item.name)}${item.project ? `<div class="review-item-project">${escapeHtml(item.project)}</div>` : ''}${meta}</div>
-      <span class="review-source-pill ${item.source}">${item.source}</span>
+      ${mode === 'all' ? `<span class="review-source-pill ${item.source}">${item.source}</span>` : ''}
     </div>
     <div class="review-controls">${controls}</div>
   </div>`;
