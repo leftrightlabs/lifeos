@@ -356,7 +356,9 @@ function currentSlackToken() {
 }
 
 // Dev-only: auto-authenticate so localhost preview doesn't need Google sign-in.
-if (!IS_PROD) {
+// Guard against Railway deployments where NODE_ENV may not be set to 'production'.
+const IS_RAILWAY = !!(process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_SERVICE_NAME);
+if (!IS_PROD && !IS_RAILWAY) {
   app.use((req, _res, next) => {
     if (!req.session.userEmail) {
       req.session.userEmail = ALLOWED_EMAIL;
