@@ -592,9 +592,10 @@ function serveZone(zone) {
 }
 
 // Work zones — available to every authenticated team member.
-['attract','convert','deliver','scale','messages','execute','reference'].forEach(zone => {
+['attract','convert','deliver','scale','messages','planning','reference'].forEach(zone => {
   app.get(`/${zone}`, serveZone(zone));
 });
+app.get('/execute', (_req, res) => res.redirect(301, '/planning'));
 
 // Personal (LIFE) zones — owner only. Team members are redirected to Today.
 ['health','wealth','lego','relationships'].forEach(zone => {
@@ -1688,6 +1689,27 @@ app.post('/api/comms/messages/trash-batch', async (req, res) => {
   }
 });
 
+function chicagoWeekRange(weekOffset = 0) {
+  const now = new Date();
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(now);
+  const probe = new Date(`${todayStr}T12:00:00Z`);
+  const chiHour = parseInt(
+    new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour12: false, hour: '2-digit' }).format(probe),
+    10,
+  );
+  const offsetHrs = 12 - chiHour;
+  const tzOffset = `-${String(offsetHrs).padStart(2, '0')}:00`;
+  const [y, m, d] = todayStr.split('-').map(Number);
+  const refDate = new Date(Date.UTC(y, m - 1, d));
+  const dow = refDate.getUTCDay(); // 0=Sun
+  const daysToMon = dow === 0 ? -6 : 1 - dow;
+  const startUTC = new Date(Date.UTC(y, m - 1, d + daysToMon + weekOffset * 7));
+  const endUTC = new Date(Date.UTC(startUTC.getUTCFullYear(), startUTC.getUTCMonth(), startUTC.getUTCDate() + 6));
+  const startStr = startUTC.toISOString().slice(0, 10);
+  const endStr = endUTC.toISOString().slice(0, 10);
+  return { start: `${startStr}T00:00:00${tzOffset}`, end: `${endStr}T23:59:59${tzOffset}`, startStr, endStr };
+}
+
 async function fetchToday(account) {
   const auth = authedClient(account);
   if (!auth) return [];
@@ -1733,6 +1755,46 @@ app.get('/api/calendar/today', async (_req, res) => {
       });
     });
     res.json({ events });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/calendar/week', async (req, res) => {
+  const accounts = configuredAccounts();
+  if (!accounts.length) return res.status(500).json({ error: 'No Google refresh tokens configured' });
+  try {
+    const weekOffset = parseInt(req.query.offset || '0', 10) || 0;
+    const range = chicagoWeekRange(weekOffset);
+    const results = await Promise.all(accounts.map(async (account) => {
+      const auth = authedClient(account);
+      if (!auth) return [];
+      const cal = google.calendar({ version: 'v3', auth });
+      const { data } = await cal.events.list({
+        calendarId: 'primary',
+        timeMin: range.start,
+        timeMax: range.end,
+        singleEvents: true,
+        orderBy: 'startTime',
+        timeZone: TZ,
+      });
+      return (data.items || []).map((e) => ({
+        id: e.id,
+        account,
+        title: e.summary || '(no title)',
+        start: e.start?.dateTime || e.start?.date,
+        end: e.end?.dateTime || e.end?.date,
+        allDay: !!e.start?.date,
+        location: e.location || null,
+        url: e.htmlLink,
+      }));
+    }));
+    const events = results.flat().sort((a, b) => {
+      if (a.allDay && !b.allDay) return -1;
+      if (!a.allDay && b.allDay) return 1;
+      return new Date(a.start) - new Date(b.start);
+    });
+    res.json({ events, weekStart: range.startStr, weekEnd: range.endStr });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
