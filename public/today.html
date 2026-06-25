@@ -2749,7 +2749,8 @@ function applyCalendar(events) {
     const d = new Date(e.start);
     const time = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(d)
       .toLowerCase().replace(' ', '').replace(':00', '');
-    const isPast = d < now;
+    const endTime = e.end ? new Date(e.end) : d;
+    const isPast = endTime < now;
     let c = 'var(--text-4)', bg = 'rgba(84,102,126,.08)';
     if (!isPast) {
       if (/swim|workout|gym|exercise|walk|run/i.test(e.title))   { c = 'var(--teal)';   bg = 'var(--teal-soft)'; }
