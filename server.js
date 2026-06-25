@@ -2934,8 +2934,10 @@ async function checkinFetchTasks() {
   };
   const all = pages.map(decorate);
   return {
-    doing: all.filter((t) => t.status === 'Doing' || t.status === 'Planned'),
-    waiting: all.filter((t) => t.status === 'Waiting'),
+    planning: all.filter((t) => t.status === 'Planned'),
+    doing:    all.filter((t) => t.status === 'Doing'),
+    waiting:  all.filter((t) => t.status === 'Waiting'),
+    agenda:   all.filter((t) => t.status === 'Agenda'),
   };
 }
 
@@ -2949,10 +2951,10 @@ function applyCheckinOrder(tasks, orderIds) {
   });
 }
 
-function formatCheckinMessage({ events, doing, waiting }) {
+function formatCheckinMessage({ events, planning, doing, waiting, agenda }) {
   const lines = [];
   if (events.length) {
-    lines.push('*Here are the meetings I have today:*', '');
+    lines.push('*Meetings today:*', '');
     events.forEach((e, i) => {
       const time = e.allDay ? 'All day' : fmtCheckinTime(e.start);
       const label = e.isInternal ? `${e.title} [LRL Team]` : e.title;
@@ -2960,16 +2962,30 @@ function formatCheckinMessage({ events, doing, waiting }) {
     });
     lines.push('');
   }
+  if (planning.length) {
+    lines.push(`*Planning to work on:*`, '');
+    planning.forEach((t, i) => {
+      lines.push(`${i + 1}. ${t.name} | ${t.project}`);
+    });
+    lines.push('');
+  }
   if (doing.length) {
-    lines.push(`*Here's what I'm working on:*`, '');
+    lines.push(`*Currently doing:*`, '');
     doing.forEach((t, i) => {
       lines.push(`${i + 1}. ${t.name} | ${t.project}`);
     });
     lines.push('');
   }
   if (waiting.length) {
-    lines.push(`*Here's what I'm waiting on:*`, '');
+    lines.push(`*Waiting on:*`, '');
     waiting.forEach((t, i) => {
+      lines.push(`${i + 1}. ${t.name} | ${t.project}`);
+    });
+    lines.push('');
+  }
+  if (agenda.length) {
+    lines.push(`*Agenda / need to discuss:*`, '');
+    agenda.forEach((t, i) => {
       lines.push(`${i + 1}. ${t.name} | ${t.project}`);
     });
     lines.push('');
@@ -2994,12 +3010,14 @@ app.get('/api/checkin/compose', async (req, res) => {
     ]);
     const message = formatCheckinMessage({
       events,
-      doing: applyCheckinOrder(tasks.doing, orderIds),
-      waiting: applyCheckinOrder(tasks.waiting, orderIds),
+      planning: applyCheckinOrder(tasks.planning, orderIds),
+      doing:    applyCheckinOrder(tasks.doing,    orderIds),
+      waiting:  applyCheckinOrder(tasks.waiting,  orderIds),
+      agenda:   applyCheckinOrder(tasks.agenda,   orderIds),
     });
     res.json({
       message,
-      counts: { events: events.length, doing: tasks.doing.length, waiting: tasks.waiting.length },
+      counts: { events: events.length, planning: tasks.planning.length, doing: tasks.doing.length, waiting: tasks.waiting.length, agenda: tasks.agenda.length },
       channel: CHECKIN_SLACK_CHANNEL,
       slackEnabled: !!process.env.SLACK_BOT_TOKEN,
     });

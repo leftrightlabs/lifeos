@@ -81,7 +81,7 @@ body {
 }
 
 /* ── APP ── */
-.app { max-width: 1080px; margin: 0 auto; position: relative; }
+.app { max-width: 100%; position: relative; }
 
 /* TOP BAR */
 .topbar { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 13px 22px; padding-top: max(13px, env(safe-area-inset-top)); gap: 12px; border-bottom: 1px solid var(--border-soft); }
@@ -160,9 +160,14 @@ body {
 .streak-rule { font-size: var(--fs-caption); color: var(--text-4); margin-top: 9px; line-height: 1.4; }
 
 /* ── LAYOUT ── */
-.layout { display: grid; grid-template-columns: 2fr 1fr; }
-.main-col { padding: 24px 22px 22px; border-right: 1px solid var(--border-soft); display: flex; flex-direction: column; gap: 24px; }
-.side-col { padding: 22px 16px; display: flex; flex-direction: column; gap: 24px; }
+.layout { display: grid; grid-template-columns: 1fr 1.1fr 1fr; align-items: start; }
+.col-left  { padding: 24px 16px 24px 22px; display: flex; flex-direction: column; gap: 16px; }
+.col-mid   { padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; border-left: 1px solid var(--border-soft); border-right: 1px solid var(--border-soft); }
+.col-right { padding: 24px 22px 24px 16px; display: flex; flex-direction: column; gap: 16px; }
+/* 2-col below: Campaign Progress + Q2 Rocks */
+.layout-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 22px 24px; }
+/* Financial snapshot badges */
+.fin-section { padding: 0 22px 32px; }
 /* .sec-head / .sec-title / .count → shared in styles/cards.css */
 .mini-btn { background: none; border: 1px solid var(--border); border-radius: 5px; font-size: var(--fs-caption); font-weight: 600; color: var(--text-3); padding: 4px 9px; cursor: pointer; font-family: inherit; letter-spacing: .03em; }
 .mini-btn.on { background: var(--accent-soft); color: var(--accent); border-color: rgba(99,102,241,.3); }
@@ -438,11 +443,11 @@ body {
 .vcal-now-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--amber); margin-left: 38px; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(235,180,84,.18); }
 .vcal-now-line { flex: 1; height: 2px; background: linear-gradient(90deg, var(--amber), transparent); }
 .vcal-now-lbl { font-size: var(--fs-caption); color: var(--amber); font-weight: 700; position: absolute; right: 0; top: -7px; }
-.snap-grid { display: flex; flex-direction: column; gap: 5px; }
+.snap-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .wx-chip { font-size: var(--fs-caption); font-weight: 600; color: var(--amber); background: var(--amber-soft); padding: 3px 9px; border-radius: 12px; letter-spacing: .02em; }
-.snap-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 11px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 7px; }
-.snap-lbl { font-size: var(--fs-body-sm); color: var(--text-3); }
-.snap-val { font-size: var(--fs-body-sm); font-weight: 700; }
+.snap-row { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.snap-lbl { font-size: var(--fs-caption); color: var(--text-3); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.snap-val { font-size: var(--fs-heading); font-weight: 700; }
 
 /* ── WEEKEND SCREEN ── */
 .weekend-screen { position: fixed; inset: 0; z-index: 100; background: linear-gradient(160deg, #0A0F1E 0%, #141029 45%, #1A1433 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; overflow: hidden; }
@@ -676,9 +681,12 @@ html.light .snap-val { color: var(--text); }
   .app-meta { position: static; transform: none; font-size: 9px; letter-spacing: .03em; }
 }
 @media (max-width: 720px) {
-  .layout { grid-template-columns: 1fr; row-gap: 24px; }
-  .main-col { border-right: none; padding: 24px 18px 0; }
-  .side-col { border-top: none; padding: 0 16px 18px; }
+  .layout { grid-template-columns: 1fr; }
+  .col-left  { padding: 24px 18px 0; }
+  .col-mid   { padding: 16px 18px 0; border-left: none; border-right: none; }
+  .col-right { padding: 16px 18px 0; }
+  .layout-2col { grid-template-columns: 1fr; }
+  .snap-grid { grid-template-columns: 1fr 1fr; }
   .greeting { font-size: var(--fs-title); }
   .onething-title { font-size: var(--fs-title); }
   .btn-go, .btn-ghost, .btn-done { width: 100%; }
@@ -692,8 +700,10 @@ html.light .snap-val { color: var(--text); }
 }
 @media (max-width: 420px) {
   .topbar { padding: 11px 14px; padding-top: max(11px, env(safe-area-inset-top)); }
-  .main-col { padding: 24px 14px 0; }
-  .side-col { padding: 0 14px 14px; }
+  .col-left  { padding: 24px 14px 0; }
+  .col-mid   { padding: 16px 14px 0; }
+  .col-right { padding: 16px 14px 0; }
+  .layout-2col { padding: 16px 14px 0; }
   .greeting-zone { padding: 16px 14px 0; }
   .streak-strip { padding: 0; }
   .qrow { flex-wrap: wrap; align-items: flex-start; }
@@ -708,8 +718,9 @@ html.light .snap-val { color: var(--text); }
 }
 /* Loading gate — hide every live-data panel until the first data load resolves,
    so no seed/sample data flashes before the real data arrives. */
-body.app-loading .streak-strip,
 body.app-loading .layout,
+body.app-loading .layout-2col,
+body.app-loading .fin-section,
 body.app-loading #briefLines { display: none !important; }
 #appLoading { display: none; padding: 56px 22px; align-items: center; justify-content: center; gap: 10px; color: var(--text-3); font-size: var(--fs-body); }
 body.app-loading #appLoading { display: flex; }
@@ -776,9 +787,9 @@ body.app-loading #appLoading { display: flex; }
   <!-- LOADING GATE (shown until first data load resolves) -->
   <div id="appLoading"><span class="app-loading-dot"></span> Loading your day…</div>
 
-  <!-- LAYOUT — streaks top-left (≈2/3), Campaign Progress top-right (≈1/3) -->
+  <!-- LAYOUT — 3 columns: Current Focus/One Thing/Streak | Today's Plan | Today's Schedule -->
   <div class="layout">
-    <div class="main-col">
+    <div class="col-left">
 
       <div class="t-card" id="card-briefing" data-persist-key="briefing">
         <div class="sec-head">
@@ -792,18 +803,12 @@ body.app-loading #appLoading { display: flex; }
         </div>
       </div>
 
-      <div class="streak-strip" id="streakStrip"></div>
       <div id="oneThingArea"></div>
+      <div class="streak-strip" id="streakStrip"></div>
 
-      <div class="t-card" id="card-rocks" data-persist-key="rocks">
-        <div class="sec-head">
-          <div class="card-toggle" onclick="toggleCard(this)">
-            <span class="chev">▾</span>
-            <div class="sec-title">🪨 <span id="rocksTitle">Q2 Rocks</span> <span class="count" id="rocksCount"></span></div>
-          </div>
-        </div>
-        <div class="t-body" id="rocksBody"><div class="rocks-list" id="rocksList"></div></div>
-      </div>
+    </div>
+
+    <div class="col-mid">
 
       <div class="t-card" id="card-plan" data-persist-key="plan">
         <div class="sec-head">
@@ -837,17 +842,8 @@ body.app-loading #appLoading { display: flex; }
 
     </div>
 
-    <div class="side-col">
-      <div class="t-card" data-persist-key="campaign">
-        <div class="side-sec-title card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span>📊 <span id="progressTitle">Campaign Progress</span></div>
-        <div class="t-body">
-          <div class="rings" id="rings"></div>
-          <div class="next-rock-box" id="nextRockBox">
-            <div class="nr-label">Most urgent rock</div>
-            <div class="nr-text" id="nextRockText"></div>
-          </div>
-        </div>
-      </div>
+    <div class="col-right">
+
       <div class="t-card" data-persist-key="schedule">
         <div class="side-sec-title card-toggle" onclick="toggleCard(this)" style="display:flex;align-items:center;justify-content:space-between;">
           <span style="display:flex;align-items:center;gap:8px;"><span class="chev">▾</span>🗓 Today's Schedule</span>
@@ -855,11 +851,36 @@ body.app-loading #appLoading { display: flex; }
         </div>
         <div class="t-body"><div class="vcal" id="vcal"></div></div>
       </div>
-      <div class="t-card" data-persist-key="snapshot">
-        <div class="side-sec-title card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span>📸 Snapshot</div>
-        <div class="t-body"><div class="snap-grid" id="snapGrid"></div></div>
+
+    </div>
+  </div>
+
+  <!-- 2-col: Campaign Progress (left) + Q2 Rocks (right) -->
+  <div class="layout-2col">
+    <div class="t-card" data-persist-key="campaign">
+      <div class="side-sec-title card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span>📊 <span id="progressTitle">Campaign Progress</span></div>
+      <div class="t-body">
+        <div class="rings" id="rings"></div>
+        <div class="next-rock-box" id="nextRockBox">
+          <div class="nr-label">Most urgent rock</div>
+          <div class="nr-text" id="nextRockText"></div>
+        </div>
       </div>
     </div>
+    <div class="t-card" id="card-rocks" data-persist-key="rocks">
+      <div class="sec-head">
+        <div class="card-toggle" onclick="toggleCard(this)">
+          <span class="chev">▾</span>
+          <div class="sec-title">🪨 <span id="rocksTitle">Q2 Rocks</span> <span class="count" id="rocksCount"></span></div>
+        </div>
+      </div>
+      <div class="t-body" id="rocksBody"><div class="rocks-list" id="rocksList"></div></div>
+    </div>
+  </div>
+
+  <!-- Financial snapshot: 4 badges across -->
+  <div class="fin-section">
+    <div class="snap-grid" id="snapGrid"></div>
   </div>
 
   <!-- Footer -->
@@ -3361,7 +3382,12 @@ async function fetchCheckinModal() {
     if (actions) actions.style.display = 'flex';
     if (meta) {
       const c = d.counts || {};
-      meta.textContent = `${c.events||0} meetings · ${c.doing||0} in progress · ${c.waiting||0} waiting`;
+      const parts = [`${c.events||0} meetings`];
+      if (c.planning) parts.push(`${c.planning} planning`);
+      if (c.doing)    parts.push(`${c.doing} doing`);
+      if (c.waiting)  parts.push(`${c.waiting} waiting`);
+      if (c.agenda)   parts.push(`${c.agenda} agenda`);
+      meta.textContent = parts.join(' · ');
     }
     const sendBtn = document.getElementById('ciSend');
     if (sendBtn) {

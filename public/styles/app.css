@@ -96,6 +96,8 @@ html.privacy-blur :is(
   .review-item-name,
   /* Messages */
   .msg-sender, .msg-subject, .msg-preview, .slack-text, .comment-text,
+  /* Today snapshot badges */
+  .snap-val,
   /* Wealth */
   .w-value, .w-goal-meta, .w-kpi-val, .w-amount, .net-worth-val
 ) {
