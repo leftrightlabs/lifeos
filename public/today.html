@@ -887,6 +887,7 @@ body { overflow-x: hidden; }
     <div class="tm-pill work" id="tmPill"><span class="dot"></span><span id="tmPillLabel">Work</span></div>
     <div class="tm-field"><label>Task</label><textarea id="tmName" rows="2" placeholder="Task name"></textarea></div>
     <div class="tm-field"><label>Project</label><select id="tmProject"></select></div>
+    <div class="tm-field" id="tmAssigneeField"><label>Assigned to</label><select id="tmAssignee"><option value="">— unassigned —</option></select></div>
     <label class="tm-check"><input type="checkbox" id="tmMyDay"> Pin to My Day</label>
     <div class="tm-2col">
       <div class="tm-field"><label>Status</label><select id="tmStatus">
@@ -1859,6 +1860,21 @@ function loadSectionStates() {
 
 // ── EDIT TASK MODAL (click a task title to open) ──
 let _editIdx = null;
+let _workspaceMembers = null;
+async function loadWorkspaceMembers() {
+  if (_workspaceMembers) return _workspaceMembers;
+  try {
+    const d = await fetch('/api/workspace/members').then(r => r.json());
+    _workspaceMembers = d.members || [];
+  } catch(e) { _workspaceMembers = []; }
+  return _workspaceMembers;
+}
+function populateAssigneeSelect(selEl, currentIds) {
+  const members = _workspaceMembers || [];
+  selEl.innerHTML = '<option value="">— unassigned —</option>' +
+    members.map(m => `<option value="${m.id}">${escName(m.name)}</option>`).join('');
+  selEl.value = (currentIds && currentIds.length) ? currentIds[0] : '';
+}
 function openTaskModal(i) {
   const t = plan[i]; if (!t) return;
   _editIdx = i;
@@ -1870,6 +1886,13 @@ function openTaskModal(i) {
   const opts = Object.values(_projectMap).filter(p => p && p.name).sort((a, b) => a.name.localeCompare(b.name));
   sel.innerHTML = `<option value="">— none —</option>` + opts.map(p => `<option value="${p.id}">${escName(p.name)}</option>`).join('');
   sel.value = t.projectId || '';
+  const assigneeSel = document.getElementById('tmAssignee');
+  const assigneeField = document.getElementById('tmAssigneeField');
+  assigneeField.style.display = isPersonal ? 'none' : '';
+  populateAssigneeSelect(assigneeSel, t.assigneeIds || []);
+  loadWorkspaceMembers().then(members => {
+    if (_editIdx === i) populateAssigneeSelect(assigneeSel, t.assigneeIds || []);
+  });
   document.getElementById('tmMyDay').checked = true;
   document.getElementById('tmStatus').value = ['Planned', 'Doing', 'Waiting', 'Agenda', 'Billing', 'Done'].includes(t.status) ? t.status : 'Planned';
   const up = (t.priority || '').toUpperCase();
@@ -1892,9 +1915,14 @@ function saveTaskModal() {
   const estRaw = document.getElementById('tmEst').value;
   const estHours = estRaw === '' ? null : Number(estRaw);
   const dueStart = document.getElementById('tmDue').value || null;
+  const isPersonal = t.type === 'personal';
+  const assigneeSelVal = document.getElementById('tmAssignee').value;
+  const assigneeIds = (!isPersonal && assigneeSelVal) ? [assigneeSelVal] : (!isPersonal ? [] : undefined);
   if (t.id) {
+    const body = { name, projectId, status, priority, estHours, dueStart, myDay };
+    if (assigneeIds !== undefined) body.assigneeIds = assigneeIds;
     fetch('/api/tasks/' + t.id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, projectId, status, priority, estHours, dueStart, myDay }) }).catch(() => {});
+      body: JSON.stringify(body) }).catch(() => {});
   }
   // optimistic local update
   t.name = name || t.name;
@@ -1905,6 +1933,10 @@ function saveTaskModal() {
   t.est = estHours;
   t.dueStart = dueStart;
   t.done = status === 'Done';
+  if (assigneeIds !== undefined) {
+    t.assigneeIds = assigneeIds;
+    t.assigneeNames = assigneeIds.map(id => (_workspaceMembers || []).find(m => m.id === id)?.name).filter(Boolean);
+  }
   if (!myDay) plan.splice(idx, 1);   // unpinned → leaves today's plan
   closeTaskModal();
   renderPlan();

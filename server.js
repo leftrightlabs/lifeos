@@ -241,6 +241,7 @@ function simplifyTask(page, source) {
     priority: props.Priority?.select?.name || null,
     project: null,
     projectId: (props.Project?.relation || [])[0]?.id || null,
+    assigneeIds,
     assigneeNames: (props.Assigned?.people || []).map((u) => u.name).filter(Boolean),
     assignedToMe: source === 'personal' ? (currentNotionUserId() === GRETCHEN_USER_ID) : assignees.includes(currentNotionUserId()),
     followingMe: following.includes(currentNotionUserId()),
@@ -784,6 +785,27 @@ function invalidateTaskCaches() {
   }
 }
 
+app.get('/api/workspace/members', async (_req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    if (!_notionUsersCache) {
+      const out = []; let cursor;
+      do {
+        const r = await notion.users.list({ start_cursor: cursor, page_size: 100 });
+        out.push(...r.results);
+        cursor = r.has_more ? r.next_cursor : null;
+      } while (cursor);
+      _notionUsersCache = out;
+    }
+    const members = _notionUsersCache
+      .filter((u) => u.type === 'person')
+      .map((u) => ({ id: u.id, name: u.name, email: u.person?.email || null }));
+    res.json({ members });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Lightweight cache-bust for the Today view's auto-refresh: clears ONLY the
 // My-Day task caches — NOT goals (which does an expensive per-rock milestone
 // recompute) or Xero/brief. Keeps the 60s poll cheap so it doesn't trip Notion's
@@ -1261,7 +1283,7 @@ app.patch('/api/projects/:id', async (req, res) => {
 app.patch('/api/tasks/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { id } = req.params;
-  const { name, status, dueStart, dueEnd, myDay, priority, projectId, estHours } = req.body || {};
+  const { name, status, dueStart, dueEnd, myDay, priority, projectId, estHours, assigneeIds } = req.body || {};
   try {
     const properties = {};
     if (name !== undefined && name !== null) {
@@ -1286,6 +1308,9 @@ app.patch('/api/tasks/:id', async (req, res) => {
     // projectId: a uuid sets the Project relation; null/'' clears it.
     if (projectId !== undefined) {
       properties.Project = projectId ? { relation: [{ id: projectId }] } : { relation: [] };
+    }
+    if (assigneeIds !== undefined) {
+      properties.Assigned = { people: (Array.isArray(assigneeIds) ? assigneeIds : []).map((id) => ({ id })) };
     }
     if (!Object.keys(properties).length) {
       return res.status(400).json({ error: 'No supported fields to update' });

@@ -893,6 +893,21 @@ window.onShellModeChange = function(m){
 };
 // Task edit modal — shared by Tasks tab and Review tab
 let _editTask = null;
+let _workspaceMembers = null;
+async function loadWorkspaceMembers() {
+  if (_workspaceMembers) return _workspaceMembers;
+  try {
+    const d = await fetch('/api/workspace/members').then(r => r.json());
+    _workspaceMembers = d.members || [];
+  } catch(e) { _workspaceMembers = []; }
+  return _workspaceMembers;
+}
+function populateAssigneeSelect(selEl, currentIds) {
+  const members = _workspaceMembers || [];
+  selEl.innerHTML = '<option value="">— unassigned —</option>' +
+    members.map(m => `<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('');
+  selEl.value = (currentIds && currentIds.length) ? currentIds[0] : '';
+}
 window.openTaskEdit = function(t) {
   _editTask = t;
   const isPersonal = t.source === 'personal';
@@ -915,6 +930,13 @@ window.openTaskEdit = function(t) {
       fillProjects(REVIEW_PROJECTS);
     }).catch(() => {});
   }
+  const assigneeSel = document.getElementById('tmAssignee');
+  const assigneeField = document.getElementById('tmAssigneeField');
+  assigneeField.style.display = isPersonal ? 'none' : '';
+  populateAssigneeSelect(assigneeSel, t.assigneeIds || []);
+  loadWorkspaceMembers().then(() => {
+    if (_editTask === t) populateAssigneeSelect(assigneeSel, t.assigneeIds || []);
+  });
   document.getElementById('tmMyDay').checked = !!t.myDay;
   const validStatus = ['Planned','Doing','Waiting','Agenda','Billing','Done'];
   document.getElementById('tmStatus').value = validStatus.includes(t.status) ? t.status : 'Planned';
@@ -932,6 +954,7 @@ function openInNotionFromModal() { if (_editTask?.url) window.openNotion(_editTa
 function saveTaskModal() {
   if (!_editTask) return;
   const id = _editTask.id;
+  const isPersonal = _editTask.source === 'personal';
   const name = document.getElementById('tmName').value.trim();
   const projectId = document.getElementById('tmProject').value || null;
   const myDay = document.getElementById('tmMyDay').checked;
@@ -940,13 +963,18 @@ function saveTaskModal() {
   const estRaw = document.getElementById('tmEst').value;
   const estHours = estRaw === '' ? null : Number(estRaw);
   const dueStart = document.getElementById('tmDue').value || null;
+  const assigneeSelVal = document.getElementById('tmAssignee').value;
+  const assigneeIds = (!isPersonal && assigneeSelVal) ? [assigneeSelVal] : (!isPersonal ? [] : undefined);
   if (id) {
+    const body = { name, projectId, status, priority, estHours, dueStart, myDay };
+    if (assigneeIds !== undefined) body.assigneeIds = assigneeIds;
     fetch('/api/tasks/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, projectId, status, priority, estHours, dueStart, myDay }) }).catch(() => {});
+      body: JSON.stringify(body) }).catch(() => {});
   }
+  const assigneeNames = (assigneeIds || []).map(aid => (_workspaceMembers || []).find(m => m.id === aid)?.name).filter(Boolean);
   // Update tasks tab store
   if (typeof BASE !== 'undefined' && BASE && id && BASE[id]) {
-    Object.assign(BASE[id], { name: name || BASE[id].name, projectId, status, priority, estHours, dueStart, myDay });
+    Object.assign(BASE[id], { name: name || BASE[id].name, projectId, status, priority, estHours, dueStart, myDay, assigneeIds: assigneeIds ?? BASE[id].assigneeIds, assigneeNames: assigneeIds !== undefined ? assigneeNames : BASE[id].assigneeNames });
     if (typeof state !== 'undefined' && state.edits) {
       state.edits[id] = Object.assign({}, state.edits[id], { name: name || BASE[id].name, projectId, status, priority, estHours, dueStart, myDay });
       if (typeof saveState === 'function') saveState();
@@ -2634,6 +2662,7 @@ window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderRevie
     <div class="tm-pill work" id="tmPill"><span class="dot"></span><span id="tmPillLabel">Work</span></div>
     <div class="tm-field"><label>Task</label><textarea id="tmName" rows="2" placeholder="Task name"></textarea></div>
     <div class="tm-field"><label>Project</label><select id="tmProject"></select></div>
+    <div class="tm-field" id="tmAssigneeField"><label>Assigned to</label><select id="tmAssignee"><option value="">— unassigned —</option></select></div>
     <label class="tm-check"><input type="checkbox" id="tmMyDay"> Pin to My Day</label>
     <div class="tm-2col">
       <div class="tm-field"><label>Status</label><select id="tmStatus">
