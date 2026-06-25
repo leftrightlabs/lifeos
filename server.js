@@ -6,7 +6,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { initDb, isEnabled as dbEnabled, users as dbUsers, prefs as dbPrefs } from './db.js';
+import { initDb, isEnabled as dbEnabled, users as dbUsers } from './db.js';
 import { decrypt, encrypt, isConfigured as secretsConfigured } from './secrets.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { registerConvertRoutes } from './src/routes/convert.js';
@@ -603,23 +603,25 @@ function serveZone(zone) {
 });
 
 // ── Today UI state (One Thing pick + status) — synced across a user's devices.
-// Falls back to a no-op (client keeps its localStorage) when the DB is dormant
-// or there's no signed-in user, so single-user/dev still works.
-app.get('/api/today/state', async (req, res) => {
-  try {
-    if (!dbEnabled() || !req.session?.userId) return res.json({});
-    const v = await dbPrefs.get(req.session.userId, 'today-state');
-    res.json(v || {});
-  } catch (e) { res.json({}); }
+// Stored server-side keyed by the signed-in email (same account on every device),
+// so it works regardless of whether the multi-user DB is enabled. In-memory with
+// best-effort JSON-file persistence across restarts; the state self-resets daily.
+const TODAY_STATE_FILE = join(__dirname, '.data', 'today-state.json');
+let _todayState = {};
+try { if (existsSync(TODAY_STATE_FILE)) _todayState = JSON.parse(readFileSync(TODAY_STATE_FILE, 'utf8')) || {}; } catch (e) { _todayState = {}; }
+function _persistTodayState() {
+  try { mkdirSync(dirname(TODAY_STATE_FILE), { recursive: true }); writeFileSync(TODAY_STATE_FILE, JSON.stringify(_todayState)); } catch (e) { /* ephemeral fallback to memory */ }
+}
+function _todayStateKey(req) { return String(req.session?.userEmail || ALLOWED_EMAIL || 'owner').toLowerCase(); }
+
+app.get('/api/today/state', (req, res) => {
+  res.json(_todayState[_todayStateKey(req)] || {});
 });
-app.put('/api/today/state', async (req, res) => {
-  try {
-    if (!dbEnabled() || !req.session?.userId) return res.json({ ok: false, stored: false });
-    const b = req.body || {};
-    const clean = { date: String(b.date || ''), otOverride: b.otOverride ?? null, onething: b.onething ?? null };
-    await dbPrefs.set(req.session.userId, 'today-state', clean);
-    res.json({ ok: true, stored: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+app.put('/api/today/state', (req, res) => {
+  const b = req.body || {};
+  _todayState[_todayStateKey(req)] = { date: String(b.date || ''), otOverride: b.otOverride ?? null, onething: b.onething ?? null };
+  _persistTodayState();
+  res.json({ ok: true, stored: true });
 });
 
 app.use(express.static(join(__dirname, 'public'), staticOpts));

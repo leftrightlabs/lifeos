@@ -25,3 +25,4 @@ ios/App/App.xcodeproj/xcuserdata/
 ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
 *.xcuserstate
 
+.data/
