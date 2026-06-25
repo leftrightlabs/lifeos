@@ -503,11 +503,13 @@
 
   /* ===== Finance dashboard (Xero) ===== */
   .fin-grid { display: grid; gap: 12px; margin-bottom: 14px; }
-  .fin-grid-revenue { grid-template-columns: repeat(3, 1fr); }
+  /* Revenue triplet stays a responsive grid: 3-up where it fits (tablet/desktop),
+     dropping to 2-up before ever stacking — matches the .fin-kpi-grid above. */
+  .fin-grid-revenue { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
   .fin-grid-cash { grid-template-columns: 1.6fr 1fr; }
   .fin-grid-net { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
   @media (max-width: 760px) {
-    .fin-grid-revenue, .fin-grid-cash, .fin-grid-net { grid-template-columns: 1fr; }
+    .fin-grid-cash, .fin-grid-net { grid-template-columns: 1fr; }
   }
   .fin-capacity { background: var(--white); border: none; border-radius: 12px; padding: 16px 18px; }
   .fin-capacity.short .fin-cap-months { color: #ff7a6b; }
