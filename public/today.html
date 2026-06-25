@@ -957,16 +957,19 @@ const state = {
   privacyMode: false,
 };
 
-// Week: Sun Jun 21 is "today" (index 6 = Sunday).
-const workWeek = [
-  { d:'M', state:'hit' },
-  { d:'T', state:'hit' },
-  { d:'W', state:'frozen', icon:'❄️' },
-  { d:'T', state:'hit' },
-  { d:'F', state:'hit' },
-  { d:'S', state:'weekend' },
-  { d:'S', state:'today' },
-];
+const workWeek = (() => {
+  const LABELS = ['M','T','W','T','F','S','S']; // Mon=0..Sun=6
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
+  const [yr, mo, dy] = todayStr.split('-').map(Number);
+  const dow = new Date(Date.UTC(yr, mo - 1, dy)).getUTCDay(); // 0=Sun..6=Sat
+  const dowMon = dow === 0 ? 6 : dow - 1; // Mon=0..Sun=6
+  return LABELS.map((label, i) => {
+    if (i === dowMon) return { d: label, state: 'today' };
+    if (i >= 5) return { d: label, state: 'weekend' };
+    if (i > dowMon) return { d: label, state: 'miss' };
+    return { d: label, state: 'hit' };
+  });
+})();
 const lifeWeek = [
   { d:'M', state:'hit' },
   { d:'T', state:'hit' },
@@ -1088,7 +1091,7 @@ function streakCard(type) {
       <div class="sec-head">
         <div class="card-toggle" onclick="toggleCard(this)">
           <span class="chev">▾</span>
-          <span class="sec-title">${isWork ? '💼 Work Streak' : '🌱 Life Streak'}</span>
+          <span class="sec-title">${isWork ? '💼 Work Streak' : '🌱 Personal Streak'}</span>
         </div>
         ${freezeBtn}
       </div>
