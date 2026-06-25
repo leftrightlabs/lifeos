@@ -11,18 +11,18 @@
 @import url('https://use.typekit.net/uwk2elu.css');
 :root {
   --zone: var(--work); --zone-soft: var(--work-soft);
-  --font-display: 'scotch-display','Playfair Display',Georgia,serif;
+  --font-display: var(--font-body); /* unified: sans like today (was scotch-display serif) */
   --font-body: 'sweet-sans-pro','Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   --radius: 12px; --radius-sm: 8px; --radius-xs: 5px;
 }
 .deliver-page { max-width:1100px; margin:0 auto; padding:24px 28px 90px; font-family:var(--font-body); font-size:14px; line-height:1.5; color:var(--text); }
-.scotch { display:inline-block; transform:scaleY(1.18); transform-origin:center left; }
+.scotch { display:inline-block; } /* serif stretch removed — unified sans */
 
 /* HEADER ROW */
 .dv-head { display:flex; align-items:flex-end; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
 .dv-head-left { flex:1; min-width:200px; }
 .dv-eyebrow { font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--text-2); margin-bottom:5px; }
-.dv-title { font-family:var(--font-display); font-weight:700; font-size:32px; line-height:1; color:var(--text); }
+.dv-title { font-weight:800; font-size:28px; line-height:1.05; letter-spacing:-.01em; color:var(--text); }
 .me-toggle { display:none; background:var(--surface-2); border:1px solid var(--border); border-radius:99px; padding:3px; }
 .me-toggle button { background:none; border:none; font-family:var(--font-body); font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-3); padding:6px 14px; border-radius:99px; cursor:pointer; transition:all .15s; }
 .me-toggle button.active { background:var(--accent); color:#fff; }
@@ -75,7 +75,7 @@ body[data-state="calm"] .statebanner h2 { color:var(--green); }
 .pbar i { display:block; height:100%; border-radius:99px; }
 
 /* SECTIONS */
-.section { margin-bottom:26px; }
+.section { margin-bottom:0; }
 .section-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
 .section-head .h { display:flex; align-items:center; gap:10px; }
 .section-head .eyebrow { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; font-weight:700; color:var(--text-3); }
@@ -162,35 +162,34 @@ body:not([data-state]) .dv-content { display:none; }
 <div class="deliver-page">
   <div class="dv-head">
     <div class="dv-head-left">
-      <div class="dv-eyebrow">Work · Deliver</div>
-      <span class="dv-title scotch">Deliver</span>
+      <span class="dv-title">Deliver</span>
     </div>
   </div>
 
   <div id="dv-error"></div>
   <div id="dv-loading">Loading delivery…</div>
 
-  <div class="dv-content">
+  <div class="dv-content card-stack">
     <div class="statebanner" id="banner"></div>
     <div class="hero show-stressed" id="hero"></div>
     <div class="calmpayoff show-calm" id="calmpayoff"></div>
     <div class="pulsestrip" id="pulse"></div>
 
-    <div class="section show-stressed" id="sec-comingdue"></div>
-    <div class="section show-stressed" id="sec-atrisk"></div>
-    <div class="section show-stressed" id="sec-waiting"></div>
+    <div class="section show-stressed t-card" data-persist-key="deliver-comingdue" id="sec-comingdue"></div>
+    <div class="section show-stressed t-card" data-persist-key="deliver-atrisk" id="sec-atrisk"></div>
+    <div class="section show-stressed t-card" data-persist-key="deliver-waiting" id="sec-waiting"></div>
     <div class="grid2 show-stressed">
-      <div class="section" id="sec-delegated"></div>
-      <div class="section" id="sec-datafix"></div>
+      <div class="section t-card" data-persist-key="deliver-delegated" id="sec-delegated"></div>
+      <div class="section t-card" data-persist-key="deliver-datafix" id="sec-datafix"></div>
     </div>
-    <div class="section show-stressed" id="sec-bill"></div>
+    <div class="section show-stressed t-card" data-persist-key="deliver-bill" id="sec-bill"></div>
 
-    <div class="section show-calm" id="sec-ontrack"></div>
+    <div class="section show-calm t-card" data-persist-key="deliver-ontrack" id="sec-ontrack"></div>
     <div class="grid2 show-calm">
-      <div class="section" id="sec-onhold"></div>
-      <div class="section" id="sec-notstarted"></div>
+      <div class="section t-card" data-persist-key="deliver-onhold" id="sec-onhold"></div>
+      <div class="section t-card" data-persist-key="deliver-notstarted" id="sec-notstarted"></div>
     </div>
-    <div class="section show-calm" id="sec-clean"></div>
+    <div class="section show-calm t-card" data-persist-key="deliver-clean" id="sec-clean"></div>
   </div>
 </div>
 
@@ -248,7 +247,7 @@ const dueLabel = (t) => t.overdue ? `<span style="color:var(--red)">Overdue ${t.
 function toast(msg) { document.getElementById('toast-text').textContent = msg; const t = document.getElementById('toast'); t.classList.add('show'); clearTimeout(window._tt); window._tt = setTimeout(() => t.classList.remove('show'), 2600); }
 
 function sectionHead(eyebrow, title, count, tone) {
-  return `<div class="section-head"><div class="h"><span class="eyebrow">${eyebrow}</span><h3 class="scotch">${title}</h3></div>${count != null ? `<span class="count ${tone}">${count}</span>` : ''}</div>`;
+  return `<div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">${title}</div></div>${count != null ? `<span class="count ${tone}">${count}</span>` : ''}</div>`;
 }
 function taskRowHTML(t, opts = {}) {
   const lcls = t.overdue ? 'l-red' : (t.dueToday || t.dueTomorrow || t.waiting) ? 'l-amber' : (opts.line || 'l-zone');
@@ -355,12 +354,13 @@ function render() {
   document.getElementById('sec-clean').innerHTML = `<div class="clean"><span class="ic">✓</span> Delivery data is clean — nothing overdue, every project owned and dated.</div>`;
 
   document.getElementById('dv-loading').style.display = 'none';
+  if (window.restoreCards) restoreCards();   // re-apply persisted card collapse after async render
 }
 
 function renderRows(id, eyebrow, title, count, tone, rowsHtml, total) {
   const el = document.getElementById(id);
   const more = (total != null && total > rowsHtml.length) ? `<div class="more-line">+ ${total - rowsHtml.length} more</div>` : '';
-  el.innerHTML = sectionHead(eyebrow, title, count, tone) + (rowsHtml.length ? `<div class="rows">${rowsHtml.join('')}</div>${more}` : `<div class="empty-line">Nothing here.</div>`);
+  el.innerHTML = sectionHead(eyebrow, title, count, tone) + '<div class="t-body">' + (rowsHtml.length ? `<div class="rows">${rowsHtml.join('')}</div>${more}` : `<div class="empty-line">Nothing here.</div>`) + '</div>';
 }
 function renderDataFix(df) {
   const rows = [];
