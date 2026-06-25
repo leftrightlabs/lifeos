@@ -1984,6 +1984,7 @@ async function reviewTasksForSource(taskDs, source, peopleProp, activeProjectIds
       projectId: projectRel[0]?.id || null,
       edited: p.last_edited_time || null,
       url: p.url,
+      assigneeCount: (props.Assigned?.people || []).length,
       _recurringOrFuture: isRecurringOrFutureScheduled(props),
     };
   });
@@ -2010,7 +2011,9 @@ async function reviewTasksForSource(taskDs, source, peopleProp, activeProjectIds
     return true;
   });
   const stuckWaiting = all.filter((t) => t.status === 'Waiting' && daysSince(t.edited) >= REVIEW_WAITING_DAYS);
-  return { all, overdue, noProjectNoDue, stale, stuckWaiting };
+  // Unassigned only applies to work tasks — personal tasks have no Assigned field.
+  const unassigned = source === 'work' ? all.filter((t) => t.assigneeCount === 0) : [];
+  return { all, overdue, noProjectNoDue, stale, stuckWaiting, unassigned };
 }
 
 app.get('/api/review', async (_req, res) => {
@@ -2022,19 +2025,25 @@ app.get('/api/review', async (_req, res) => {
         cached('projects-list', fetchActiveProjects),
       ]);
       const nameById = new Map(projects.map((p) => [p.id, p.name]));
-      const [work, personal] = await Promise.all([
+      const [work, personal, workAll] = await Promise.all([
         reviewTasksForSource(WORK_TASKS_DS, 'work', 'Assigned', activeProjectIds),
         reviewTasksForSource(LIFE_TASKS_DS, 'personal', null, activeProjectIds),
+        // Separate unfiltered query to find work tasks with no assignee at all
+        reviewTasksForSource(WORK_TASKS_DS, 'work', null, activeProjectIds),
       ]);
       const combine = (k) => [...work[k], ...personal[k]].map((t) => ({
         ...t,
         project: t.projectId ? (nameById.get(t.projectId) || null) : null,
       }));
+      const unassigned = workAll.all
+        .filter((t) => t.assigneeCount === 0)
+        .map((t) => ({ ...t, project: t.projectId ? (nameById.get(t.projectId) || null) : null }));
       return {
         overdue: combine('overdue'),
         noProjectNoDue: combine('noProjectNoDue'),
         stale: combine('stale'),
         stuckWaiting: combine('stuckWaiting'),
+        unassigned,
         thresholds: { staleDays: REVIEW_STALE_DAYS, waitingDays: REVIEW_WAITING_DAYS },
       };
     });

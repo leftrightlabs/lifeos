@@ -1769,6 +1769,7 @@ const REVIEW_STREAK_KEY = 'lrl-review-streak';
 const REVIEW_SECTIONS = [
   { key: 'overdue', title: 'Overdue', hint: 'past due date — reschedule or kill' },
   { key: 'noProjectNoDue', title: 'Orphans', hint: 'no project AND no due date — give them a home' },
+  { key: 'unassigned', title: 'Unassigned', hint: 'work tasks with no one assigned — assign or delegate' },
   { key: 'stuckWaiting', title: 'Stuck in Waiting', hint: 'sitting in Waiting too long — chase or close' },
   { key: 'stale', title: 'Stale', hint: 'not touched recently — still relevant?' },
 ];
@@ -1957,6 +1958,7 @@ function reviewItemHtml(item, sectionKey){
   const showDate = sectionKey === 'overdue' || sectionKey === 'noProjectNoDue';
   const showWaitingActions = sectionKey === 'stuckWaiting';
   const showStaleActions = sectionKey === 'stale';
+  const showAssignee = sectionKey === 'unassigned';
   let metaParts = [];
   if (item.dueStart) metaParts.push(`due ${item.dueStart}`);
   if (item.status && item.status !== 'Planned') metaParts.push(item.status);
@@ -1980,6 +1982,11 @@ function reviewItemHtml(item, sectionKey){
       <option value="Done">Done</option>
       <option value="Planned">Back to Planned</option>
     </select>`;
+  }
+  if (showAssignee) {
+    const members = _workspaceMembers || [];
+    const opts = members.map(m => `<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('');
+    controls += `<select data-act="set-assignee" data-id="${item.id}"><option value="">— assign to —</option>${opts}</select>`;
   }
   controls += `<button class="review-btn" data-act="mark-done" data-id="${item.id}">✓ Done</button>`;
   controls += `<button class="review-btn subtle" data-act="snooze" data-id="${item.id}" title="Hide from this review (until next refresh)">Skip</button>`;
@@ -2129,6 +2136,19 @@ function attachReviewHandlers(){
       } catch(err){ window.lrl.toast('Failed: '+err.message,'error'); }
     });
   });
+  body.querySelectorAll('[data-act="set-assignee"]').forEach(el => {
+    el.addEventListener('change', async (e) => {
+      e.stopPropagation();
+      const id = el.dataset.id;
+      const v = el.value;
+      if (!v) return;
+      try {
+        await fetch(`/api/tasks/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ assigneeIds: [v] }) });
+        window.lrl.haptic('success');
+        clearReviewRow(el, id);
+      } catch(err){ window.lrl.toast('Failed: '+err.message,'error'); }
+    });
+  });
 }
 
 // Animate the row out, then mark cleared + re-render. If this clears the last
@@ -2160,6 +2180,7 @@ async function fetchReview(){
     const c = window.lrlCache.read('review');
     if (c) { try { REVIEW_DATA = c; renderReview(); } catch(e){} }
   }
+  loadWorkspaceMembers(); // pre-warm so unassigned dropdowns render immediately
   try {
     const [reviewRes, projRes] = await Promise.all([
       fetch('/api/review').then(r => r.json()),
