@@ -3141,20 +3141,46 @@ async function getXeroAccessToken() {
   return _xeroAccess.token;
 }
 
+// Xero throttles to ~5 concurrent requests per tenant (429 over that), and the
+// finance dashboard fires ~13 report calls at once — uncapped, the losers come
+// back as 429 → null → zeros (the classic "cash $0 / QTD $0 but YTD fine" bug).
+// Gate every call through a small semaphore and retry 429s (honoring Retry-After)
+// so a burst completes reliably instead of getting throttled to zeros.
+const XERO_MAX_CONCURRENT = 4;
+let _xeroActive = 0;
+const _xeroWaiters = [];
+function _acquireXero() {
+  if (_xeroActive < XERO_MAX_CONCURRENT) { _xeroActive++; return Promise.resolve(); }
+  return new Promise((resolve) => _xeroWaiters.push(resolve));
+}
+function _releaseXero() {
+  _xeroActive--;
+  const next = _xeroWaiters.shift();
+  if (next) { _xeroActive++; next(); }
+}
+
 async function xeroGet(path, params) {
-  const token = await getXeroAccessToken();
   const tenantId = process.env.XERO_TENANT_ID || '';
   if (!tenantId) throw new Error('XERO_TENANT_ID missing — visit /auth/xero to authorize');
   const url = `https://api.xero.com${path}` + (params ? `?${new URLSearchParams(params)}` : '');
-  const r = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Xero-tenant-id': tenantId,
-      Accept: 'application/json',
-    },
-  });
-  if (!r.ok) throw new Error(`Xero API ${r.status}: ${(await r.text()).slice(0, 200)}`);
-  return r.json();
+  await _acquireXero();
+  try {
+    for (let attempt = 0; ; attempt++) {
+      const token = await getXeroAccessToken();
+      const r = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}`, 'Xero-tenant-id': tenantId, Accept: 'application/json' },
+      });
+      if (r.status === 429 && attempt < 5) {
+        const retryAfter = Number(r.headers.get('Retry-After')) || (attempt + 1) * 2;
+        await new Promise((res) => setTimeout(res, Math.min(retryAfter, 15) * 1000));
+        continue;
+      }
+      if (!r.ok) throw new Error(`Xero API ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      return r.json();
+    }
+  } finally {
+    _releaseXero();
+  }
 }
 
 app.get('/auth/xero', (req, res) => {
