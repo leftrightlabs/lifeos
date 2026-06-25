@@ -57,3 +57,6 @@
 .app-footer .spin { display: inline-block; animation: lrl-foot-spin .7s linear infinite; }
 @keyframes lrl-foot-spin { to { transform: rotate(360deg); } }
 html.light .app-footer .footer-stamp { color: var(--text-3); }
+@media (max-width: 640px) {
+  .app-footer .footer-stamp { display: none; }
+}
