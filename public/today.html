@@ -117,7 +117,7 @@ body {
 .nav-domain { font-size: var(--fs-caption); color: var(--text-4); padding: 11px 6px 11px 3px; text-transform: uppercase; letter-spacing: .09em; align-self: center; white-space: nowrap; }
 
 /* GREETING */
-.greeting-zone { padding: 20px 22px 0; background: radial-gradient(120% 100% at 0% 0%, rgba(99,102,241,.05) 0%, transparent 55%); }
+.greeting-zone { padding: 20px 22px 0; max-width: 1080px; margin: 0 auto; background: radial-gradient(120% 100% at 0% 0%, rgba(99,102,241,.05) 0%, transparent 55%); }
 .greeting-top { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 0; }
 .greeting { font-size: var(--fs-heading); font-weight: 700; letter-spacing: -.01em; }
 .greeting .name { color: var(--accent); }
@@ -160,16 +160,8 @@ body {
 .streak-rule { font-size: var(--fs-caption); color: var(--text-4); margin-top: 9px; line-height: 1.4; }
 
 /* ── LAYOUT ── */
-.layout { display: grid; grid-template-columns: 1fr 1.1fr 1fr; align-items: start; }
-/* min-width:0 lets grid cells shrink below their content's natural minimum,
-   which is required for Safari to honour the responsive breakpoint correctly. */
-.col-left  { padding: 24px 16px 24px 22px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.col-mid   { padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; border-left: 1px solid var(--border-soft); border-right: 1px solid var(--border-soft); min-width: 0; }
-.col-right { padding: 24px 22px 24px 16px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-/* 2-col below: Campaign Progress + Q2 Rocks */
-.layout-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 22px 24px; }
-/* Financial snapshot badges */
-.fin-section { padding: 0 22px 32px; }
+.page-col { display: flex; flex-direction: row; align-items: flex-start; gap: 16px; padding: 16px 22px 24px; max-width: 1080px; margin: 0 auto; }
+.col-left, .col-right { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 /* .sec-head / .sec-title / .count → shared in styles/cards.css */
 .mini-btn { background: none; border: 1px solid var(--border); border-radius: 5px; font-size: var(--fs-caption); font-weight: 600; color: var(--text-3); padding: 4px 9px; cursor: pointer; font-family: inherit; letter-spacing: .03em; }
 .mini-btn.on { background: var(--accent-soft); color: var(--accent); border-color: rgba(99,102,241,.3); }
@@ -447,6 +439,19 @@ body {
 .vcal-now-lbl { font-size: var(--fs-caption); color: var(--amber); font-weight: 700; position: absolute; right: 0; top: -7px; }
 .snap-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .wx-chip { font-size: var(--fs-caption); font-weight: 600; color: var(--amber); background: var(--amber-soft); padding: 3px 9px; border-radius: 12px; letter-spacing: .02em; }
+
+/* ── ACTION BOARD — completed card state ── */
+.board-done { opacity: .6; transition: opacity .3s, border-color .3s; }
+.board-done.t-card { border-color: rgba(79,214,160,.25) !important; }
+.board-done .sec-title,
+.board-done .ritual-title { color: var(--green) !important; }
+.board-done.streak-strip .streak-card { border-left-color: var(--green) !important; }
+.board-done.ritual { border-color: rgba(79,214,160,.25) !important; }
+body.hide-done-cards .board-done { display: none !important; }
+/* Hide-done toggle button (reuses me-pill style) */
+.hide-done-btn { background: none; color: var(--text-3); font-size: var(--fs-caption); font-weight: 700; letter-spacing: .06em; padding: 5px 13px; border-radius: 22px; white-space: nowrap; cursor: pointer; border: 1px solid var(--border); font-family: inherit; transition: all .2s; }
+.hide-done-btn:hover { color: var(--text-2); border-color: var(--text-4); }
+.hide-done-btn.active { background: var(--green-soft); color: var(--green); border-color: rgba(79,214,160,.35); }
 .snap-row { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
 .snap-lbl { font-size: var(--fs-caption); color: var(--text-3); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .snap-val { font-size: var(--fs-heading); font-weight: 700; }
@@ -469,10 +474,9 @@ body {
 .wk-working:hover { color: var(--amber); }
 
 /* ── RITUAL BARS ── */
-.ritual { background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: 10px; padding: 11px 13px; margin-bottom: 8px; }
-.ritual.evening { margin-bottom: 0; margin-top: 8px; }
+.ritual { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 12px; padding: 15px 17px; }
 .ritual-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
-.ritual-title { font-size: var(--fs-caption); font-weight: 700; color: var(--text-2); display: flex; align-items: center; gap: 7px; }
+.ritual-title { font-size: var(--fs-caption); font-weight: 700; color: var(--label, var(--text-2)); letter-spacing: .09em; text-transform: uppercase; display: flex; align-items: center; gap: 7px; }
 .ritual-progress { font-size: var(--fs-caption); color: var(--text-3); font-weight: 600; }
 .ritual-progress.complete { color: var(--green); }
 .ritual-chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -683,46 +687,32 @@ html.light .snap-val { color: var(--text); }
   .app-meta { position: static; transform: none; font-size: 9px; letter-spacing: .03em; }
 }
 @media (max-width: 960px) {
-  .layout { grid-template-columns: 1fr; }
-  .col-left  { padding: 24px 18px 0; }
-  .col-mid   { padding: 16px 18px 0; border-left: none; border-right: none; }
-  .col-right { padding: 16px 18px 0; }
-  .layout-2col { grid-template-columns: 1fr; }
-  .snap-grid { grid-template-columns: 1fr 1fr; }
   .greeting { font-size: var(--fs-title); }
   .onething-title { font-size: var(--fs-title); }
   .btn-go, .btn-ghost, .btn-done { width: 100%; }
   .onething-actions { flex-direction: column; align-items: stretch; }
-  .streak-strip { padding: 0; gap: 24px; }
+  .streak-strip { gap: 24px; }
   .nav-domain { display: none; }
   .wk-message { font-size: var(--fs-heading); }
   .wk-emoji { font-size: var(--fs-giant); }
   .nav-btn { flex-direction: column; gap: 2px; padding: 7px 10px; font-size: 9px; letter-spacing: .05em; }
   .nav-ic svg { width: 18px; height: 18px; }
 }
+@media (max-width: 699px) {
+  .page-col { flex-direction: column; }
+  .col-left, .col-right { flex: none; }
+}
 @media (max-width: 420px) {
   .topbar { padding: 11px 14px; padding-top: max(11px, env(safe-area-inset-top)); }
-  .col-left  { padding: 24px 14px 0; }
-  .col-mid   { padding: 16px 14px 0; }
-  .col-right { padding: 16px 14px 0; }
-  .layout-2col { padding: 16px 14px 0; }
-  .greeting-zone { padding: 16px 14px 0; }
-  .streak-strip { padding: 0; }
+  .page-col { padding: 12px 14px 24px; }
+  .greeting-zone { padding: 12px 14px 0; }
   .qrow { flex-wrap: wrap; align-items: flex-start; }
   .qcheck, .qdot { margin-top: 2px; }
   .qmeta { order: 10; flex-basis: 100%; padding-left: 46px; justify-content: flex-start; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
-  .rock-card { display: flex; flex-direction: column; grid-template-columns: unset; }
-  .rock-title-row { order: 1; }
-  .rock-next { order: 2; margin-top: 6px; grid-column: unset; }
-  .rock-right { order: 3; grid-row: unset; grid-column: unset; flex-direction: row; align-items: center; gap: 8px; justify-content: flex-start; margin-top: 6px; }
-  .rock-status-tag { order: 4; flex-shrink: 0; margin-left: auto; }
-  .rock-owner { display: none; }
 }
 /* Loading gate — hide every live-data panel until the first data load resolves,
    so no seed/sample data flashes before the real data arrives. */
-body.app-loading .layout,
-body.app-loading .layout-2col,
-body.app-loading .fin-section,
+body.app-loading .page-col,
 body.app-loading #briefLines { display: none !important; }
 #appLoading { display: none; padding: 56px 22px; align-items: center; justify-content: center; gap: 10px; color: var(--text-3); font-size: var(--fs-body); }
 body.app-loading #appLoading { display: flex; }
@@ -774,6 +764,7 @@ body { overflow-x: hidden; }
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
         </button>
       </div>
+      <button type="button" class="hide-done-btn" id="hideDoneBtn" onclick="toggleHideDoneCards()" title="Hide completed cards">Hide done</button>
       <button type="button" class="me-pill" id="mePill" aria-pressed="false" onclick="LRLShell.toggleMe()" title="Show only items assigned to me">ME</button>
     </div>
   </div>
@@ -792,10 +783,13 @@ body { overflow-x: hidden; }
   <!-- LOADING GATE (shown until first data load resolves) -->
   <div id="appLoading"><span class="app-loading-dot"></span> Loading your day…</div>
 
-  <!-- LAYOUT — 3 columns: Current Focus/One Thing/Streak | Today's Plan | Today's Schedule -->
-  <div class="layout">
+  <!-- ACTION BOARD — two columns on desktop, single column on mobile -->
+  <div class="page-col">
+
+    <!-- LEFT COLUMN: focus context + schedule -->
     <div class="col-left">
 
+      <!-- 1. Current Focus — always visible, never "done" -->
       <div class="t-card" id="card-briefing" data-persist-key="briefing">
         <div class="sec-head">
           <div class="card-toggle" onclick="toggleCard(this)">
@@ -808,13 +802,30 @@ body { overflow-x: hidden; }
         </div>
       </div>
 
-      <div id="oneThingArea"></div>
-      <div class="streak-strip" id="streakStrip"></div>
+      <!-- 2. Today's Schedule — future events only; hides when nothing remains -->
+      <div class="t-card" id="card-schedule" data-persist-key="schedule">
+        <div class="sec-head">
+          <div class="card-toggle" onclick="toggleCard(this)">
+            <span class="chev">▾</span>
+            <div class="sec-title">🗓 Today's Schedule</div>
+          </div>
+          <span class="wx-chip" id="wxChip"></span>
+        </div>
+        <div class="t-body"><div class="vcal" id="vcal"></div></div>
+      </div>
 
     </div>
 
-    <div class="col-mid">
+    <!-- RIGHT COLUMN: action items for the day -->
+    <div class="col-right">
 
+      <!-- 3. The One Thing — hides when marked done -->
+      <div id="oneThingArea"></div>
+
+      <!-- 4. Morning Startup — own card; hides when all items checked -->
+      <div class="ritual" id="morningRitual"></div>
+
+      <!-- 5. Today's Plan — hides when all tasks done -->
       <div class="t-card" id="card-plan" data-persist-key="plan">
         <div class="sec-head">
           <div class="card-toggle" onclick="toggleCard(this)">
@@ -827,7 +838,6 @@ body { overflow-x: hidden; }
           </div>
         </div>
         <div class="t-body">
-          <div class="ritual" id="morningRitual"></div>
           <div class="plan-list" id="planList"></div>
           <div class="plan-add-wrap">
             <div class="plan-add-form" id="planAddForm">
@@ -841,54 +851,19 @@ body { overflow-x: hidden; }
             </div>
             <div class="plan-add-msg" id="planAddMsg" style="display:none;"></div>
           </div>
-          <div class="ritual evening" id="eveningRitual"></div>
         </div>
       </div>
 
-    </div>
+      <!-- 6. Evening Routine — own card; hides when all items checked -->
+      <div class="ritual evening" id="eveningRitual"></div>
 
-    <div class="col-right">
-
-      <div class="t-card" data-persist-key="schedule">
-        <div class="side-sec-title card-toggle" onclick="toggleCard(this)" style="display:flex;align-items:center;justify-content:space-between;">
-          <span style="display:flex;align-items:center;gap:8px;"><span class="chev">▾</span>🗓 Today's Schedule</span>
-          <span class="wx-chip" id="wxChip"></span>
-        </div>
-        <div class="t-body"><div class="vcal" id="vcal"></div></div>
-      </div>
+      <!-- 7. Streaks — hide when today's streak is locked in -->
+      <div class="streak-strip" id="streakStrip"></div>
 
     </div>
+
   </div>
 
-  <!-- 2-col: Campaign Progress (left) + Q2 Rocks (right) -->
-  <div class="layout-2col">
-    <div class="t-card" data-persist-key="campaign">
-      <div class="side-sec-title card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span>📊 <span id="progressTitle">Campaign Progress</span></div>
-      <div class="t-body">
-        <div class="rings" id="rings"></div>
-        <div class="next-rock-box" id="nextRockBox">
-          <div class="nr-label">Most urgent rock</div>
-          <div class="nr-text" id="nextRockText"></div>
-        </div>
-      </div>
-    </div>
-    <div class="t-card" id="card-rocks" data-persist-key="rocks">
-      <div class="sec-head">
-        <div class="card-toggle" onclick="toggleCard(this)">
-          <span class="chev">▾</span>
-          <div class="sec-title">🪨 <span id="rocksTitle">Q2 Rocks</span> <span class="count" id="rocksCount"></span></div>
-        </div>
-      </div>
-      <div class="t-body" id="rocksBody"><div class="rocks-list" id="rocksList"></div></div>
-    </div>
-  </div>
-
-  <!-- Financial snapshot: 4 badges across -->
-  <div class="fin-section">
-    <div class="snap-grid" id="snapGrid"></div>
-  </div>
-
-  <!-- Footer -->
   <!-- Footer (theme · privacy · refresh · stamp · log out) is the shared component
        rendered by shell.js (mountFooter) — same on every page. -->
 </div>
@@ -990,6 +965,19 @@ const lifeWeek = [
   { d:'S', state:'today' },
 ];
 
+// ── ACTION BOARD — card done state ──
+function setCardDone(id, isDone) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('board-done', !!isDone);
+}
+
+function toggleHideDoneCards() {
+  const on = document.body.classList.toggle('hide-done-cards');
+  const btn = document.getElementById('hideDoneBtn');
+  if (btn) { btn.classList.toggle('active', on); btn.textContent = on ? 'Show all' : 'Hide done'; }
+  try { localStorage.setItem('lrl-hide-done-cards', on ? '1' : ''); } catch(e) {}
+}
+
 // ── MODE ──
 // Nav data + icons live in the shared shell (public/shell.js) so every page
 // renders identical chrome. This page keeps its own richer mode behavior
@@ -1042,6 +1030,9 @@ function renderStreaks() {
   strip.innerHTML = (showWork ? streakCard('work') : '') + (showLife ? streakCard('life') : '');
   if (showWork) _restoreCardCollapse('streak-work', '[data-persist-key="streak-work"]');
   if (showLife) _restoreCardCollapse('streak-life', '[data-persist-key="streak-life"]');
+  const workOk = !showWork || state.workSatisfied;
+  const lifeOk = !showLife || state.lifeSatisfied;
+  setCardDone('streakStrip', workOk && lifeOk);
 }
 
 function streakCard(type) {
@@ -1128,6 +1119,7 @@ function oneThingEmpty(kind) {
 }
 
 function renderOneThing() {
+  setCardDone('oneThingArea', false); // reset; done paths below will override to true
   const area = document.getElementById('oneThingArea');
 
   if (state.mode === 'personal') {
@@ -1152,6 +1144,7 @@ function renderOneThing() {
           </div>
         </div>`;
       _restoreCardCollapse('onething', '#otCard');
+      setCardDone('oneThingArea', true);
       return;
     }
     if (state.personalOneThing === 'doing' || state.personalOneThing === 'waiting') {
@@ -1255,6 +1248,7 @@ function renderOneThing() {
       </div>
     `;
     _restoreCardCollapse('onething', '#otCard');
+    setCardDone('oneThingArea', true);
     fireConfetti();
     return;
   }
@@ -2098,6 +2092,8 @@ function renderPlan() {
   });
   const list = document.getElementById('planList');
   list.innerHTML = html || `<div style="padding:10px 4px;color:var(--text-3);font-size:var(--fs-body-sm)">Nothing on My Day yet.</div>`;
+  const allPlanDone = visible.length > 0 && visible.every(t => t.done);
+  setCardDone('card-plan', allPlanDone);
   if (!list._clickBound) {
     list.addEventListener('click', (e) => {
       const row = e.target.closest('.qrow'); if (!row) return;
@@ -2239,12 +2235,16 @@ const vcalItems = [
   { time:'6p',  name:'Dinner',            sub:'1h · Personal',        c:'var(--green)',  bg:'var(--green-soft)' },
 ];
 function renderVcal() {
+  if (!vcalItems.length) {
+    document.getElementById('vcal').innerHTML = `<div style="padding:8px 4px;color:var(--text-3);font-size:var(--fs-body-sm);">No more events today.</div>`;
+    return;
+  }
   document.getElementById('vcal').innerHTML = vcalItems.map(e => {
     if (e.now) return `<div class="vcal-now"><div class="vcal-now-dot"></div><div class="vcal-now-line"></div><span class="vcal-now-lbl">${e.lbl}</span></div>`;
     return `<div class="vcal-row">
       <div class="vcal-time">${e.time}</div>
       <div class="vcal-line"></div>
-      <div class="vcal-content"><div class="vcal-event" style="background:${e.bg};border-left-color:${e.c};${e.isPast?'opacity:.4;':''}${e.italic?'font-style:italic;color:var(--text-3);':''}">${e.name}<span class="sub">${e.sub}</span></div></div>
+      <div class="vcal-content"><div class="vcal-event" style="background:${e.bg};border-left-color:${e.c};${e.italic?'font-style:italic;color:var(--text-3);':''}">${e.name}<span class="sub">${e.sub}</span></div></div>
     </div>`;
   }).join('');
 }
@@ -2406,6 +2406,7 @@ function renderRitual(which) {
   const doneCt = items.filter(({ it }) => it.done).length;
   const allDone = items.length > 0 && doneCt === items.length;
 
+  setCardDone(which + 'Ritual', allDone);
   el.innerHTML = `
     <div class="ritual-head" onclick="toggleRitualCollapse('${which}')" style="cursor:pointer;user-select:none">
       <span class="ritual-title">${r.icon} ${r.title}</span>
@@ -2501,10 +2502,8 @@ function renderBrief() {
 function _reRenderAll() {
   renderBrief();
   renderOneThing();
-  renderRocks();
+  renderStreaks();
   renderPlan();
-  renderRings();
-  renderSnap();
   renderRitual('morning');
   renderRitual('evening');
 }
@@ -2725,20 +2724,15 @@ function applyCalendar(events) {
     timed.push({ time, name: e.title, sub, c, bg, isPast, _start: d });
   }
   timed.sort((a, b) => a._start - b._start);
-  // Insert NOW indicator between past and upcoming events
-  const items = [];
-  let nowInserted = false;
-  for (const e of timed) {
-    if (!nowInserted && !e.isPast) {
-      items.push({ now: true, lbl: 'NOW · ' + nowStr });
-      nowInserted = true;
-    }
-    items.push(e);
-  }
-  if (!nowInserted) items.push({ now: true, lbl: 'NOW · ' + nowStr });
+  // Show future events only — past events drop off automatically
+  const future = timed.filter(e => !e.isPast);
+  const items = future.length
+    ? [{ now: true, lbl: 'NOW · ' + nowStr }, ...future]
+    : [];
   vcalItems.length = 0;
   items.forEach(i => vcalItems.push(i));
   renderVcal();
+  setCardDone('card-schedule', future.length === 0);
 }
 
 // ── INLINE ADD TASK ──
@@ -3284,6 +3278,15 @@ function init() {
   // (your goals, your My Day plan, your One Thing) is already self-scoped, so the
   // toggle persists the global state for the work zones rather than filtering here.
   if (window.LRLShell) LRLShell.syncMePill(LRLShell.meMode());
+
+  // Restore hide-done-cards preference
+  try {
+    if (localStorage.getItem('lrl-hide-done-cards') === '1') {
+      document.body.classList.add('hide-done-cards');
+      const btn = document.getElementById('hideDoneBtn');
+      if (btn) { btn.classList.add('active'); btn.textContent = 'Show all'; }
+    }
+  } catch(e) {}
 
   loadCurrentUser();
   renderGreeting();
