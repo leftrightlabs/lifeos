@@ -8,12 +8,9 @@
 <script defer src="/cards.js"></script>
 <script defer src="/zone-scope.js"></script>
 <style>
-@import url('https://use.typekit.net/uwk2elu.css');
 :root {
   --zone: var(--work); --zone-soft: var(--work-soft);
-  /* Match the Today view: one system-sans stack, no serif display. */
-  --font-display: -apple-system, 'Segoe UI', system-ui, sans-serif;
-  --font-body: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  /* --font-body / --font-display come from tokens.css (Inter, app-wide). */
   --radius: 12px; --radius-sm: 8px; --radius-xs: 5px;
 }
 /* Attract page container (the reference mockup's ".page", renamed to avoid any

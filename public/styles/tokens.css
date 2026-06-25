@@ -1,5 +1,12 @@
 /* LRL OS — Design tokens. Import this on every page. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 :root {
+  /* Type family — Inter everywhere (matches /index). Change here to restyle the
+     whole app's typeface; reference var(--font-body)/var(--font-display) instead
+     of hardcoding a font stack. */
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+  --font-display: var(--font-body);
+
   /* Indigo/navy theme — matches the /index page. */
   --bg: #0A0F1E;
   --surface: #131A30;
