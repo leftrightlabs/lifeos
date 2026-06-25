@@ -84,7 +84,8 @@ body {
 .app { max-width: 100%; position: relative; }
 
 /* TOP BAR */
-.topbar { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 13px 22px; padding-top: max(13px, env(safe-area-inset-top)); gap: 12px; border-bottom: 1px solid var(--border-soft); }
+.topbar-wrap { border-bottom: 1px solid var(--border-soft); background: var(--bg); position: sticky; top: 0; z-index: 20; padding-top: env(safe-area-inset-top); }
+.topbar { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 13px 22px; gap: 12px; max-width: 1080px; margin: 0 auto; }
 .logo { color: var(--text); font-weight: 800; font-size: var(--fs-body-sm); letter-spacing: .09em; white-space: nowrap; }
 .logo .logo-mark { color: #5D9CEC; }
 .topbar-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
@@ -107,7 +108,8 @@ body {
 .privacy-btn[data-privacy="sample"] { background: var(--amber); color: #0A0F1E; border-color: var(--amber); }
 
 /* NAV */
-.nav { display: flex; padding: 0 22px; border-bottom: 1px solid var(--border-soft); overflow-x: auto; scrollbar-width: none; }
+.nav-wrap { border-bottom: 1px solid var(--border-soft); background: var(--bg); }
+.nav { display: flex; padding: 0 22px; overflow-x: auto; scrollbar-width: none; max-width: 1080px; margin: 0 auto; }
 .nav::-webkit-scrollbar { display: none; }
 .nav-btn { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; text-decoration: none; font-size: var(--fs-caption); padding: 11px 14px; cursor: pointer; border-bottom: 2px solid transparent; letter-spacing: .05em; color: var(--text-3); white-space: nowrap; font-family: inherit; font-weight: 600; }
 .nav-btn.active { color: var(--text); border-bottom-color: var(--accent); }
@@ -700,10 +702,12 @@ html.light .snap-val { color: var(--text); }
 }
 @media (max-width: 699px) {
   .page-col { flex-direction: column; }
-  .col-left, .col-right { flex: none; }
+  .col-left, .col-right { flex: none; width: 100%; }
 }
+.hide-done-row { display: flex; justify-content: center; padding: 4px 22px 20px; max-width: 1080px; margin: 0 auto; }
 @media (max-width: 420px) {
-  .topbar { padding: 11px 14px; padding-top: max(11px, env(safe-area-inset-top)); }
+  .topbar { padding: 11px 14px; }
+  .topbar-wrap { padding-top: max(0px, env(safe-area-inset-top)); }
   .page-col { padding: 12px 14px 24px; }
   .greeting-zone { padding: 12px 14px 0; }
   .qrow { flex-wrap: wrap; align-items: flex-start; }
@@ -750,6 +754,7 @@ body { overflow-x: hidden; }
 <div class="app" id="app">
 
   <!-- TOP BAR -->
+  <div class="topbar-wrap">
   <div class="topbar">
     <div class="topbar-left">
       <div class="logo"><span class="logo-mark">◆</span> LRL OS</div>
@@ -764,13 +769,15 @@ body { overflow-x: hidden; }
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
         </button>
       </div>
-      <button type="button" class="hide-done-btn" id="hideDoneBtn" onclick="toggleHideDoneCards()" title="Hide completed cards">Hide done</button>
       <button type="button" class="me-pill" id="mePill" aria-pressed="false" onclick="LRLShell.toggleMe()" title="Show only items assigned to me">ME</button>
     </div>
   </div>
+  </div>
 
   <!-- NAV -->
+  <div class="nav-wrap">
   <div class="nav" id="nav"></div>
+  </div>
 
   <!-- GREETING -->
   <div class="greeting-zone">
@@ -862,6 +869,11 @@ body { overflow-x: hidden; }
 
     </div>
 
+  </div>
+
+  <!-- Hide-done toggle — page-specific, lives below the action board -->
+  <div class="hide-done-row">
+    <button type="button" class="hide-done-btn" id="hideDoneBtn" onclick="toggleHideDoneCards()">Hide done</button>
   </div>
 
   <!-- Footer (theme · privacy · refresh · stamp · log out) is the shared component
