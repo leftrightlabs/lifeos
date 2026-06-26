@@ -449,12 +449,24 @@ app.get('/api/convert', async (req, res) => {
       let revenue = null;
       if (computeXeroFinance) {
         try {
-          const [fin, quoteData, recurData, goals] = await Promise.all([
-            cached('xero-finance', computeXeroFinance),
-            computeXeroQuotes ? computeXeroQuotes().catch(() => null) : Promise.resolve(null),
-            computeRecurringAvg ? cached('xero-recurring-avg', computeRecurringAvg).catch(() => null) : Promise.resolve(null),
-            cached('vto-goals', fetchVtoGoals).catch(() => ({})),
+          // Xero is the slow/flaky dependency (token refresh + multiple API calls).
+          // A cold-cache hang here used to stall the ENTIRE /api/convert response
+          // until Railway's gateway killed it ("upstream error") — blanking the
+          // page. Bound it: if Xero doesn't resolve in 10s, abandon it (revenue
+          // stays null, page still loads with contacts/deals/pulse). The underlying
+          // calls keep running and warm their caches for the next request.
+          const TIMEOUT = Symbol('xero-timeout');
+          const xero = await Promise.race([
+            Promise.all([
+              cached('xero-finance', computeXeroFinance),
+              computeXeroQuotes ? computeXeroQuotes().catch(() => null) : Promise.resolve(null),
+              computeRecurringAvg ? cached('xero-recurring-avg', computeRecurringAvg).catch(() => null) : Promise.resolve(null),
+              cached('vto-goals', fetchVtoGoals).catch(() => ({})),
+            ]),
+            new Promise((resolve) => setTimeout(() => resolve(TIMEOUT), 10000)),
           ]);
+          if (xero === TIMEOUT) throw new Error('xero timeout');
+          const [fin, quoteData, recurData, goals] = xero;
 
           const q = currentQuarter();
           const qEndDate = new Date(q.end + 'T23:59:59Z');
