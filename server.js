@@ -189,38 +189,17 @@ function makeOAuthClient(req, callbackPath = '/auth/google/callback') {
   );
 }
 
-async function queryTasks(dataSourceId, { peopleProp, myDayOnly } = {}) {
-  const and = [];
-  if (myDayOnly) {
-    // Two disjoint cases:
-    //   (a) active tasks still on My Day (not Done)
-    //   (b) tasks completed today — Notion unchecks My Day on completion, so we
-    //       can't require My Day=true here or these tasks silently vanish.
-    const today = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
-    and.push({ or: [
-      { and: [
-        { property: 'My Day', checkbox: { equals: true } },
-        { property: 'Status', status: { does_not_equal: 'Done' } },
-      ]},
-      { property: 'Completed', date: { equals: today } },
-    ]});
-  } else {
-    and.push({ property: 'Status', status: { does_not_equal: 'Done' } });
-  }
-  if (peopleProp) {
-    const nid = currentNotionUserId();
-    // Member without a resolved Notion id → match nothing (never the owner's tasks).
-    and.push({ property: peopleProp, people: { contains: nid || '00000000-0000-0000-0000-000000000000' } });
-  }
-  // Page through every match — a single 100-row page silently dropped tasks once
-  // a database had more than 100 non-done tasks (they just never appeared in any
-  // list or search).
+// Page through all results for a single flat filter — the Datasources API only
+// reliably supports one level of compound nesting (and-of-properties or or-of-
+// properties), so callers that need (A AND B) OR (C AND D) should make two
+// separate calls and merge, rather than trying to nest and-inside-or.
+async function pageThroughDS(dataSourceId, filter) {
   const results = [];
   let cursor;
   do {
     const r = await notion.dataSources.query({
       data_source_id: dataSourceId,
-      filter: { and },
+      filter,
       sorts: [{ property: 'Due', direction: 'ascending' }],
       page_size: 100,
       start_cursor: cursor,
@@ -228,6 +207,44 @@ async function queryTasks(dataSourceId, { peopleProp, myDayOnly } = {}) {
     results.push(...(r.results || []));
     cursor = r.has_more ? r.next_cursor : null;
   } while (cursor);
+  return results;
+}
+
+async function queryTasks(dataSourceId, { peopleProp, myDayOnly } = {}) {
+  const nid = peopleProp ? (currentNotionUserId() || '00000000-0000-0000-0000-000000000000') : null;
+  const personCond = peopleProp ? [{ property: peopleProp, people: { contains: nid } }] : [];
+
+  if (myDayOnly) {
+    // Datasources API doesn't support and-inside-or, so run two flat queries in
+    // parallel and merge: (1) active My Day tasks, (2) anything completed today.
+    // Case (2) catches tasks where Notion unchecked My Day on completion, and also
+    // catches tasks whose status is "Complete" (not the literal string "Done").
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
+    const [active, done] = await Promise.all([
+      pageThroughDS(dataSourceId, { and: [
+        { property: 'My Day', checkbox: { equals: true } },
+        { property: 'Status', status: { does_not_equal: 'Done' } },
+        ...personCond,
+      ]}),
+      pageThroughDS(dataSourceId, { and: [
+        { property: 'Completed', date: { equals: today } },
+        ...personCond,
+      ]}),
+    ]);
+    // Deduplicate (a task on My Day completed today appears in both sets).
+    const seen = new Set();
+    const merged = [];
+    for (const r of [...active, ...done]) {
+      if (!seen.has(r.id)) { seen.add(r.id); merged.push(r); }
+    }
+    return { results: merged };
+  }
+
+  // Non-myDay: single query, exclude all done tasks.
+  const results = await pageThroughDS(dataSourceId, { and: [
+    { property: 'Status', status: { does_not_equal: 'Done' } },
+    ...personCond,
+  ]});
   return { results };
 }
 
