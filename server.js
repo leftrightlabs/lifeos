@@ -646,9 +646,16 @@ function serveZone(zone) {
 }
 
 // Work zones — available to every authenticated team member.
-['attract','convert','deliver','scale','messages','planning','reference'].forEach(zone => {
+['attract','scale','messages','planning','reference'].forEach(zone => {
   app.get(`/${zone}`, serveZone(zone));
 });
+// Renamed zones: the page files stay convert.html / deliver.html, but the public
+// routes are /win and /delight. Old paths 301-redirect so existing links/bookmarks
+// keep working.
+app.get('/win', serveZone('convert'));
+app.get('/delight', serveZone('deliver'));
+app.get('/convert', (_req, res) => res.redirect(301, '/win'));
+app.get('/deliver', (_req, res) => res.redirect(301, '/delight'));
 app.get('/execute', (_req, res) => res.redirect(301, '/planning'));
 
 // Personal (LIFE) zones — owner only. Team members are redirected to Today.
