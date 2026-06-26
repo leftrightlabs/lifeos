@@ -14,6 +14,17 @@
   --radius: 10px; --radius-sm: 6px; --radius-xs: 4px;
 }
 .convert-page { max-width:880px; margin:0 auto; padding:24px 28px 80px; font-family:var(--font-body); font-size:14px; line-height:1.5; color:var(--text); }
+.exec-panel { display:none; }
+.exec-panel.active { display:flex; flex-direction:column; gap:16px; }
+.tab-bar { display:flex; gap:2px; border-bottom:1px solid var(--border); margin-bottom:22px; overflow-x:auto; scrollbar-width:none; }
+.tab-bar::-webkit-scrollbar { display:none; }
+.exec-tab-btn { display:inline-flex; align-items:center; gap:7px; padding:9px 14px; font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--text-3); background:none; border:none; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; transition:color .15s; font-family:var(--font-body); }
+.exec-tab-btn:hover { color:var(--text-2); }
+.exec-tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+.placeholder-tab { display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:64px 24px; gap:12px; color:var(--text-3); }
+.placeholder-icon { font-size:36px; line-height:1; }
+.placeholder-title { font-size:18px; font-weight:700; color:var(--text-2); letter-spacing:-.01em; }
+.placeholder-body { font-size:13px; color:var(--text-3); max-width:360px; line-height:1.6; }
 
 /* ─── PAGE HEADER ─── */
 .cv-head { display:flex; align-items:flex-end; gap:16px; margin-bottom:0; flex-wrap:wrap; }
@@ -149,20 +160,45 @@ body.state-calm .calm-hero { display:flex; }
 .kan-card-age.ok { color:var(--text-3); } .kan-card-age.warn { color:var(--amber); } .kan-card-age.bad { color:var(--red); }
 .kan-empty { font-size:11px; color:var(--text-3); padding:6px 2px; }
 
-/* ─── WEEKLY PULSE ─── */
-.pulse-block { display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
-.pulse-stat { display:flex; flex-direction:column; gap:2px; }
-.pulse-stat-num { font-family:var(--font-display); font-size:26px; font-weight:800; line-height:1; }
-.pulse-stat-num.good { color:var(--green); } .pulse-stat-num.warn { color:var(--amber); } .pulse-stat-num.neutral { color:var(--text); }
-.pulse-stat-label { font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--text-3); }
-.pulse-divider { width:1px; align-self:stretch; background:var(--border); }
-.pulse-bar-wrap { flex:1; min-width:160px; }
-.pulse-bar-top { display:flex; justify-content:space-between; font-size:11px; color:var(--text-2); margin-bottom:6px; }
-.pulse-bar { height:8px; background:var(--surface-2); border-radius:4px; overflow:hidden; }
-.pulse-bar-fill { height:100%; border-radius:4px; background:var(--zone); transition:width .4s ease; }
-.pulse-bar-fill.good { background:var(--green); }
-.pulse-streak { font-size:11px; color:var(--text-3); }
-.pulse-streak b { color:var(--green); }
+/* ─── WEEKLY PULSE (redesigned) ─── */
+.pw-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+.pw-metric { background:var(--surface-2); border:1px solid var(--border-soft); border-radius:10px; padding:12px 14px; }
+.pw-metric-label { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); margin-bottom:4px; }
+.pw-metric-val { font-family:var(--font-display); font-size:22px; font-weight:800; color:var(--text); line-height:1.15; margin-bottom:8px; }
+.pw-bar { height:5px; background:var(--surface); border-radius:3px; overflow:hidden; }
+.pw-bar-fill { height:100%; border-radius:3px; background:var(--amber); transition:width .4s ease; }
+.pw-bar-fill.good { background:var(--green); }
+.pw-streak { font-size:11px; color:var(--text-3); margin-bottom:14px; line-height:1.4; }
+.pw-periods { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+.pw-period { background:var(--surface-2); border:1px solid var(--border-soft); border-radius:10px; padding:12px 14px; }
+.pw-period-label { font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); margin-bottom:6px; }
+.pw-period-num { font-family:var(--font-display); font-size:24px; font-weight:800; color:var(--accent); line-height:1; margin-bottom:4px; }
+.pw-period-sub { font-size:11px; color:var(--text-3); }
+.pw-log-btn { width:100%; background:none; border:1px solid var(--border); border-radius:9px; padding:9px; font-size:12px; font-weight:700; color:var(--text-3); font-family:var(--font-body); cursor:pointer; letter-spacing:.05em; transition:all .15s; }
+.pw-log-btn:hover { color:var(--text); border-color:var(--text-3); }
+/* ─── REACH OUT ─── */
+.ro-search { width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:9px 13px; font-size:13px; color:var(--text); font-family:var(--font-body); outline:none; margin-bottom:10px; }
+.ro-search::placeholder { color:var(--text-4); }
+.ro-search:focus { border-color:var(--accent); }
+.ro-filters { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+.ro-filter { background:var(--surface-2); border:1px solid var(--border); border-radius:20px; padding:4px 12px; font-size:11px; font-weight:600; color:var(--text-3); cursor:pointer; font-family:var(--font-body); transition:all .15s; white-space:nowrap; }
+.ro-filter:hover { color:var(--text-2); border-color:var(--text-4); }
+.ro-filter.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.ro-list { max-height:380px; overflow-y:auto; }
+.ro-row { display:flex; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid var(--border-soft); cursor:pointer; border-radius:6px; transition:background .12s; }
+.ro-row:hover { background:var(--surface-2); }
+.ro-row:last-child { border-bottom:none; }
+.ro-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.ro-dot.red   { background:var(--red); }
+.ro-dot.amber { background:var(--amber); }
+.ro-dot.green { background:var(--green); }
+.ro-dot.gray  { background:var(--text-4); }
+.ro-name { font-size:13px; font-weight:600; color:var(--text); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ro-rel { font-size:11px; color:var(--text-3); white-space:nowrap; }
+.ro-when { font-size:11px; white-space:nowrap; margin-left:auto; color:var(--text-3); }
+.ro-when.never { color:var(--red); font-weight:600; }
+.ro-when.stale { color:var(--amber); }
+.ro-empty { font-size:12px; color:var(--text-4); padding:20px 4px; text-align:center; }
 
 /* ─── MODAL ─── */
 .modal-overlay { position:fixed; inset:0; background:rgba(5,8,14,.7); display:none; align-items:flex-start; justify-content:center; padding:60px 16px; z-index:200; }
@@ -200,7 +236,7 @@ body.state-calm .calm-hero { display:flex; }
 </head><body>
 <div id="lrl-shell"></div>
 
-<div class="convert-page card-stack">
+<div class="convert-page">
 
   <!-- HEADER -->
   <div class="cv-head">
@@ -208,98 +244,156 @@ body.state-calm .calm-hero { display:flex; }
       <span class="cv-title">Win</span>
     </div>
     <div class="cv-head-right">
+      <span class="data-badge" id="data-badge"><span class="dot"></span><span id="data-badge-text">Live</span></span>
+    </div>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <button class="exec-tab-btn active" data-go="pulse">PULSE</button>
+    <button class="exec-tab-btn" data-go="sales">SALES</button>
+    <button class="exec-tab-btn" data-go="network">NETWORK</button>
+    <button class="exec-tab-btn" data-go="stages">STAGES</button>
+  </div>
+
+  <div id="load-error">Couldn't load Convert data. <span id="load-error-msg"></span></div>
+
+  <!-- PULSE TAB: Revenue + Pipeline Health -->
+  <section class="exec-panel active" data-panel="pulse">
+
+    <!-- PIPELINE BAR -->
+    <div class="t-card" id="pipe-card">
+      <div class="sec-head">
+        <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Revenue · <span id="pipe-qtr">Q2 2026</span></div></div>
+      </div>
+      <div class="pipe-bar">
+        <div class="pipe-seg pipe-seg-booked"   id="pipe-booked-seg"   style="width:0%"></div>
+        <div class="pipe-seg pipe-seg-invoiced" id="pipe-invoiced-seg" style="width:0%"></div>
+        <div class="pipe-seg pipe-seg-quotes"   id="pipe-quotes-seg"   style="width:0%"></div>
+        <div class="pipe-seg pipe-seg-recur"    id="pipe-recur-seg"    style="width:0%"></div>
+      </div>
+      <div class="pipe-labels">
+        <span class="pipe-booked-label" id="pipe-booked-label"><b>$—</b> booked</span>
+        <span class="pipe-gap-label" id="pipe-gap-label">Loading…</span>
+      </div>
+      <div class="pipe-legend" id="pipe-legend"></div>
+    </div>
+
+    <!-- CALM CONDITIONS -->
+    <div class="t-card" data-persist-key="convert-health">
+      <div class="sec-head">
+        <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Pipeline Health</div></div>
+        <span class="calm-head-score" id="calm-score">— / 6</span>
+      </div>
+      <div class="t-body"><div class="calm-grid" id="calm-grid"></div></div>
+    </div>
+
+  </section>
+
+  <!-- SALES TAB -->
+  <section class="exec-panel" data-panel="sales">
+
+    <div style="display:flex; justify-content:flex-end; margin-bottom:4px;">
       <div class="me-mode" id="me-mode">
         <button data-me="gretchen">G</button>
         <button data-me="trina">T</button>
         <button data-me="all" class="active">All</button>
       </div>
-      <span class="data-badge" id="data-badge"><span class="dot"></span><span id="data-badge-text">Live</span></span>
     </div>
-  </div>
 
-  <!-- PIPELINE BAR -->
-  <div class="t-card" id="pipe-card">
-    <div class="sec-head">
-      <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Revenue · <span id="pipe-qtr">Q2 2026</span></div></div>
-    </div>
-    <div class="pipe-bar">
-      <div class="pipe-seg pipe-seg-booked"   id="pipe-booked-seg"   style="width:0%"></div>
-      <div class="pipe-seg pipe-seg-invoiced" id="pipe-invoiced-seg" style="width:0%"></div>
-      <div class="pipe-seg pipe-seg-quotes"   id="pipe-quotes-seg"   style="width:0%"></div>
-      <div class="pipe-seg pipe-seg-recur"    id="pipe-recur-seg"    style="width:0%"></div>
-    </div>
-    <div class="pipe-labels">
-      <span class="pipe-booked-label" id="pipe-booked-label"><b>$—</b> booked</span>
-      <span class="pipe-gap-label" id="pipe-gap-label">Loading…</span>
-    </div>
-    <div class="pipe-legend" id="pipe-legend"></div>
-  </div>
-
-  <!-- CALM HERO (all conditions met) -->
-  <div class="calm-hero">
-    <div class="ch-tick">✓</div>
-    <div>
-      <h2>Pipeline's healthy.</h2>
-      <p id="calm-hero-sub">Everyone in motion is followed up, decisions are moving, revenue's on track. Go build.</p>
-    </div>
-  </div>
-
-  <div id="load-error">Couldn't load Convert data. <span id="load-error-msg"></span></div>
-
-  <!-- CALM CONDITIONS -->
-  <div class="t-card" data-persist-key="convert-health">
-    <div class="sec-head">
-      <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Pipeline Health</div></div>
-      <span class="calm-head-score" id="calm-score">— / 6</span>
-    </div>
-    <div class="t-body"><div class="calm-grid" id="calm-grid"></div></div>
-  </div>
-
-  <!-- DO THIS NEXT -->
-  <div class="t-card" data-persist-key="convert-donext">
-    <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Do This Next</div></div><span class="sl-meta" id="dtn-meta"></span></div>
-    <div class="t-body"><div id="dtn-mount"></div></div>
-  </div>
-
-  <!-- FOLLOW-UPS -->
-  <div class="t-card" data-persist-key="convert-followups">
-    <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Follow-Ups</div></div><span class="sl-meta" id="fu-meta"></span></div>
-    <div class="t-body">
-      <div class="fu-tabs" id="fu-tabs">
-        <button class="fu-tab active" data-fu="warm">Warm <span class="fu-count" id="fc-warm">0</span></button>
-        <button class="fu-tab" data-fu="cold">Cold <span class="fu-count" id="fc-cold">0</span></button>
-        <button class="fu-tab" data-fu="client">Clients <span class="fu-count" id="fc-client">0</span></button>
-      </div>
-      <div class="fu-panel active" id="fp-warm"></div>
-      <div class="fu-panel" id="fp-cold"></div>
-      <div class="fu-panel" id="fp-client"></div>
-    </div>
-  </div>
-
-  <!-- PIPELINE -->
-  <div class="t-card" data-persist-key="convert-pipeline">
-    <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Pipeline</div></div><span class="sl-meta" id="pipe-meta"></span></div>
-    <div class="t-body"><div class="kanban" id="kanban"></div></div>
-  </div>
-
-  <!-- WEEKLY PULSE -->
-  <div class="t-card" data-persist-key="convert-weekly-pulse">
-    <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Weekly Pulse</div></div></div>
-    <div class="t-body">
-      <div class="pulse-block" id="pulse-block">
-        <div class="pulse-stat">
-          <span class="pulse-stat-num neutral" id="pulse-num">—</span>
-          <span class="pulse-stat-label">Touchpoints</span>
-        </div>
-        <div class="pulse-divider"></div>
-        <div class="pulse-bar-wrap">
-          <div class="pulse-bar-top"><span id="pulse-bar-label">This week</span><span id="pulse-bar-goal"></span></div>
-          <div class="pulse-bar"><div class="pulse-bar-fill" id="pulse-bar-fill" style="width:0%"></div></div>
-          <div class="pulse-streak" id="pulse-streak"></div>
-        </div>
+    <!-- CALM HERO (all conditions met) -->
+    <div class="calm-hero">
+      <div class="ch-tick">✓</div>
+      <div>
+        <h2>Pipeline's healthy.</h2>
+        <p id="calm-hero-sub">Everyone in motion is followed up, decisions are moving, revenue's on track. Go build.</p>
       </div>
     </div>
-  </div>
+
+    <!-- DO THIS NEXT -->
+    <div class="t-card" data-persist-key="convert-donext">
+      <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Do This Next</div></div><span class="sl-meta" id="dtn-meta"></span></div>
+      <div class="t-body"><div id="dtn-mount"></div></div>
+    </div>
+
+    <!-- FOLLOW-UPS -->
+    <div class="t-card" data-persist-key="convert-followups">
+      <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Follow-Ups</div></div><span class="sl-meta" id="fu-meta"></span></div>
+      <div class="t-body">
+        <div class="fu-tabs" id="fu-tabs">
+          <button class="fu-tab active" data-fu="warm">Warm <span class="fu-count" id="fc-warm">0</span></button>
+          <button class="fu-tab" data-fu="cold">Cold <span class="fu-count" id="fc-cold">0</span></button>
+          <button class="fu-tab" data-fu="client">Clients <span class="fu-count" id="fc-client">0</span></button>
+        </div>
+        <div class="fu-panel active" id="fp-warm"></div>
+        <div class="fu-panel" id="fp-cold"></div>
+        <div class="fu-panel" id="fp-client"></div>
+      </div>
+    </div>
+
+    <!-- PIPELINE -->
+    <div class="t-card" data-persist-key="convert-pipeline">
+      <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Pipeline</div></div><span class="sl-meta" id="pipe-meta"></span></div>
+      <div class="t-body"><div class="kanban" id="kanban"></div></div>
+    </div>
+
+    <!-- WEEKLY PULSE -->
+    <div class="t-card" data-persist-key="convert-weekly-pulse">
+      <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">This Week's Pulse</div></div></div>
+      <div class="t-body">
+        <div class="pw-grid">
+          <div class="pw-metric">
+            <div class="pw-metric-label">Pulse</div>
+            <div class="pw-metric-val"><span id="pw-pulse-val">—</span><span style="font-size:14px;color:var(--text-3);font-weight:600"> / <span id="pw-pulse-goal">—</span></span></div>
+            <div class="pw-bar"><div class="pw-bar-fill" id="pw-pulse-fill" style="width:0%"></div></div>
+          </div>
+          <div class="pw-metric">
+            <div class="pw-metric-label">Sales</div>
+            <div class="pw-metric-val"><span id="pw-sales-val">—</span><span style="font-size:14px;color:var(--text-3);font-weight:600"> / <span id="pw-sales-goal">—</span></span></div>
+            <div class="pw-bar"><div class="pw-bar-fill" id="pw-sales-fill" style="width:0%"></div></div>
+          </div>
+        </div>
+        <div class="pw-streak" id="pw-streak"></div>
+        <div class="pw-periods" id="pw-periods"></div>
+        <button class="pw-log-btn" onclick="openLog('','')">+ Log Touchpoint</button>
+      </div>
+    </div>
+
+    <!-- REACH OUT -->
+    <div class="t-card" data-persist-key="convert-reachout">
+      <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Reach Out <span class="count" id="ro-count"></span></div></div></div>
+      <div class="t-body">
+        <input class="ro-search" id="ro-search" placeholder="Search contacts…" autocomplete="off">
+        <div class="ro-filters" id="ro-filters">
+          <button class="ro-filter active" data-rf="all">All</button>
+          <button class="ro-filter" data-rf="Lead">Lead</button>
+          <button class="ro-filter" data-rf="Alumni">Alumni</button>
+          <button class="ro-filter" data-rf="Network Partner">Network Partner</button>
+          <button class="ro-filter" data-rf="Active Client">Active Client</button>
+        </div>
+        <div class="ro-list" id="ro-list"></div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- NETWORK TAB -->
+  <section class="exec-panel" data-panel="network">
+    <div class="placeholder-tab">
+      <div class="placeholder-icon">🌐</div>
+      <div class="placeholder-title">Network</div>
+      <div class="placeholder-body">Referral sources, partner relationships, and warm intro tracking — coming soon.</div>
+    </div>
+  </section>
+
+  <!-- STAGES TAB -->
+  <section class="exec-panel" data-panel="stages">
+    <div class="placeholder-tab">
+      <div class="placeholder-icon">🗂</div>
+      <div class="placeholder-title">Stages</div>
+      <div class="placeholder-body">Deal stage configuration and conversion rate tracking — coming soon.</div>
+    </div>
+  </section>
 
 </div>
 
@@ -642,24 +736,85 @@ function renderPipeline() {
 // ─── Weekly pulse ────────────────────────────────────────────────────────────
 function renderPulse() {
   if (!PULSE) return;
-  const tp = DATA.touchpointsThisWeek || 0;
-  const num = document.getElementById('pulse-num');
-  num.textContent = tp;
-  num.className = 'pulse-stat-num ' + (tp >= PULSE_TARGET ? 'good' : tp >= PULSE_TARGET / 2 ? 'warn' : 'neutral');
-  document.getElementById('pulse-bar-goal').textContent = `${tp} / ${PULSE_TARGET}`;
-  const fill = document.getElementById('pulse-bar-fill');
-  fill.style.width = Math.min(100, (tp / PULSE_TARGET) * 100) + '%';
-  fill.className = 'pulse-bar-fill' + (tp >= PULSE_TARGET ? ' good' : '');
+  const p = PULSE.pulse || 0, pg = PULSE.pulseGoal || PULSE_TARGET;
+  const s = PULSE.sales || 0, sg = PULSE.salesGoal || 15;
+
+  document.getElementById('pw-pulse-val').textContent = p;
+  document.getElementById('pw-pulse-goal').textContent = pg;
+  const pf = document.getElementById('pw-pulse-fill');
+  pf.style.width = Math.min(100, (p / pg) * 100) + '%';
+  pf.className = 'pw-bar-fill' + (p >= pg ? ' good' : '');
+
+  document.getElementById('pw-sales-val').textContent = s;
+  document.getElementById('pw-sales-goal').textContent = sg;
+  const sf = document.getElementById('pw-sales-fill');
+  sf.style.width = Math.min(100, (s / sg) * 100) + '%';
+  sf.className = 'pw-bar-fill' + (s >= sg ? ' good' : '');
+
   const streak = PULSE.streak || 0;
-  document.getElementById('pulse-streak').innerHTML = streak > 0
-    ? `<b>${streak} week${streak === 1 ? '' : 's'}</b> hitting the sales goal`
-    : 'Sales goal not yet hit this week';
+  document.getElementById('pw-streak').innerHTML = streak > 0
+    ? `<b style="color:var(--green)">${streak} week${streak===1?'':'s'}</b> hitting the sales goal`
+    : `Log ${Math.max(0, sg - s)} more sales touchpoints to start a streak`;
+
+  const m = PULSE.month || {}, q = PULSE.quarter || {}, ql = (PULSE.quarterLabel || 'This Quarter').toUpperCase();
+  const monthLabel = PULSE.weekStart
+    ? new Date(PULSE.weekStart.replace(/-/g, '/')).toLocaleString('default', {month: 'long', year: 'numeric'}).toUpperCase()
+    : 'THIS MONTH';
+  document.getElementById('pw-periods').innerHTML = `
+    <div class="pw-period">
+      <div class="pw-period-label">${monthLabel}</div>
+      <div class="pw-period-num">${m.total || 0}</div>
+      <div class="pw-period-sub">${m.pulse||0} pulse · ${m.sales||0} sales</div>
+    </div>
+    <div class="pw-period">
+      <div class="pw-period-label">${ql}</div>
+      <div class="pw-period-num">${q.total || 0}</div>
+      <div class="pw-period-sub">${q.pulse||0} pulse · ${q.sales||0} sales</div>
+    </div>`;
+}
+
+// ─── Reach Out ──────────────────────────────────────────────────────────────────
+let RO_FILTER = 'all';
+function renderReachOut() {
+  if (!DATA) return;
+  const q = (document.getElementById('ro-search')?.value || '').toLowerCase().trim();
+  const all = DATA.contacts || [];
+  const filtered = all.filter(c => {
+    if (RO_FILTER !== 'all' && c.relationship !== RO_FILTER) return false;
+    if (q && !c.name.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  filtered.sort((a, b) => {
+    const da = daysSince(a.lastTouched), db = daysSince(b.lastTouched);
+    return db - da;
+  });
+  document.getElementById('ro-count').textContent = '· ' + all.length;
+  const list = document.getElementById('ro-list');
+  if (!filtered.length) {
+    list.innerHTML = '<div class="ro-empty">No contacts match</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(c => {
+    const ds = daysSince(c.lastTouched);
+    let dotClass = 'gray', whenText = '', whenClass = '';
+    if (ds === Infinity)    { dotClass = 'red';   whenText = 'never';       whenClass = 'never'; }
+    else if (ds > 30)       { dotClass = 'red';   whenText = ds + 'd ago';  whenClass = 'never'; }
+    else if (ds > 14)       { dotClass = 'amber'; whenText = ds + 'd ago';  whenClass = 'stale'; }
+    else                    { dotClass = 'green'; whenText = ds + 'd ago';  whenClass = ''; }
+    const rel = c.relationship || '';
+    return `<div class="ro-row" onclick="openLog('${esc(c.name)}','${c.id}')">
+      <div class="ro-dot ${dotClass}"></div>
+      <span class="ro-name">${esc(c.name)}</span>
+      ${rel ? `<span class="ro-rel">${esc(rel)}</span>` : ''}
+      <span class="ro-when ${whenClass}">${whenText}</span>
+    </div>`;
+  }).join('');
 }
 
 // ─── Render all ────────────────────────────────────────────────────────────────
 function renderAll() {
   if (!DATA) return;
-  renderPipelineBar(); renderCalm(); renderDoNext(); renderFollowUps(); renderPipeline(); renderPulse();
+  renderPipelineBar(); renderCalm(); renderDoNext(); renderFollowUps(); renderPipeline(); renderPulse(); renderReachOut();
 }
 
 // ─── Me-mode ───────────────────────────────────────────────────────────────────
@@ -668,6 +823,15 @@ document.getElementById('me-mode').addEventListener('click', (e) => {
   ME = btn.dataset.me;
   [...document.querySelectorAll('#me-mode button')].forEach((b) => b.classList.toggle('active', b === btn));
   renderAll();
+});
+
+// ─── Reach Out search + filter ────────────────────────────────────────────────
+document.getElementById('ro-search').addEventListener('input', renderReachOut);
+document.getElementById('ro-filters').addEventListener('click', (e) => {
+  const btn = e.target.closest('.ro-filter'); if (!btn) return;
+  RO_FILTER = btn.dataset.rf;
+  [...document.querySelectorAll('.ro-filter')].forEach(b => b.classList.toggle('active', b === btn));
+  renderReachOut();
 });
 
 // ─── Follow-up tabs ──────────────────────────────────────────────────────────
@@ -790,6 +954,21 @@ async function load(fresh) {
   }
 }
 load();
+
+// ─── Tab switcher ─────────────────────────────────────────────────────────────
+(() => {
+  const panels = [...document.querySelectorAll('.exec-panel')];
+  const btns   = [...document.querySelectorAll('.exec-tab-btn')];
+  function showPanel(name) {
+    panels.forEach(p => p.classList.toggle('active', p.dataset.panel === name));
+    btns.forEach(b => b.classList.toggle('active', b.dataset.go === name));
+    try { localStorage.setItem('lrl-win-panel', name); } catch(e) {}
+  }
+  btns.forEach(b => b.addEventListener('click', () => showPanel(b.dataset.go)));
+  let start = 'pulse';
+  try { const s = localStorage.getItem('lrl-win-panel'); if (s && panels.some(p => p.dataset.panel === s)) start = s; } catch(e) {}
+  showPanel(start);
+})();
 </script>
 <script src="/shell.js"></script>
 </body></html>

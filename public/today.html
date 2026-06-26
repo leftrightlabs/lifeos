@@ -2117,7 +2117,7 @@ function renderPlan() {
   // Count the task list only — rituals carry their own progress on their rows.
   const doneCt  = visible.filter(p => p.done).length;
   const totalCt = visible.length;
-  document.getElementById('planCount').textContent = `· ${doneCt} of ${totalCt} done`;
+  document.getElementById('planCount').textContent = totalCt > 0 ? `· ${doneCt} of ${totalCt} done` : '';
   const shown = state.hideDone ? visible.filter(t => !t.done) : visible;
 
   const rowHtml = (t, collapsedRow) => {

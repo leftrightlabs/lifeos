@@ -192,11 +192,16 @@ function makeOAuthClient(req, callbackPath = '/auth/google/callback') {
 async function queryTasks(dataSourceId, { peopleProp, myDayOnly } = {}) {
   const and = [];
   if (myDayOnly) {
-    // Include active My Day tasks OR tasks completed today (so they still count in the daily total).
+    // Two disjoint cases:
+    //   (a) active tasks still on My Day (not Done)
+    //   (b) tasks completed today — Notion unchecks My Day on completion, so we
+    //       can't require My Day=true here or these tasks silently vanish.
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
-    and.push({ property: 'My Day', checkbox: { equals: true } });
     and.push({ or: [
-      { property: 'Status', status: { does_not_equal: 'Done' } },
+      { and: [
+        { property: 'My Day', checkbox: { equals: true } },
+        { property: 'Status', status: { does_not_equal: 'Done' } },
+      ]},
       { property: 'Completed', date: { equals: today } },
     ]});
   } else {
