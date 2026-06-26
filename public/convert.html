@@ -481,14 +481,13 @@ function classify(c) {
   if (c.relationship === 'Referral' || WARM_SOURCES.includes(c.source)) return 'warm';
   return 'cold';
 }
-// Two filters combine here: the per-person picker (#me-mode: gretchen|trina|all)
-// and the GLOBAL ME toggle (shell.js). The picker wins when it names a specific
-// person; otherwise the global toggle scopes to the signed-in user ('self').
-// Unassigned items always stay visible.
+// Scope is driven solely by this page's own G/T/All picker (#me-mode). The Win
+// page has its own per-person control, so the GLOBAL ME toggle (shell.js) is NOT
+// applied here — letting it silently force 'self' made the page look empty when
+// the signed-in user owns none of the (often Trina-owned/unassigned) deals while
+// the picker still read "All". Unassigned items always stay visible.
 function effectiveScope() {
-  if (ME !== 'all') return ME;                                  // explicit person picked
-  if (window.LRLShell && LRLShell.meMode()) return 'self';      // global ME → just me
-  return 'all';
+  return ME; // 'all' | 'gretchen' | 'trina'
 }
 function mineContact(c) { const s = effectiveScope(); if (s === 'all') return true; if (s === 'self') return c.mine || !c.assignedTo; return c.assignedTo === s || !c.assignedTo; }
 function mineDeal(d) { const s = effectiveScope(); if (s === 'all') return true; if (s === 'self') return d.mine || !d.assignedTo; return d.assignedTo === s || !d.assignedTo; }
