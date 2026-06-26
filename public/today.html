@@ -3159,8 +3159,13 @@ function applyTasksGoals(goalsV, workV, lifeV) {
     _loadedGoals.forEach(g => rocks.push(goalToRock(g)));
   }
   if (ok(workV) || ok(lifeV)) {
-    const wt = ok(workV) ? (workV.tasks || []) : [];
-    const lt = ok(lifeV) ? (lifeV.tasks || []) : [];
+    // Recurring automations reschedule tasks by bumping the due date while leaving
+    // My Day = true. Exclude any My Day task whose due date is in the future — only
+    // show tasks due today or earlier (or with no due date), matching Notion's MY DAY view.
+    const todayStr = todayISO();
+    const filterMyDay = (tasks) => (tasks || []).filter(t => !t.dueStart || t.dueStart <= todayStr);
+    const wt = ok(workV) ? filterMyDay(workV.tasks) : [];
+    const lt = ok(lifeV) ? filterMyDay(lifeV.tasks) : [];
     plan.length = 0;
     [...wt, ...lt].forEach(t => plan.push(taskToPlanItem(t)));
     // Merge back tasks marked done this session so they don't disappear on
