@@ -214,6 +214,10 @@ body.state-calm .calm-hero { display:flex; }
 .modal-input, .modal-select, .modal-textarea { width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:9px 11px; font-family:var(--font-body); font-size:13px; color:var(--text); }
 .modal-input:focus, .modal-select:focus, .modal-textarea:focus { outline:none; border-color:var(--zone); }
 .modal-textarea { resize:vertical; min-height:80px; line-height:1.5; }
+/* The date field's native calendar popup (Chrome) scales with the input's font
+   size — bump it so the calendar renders noticeably larger and easier to tap. */
+#log-date { font-size:18px; padding:12px 13px; letter-spacing:.02em; }
+#log-date::-webkit-calendar-picker-indicator { width:20px; height:20px; cursor:pointer; }
 .modal-search-results { margin-top:6px; max-height:180px; overflow-y:auto; border:1px solid var(--border-soft); border-radius:var(--radius-sm); display:none; }
 .modal-search-results.show { display:block; }
 .msr-item { padding:8px 11px; font-size:13px; color:var(--text-2); cursor:pointer; }
