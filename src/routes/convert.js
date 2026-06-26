@@ -311,10 +311,34 @@ app.post('/api/convert/touchpoint', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET /api/convert/touchpoints?period=month|quarter — list activity rows for a period with full detail.
+// GET /api/convert/touchpoints?period=month|quarter&contactId= — list activity rows.
+// With ?contactId=: returns the 10 most recent touchpoints for that contact (no date filter).
 app.get('/api/convert/touchpoints', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
+    // Contact-specific history: lightweight query, no pagination needed.
+    if (req.query.contactId) {
+      const cid = dashifyId(req.query.contactId);
+      const r = await notion.dataSources.query({
+        data_source_id: SALES_ACTIVITY_DS,
+        filter: { property: 'Contact', relation: { contains: cid } },
+        sorts: [{ property: 'Timestamp', direction: 'descending' }],
+        page_size: 10,
+      });
+      const rows = r.results.map((pg) => {
+        const p = pg.properties || {};
+        return {
+          id: (pg.id || '').replace(/-/g, ''),
+          date: p.Timestamp?.date?.start?.slice(0, 10) || null,
+          type: p['Touchpoint Type']?.select?.name || '',
+          channel: p.Channel?.select?.name || '',
+          notes: p.Notes?.rich_text?.[0]?.plain_text || '',
+          loggedBy: (p['Logged By']?.people || [])[0]?.name || '',
+        };
+      });
+      return res.json({ touchpoints: rows, total: rows.length });
+    }
+
     const period = req.query.period === 'quarter' ? 'quarter' : 'month';
     const today = chicagoTodayISODate();
     const q = currentQuarter();

@@ -247,6 +247,16 @@ body.state-calm .calm-hero { display:flex; }
 .log-toggle button.on { background:var(--zone); color:#fff; }
 .gen-output { background:var(--surface-2); border:1px solid var(--border-soft); border-left:2px solid var(--zone); border-radius:0 var(--radius-sm) var(--radius-sm) 0; padding:12px 14px; font-size:13px; color:var(--text); line-height:1.6; white-space:pre-wrap; margin-top:6px; min-height:60px; }
 .gen-loading { color:var(--text-3); font-style:italic; }
+/* ── Contact history in log modal ── */
+.modal-notion-link { font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--text-3); text-decoration:none; padding:3px 9px; border:1px solid var(--border); border-radius:var(--radius-xs); white-space:nowrap; margin-left:auto; margin-right:8px; transition:all .15s; }
+.modal-notion-link:hover { color:var(--text-2); border-color:var(--text-3); }
+.tp-hist-scroll { max-height:160px; overflow-y:auto; }
+.tp-hist-row { display:flex; gap:8px; padding:6px 0; border-bottom:1px solid var(--border-soft); align-items:baseline; font-size:12px; line-height:1.4; }
+.tp-hist-row:last-child { border-bottom:none; }
+.tp-hist-date { color:var(--text-3); white-space:nowrap; min-width:68px; flex-shrink:0; }
+.tp-hist-type { color:var(--text-2); white-space:nowrap; flex-shrink:0; max-width:150px; overflow:hidden; text-overflow:ellipsis; }
+.tp-hist-note { color:var(--text-3); flex:1; font-style:italic; min-width:0; overflow:hidden; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; padding-left:4px; }
+.tp-hist-empty { color:var(--text-3); font-size:12px; padding:6px 0; }
 
 /* ─── TOAST + SKELETON ─── */
 .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--surface-2); border:1px solid var(--border); color:var(--text); padding:10px 18px; border-radius:8px; font-size:13px; font-weight:600; z-index:999; transition:transform .25s ease,opacity .25s ease; opacity:0; pointer-events:none; display:flex; align-items:center; gap:8px; }
@@ -425,7 +435,7 @@ body.state-calm .calm-hero { display:flex; }
 <!-- LOG TOUCHPOINT MODAL -->
 <div class="modal-overlay" id="log-modal">
   <div class="modal">
-    <div class="modal-head"><h3>Log Touchpoint</h3><button class="modal-close" onclick="closeLog()">×</button></div>
+    <div class="modal-head"><h3>Log Touchpoint</h3><a id="log-notion-link" href="#" target="_blank" class="modal-notion-link" style="display:none">Open in Notion ↗</a><button class="modal-close" onclick="closeLog()">×</button></div>
     <div class="modal-body">
       <div class="modal-field">
         <label class="modal-label">Contact</label>
@@ -472,6 +482,11 @@ body.state-calm .calm-hero { display:flex; }
             </div>
           </div>
         </div>
+      </div>
+    </div>
+      <div class="modal-field" id="tp-history-wrap" style="display:none">
+        <label class="modal-label">Prior Touchpoints</label>
+        <div class="tp-hist-scroll" id="tp-history-list"></div>
       </div>
     </div>
     <div class="modal-foot">
@@ -659,7 +674,7 @@ function renderDoNext() {
   meta.textContent = n.pill;
   const tags = (n.tags || []).map((t) => `<span class="dtn-tag">${t}</span>`).join('');
   const logBtn = n.kind === 'contact'
-    ? `<button class="btn-primary" onclick="openLog('${esc(n.name)}','${n.contactId}')">Log Touchpoint</button>
+    ? `<button class="btn-primary" onclick="openLog('${esc(n.name)}','${n.contactId}','${esc(n.url||'')}')">Log Touchpoint</button>
        <button class="btn-secondary" onclick="openGen('${esc(n.name)}','${n.contactId}')">Draft Message</button>`
     : `<button class="btn-secondary" onclick="window.open('${n.url}','_blank')">Open Deal</button>`;
   mount.innerHTML = `<div class="dtn-card"><div class="dtn-bar ${n.urgency}"></div><div class="dtn-body">
@@ -755,7 +770,7 @@ function renderFollowUps() {
           ${meta ? `<div class="fu-meta">${esc(meta)}</div>` : ''}
         </div>
         <span class="fu-when ${cls}">${when}</span>
-        <button class="fu-log" onclick="openLog('${esc(c.name)}','${c.id}')">Log</button>
+        <button class="fu-log" onclick="openLog('${esc(c.name)}','${c.id}','${esc(c.url||'')}')">Log</button>
       </div>`;
     }).join('');
   }
@@ -839,7 +854,7 @@ function roRowHtml(c) {
   else if (ds > 14)       { dotClass = 'amber'; whenText = ds + 'd ago'; whenClass = 'stale'; }
   else if (ds >= 0)       { dotClass = 'green'; whenText = ds + 'd ago'; whenClass = ''; }
   const rel = c.relationship || '';
-  return `<div class="ro-row" onclick="openLog('${esc(c.name)}','${c.id}')">
+  return `<div class="ro-row" onclick="openLog('${esc(c.name)}','${c.id}','${esc(c.url||'')}')">
     <div class="ro-dot ${dotClass}"></div>
     <span class="ro-name">${esc(c.name)}</span>
     ${rel ? `<span class="ro-rel">${esc(rel)}</span>` : ''}
@@ -913,7 +928,7 @@ document.getElementById('fu-tabs').addEventListener('click', (e) => {
 // ─── Log Touchpoint modal ──────────────────────────────────────────────────────
 const LOG_TOUCHPOINTS = ['👋 General Touchpoint','📩 Follow-Up','🎯 Offer Sent','📋 Proposal Sent','📞 Sales Call','🙏 Thank You / Nurture','🔁 Re-Engage'];
 const LOG_CHANNELS = ['Email','Text','WhatsApp','LinkedIn DM','LinkedIn Comment','FB Comment','FB Messenger','Instagram DM','Instagram Comment','Phone/Zoom','In Person'];
-let logContactId = null, logContactName = '', logSearchTimer = null, logBy = 'Gretchen';
+let logContactId = null, logContactName = '', logContactUrl = null, logSearchTimer = null, logBy = 'Gretchen';
 let logDate = isoToday();          // selected date (ISO yyyy-mm-dd)
 let dpView = { y: 0, m: 0 };       // month currently shown in the calendar (m 0-based)
 // Populate the type + channel selects once.
@@ -957,9 +972,34 @@ function dpToggle() {
 function dpMonth(delta) { dpView.m += delta; if (dpView.m < 0) { dpView.m = 11; dpView.y--; } else if (dpView.m > 11) { dpView.m = 0; dpView.y++; } dpRenderGrid(); }
 function dpPick(iso) { dpSetDate(iso); dpRenderGrid(); document.getElementById('dp-cal').style.display = 'none'; document.getElementById('dp-field').classList.remove('open'); }
 
-function openLog(name, id) {
+function setNotionLink(url) {
+  const el = document.getElementById('log-notion-link');
+  if (url) { el.href = url; el.style.display = ''; }
+  else { el.style.display = 'none'; }
+}
+async function loadContactHistory(contactId) {
+  const wrap = document.getElementById('tp-history-wrap');
+  const list = document.getElementById('tp-history-list');
+  wrap.style.display = 'block';
+  list.innerHTML = '<div class="tp-hist-empty">Loading…</div>';
+  try {
+    const r = await fetch('/api/convert/touchpoints?contactId=' + encodeURIComponent(contactId));
+    const { touchpoints } = await r.json();
+    if (!touchpoints?.length) { list.innerHTML = '<div class="tp-hist-empty">No prior touchpoints</div>'; return; }
+    list.innerHTML = touchpoints.map((t) => {
+      const dateStr = t.date ? new Date(t.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+      return `<div class="tp-hist-row">
+        <span class="tp-hist-date">${dateStr}</span>
+        <span class="tp-hist-type">${esc(t.type)}</span>
+        ${t.notes ? `<span class="tp-hist-note">${esc(t.notes)}</span>` : ''}
+      </div>`;
+    }).join('');
+  } catch (_) { list.innerHTML = '<div class="tp-hist-empty">Couldn\'t load history</div>'; }
+}
+function openLog(name, id, url) {
   logContactId = id || null;
   logContactName = name || '';
+  logContactUrl = url || null;
   document.getElementById('log-contact').value = name || '';
   document.getElementById('log-type').selectedIndex = 0;
   document.getElementById('log-channel').selectedIndex = 0;
@@ -970,6 +1010,9 @@ function openLog(name, id) {
   logBy = 'Gretchen';
   [...document.querySelectorAll('#log-by button')].forEach((b) => b.classList.toggle('on', b.dataset.by === 'Gretchen'));
   document.getElementById('log-results').classList.remove('show');
+  setNotionLink(logContactUrl);
+  document.getElementById('tp-history-wrap').style.display = 'none';
+  if (id) loadContactHistory(id);
   document.getElementById('log-modal').classList.add('open');
 }
 function closeLog() { document.getElementById('log-modal').classList.remove('open'); }
@@ -989,16 +1032,18 @@ document.getElementById('log-contact').addEventListener('input', (e) => {
       const { contacts } = await r.json();
       const box = document.getElementById('log-results');
       box.innerHTML = (contacts || []).slice(0, 8).map((c) =>
-        `<div class="msr-item" onclick="pickContact('${esc(c.name)}','${c.id}')">${esc(c.name)}<span style="color:var(--text-3)"> · ${c.relationship || ''}</span></div>`).join('')
+        `<div class="msr-item" onclick="pickContact('${esc(c.name)}','${c.id}','${esc(c.url||'')}')">${esc(c.name)}<span style="color:var(--text-3)"> · ${c.relationship || ''}</span></div>`).join('')
         || '<div class="msr-item" style="color:var(--text-3)">No matches</div>';
       box.classList.add('show');
     } catch (_) {}
   }, 250);
 });
-function pickContact(name, id) {
+function pickContact(name, id, url) {
   document.getElementById('log-contact').value = name;
-  logContactId = id; logContactName = name;
+  logContactId = id; logContactName = name; logContactUrl = url || null;
   document.getElementById('log-results').classList.remove('show');
+  setNotionLink(logContactUrl);
+  if (id) loadContactHistory(id);
 }
 // Touchpoint types that count as "pulse" (relationship) vs "sales" — mirrors
 // PULSE_TOUCHPOINTS in src/config/convert.js.
