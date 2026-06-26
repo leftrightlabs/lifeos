@@ -2191,7 +2191,7 @@ function togglePlan(i) {
   plan[i].done = !plan[i].done;
   plan[i].status = plan[i].done ? 'Done' : 'Doing';   // 'Doing' is a valid status; 'In Progress' was not
   if (plan[i].id) {
-    if (plan[i].done) _sessionDone[plan[i].id] = { ...plan[i] };
+    if (plan[i].done) _sessionDone[plan[i].id] = { ...plan[i], _completedOn: todayISO() };
     else delete _sessionDone[plan[i].id];
     fetch('/api/tasks/' + plan[i].id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status: plan[i].status }) }).catch(() => {});
   }
@@ -3163,9 +3163,13 @@ function applyTasksGoals(goalsV, workV, lifeV) {
     const lt = ok(lifeV) ? (lifeV.tasks || []) : [];
     plan.length = 0;
     [...wt, ...lt].forEach(t => plan.push(taskToPlanItem(t)));
-    // Merge back tasks marked done this session: the server filters them out
-    // (Status≠Done) so without this they'd disappear and the count would reset.
+    // Merge back tasks marked done this session so they don't disappear on
+    // auto-refresh (server excludes Done tasks from active queries).
+    // Only merge entries stamped for today — stale entries from a previous day
+    // (tab left open overnight) would otherwise inflate the count.
+    const today = todayISO();
     Object.values(_sessionDone).forEach(d => {
+      if (d._completedOn !== today) return;
       if (!plan.find(t => t.id === d.id)) plan.push({ ...d, done: true });
     });
     _oneThingTask = pickOneThing(wt, _loadedGoals, 'work');

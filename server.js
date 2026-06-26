@@ -1326,7 +1326,13 @@ app.patch('/api/tasks/:id', async (req, res) => {
     if (name !== undefined && name !== null) {
       properties.Name = { title: [{ text: { content: String(name) } }] };
     }
-    if (status !== undefined) properties.Status = { status: { name: status } };
+    if (status !== undefined) {
+      properties.Status = { status: { name: status } };
+      if (status === 'Done') {
+        const todayISO = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
+        properties.Completed = { date: { start: todayISO } };
+      }
+    }
     // Est Hours is a number property that only exists on the work DB. A null
     // clears it; a finite number sets it. (Personal tasks never send this.)
     if (estHours !== undefined) {
