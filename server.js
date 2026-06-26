@@ -253,10 +253,7 @@ function simplifyTask(page, source) {
 
 async function workTasks({ myDayOnly, allAssignees }) {
   const data = await queryTasks(WORK_TASKS_DS, {
-    // My Day query: no person filter — My Day is a personal pin, and removing the
-    // person filter makes today.html consistent with planning.html (which also uses
-    // allAssignees: true). This ensures Following tasks you've starred also appear.
-    peopleProp: (allAssignees || myDayOnly) ? undefined : 'Assigned',
+    peopleProp: allAssignees ? undefined : 'Assigned',
     myDayOnly,
   });
   return data.results.map((p) => simplifyTask(p, 'work'));
