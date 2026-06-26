@@ -22,8 +22,8 @@
 
 /* The card shell */
 .t-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 12px; padding: 15px 17px; transition: border-color .15s, background .15s; }
-.t-card:hover { background: #232c4a; border-color: rgba(255,255,255,.1); }
-html.light .t-card:hover { background: #eceef5; border-color: var(--border); }
+.t-card:hover { background-image: linear-gradient(rgba(255,255,255,.04), rgba(255,255,255,.04)); }
+html.light .t-card:hover { background-image: linear-gradient(rgba(0,0,0,.02), rgba(0,0,0,.02)); }
 .t-card .sec-head { margin-bottom: 12px; }
 .t-card.collapsed .sec-head { margin-bottom: 0; }
 .t-card.collapsed .t-body { display: none; }

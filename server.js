@@ -190,8 +190,18 @@ function makeOAuthClient(req, callbackPath = '/auth/google/callback') {
 }
 
 async function queryTasks(dataSourceId, { peopleProp, myDayOnly } = {}) {
-  const and = [{ property: 'Status', status: { does_not_equal: 'Done' } }];
-  if (myDayOnly) and.push({ property: 'My Day', checkbox: { equals: true } });
+  const and = [];
+  if (myDayOnly) {
+    // Include active My Day tasks OR tasks completed today (so they still count in the daily total).
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
+    and.push({ property: 'My Day', checkbox: { equals: true } });
+    and.push({ or: [
+      { property: 'Status', status: { does_not_equal: 'Done' } },
+      { property: 'Completed', date: { equals: today } },
+    ]});
+  } else {
+    and.push({ property: 'Status', status: { does_not_equal: 'Done' } });
+  }
   if (peopleProp) {
     const nid = currentNotionUserId();
     // Member without a resolved Notion id → match nothing (never the owner's tasks).
