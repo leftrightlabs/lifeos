@@ -976,14 +976,36 @@ function toast(msg) {
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
 
 // ─── Load ────────────────────────────────────────────────────────────────────
+// /api/convert is a heavy aggregate (contacts + deals + Xero finance/quotes).
+// On a cold cache or a transient Notion/Xero blip a single request occasionally
+// fails or times out, which is why the page loaded inconsistently. Retry with
+// backoff so those transient failures self-heal instead of blanking the page.
+async function fetchJSON(url, tries) {
+  tries = tries || 3;
+  let lastErr;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json();
+      if (j && j.error) throw new Error(j.error);
+      return j;
+    } catch (e) {
+      lastErr = e;
+      if (i < tries - 1) await new Promise((res) => setTimeout(res, 700 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
 async function load(fresh) {
   try {
+    const q = fresh ? '?fresh=1' : '';
     const [c, p] = await Promise.all([
-      fetch('/api/convert' + (fresh ? '?fresh=1' : '')).then((r) => r.json()),
-      fetch('/api/convert/pulse' + (fresh ? '?fresh=1' : '')).then((r) => r.json()).catch(() => null),
+      fetchJSON('/api/convert' + q),
+      fetchJSON('/api/convert/pulse' + q).catch(() => null),
     ]);
-    if (c.error) throw new Error(c.error);
     DATA = c; PULSE = p;
+    document.getElementById('load-error').style.display = 'none';
     const badge = document.getElementById('data-badge');
     const live = !!DATA.revenue;
     badge.className = 'data-badge' + (live ? '' : ' demo');
@@ -991,7 +1013,7 @@ async function load(fresh) {
     renderAll();
   } catch (err) {
     document.getElementById('load-error').style.display = 'block';
-    document.getElementById('load-error-msg').textContent = err.message;
+    document.getElementById('load-error-msg').textContent = err.message + ' — tap ↻ to retry.';
   }
 }
 load();
