@@ -217,20 +217,36 @@ async function queryTasks(dataSourceId, { peopleProp, myDayOnly } = {}) {
   if (myDayOnly) {
     // Datasources API doesn't support and-inside-or, so run two flat queries in
     // parallel and merge: (1) active My Day tasks, (2) anything completed today.
-    // Case (2) catches tasks where Notion unchecked My Day on completion, and also
-    // catches tasks whose status is "Complete" (not the literal string "Done").
-    const today = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
-    const [active, done] = await Promise.all([
+    // Case (2) catches tasks where Notion unchecked My Day on completion.
+    //
+    // "Completed today" is timezone-sensitive: Notion stores Completed as a
+    // datetime, so a task finished at 10pm Chicago is 03:00Z the NEXT UTC day.
+    // A naive `date.equals(chicagoToday)` misses it. Instead we narrow generously
+    // (anything since ~yesterday) in Notion, then do the exact Chicago-day match
+    // in JS — handling both date-only values (written by our PATCH) and full
+    // datetimes (written by Notion automations / manual completion).
+    const fmt = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(d);
+    const today = fmt(new Date());
+    const since = fmt(new Date(Date.now() - 36 * 3600 * 1000)); // ~yesterday, DST-safe
+    const [active, recent] = await Promise.all([
       pageThroughDS(dataSourceId, { and: [
         { property: 'My Day', checkbox: { equals: true } },
         { property: 'Status', status: { does_not_equal: 'Done' } },
         ...personCond,
       ]}),
       pageThroughDS(dataSourceId, { and: [
-        { property: 'Completed', date: { equals: today } },
+        { property: 'Completed', date: { on_or_after: since } },
         ...personCond,
       ]}),
     ]);
+    const done = recent.filter((p) => {
+      const c = p.properties?.Completed?.date?.start;
+      if (!c) return false;
+      // Date-only values (length 10, 'YYYY-MM-DD') are already a calendar day;
+      // datetimes get converted to the Chicago calendar day before comparing.
+      const day = c.length === 10 ? c : fmt(new Date(c));
+      return day === today;
+    });
     // Deduplicate (a task on My Day completed today appears in both sets).
     const seen = new Set();
     const merged = [];
