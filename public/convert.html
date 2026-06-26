@@ -91,9 +91,10 @@ body.state-calm .calm-hero { display:flex; }
 .pipe-qtr { font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; background:var(--surface-2); color:var(--text-3); border:1px solid var(--border); }
 .pipe-bar { height:18px; background:var(--surface-2); border-radius:9px; overflow:hidden; display:flex; margin-bottom:10px; }
 .pipe-seg { height:100%; transition:width .6s ease; min-width:0; }
-.pipe-seg-booked { background:var(--accent); }
-.pipe-seg-quotes { background:var(--zone); opacity:.8; }
-.pipe-seg-recur { background:var(--green); opacity:.65; }
+.pipe-seg-booked   { background:var(--accent); }
+.pipe-seg-invoiced { background:var(--amber); opacity:.85; }
+.pipe-seg-quotes   { background:var(--zone); opacity:.8; }
+.pipe-seg-recur    { background:var(--green); opacity:.65; }
 .pipe-labels { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; flex-wrap:wrap; gap:6px; }
 .pipe-booked-label { font-size:22px; font-weight:800; font-family:var(--font-display); color:var(--text); line-height:1; }
 .pipe-gap-label { font-size:13px; color:var(--text-3); }
@@ -101,31 +102,11 @@ body.state-calm .calm-hero { display:flex; }
 .pipe-legend { display:flex; gap:16px; flex-wrap:wrap; }
 .pipe-leg { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-2); }
 .pipe-leg-sw { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
-.pipe-leg-sw.booked { background:var(--accent); }
-.pipe-leg-sw.quotes { background:var(--zone); }
-.pipe-leg-sw.recur { background:var(--green); }
+.pipe-leg-sw.booked    { background:var(--accent); }
+.pipe-leg-sw.invoiced  { background:var(--amber); }
+.pipe-leg-sw.quotes    { background:var(--zone); }
+.pipe-leg-sw.recur     { background:var(--green); }
 .pipe-leg b { color:var(--text); font-weight:700; }
-
-/* ─── REVENUE BAR ─── */
-.rev-block { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; }
-.rev-top { display:flex; align-items:baseline; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
-.rev-amount { font-family:var(--font-display); font-size:28px; font-weight:800; color:var(--text); line-height:1; }
-.rev-goal { font-size:13px; color:var(--text-3); }
-.rev-status { margin-left:auto; font-size:12px; font-weight:700; }
-.rev-status.good { color:var(--green); } .rev-status.warn { color:var(--amber); }
-.rev-track { height:14px; background:var(--surface-2); border-radius:7px; overflow:hidden; display:flex; }
-.rev-seg { height:100%; }
-.rev-seg.collected { background:var(--green); }
-.rev-seg.invoiced { background:var(--amber); }
-.rev-seg.quotes { background:var(--zone); opacity:.7; }
-.rev-legend { display:flex; gap:16px; margin-top:10px; flex-wrap:wrap; }
-.rev-leg { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-2); }
-.rev-leg .sw { width:10px; height:10px; border-radius:3px; }
-.rev-leg .sw.collected { background:var(--green); }
-.rev-leg .sw.invoiced { background:var(--amber); }
-.rev-leg .sw.quotes { background:var(--zone); opacity:.7; }
-.rev-leg b { color:var(--text); font-weight:700; }
-.rev-demo { font-size:11px; color:var(--amber); margin-top:10px; display:flex; gap:7px; align-items:center; }
 
 /* ─── FOLLOW-UPS TABS ─── */
 .fu-block { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
@@ -238,14 +219,14 @@ body.state-calm .calm-hero { display:flex; }
 
   <!-- PIPELINE BAR -->
   <div class="t-card" id="pipe-card">
-    <div class="pipe-head">
-      <span class="pipe-title">Gap to Quarter</span>
-      <span class="pipe-qtr" id="pipe-qtr">Q2 2026</span>
+    <div class="sec-head">
+      <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Revenue · <span id="pipe-qtr">Q2 2026</span></div></div>
     </div>
     <div class="pipe-bar">
-      <div class="pipe-seg pipe-seg-booked" id="pipe-booked-seg" style="width:0%"></div>
-      <div class="pipe-seg pipe-seg-quotes" id="pipe-quotes-seg" style="width:0%"></div>
-      <div class="pipe-seg pipe-seg-recur" id="pipe-recur-seg" style="width:0%"></div>
+      <div class="pipe-seg pipe-seg-booked"   id="pipe-booked-seg"   style="width:0%"></div>
+      <div class="pipe-seg pipe-seg-invoiced" id="pipe-invoiced-seg" style="width:0%"></div>
+      <div class="pipe-seg pipe-seg-quotes"   id="pipe-quotes-seg"   style="width:0%"></div>
+      <div class="pipe-seg pipe-seg-recur"    id="pipe-recur-seg"    style="width:0%"></div>
     </div>
     <div class="pipe-labels">
       <span class="pipe-booked-label" id="pipe-booked-label"><b>$—</b> booked</span>
@@ -278,21 +259,6 @@ body.state-calm .calm-hero { display:flex; }
   <div class="t-card" data-persist-key="convert-donext">
     <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Do This Next</div></div><span class="sl-meta" id="dtn-meta"></span></div>
     <div class="t-body"><div id="dtn-mount"></div></div>
-  </div>
-
-  <!-- REVENUE -->
-  <div class="t-card" data-persist-key="convert-revenue">
-    <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Revenue · <span id="rev-quarter">This Quarter</span></div></div></div>
-    <div class="t-body" id="rev-block">
-      <div class="rev-top">
-        <span class="rev-amount" id="rev-amount">$—</span>
-        <span class="rev-goal">of $120k goal</span>
-        <span class="rev-status" id="rev-status"></span>
-      </div>
-      <div class="rev-track" id="rev-track"></div>
-      <div class="rev-legend" id="rev-legend"></div>
-      <div class="rev-demo" id="rev-demo" style="display:none">⚠ <span>Xero not connected — revenue unavailable</span></div>
-    </div>
   </div>
 
   <!-- FOLLOW-UPS -->
@@ -587,9 +553,10 @@ function renderPipelineBar() {
   const gap = Math.max(0, goal - projected);
   const pct = (v) => (Math.min(100, v / goal * 100)).toFixed(2) + '%';
 
-  document.getElementById('pipe-booked-seg').style.width = pct(booked);
-  document.getElementById('pipe-quotes-seg').style.width = pct(quotes);
-  document.getElementById('pipe-recur-seg').style.width  = pct(recur);
+  document.getElementById('pipe-booked-seg').style.width   = pct(collected);
+  document.getElementById('pipe-invoiced-seg').style.width = pct(invoiced);
+  document.getElementById('pipe-quotes-seg').style.width   = pct(quotes);
+  document.getElementById('pipe-recur-seg').style.width    = pct(recur);
 
   document.getElementById('pipe-booked-label').innerHTML = `<b>${fmtMoney(booked)}</b> booked`;
   const gapEl = document.getElementById('pipe-gap-label');
@@ -602,7 +569,7 @@ function renderPipelineBar() {
   }
 
   const legs = [['booked', 'Collected', collected]];
-  if (invoiced > 0) legs.push(['booked', 'Invoiced', invoiced]);
+  if (invoiced > 0) legs.push(['invoiced', 'Invoiced', invoiced]);
   if (quotes > 0 || rev.quotesAvailable) legs.push(['quotes', 'Approved quotes', quotes]);
   if (recur > 0) {
     const moLabel = rev.monthsRemainingInQtr != null ? `${rev.monthsRemainingInQtr.toFixed(1)} mo left` : 'est.';
@@ -617,37 +584,6 @@ function renderPipelineBar() {
   ).join('');
 }
 
-function renderRevenue() {
-  const rev = DATA.revenue;
-  const block = document.getElementById('rev-block');
-  document.getElementById('rev-quarter').textContent = DATA.quarterLabel || 'This Quarter';
-  if (!rev) {
-    document.getElementById('rev-amount').textContent = '—';
-    document.getElementById('rev-track').innerHTML = '';
-    document.getElementById('rev-legend').innerHTML = '';
-    document.getElementById('rev-status').textContent = '';
-    document.getElementById('rev-demo').style.display = 'flex';
-    return;
-  }
-  document.getElementById('rev-demo').style.display = 'none';
-  const collected = rev.collected || 0, invoiced = rev.invoiced || 0, quotes = rev.acceptedQuotes || 0;
-  const booked = collected + invoiced + quotes;
-  const projected = booked + REC_MONTHLY * 2;
-  const pct = (v) => Math.min(100, (v / GOAL) * 100);
-  document.getElementById('rev-amount').textContent = fmtMoney(booked);
-  document.getElementById('rev-track').innerHTML =
-    `<div class="rev-seg collected" style="width:${pct(collected)}%"></div>
-     <div class="rev-seg invoiced" style="width:${pct(invoiced)}%"></div>
-     <div class="rev-seg quotes" style="width:${pct(quotes)}%"></div>`;
-  const legend = [['collected', 'Collected', collected], ['invoiced', 'Invoiced', invoiced]];
-  if (rev.quotesAvailable) legend.push(['quotes', 'Accepted quotes', quotes]);
-  document.getElementById('rev-legend').innerHTML = legend
-    .map(([cls, label, v]) => `<span class="rev-leg"><span class="sw ${cls}"></span>${label} <b>${fmtMoney(v)}</b></span>`).join('');
-  const status = document.getElementById('rev-status');
-  const onTrack = projected >= GOAL;
-  status.textContent = onTrack ? 'On track ✓' : `${fmtMoneyK(GOAL - booked)} to go`;
-  status.className = 'rev-status ' + (onTrack ? 'good' : 'warn');
-}
 
 // ─── Follow-Ups ────────────────────────────────────────────────────────────────
 function renderFollowUps() {
@@ -723,7 +659,7 @@ function renderPulse() {
 // ─── Render all ────────────────────────────────────────────────────────────────
 function renderAll() {
   if (!DATA) return;
-  renderPipelineBar(); renderCalm(); renderDoNext(); renderRevenue(); renderFollowUps(); renderPipeline(); renderPulse();
+  renderPipelineBar(); renderCalm(); renderDoNext(); renderFollowUps(); renderPipeline(); renderPulse();
 }
 
 // ─── Me-mode ───────────────────────────────────────────────────────────────────

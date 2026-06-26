@@ -116,6 +116,25 @@ body[data-state="calm"] .statebanner h2 { color:var(--green); }
 @media(max-width:860px){ .grid2{ grid-template-columns:1fr; } .pulsestrip{ grid-template-columns:repeat(2,1fr); } }
 .empty-line { font-size:12px; color:var(--text-3); padding:10px 4px; }
 .more-line { font-size:11.5px; color:var(--text-3); padding:8px 4px 2px; }
+/* ─── REVENUE CARD ─── */
+.rev-top { display:flex; align-items:baseline; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+.rev-amount { font-family:var(--font-display); font-size:28px; font-weight:800; color:var(--text); line-height:1; }
+.rev-goal { font-size:13px; color:var(--text-3); }
+.rev-status { margin-left:auto; font-size:12px; font-weight:700; }
+.rev-status.good { color:var(--green); } .rev-status.warn { color:var(--amber); }
+.rev-track { height:14px; background:var(--surface-2); border-radius:7px; overflow:hidden; display:flex; }
+.rev-seg { height:100%; }
+.rev-seg.collected { background:var(--green); }
+.rev-seg.invoiced  { background:var(--amber); }
+.rev-seg.quotes    { background:var(--zone); opacity:.7; }
+.rev-legend { display:flex; gap:16px; margin-top:10px; flex-wrap:wrap; }
+.rev-leg { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-2); }
+.rev-leg .sw { width:10px; height:10px; border-radius:3px; }
+.rev-leg .sw.collected { background:var(--green); }
+.rev-leg .sw.invoiced  { background:var(--amber); }
+.rev-leg .sw.quotes    { background:var(--zone); opacity:.7; }
+.rev-leg b { color:var(--text); font-weight:700; }
+.rev-demo { font-size:11px; color:var(--amber); margin-top:10px; display:flex; gap:7px; align-items:center; }
 
 /* state visibility */
 body[data-state="calm"] .show-stressed { display:none !important; }
@@ -172,6 +191,20 @@ body:not([data-state]) .dv-content { display:none; }
     <div class="hero show-stressed" id="hero"></div>
     <div class="calmpayoff show-calm" id="calmpayoff"></div>
     <div class="pulsestrip" id="pulse"></div>
+
+    <div class="t-card" data-persist-key="deliver-revenue">
+      <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Revenue · <span id="rev-quarter">This Quarter</span></div></div></div>
+      <div class="t-body">
+        <div class="rev-top">
+          <span class="rev-amount" id="rev-amount">$—</span>
+          <span class="rev-goal">of $120k goal</span>
+          <span class="rev-status" id="rev-status"></span>
+        </div>
+        <div class="rev-track" id="rev-track"></div>
+        <div class="rev-legend" id="rev-legend"></div>
+        <div class="rev-demo" id="rev-demo" style="display:none">⚠ <span>Xero not connected — revenue unavailable</span></div>
+      </div>
+    </div>
 
     <div class="section show-stressed t-card" data-persist-key="deliver-comingdue" id="sec-comingdue"></div>
     <div class="section show-stressed t-card" data-persist-key="deliver-atrisk" id="sec-atrisk"></div>
@@ -236,7 +269,10 @@ body:not([data-state]) .dv-content { display:none; }
 <script>
 const BURST = '<svg class="burst" viewBox="0 0 512 512"><path fill="#4FD6A0" d="M507.2,257.1c-125.4,19.1-225.5,115-250.7,238.3-.2.8-1.3.8-1.5,0-25.2-123.2-125.3-219.2-250.7-238.3-.9-.1-.9-1.4,0-1.5,125.4-19.1,225.5-115,250.7-238.3.2-.8,1.3-.8,1.5,0,25.2,123.2,125.3,219.2,250.7,238.3.9.1.9,1.4,0,1.5Z"/></svg>';
 let ME = 0;
-let DATA = null;
+let DATA = null, REV_DATA = null;
+const REV_GOAL = 120000, REV_REC_MONTHLY = 4000;
+const fmtMoney  = (n) => '$' + Math.round(n).toLocaleString();
+const fmtMoneyK = (n) => n >= 1000 ? '$' + (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'k' : '$' + Math.round(n);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 const fmtDate = (iso) => { if (!iso) return '—'; const d = new Date(iso + 'T00:00:00Z'); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }); };
 const avEl = (av) => av ? `<span class="av ${av.cls}">${esc(av.init)}</span>` : '';
@@ -282,9 +318,41 @@ function projRowHTML(p, opts = {}) {
   return `<div class="row ${lcls}">${avEl(p.av)}<div class="main"><div class="title"><a href="${p.url}" target="_blank">${esc(p.name)}</a></div><div class="meta">${bits.join(' <span class="sep">·</span> ')}</div></div><div class="right">${right}</div></div>`;
 }
 
+function renderRevenue() {
+  const rev = REV_DATA?.revenue || null;
+  document.getElementById('rev-quarter').textContent = REV_DATA?.quarterLabel || 'This Quarter';
+  if (!rev) {
+    document.getElementById('rev-amount').textContent = '—';
+    document.getElementById('rev-track').innerHTML = '';
+    document.getElementById('rev-legend').innerHTML = '';
+    document.getElementById('rev-status').textContent = '';
+    document.getElementById('rev-demo').style.display = 'flex';
+    return;
+  }
+  document.getElementById('rev-demo').style.display = 'none';
+  const collected = rev.collected || 0, invoiced = rev.invoiced || 0, quotes = rev.acceptedQuotes || 0;
+  const booked = collected + invoiced + quotes;
+  const projected = booked + REV_REC_MONTHLY * 2;
+  const pct = (v) => Math.min(100, (v / REV_GOAL) * 100);
+  document.getElementById('rev-amount').textContent = fmtMoney(booked);
+  document.getElementById('rev-track').innerHTML =
+    `<div class="rev-seg collected" style="width:${pct(collected)}%"></div>
+     <div class="rev-seg invoiced"  style="width:${pct(invoiced)}%"></div>
+     <div class="rev-seg quotes"    style="width:${pct(quotes)}%"></div>`;
+  const legend = [['collected', 'Collected', collected], ['invoiced', 'Invoiced', invoiced]];
+  if (rev.quotesAvailable) legend.push(['quotes', 'Accepted quotes', quotes]);
+  document.getElementById('rev-legend').innerHTML = legend
+    .map(([cls, label, v]) => `<span class="rev-leg"><span class="sw ${cls}"></span>${label} <b>${fmtMoney(v)}</b></span>`).join('');
+  const onTrack = projected >= REV_GOAL;
+  const status = document.getElementById('rev-status');
+  status.textContent = onTrack ? 'On track ✓' : `${fmtMoneyK(REV_GOAL - booked)} to go`;
+  status.className = 'rev-status ' + (onTrack ? 'good' : 'warn');
+}
+
 function render() {
   const d = DATA;
   document.body.setAttribute('data-state', d.isCalm ? 'calm' : 'stressed');
+  renderRevenue();
 
   const b = d.banner;
   if (d.isCalm) {
@@ -459,10 +527,12 @@ async function markInvoiced(id, el) {
 // ── Load ──
 async function load(me) {
   try {
-    const r = await fetch('/api/deliver?me=' + (me ? 1 : 0));
-    const d = await r.json();
+    const [d, rev] = await Promise.all([
+      fetch('/api/deliver?me=' + (me ? 1 : 0)).then(r => r.json()),
+      fetch('/api/convert').then(r => r.json()).catch(() => null),
+    ]);
     if (d.error) throw new Error(d.error);
-    DATA = d; render();
+    DATA = d; REV_DATA = rev; render();
   } catch (e) {
     document.getElementById('dv-loading').style.display = 'none';
     const er = document.getElementById('dv-error'); er.style.display = 'block'; er.textContent = "Couldn't load Deliver: " + e.message;
