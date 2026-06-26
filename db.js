@@ -4,7 +4,7 @@
 // and the app behaves exactly as the single-user version. `pg` is imported
 // dynamically so the app boots fine even when pg isn't installed locally.
 import { randomUUID } from 'node:crypto';
-import { encrypt, isConfigured as secretsConfigured } from './secrets.js';
+import { encrypt, decrypt, isConfigured as secretsConfigured } from './secrets.js';
 
 let pool = null;     // pg Pool, or null when disabled
 let enabled = false; // true only after a successful connect + schema ensure
@@ -17,6 +17,11 @@ export async function query(text, params) {
 }
 
 const SCHEMA = `
+CREATE TABLE IF NOT EXISTS app_kv (
+  k          TEXT PRIMARY KEY,
+  v          TEXT,                              -- encrypted at rest
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 CREATE TABLE IF NOT EXISTS users (
   id                            TEXT PRIMARY KEY,
   email                         TEXT UNIQUE NOT NULL,
@@ -147,5 +152,32 @@ export const users = {
   },
   async setNotionUserId(id, notionId) {
     await query('UPDATE users SET notion_user_id = $2, updated_at = now() WHERE id = $1', [id, notionId]);
+  },
+};
+
+// ── Durable encrypted key-value store (app_kv) ─────────────────────────────
+// For app-level secrets that must survive deploys but aren't tied to a user —
+// notably the Xero refresh token, which Xero rotates on every refresh. Railway's
+// filesystem resets each deploy, so disk persistence loses the rotated token and
+// the stale env-var fallback is already invalid → "Xero not connected". Postgres
+// is durable. Values are encrypted at rest (same key as the Google/Slack tokens).
+export const secrets = {
+  async get(key) {
+    if (!enabled || !secretsConfigured()) return null;
+    try {
+      const { rows } = await query('SELECT v FROM app_kv WHERE k = $1', [key]);
+      return rows[0]?.v ? decrypt(rows[0].v) : null;
+    } catch (e) { console.warn('[db.secrets] get failed:', e.message); return null; }
+  },
+  async set(key, value) {
+    if (!enabled || !secretsConfigured() || value == null) return false;
+    try {
+      await query(
+        `INSERT INTO app_kv (k, v, updated_at) VALUES ($1, $2, now())
+         ON CONFLICT (k) DO UPDATE SET v = EXCLUDED.v, updated_at = now()`,
+        [key, encrypt(value)],
+      );
+      return true;
+    } catch (e) { console.warn('[db.secrets] set failed:', e.message); return false; }
   },
 };

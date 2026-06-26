@@ -6,7 +6,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { initDb, isEnabled as dbEnabled, users as dbUsers } from './db.js';
+import { initDb, isEnabled as dbEnabled, users as dbUsers, secrets as dbSecrets } from './db.js';
 import { decrypt, encrypt, isConfigured as secretsConfigured } from './secrets.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { registerConvertRoutes } from './src/routes/convert.js';
@@ -3292,9 +3292,20 @@ function saveXeroPersistedToken(token) {
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     writeFileSync(XERO_STATE_FILE, JSON.stringify({ refresh_token: token, savedAt: new Date().toISOString() }, null, 2));
   } catch (e) { console.warn('[xero] save state failed:', e.message); }
+  // Durable copy in Postgres — survives Railway deploys (disk is ephemeral, and
+  // Xero rotates the token each refresh so the env fallback goes stale).
+  dbSecrets.set('xero_refresh_token', token).catch(() => {});
 }
 let _xeroRefresh = loadXeroPersistedToken() || process.env.XERO_REFRESH_TOKEN || null;
 if (_xeroRefresh) console.log('[xero] init token source:', loadXeroPersistedToken() ? 'disk' : 'env');
+// After the DB is up, prefer the durable token (the most recently rotated one).
+// Disk/env are only the cold-start fallback before this resolves.
+async function hydrateXeroTokenFromDb() {
+  try {
+    const t = await dbSecrets.get('xero_refresh_token');
+    if (t && t !== _xeroRefresh) { _xeroRefresh = t; console.log('[xero] token rehydrated from db'); }
+  } catch (e) { /* DB off or not seeded yet → keep disk/env */ }
+}
 
 function xeroAuthHeader() {
   const id = process.env.XERO_CLIENT_ID || '';
@@ -4283,7 +4294,7 @@ const server = app.listen(PORT, () => {
     weatherLon: WEATHER_LON,
     refreshTokenWork: process.env.GOOGLE_REFRESH_TOKEN || null,
     refreshTokenPersonal: process.env.GOOGLE_REFRESH_TOKEN_PERSONAL || null,
-  }).catch((e) => console.error('[db] init failed:', e.message));
+  }).then(hydrateXeroTokenFromDb).catch((e) => console.error('[db] init failed:', e.message));
 });
 
 // Graceful shutdown: stop accepting new connections, let in-flight requests
