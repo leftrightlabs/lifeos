@@ -578,7 +578,9 @@ function renderPipelineBar() {
   }
 
   const goal = rev.goal || 120000;
-  const booked = (rev.collected || 0) + (rev.invoiced || 0);
+  const collected = rev.collected || 0;
+  const invoiced  = rev.invoiced  || 0;
+  const booked = collected + invoiced;
   const quotes = rev.approvedQuotesTotal || 0;
   const recur  = rev.recurringRemaining || 0;
   const projected = booked + quotes + recur;
@@ -599,7 +601,8 @@ function renderPipelineBar() {
     gapEl.className = 'pipe-gap-label';
   }
 
-  const legs = [['booked', 'Collected & invoiced', booked]];
+  const legs = [['booked', 'Collected', collected]];
+  if (invoiced > 0) legs.push(['booked', 'Invoiced', invoiced]);
   if (quotes > 0 || rev.quotesAvailable) legs.push(['quotes', 'Approved quotes', quotes]);
   if (recur > 0) {
     const moLabel = rev.monthsRemainingInQtr != null ? `${rev.monthsRemainingInQtr.toFixed(1)} mo left` : 'est.';
