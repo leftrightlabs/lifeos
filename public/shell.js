@@ -21,8 +21,8 @@
     { sep: true },
     { domain: 'WORK' },
     { label: 'ATTRACT',    href: '/attract' },
-    { label: 'CONVERT',    href: '/convert' },
-    { label: 'DELIVER',    href: '/deliver' },
+    { label: 'WIN',        href: '/convert' },
+    { label: 'DELIGHT',    href: '/deliver' },
     { label: 'SCALE',      href: '/scale' },
     { label: 'REFERENCE',  href: '/reference' },
   ];
@@ -50,8 +50,8 @@
     '/messages':  '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/>',
     '/planning':  '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="m9 13 2 2 4-4"/>',
     '/attract':   '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
-    '/convert':   '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
-    '/deliver':   '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><polyline points="3.3 7 12 12 20.7 7"/><line x1="12" y1="22" x2="12" y2="12"/>',
+    '/convert':   '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>',
+    '/deliver':   '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
     '/scale':     '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
     '/reference': '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
     '/health':    '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
@@ -146,7 +146,7 @@
   // today.html footer: theme · privacy · refresh · refreshed-stamp · log out).
   function footerHTML() {
     return '<div class="app-footer">' +
-      '<button type="button" class="footer-btn" data-action="theme" onclick="window.LRLShell&&LRLShell.toggleTheme()" title="Toggle theme">🌙</button>' +
+      '<button type="button" class="footer-btn" data-action="theme" onclick="window.LRLShell&&LRLShell.toggleTheme()" title="Toggle theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>' +
       privacyBtnHTML() +
       '<button type="button" class="footer-btn" data-action="refresh" onclick="window.LRLShell&&LRLShell.refresh()" title="Refresh">↻</button>' +
       '<span class="footer-stamp" id="footerStamp"></span>' +
@@ -161,7 +161,7 @@
   function toggleTheme() {
     var isLight = document.documentElement.classList.toggle('light');
     var b = document.querySelector('.app-footer .footer-btn[data-action="theme"]');
-    if (b) { b.textContent = isLight ? '☀️' : '🌙'; b.classList.toggle('active', isLight); }
+    if (b) { b.innerHTML = isLight ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>'; b.classList.toggle('active', isLight); }
   }
 
   // "Refreshed <date> · <time>" stamp.

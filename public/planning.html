@@ -32,6 +32,7 @@
 }
 /* exec sub-nav + panels */
 .exec-sub { display:flex; gap:6px; margin: 0 0 22px; flex-wrap:wrap; }
+.exec-root .zone-wrap { padding-top: 16px; }
 .exec-sub-btn { font-size: var(--fs-caption); font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); padding:8px 16px; border-radius:999px; background:var(--surface); border:1px solid var(--border); cursor:pointer; font-family:inherit; transition:all .15s; }
 .exec-sub-btn:hover { color:var(--text-2); border-color:var(--text-4); }
 .exec-sub-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
@@ -222,7 +223,7 @@
   .autofocus-app .sub {margin:13px 0 0;color:#c7cede;font-size: var(--fs-body-sm);display:flex;gap:16px;flex-wrap:wrap;align-items:center}
   .autofocus-app .sub b {color:#fff;font-weight:600}
   .autofocus-app .statgrid {display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin:14px 0 16px}
-  .autofocus-app .stat {background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;border-top:3px solid var(--line-2);display:flex;align-items:center;gap:10px;min-width:0;cursor:pointer;user-select:none;transition:background 0.15s,transform 0.1s,box-shadow 0.15s}
+  .autofocus-app .stat {background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;border-top:3px solid var(--line-2);display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;cursor:pointer;user-select:none;transition:background 0.15s,transform 0.1s,box-shadow 0.15s}
   .autofocus-app .stat:hover {background:rgba(var(--edge-rgb), 0.04)}
   .autofocus-app .stat:active {transform:scale(0.97)}
   .autofocus-app .stat:focus-visible {outline:2px solid var(--lime);outline-offset:2px}
@@ -260,7 +261,9 @@
   .autofocus-app .syncrow {display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   .autofocus-app .btn-ghost {border:1px solid var(--line-2);background:#fff;border-radius:8px;padding:7px 12px;font:inherit;font-size: var(--fs-body-sm);font-weight:600;color:var(--navy);cursor:pointer}
   .autofocus-app .btn-ghost.go {background:var(--lime);border-color:var(--lime-d);color:var(--navy-accent)}
-  .autofocus-app .toolbar {display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+  .autofocus-app .toolbar {display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:nowrap}
+  .autofocus-app .toolbar .search {flex:0 1 50%;min-width:180px}
+  .autofocus-app .toolbar .af-icon-row {flex-shrink:0;margin-bottom:0}
   .autofocus-app .search {flex:1 1 230px;min-width:200px;position:relative}
   .autofocus-app .search input {width:100%;padding:10px 12px 10px 34px;border:1px solid var(--line-2);border-radius:9px;background:#fff;font:inherit;font-size: var(--fs-body);color:var(--ink)}
   .autofocus-app .search svg {position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;opacity:.45}
@@ -382,8 +385,8 @@
     .autofocus-app .wrap { padding: 0 12px 60px !important; }
     .autofocus-app .statgrid { grid-template-columns: repeat(2, 1fr) !important; }
     .autofocus-app .syncrow { flex-direction: column; align-items: stretch; gap: 8px; }
-    .autofocus-app .toolbar { flex-direction: column; align-items: stretch; }
-    .autofocus-app .search { flex: 1 1 auto; min-width: 0; }
+    .autofocus-app .toolbar { flex-wrap: wrap; }
+    .autofocus-app .toolbar .search { flex: 1 1 100%; max-width: 100%; }
     .autofocus-app .row { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
     .autofocus-app .row .check { margin-top: 2px; }
     .autofocus-app .row .mid { flex: 1 1 calc(100% - 36px); min-width: 0; }
@@ -420,15 +423,21 @@
   .proj-stat.s-risk { border-top-color: #ff7a6b; } .proj-stat.s-risk.active { color: #ff7a6b; }
   .proj-stat.s-done { border-top-color: rgba(var(--ink-rgb), 0.3); } .proj-stat.s-done.active { color: rgba(var(--ink-rgb), 0.6); }
 
-  /* Controls: group-by + area filter */
-  .proj-controls { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
-  .proj-ctl-group { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .proj-ctl-label { font-size: var(--fs-caption); letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy-dim); font-weight: 700; }
-  .proj-seg { display: inline-flex; background: rgba(var(--edge-rgb), 0.04); border: 1px solid rgba(var(--edge-rgb), 0.1); border-radius: 999px; padding: 3px; }
-  .proj-seg button { border: 0; background: transparent; padding: 5px 12px; font: inherit; font-size: var(--fs-body-sm); font-weight: 600; color: rgba(var(--ink-rgb), 0.55); cursor: pointer; border-radius: 999px; font-family: var(--font-body); transition: all 0.15s; }
-  .proj-seg button.on { background: var(--lime); color: var(--navy-accent); }
-  .proj-chip { border: 1px solid rgba(var(--edge-rgb), 0.12); background: transparent; color: rgba(var(--ink-rgb), 0.6); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: var(--fs-body-sm); font-weight: 600; cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
-  .proj-chip.on { border-color: var(--lime); color: var(--navy); background: var(--lime-faint); }
+  /* Controls: icon-based group-by + area filter */
+  .proj-controls { display: flex; gap: 10px; align-items: center; flex-wrap: nowrap; margin-bottom: 16px; }
+  .proj-controls .proj-search { flex: 0 1 50%; min-width: 180px; }
+  .proj-icon-row { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .proj-icon-group { position: relative; }
+  .proj-tbar-btn { padding: 0; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(var(--edge-rgb), 0.15); background: var(--white); border-radius: 8px; cursor: pointer; color: rgba(var(--ink-rgb), 0.45); transition: all 0.15s; }
+  .proj-tbar-btn svg { width: 16px; height: 16px; flex: none; }
+  .proj-tbar-btn:hover { color: var(--navy); border-color: rgba(var(--edge-rgb), 0.3); }
+  .proj-tbar-btn.on { color: var(--lime); border-color: var(--lime); background: color-mix(in srgb, var(--lime) 12%, transparent); }
+  .proj-popover { position: absolute; top: calc(100% + 6px); left: 0; background: var(--white); border: 1px solid rgba(var(--edge-rgb), 0.15); border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,.15); padding: 4px; z-index: 300; min-width: 140px; display: none; }
+  .proj-popover.open { display: block; }
+  .proj-pop-opt { display: block; width: 100%; text-align: left; padding: 8px 12px; border: 0; background: none; font: inherit; font-size: var(--fs-body-sm); color: var(--navy); cursor: pointer; border-radius: 7px; white-space: nowrap; }
+  .proj-pop-opt:hover { background: color-mix(in srgb, var(--lime) 10%, transparent); }
+  .proj-pop-opt.on { font-weight: 700; color: var(--lime); }
+  @media (max-width: 480px) { .proj-controls { flex-wrap: wrap; } .proj-controls .proj-search { flex: 1 1 100%; max-width: 100%; } }
   .proj-me-btn { display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(var(--edge-rgb), 0.12); background: transparent; color: rgba(var(--ink-rgb), 0.6); border-radius: 999px; padding: 8px; cursor: pointer; transition: all 0.15s; }
   .proj-me-btn svg { width: 14px; height: 14px; }
   .proj-me-btn:hover { color: var(--navy); border-color: rgba(var(--edge-rgb), 0.3); }
@@ -827,8 +836,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
             <input id="q" placeholder="Search tasks or projects…"/>
           </div>
-        </div>
-        <div class="af-icon-row">
+          <div class="af-icon-row">
           <div class="af-icon-group">
             <button type="button" class="af-tbar-btn" id="sort-btn" title="Sort">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
@@ -846,6 +854,7 @@
             </button>
             <div class="af-popover" id="group-pop">
               <button class="af-pop-opt" data-val="bucket">When it's due</button>
+              <button class="af-pop-opt" data-val="status">Status</button>
               <button class="af-pop-opt" data-val="project">Project</button>
               <button class="af-pop-opt" data-val="source">Work / Personal</button>
               <button class="af-pop-opt" data-val="none">None</button>
@@ -861,6 +870,7 @@
           <div class="af-icon-sep"></div>
           <button type="button" class="af-tbar-btn" id="collapseall" title="Collapse all" aria-label="Collapse all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
           <button type="button" class="af-tbar-btn" id="expandall" title="Expand all" aria-label="Expand all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+          </div>
         </div>
         <div id="list"></div>
       </div>
@@ -1523,6 +1533,7 @@ function render(){
   if(ui.group==='none'){html=section('all','All Tasks',arr);}
   else if(ui.group==='source'){[['work','Work'],['personal','Personal']].forEach(([k,lab])=>{const g=arr.filter(t=>t.source===k);if(g.length)html+=section(k,lab,g);});}
   else if(ui.group==='project'){const map={};arr.forEach(t=>{const k=t.project||'No Project';(map[k]=map[k]||[]).push(t);});Object.keys(map).sort().forEach(k=>{html+=section('p_'+k,k,map[k]);});}
+  else if(ui.group==='status'){const ORDER=['Doing','Planned','Waiting','Agenda','Billing','Done'];const map={};arr.forEach(t=>{const k=t.status||'Planned';(map[k]=map[k]||[]).push(t);});ORDER.forEach(k=>{if(map[k])html+=section('st_'+k,k,map[k]);});Object.keys(map).filter(k=>!ORDER.includes(k)).sort().forEach(k=>{html+=section('st_'+k,k,map[k]);});}
   else{const buckets={};arr.forEach(t=>{const b=bucketOf(t);(buckets[b.key]=buckets[b.key]||{label:b.label,rank:b.rank,items:[]}).items.push(t);});Object.entries(buckets).sort((a,b)=>a[1].rank-b[1].rank).forEach(([key,b])=>{const cls=b.label==='Overdue'?'over':(b.label==='Today'?'today':'');html+=section(key,b.label,b.items,cls);});}
   L.innerHTML=html;updateHeader();
   // Drag-to-reorder per group
@@ -1585,7 +1596,7 @@ function updateHeader(){
   const followCount=base.filter(t=>t.followingMe).length;
   const followActive=ui.owner==='following'?' active':'';
   const followTile='<div class="stat s-following'+followActive+'" data-scope="following" role="button" tabindex="0" aria-pressed="'+(followActive?'true':'false')+'" title="Show tasks I follow"><div class="statn">'+followCount+'</div><div class="statl">Following</div></div>';
-  el('hdrstats').innerHTML=tile(live.length,'Open','s-open','open')+tile(work,'Work','s-work','work')+tile(pers,'Personal','s-personal','personal')+tile(td,'Today','s-today','today')+tile(od,'Overdue','s-over','overdue')+tile(md,"My Day",'s-myday','myday')+followTile+tile(rc,'Recurring','s-recurring','recurring');
+  el('hdrstats').innerHTML=tile(live.length,'Open','s-open','open')+tile(td,'Today','s-today','today')+tile(od,'Overdue','s-over','overdue')+tile(md,"My Day",'s-myday','myday')+followTile+tile(rc,'Recurring','s-recurring','recurring');
 }
 
 function afPatch(id, body){
@@ -1727,7 +1738,7 @@ el('group-pop')?.addEventListener('click',e=>{
   updateGroupBtn();
   render();
 });
-document.addEventListener('click',()=>{el('sort-pop')?.classList.remove('open');el('group-pop')?.classList.remove('open');});
+document.addEventListener('click',()=>{el('sort-pop')?.classList.remove('open');el('group-pop')?.classList.remove('open');document.getElementById('proj-group-pop')?.classList.remove('open');document.getElementById('proj-area-pop')?.classList.remove('open');});
 
 // Click stat tiles to filter task list. Clicking active tile (or "Open") clears the filter.
 (function wireStatTileFilters(){
@@ -2387,22 +2398,20 @@ window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderRevie
     const personal = curMode() === 'personal';
     const areaLabel = personal ? 'Focus' : 'Area';
     const groups = [['area', areaLabel], ['system', personal ? 'Hubs' : 'System'], ['status','Status'], ['owner','Owner'], ['none','None']];
-    const seg = groups.map(([k,l]) => `<button data-group="${k}" class="${P.groupBy === k ? 'on' : ''}">${l}</button>`).join('');
+    const groupPop = groups.map(([k,l]) => `<button class="proj-pop-opt${P.groupBy === k ? ' on' : ''}" data-group="${k}">${l}</button>`).join('');
     const scoped = inMode();
     const areas = [...new Set(scoped.flatMap((p) => p.areas))].sort();
     const hasNoArea = scoped.some((p) => !p.areas.length);
-    let areaChips = '';
+    let areaBtn = '';
     if (areas.length || hasNoArea){
-      areaChips = '<div class="proj-ctl-group"><span class="proj-ctl-label">' + areaLabel + '</span>'
-        + `<button class="proj-chip ${!P.areaFilter ? 'on' : ''}" data-area="">All</button>`
-        + areas.map((a) => `<button class="proj-chip ${P.areaFilter === a ? 'on' : ''}" data-area="${esc(a)}">${esc(a)}</button>`).join('')
-        + (hasNoArea ? `<button class="proj-chip ${P.areaFilter === '__none__' ? 'on' : ''}" data-area="__none__">No ${personal ? 'focus' : 'area'}</button>` : '')
-        + '</div>';
+      const areaPop = `<button class="proj-pop-opt${!P.areaFilter ? ' on' : ''}" data-area="">All</button>`
+        + areas.map((a) => `<button class="proj-pop-opt${P.areaFilter === a ? ' on' : ''}" data-area="${esc(a)}">${esc(a)}</button>`).join('')
+        + (hasNoArea ? `<button class="proj-pop-opt${P.areaFilter === '__none__' ? ' on' : ''}" data-area="__none__">No ${personal ? 'focus' : 'area'}</button>` : '');
+      areaBtn = `<div class="proj-icon-group"><button class="proj-tbar-btn${P.areaFilter ? ' on' : ''}" id="proj-area-btn" title="Filter by ${areaLabel.toLowerCase()}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button><div class="proj-popover" id="proj-area-pop">${areaPop}</div></div>`;
     }
     const search = '<div class="proj-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>'
       + `<input id="proj-search-input" type="text" placeholder="Search projects…" autocomplete="off" value="${esc(P.search)}"></div>`;
-    // Per-page "me" button removed — the global ME toggle (shell.js) now scopes projects.
-    return '<div class="proj-controls">' + search + '<div class="proj-ctl-group"><span class="proj-ctl-label">Group by</span><div class="proj-seg">' + seg + '</div></div>' + areaChips + '</div>';
+    return `<div class="proj-controls">${search}<div class="proj-icon-row"><div class="proj-icon-group"><button class="proj-tbar-btn" id="proj-group-btn" title="Group by"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="2"/><rect x="3" y="11" width="18" height="4" rx="2"/><rect x="3" y="17" width="18" height="3" rx="1.5"/></svg></button><div class="proj-popover" id="proj-group-pop">${groupPop}</div></div>${areaBtn}</div></div>`;
   }
 
   function undatedHTML(undatedList){
@@ -2646,12 +2655,23 @@ window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderRevie
       el.addEventListener('click', fire);
       el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fire(); } });
     });
-    body.querySelectorAll('.proj-seg button').forEach((b) => b.addEventListener('click', () => { P.groupBy = b.dataset.group; render(); }));
-    body.querySelectorAll('.proj-chip').forEach((b) => b.addEventListener('click', () => {
-      const a = b.dataset.area;
-      P.areaFilter = (a === '') ? null : (P.areaFilter === a ? null : a);
-      render();
-    }));
+    const groupBtn = body.querySelector('#proj-group-btn');
+    const groupPop = body.querySelector('#proj-group-pop');
+    if (groupBtn && groupPop) {
+      groupBtn.addEventListener('click', (e) => { e.stopPropagation(); groupPop.classList.toggle('open'); body.querySelector('#proj-area-pop')?.classList.remove('open'); });
+      groupPop.querySelectorAll('[data-group]').forEach((b) => b.addEventListener('click', () => { P.groupBy = b.dataset.group; groupPop.classList.remove('open'); render(); }));
+    }
+    const areaBtn = body.querySelector('#proj-area-btn');
+    const areaPop = body.querySelector('#proj-area-pop');
+    if (areaBtn && areaPop) {
+      areaBtn.addEventListener('click', (e) => { e.stopPropagation(); areaPop.classList.toggle('open'); groupPop?.classList.remove('open'); });
+      areaPop.querySelectorAll('[data-area]').forEach((b) => b.addEventListener('click', () => {
+        const a = b.dataset.area;
+        P.areaFilter = (a === '') ? null : (P.areaFilter === a ? null : a);
+        areaPop.classList.remove('open');
+        render();
+      }));
+    }
     const si = body.querySelector('#proj-search-input');
     if (si) si.addEventListener('input', () => { P.search = si.value; renderResults(); });
   }

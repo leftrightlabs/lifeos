@@ -114,10 +114,9 @@ html.privacy-blur :active { filter: none !important; }
   background: var(--bg);
 }
 .nav {
-  display: flex; padding: 0 22px; overflow-x: auto; scrollbar-width: none;
+  display: flex; flex-wrap: wrap; padding: 0 22px;
   max-width: 1080px; margin: 0 auto;
 }
-.nav::-webkit-scrollbar { display: none; }
 .nav-btn {
   background: none; border: none; border-bottom: 2px solid transparent;
   font-size: var(--fs-caption); font-weight: 600; letter-spacing: .05em;
@@ -196,7 +195,7 @@ html.light .nav-wrap { background: var(--bg); }
 html.light .zone-card { background: var(--surface); }
 
 /* ── MOBILE NAV ── */
-@media (max-width: 720px) {
+@media (max-width: 960px) {
   .topbar { padding: 10px 16px; }
   .nav-btn { flex-direction: column; gap: 2px; padding: 7px 10px; font-size: 9px; letter-spacing: .05em; }
   .nav-ic svg { width: 18px; height: 18px; }

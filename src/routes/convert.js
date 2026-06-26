@@ -2,7 +2,7 @@ import { SALES_STAGES, SALES_STAGE_GROUP, CONTACTS_DS, SALES_ACTIVITY_DS, TRINA_
 import { serializeDeal, serializeContactRow, queryAllDeals, fetchSalesProductMap } from '../providers/notion/convert.js';
 
 export function registerConvertRoutes(app, ctx) {
-  const { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID, currentNotionUserId, computeXeroFinance, anthropic } = ctx;
+  const { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID, currentNotionUserId, computeXeroFinance, computeXeroQuotes, computeRecurringAvg, anthropic } = ctx;
 
 
 // GET /api/convert/pipeline — open deals grouped by stage + headline metrics.
@@ -444,13 +444,42 @@ app.get('/api/convert', async (req, res) => {
         c2 = r.has_more ? r.next_cursor : null;
       } while (c2);
 
-      // Q2 revenue from Xero (best-effort). Accepted-quotes isn't part of the
-      // existing Xero integration, so it's reported as unavailable, not faked.
+      // Revenue from Xero: collected QTD, outstanding invoices, approved quotes,
+      // and a 12-month avg recurring projection for the remainder of the quarter.
       let revenue = null;
       if (computeXeroFinance) {
         try {
-          const fin = await cached('xero-finance', computeXeroFinance);
-          revenue = { collected: fin.qtdRevenue || 0, invoiced: fin.accountsReceivable || 0, acceptedQuotes: 0, quotesAvailable: false };
+          const [fin, quoteData, recurData, goals] = await Promise.all([
+            cached('xero-finance', computeXeroFinance),
+            computeXeroQuotes ? computeXeroQuotes().catch(() => null) : Promise.resolve(null),
+            computeRecurringAvg ? cached('xero-recurring-avg', computeRecurringAvg).catch(() => null) : Promise.resolve(null),
+            cached('vto-goals', fetchVtoGoals).catch(() => ({})),
+          ]);
+
+          const q = currentQuarter();
+          const qEndDate = new Date(q.end + 'T23:59:59Z');
+          const msRemaining = Math.max(0, qEndDate - Date.now());
+          const monthsRemainingInQtr = msRemaining / (1000 * 60 * 60 * 24 * 30.44);
+
+          const recurringAvg = recurData?.avgMonthly || 0;
+          const approvedQuotesTotal = quoteData?.accepted?.reduce((s, qx) => s + (qx.total || 0), 0) || 0;
+          const openQuotesTotal = quoteData?.open?.reduce((s, qx) => s + (qx.total || 0), 0) || 0;
+
+          const monthlyRevGoal = goals?.revenue?.goal ?? null;
+          const goal = monthlyRevGoal != null ? monthlyRevGoal * 3 : 120000;
+
+          revenue = {
+            collected: fin.qtdRevenue || 0,
+            invoiced: fin.accountsReceivable || 0,
+            acceptedQuotes: approvedQuotesTotal,
+            quotesAvailable: quoteData !== null,
+            approvedQuotesTotal,
+            openQuotesTotal,
+            recurringAvg,
+            recurringRemaining: recurringAvg * monthsRemainingInQtr,
+            monthsRemainingInQtr,
+            goal,
+          };
         } catch (e) { revenue = null; }
       }
 

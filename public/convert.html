@@ -85,6 +85,27 @@ body.state-calm .calm-hero { display:flex; }
 .btn-ghost { padding:9px 12px; background:none; color:var(--text-3); border:none; font-family:var(--font-body); font-size:12px; cursor:pointer; transition:color .15s; white-space:nowrap; }
 .btn-ghost:hover { color:var(--text-2); }
 
+/* ─── PIPELINE BAR ─── */
+.pipe-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.pipe-title { font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--zone); }
+.pipe-qtr { font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; background:var(--surface-2); color:var(--text-3); border:1px solid var(--border); }
+.pipe-bar { height:18px; background:var(--surface-2); border-radius:9px; overflow:hidden; display:flex; margin-bottom:10px; }
+.pipe-seg { height:100%; transition:width .6s ease; min-width:0; }
+.pipe-seg-booked { background:var(--accent); }
+.pipe-seg-quotes { background:var(--zone); opacity:.8; }
+.pipe-seg-recur { background:var(--green); opacity:.65; }
+.pipe-labels { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; flex-wrap:wrap; gap:6px; }
+.pipe-booked-label { font-size:22px; font-weight:800; font-family:var(--font-display); color:var(--text); line-height:1; }
+.pipe-gap-label { font-size:13px; color:var(--text-3); }
+.pipe-gap-label.good { color:var(--green); }
+.pipe-legend { display:flex; gap:16px; flex-wrap:wrap; }
+.pipe-leg { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-2); }
+.pipe-leg-sw { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+.pipe-leg-sw.booked { background:var(--accent); }
+.pipe-leg-sw.quotes { background:var(--zone); }
+.pipe-leg-sw.recur { background:var(--green); }
+.pipe-leg b { color:var(--text); font-weight:700; }
+
 /* ─── REVENUE BAR ─── */
 .rev-block { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; }
 .rev-top { display:flex; align-items:baseline; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
@@ -213,6 +234,24 @@ body.state-calm .calm-hero { display:flex; }
       </div>
       <span class="data-badge" id="data-badge"><span class="dot"></span><span id="data-badge-text">Live</span></span>
     </div>
+  </div>
+
+  <!-- PIPELINE BAR -->
+  <div class="t-card" id="pipe-card">
+    <div class="pipe-head">
+      <span class="pipe-title">Gap to Quarter</span>
+      <span class="pipe-qtr" id="pipe-qtr">Q2 2026</span>
+    </div>
+    <div class="pipe-bar">
+      <div class="pipe-seg pipe-seg-booked" id="pipe-booked-seg" style="width:0%"></div>
+      <div class="pipe-seg pipe-seg-quotes" id="pipe-quotes-seg" style="width:0%"></div>
+      <div class="pipe-seg pipe-seg-recur" id="pipe-recur-seg" style="width:0%"></div>
+    </div>
+    <div class="pipe-labels">
+      <span class="pipe-booked-label" id="pipe-booked-label"><b>$—</b> booked</span>
+      <span class="pipe-gap-label" id="pipe-gap-label">Loading…</span>
+    </div>
+    <div class="pipe-legend" id="pipe-legend"></div>
   </div>
 
   <!-- CALM HERO (all conditions met) -->
@@ -525,6 +564,56 @@ function renderDoNext() {
 }
 
 // ─── Revenue ──────────────────────────────────────────────────────────────────
+// ─── Pipeline Bar ──────────────────────────────────────────────────────────────
+function renderPipelineBar() {
+  const rev = DATA?.revenue;
+  const qLabel = DATA?.quarterLabel || 'This Quarter';
+  document.getElementById('pipe-qtr').textContent = qLabel;
+
+  if (!rev) {
+    document.getElementById('pipe-booked-label').innerHTML = '<b>—</b> booked';
+    document.getElementById('pipe-gap-label').textContent = 'Xero not connected';
+    document.getElementById('pipe-legend').innerHTML = '';
+    return;
+  }
+
+  const goal = rev.goal || 120000;
+  const booked = (rev.collected || 0) + (rev.invoiced || 0);
+  const quotes = rev.approvedQuotesTotal || 0;
+  const recur  = rev.recurringRemaining || 0;
+  const projected = booked + quotes + recur;
+  const gap = Math.max(0, goal - projected);
+  const pct = (v) => (Math.min(100, v / goal * 100)).toFixed(2) + '%';
+
+  document.getElementById('pipe-booked-seg').style.width = pct(booked);
+  document.getElementById('pipe-quotes-seg').style.width = pct(quotes);
+  document.getElementById('pipe-recur-seg').style.width  = pct(recur);
+
+  document.getElementById('pipe-booked-label').innerHTML = `<b>${fmtMoney(booked)}</b> booked`;
+  const gapEl = document.getElementById('pipe-gap-label');
+  if (gap <= 0) {
+    gapEl.textContent = `Goal hit ✓ · ${fmtMoneyK(goal)}`;
+    gapEl.className = 'pipe-gap-label good';
+  } else {
+    gapEl.textContent = `${fmtMoneyK(gap)} to go · goal ${fmtMoneyK(goal)}`;
+    gapEl.className = 'pipe-gap-label';
+  }
+
+  const legs = [['booked', 'Collected & invoiced', booked]];
+  if (quotes > 0 || rev.quotesAvailable) legs.push(['quotes', 'Approved quotes', quotes]);
+  if (recur > 0) {
+    const moLabel = rev.monthsRemainingInQtr != null ? `${rev.monthsRemainingInQtr.toFixed(1)} mo left` : 'est.';
+    legs.push(['recur', `Recurring avg (${moLabel})`, recur]);
+  }
+  if (rev.recurringAvg > 0 && recur === 0) {
+    legs.push(['recur', `Avg monthly recurring`, rev.recurringAvg]);
+  }
+
+  document.getElementById('pipe-legend').innerHTML = legs.map(([cls, label, v]) =>
+    `<span class="pipe-leg"><span class="pipe-leg-sw ${cls}"></span>${label} <b>${fmtMoney(v)}</b></span>`
+  ).join('');
+}
+
 function renderRevenue() {
   const rev = DATA.revenue;
   const block = document.getElementById('rev-block');
@@ -631,7 +720,7 @@ function renderPulse() {
 // ─── Render all ────────────────────────────────────────────────────────────────
 function renderAll() {
   if (!DATA) return;
-  renderCalm(); renderDoNext(); renderRevenue(); renderFollowUps(); renderPipeline(); renderPulse();
+  renderPipelineBar(); renderCalm(); renderDoNext(); renderRevenue(); renderFollowUps(); renderPipeline(); renderPulse();
 }
 
 // ─── Me-mode ───────────────────────────────────────────────────────────────────

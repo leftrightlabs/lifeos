@@ -109,8 +109,7 @@ body {
 
 /* NAV */
 .nav-wrap { border-bottom: 1px solid var(--border-soft); background: var(--bg); }
-.nav { display: flex; padding: 0 22px; overflow-x: auto; scrollbar-width: none; max-width: 1080px; margin: 0 auto; }
-.nav::-webkit-scrollbar { display: none; }
+.nav { display: flex; flex-wrap: wrap; padding: 0 22px; max-width: 1080px; margin: 0 auto; }
 .nav-btn { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; text-decoration: none; font-size: var(--fs-caption); padding: 11px 14px; cursor: pointer; border-bottom: 2px solid transparent; letter-spacing: .05em; color: var(--text-3); white-space: nowrap; font-family: inherit; font-weight: 600; }
 .nav-btn.active { color: var(--text); border-bottom-color: var(--accent); }
 .nav-ic { display: inline-flex; flex-shrink: 0; }
@@ -699,6 +698,7 @@ html.light .snap-val { color: var(--text); }
   .onething-actions { flex-direction: column; align-items: stretch; }
   .streak-strip { gap: 24px; }
   .nav-domain { display: none; }
+  .nav-sep { display: none; }
   .wk-message { font-size: var(--fs-heading); }
   .wk-emoji { font-size: var(--fs-giant); }
   .nav-btn { flex-direction: column; gap: 2px; padding: 7px 10px; font-size: 9px; letter-spacing: .05em; }

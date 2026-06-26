@@ -803,8 +803,8 @@ app.get('/api/workspace/members', async (_req, res) => {
       _notionUsersCache = out;
     }
     const members = _notionUsersCache
-      .filter((u) => u.type === 'person' || u.type === 'bot')
-      .map((u) => ({ id: u.id, name: u.name, email: u.person?.email || null, isBot: u.type === 'bot' }));
+      .filter((u) => u.type === 'person')
+      .map((u) => ({ id: u.id, name: u.name, email: u.person?.email || null }));
     res.json({ members });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -3641,7 +3641,7 @@ app.get('/api/finance/xero', async (_req, res) => {
 // no-op (returns null) so the projection code path stays intact if that ever
 // changes; flip ENABLED to true once the scope is grantable.
 async function computeXeroQuotes() {
-  const ENABLED = false;
+  const ENABLED = true;
   if (!ENABLED) return null;
   try {
     const norm = (qs) => (qs || []).map((q) => ({
@@ -3663,6 +3663,24 @@ async function computeXeroQuotes() {
   } catch (err) {
     console.error('[xero] quotes error:', err.message);
     return null;
+  }
+}
+
+// Average monthly income over the last 12 months — single P&L call, cached separately.
+async function computeRecurringAvg() {
+  const todayStr = chicagoToday();
+  const [yNum, mNum] = todayStr.split('-').map(Number);
+  const pad = (n) => String(n).padStart(2, '0');
+  let startM = mNum - 11, startY = yNum;
+  while (startM < 1) { startM += 12; startY -= 1; }
+  const fromDate = `${startY}-${pad(startM)}-01`;
+  try {
+    const raw = await xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate, toDate: todayStr, paymentsOnly: 'true' });
+    const pl = raw ? parseProfitAndLoss(raw.Reports?.[0]) : { income: 0 };
+    return { totalIncome: pl.income, avgMonthly: pl.income / 12 };
+  } catch (e) {
+    console.error('[xero] recurringAvg error:', e.message);
+    return { totalIncome: 0, avgMonthly: 0 };
   }
 }
 
@@ -3862,7 +3880,7 @@ app.post('/api/ai/triage/apply', async (req, res) => {
 });
 
 // ===== Convert / Sales domain — routes in src/routes/convert.js; data in src/providers/notion/convert.js =====
-registerConvertRoutes(app, { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID, currentNotionUserId, computeXeroFinance, anthropic });
+registerConvertRoutes(app, { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID, currentNotionUserId, computeXeroFinance, computeXeroQuotes, computeRecurringAvg, anthropic });
 
 function dashifyId(id) {
   const s = String(id || '').replace(/-/g, '');
