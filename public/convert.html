@@ -793,41 +793,56 @@ function renderPulse() {
 }
 
 // ─── Reach Out ──────────────────────────────────────────────────────────────────
-let RO_FILTER = 'all';
+// No query → the active working set (DATA.contacts ~ the sales conversations +
+// clients). A query (≥2 chars) → searches the FULL contacts DB server-side, so
+// any lead/alumni/partner is reachable, not just the working set.
+let RO_FILTER = 'all', RO_SEARCH_TIMER = null, RO_SEARCH_SEQ = 0;
+function roRowHtml(c) {
+  const ds = daysSince(c.lastTouched);
+  let dotClass = 'gray', whenText = '', whenClass = '';
+  if (ds === Infinity)    { dotClass = 'red';   whenText = 'never';      whenClass = 'never'; }
+  else if (ds > 30)       { dotClass = 'red';   whenText = ds + 'd ago'; whenClass = 'never'; }
+  else if (ds > 14)       { dotClass = 'amber'; whenText = ds + 'd ago'; whenClass = 'stale'; }
+  else if (ds >= 0)       { dotClass = 'green'; whenText = ds + 'd ago'; whenClass = ''; }
+  const rel = c.relationship || '';
+  return `<div class="ro-row" onclick="openLog('${esc(c.name)}','${c.id}')">
+    <div class="ro-dot ${dotClass}"></div>
+    <span class="ro-name">${esc(c.name)}</span>
+    ${rel ? `<span class="ro-rel">${esc(rel)}</span>` : ''}
+    <span class="ro-when ${whenClass}">${whenText}</span>
+  </div>`;
+}
+function roPaint(contacts, countLabel) {
+  document.getElementById('ro-count').textContent = countLabel;
+  const list = document.getElementById('ro-list');
+  list.innerHTML = contacts.length ? contacts.map(roRowHtml).join('') : '<div class="ro-empty">No contacts match</div>';
+}
+function roApplyFilter(contacts) {
+  return RO_FILTER === 'all' ? contacts : contacts.filter(c => c.relationship === RO_FILTER);
+}
 function renderReachOut() {
   if (!DATA) return;
-  const q = (document.getElementById('ro-search')?.value || '').toLowerCase().trim();
+  const q = (document.getElementById('ro-search')?.value || '').trim();
+  if (q.length >= 2) { searchReachOut(q); return; }
   const all = DATA.contacts || [];
-  const filtered = all.filter(c => {
-    if (RO_FILTER !== 'all' && c.relationship !== RO_FILTER) return false;
-    if (q && !c.name.toLowerCase().includes(q)) return false;
-    return true;
-  });
-  filtered.sort((a, b) => {
-    const da = daysSince(a.lastTouched), db = daysSince(b.lastTouched);
-    return db - da;
-  });
-  document.getElementById('ro-count').textContent = '· ' + all.length;
-  const list = document.getElementById('ro-list');
-  if (!filtered.length) {
-    list.innerHTML = '<div class="ro-empty">No contacts match</div>';
-    return;
-  }
-  list.innerHTML = filtered.map(c => {
-    const ds = daysSince(c.lastTouched);
-    let dotClass = 'gray', whenText = '', whenClass = '';
-    if (ds === Infinity)    { dotClass = 'red';   whenText = 'never';       whenClass = 'never'; }
-    else if (ds > 30)       { dotClass = 'red';   whenText = ds + 'd ago';  whenClass = 'never'; }
-    else if (ds > 14)       { dotClass = 'amber'; whenText = ds + 'd ago';  whenClass = 'stale'; }
-    else                    { dotClass = 'green'; whenText = ds + 'd ago';  whenClass = ''; }
-    const rel = c.relationship || '';
-    return `<div class="ro-row" onclick="openLog('${esc(c.name)}','${c.id}')">
-      <div class="ro-dot ${dotClass}"></div>
-      <span class="ro-name">${esc(c.name)}</span>
-      ${rel ? `<span class="ro-rel">${esc(rel)}</span>` : ''}
-      <span class="ro-when ${whenClass}">${whenText}</span>
-    </div>`;
-  }).join('');
+  const filtered = roApplyFilter(all).slice().sort((a, b) => daysSince(b.lastTouched) - daysSince(a.lastTouched));
+  roPaint(filtered, '· ' + all.length);
+}
+function searchReachOut(q) {
+  clearTimeout(RO_SEARCH_TIMER);
+  document.getElementById('ro-count').textContent = '· …';
+  RO_SEARCH_TIMER = setTimeout(async () => {
+    const seq = ++RO_SEARCH_SEQ;
+    try {
+      const r = await fetch('/api/convert/contacts?q=' + encodeURIComponent(q));
+      const { contacts } = await r.json();
+      if (seq !== RO_SEARCH_SEQ) return;   // a newer keystroke superseded this
+      const filtered = roApplyFilter(contacts || []);
+      roPaint(filtered, '· ' + filtered.length);
+    } catch (_) {
+      if (seq === RO_SEARCH_SEQ) document.getElementById('ro-list').innerHTML = '<div class="ro-empty">Search failed — try again</div>';
+    }
+  }, 250);
 }
 
 // ─── Render all ────────────────────────────────────────────────────────────────
