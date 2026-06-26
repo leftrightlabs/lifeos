@@ -3640,15 +3640,22 @@ app.get('/api/finance/xero', async (_req, res) => {
 // unavailable and the projection degrades to recurring-revenue only. Kept as a
 // no-op (returns null) so the projection code path stays intact if that ever
 // changes; flip ENABLED to true once the scope is grantable.
+// Xero returns dates as /Date(milliseconds+offset)/ — convert to YYYY-MM-DD.
+function parseXeroDate(val) {
+  if (!val) return null;
+  const m = String(val).match(/\/Date\((-?\d+)([+-]\d{4})?\)\//);
+  if (m) return new Date(parseInt(m[1], 10)).toISOString().slice(0, 10);
+  return String(val).slice(0, 10); // already ISO
+}
+
 async function computeXeroQuotes() {
   const ENABLED = true;
   if (!ENABLED) return null;
   try {
     const norm = (qs) => (qs || []).map((q) => ({
       total: Number(q.Total) || 0,
-      // ExpiryDate drives which quarter accepted revenue lands in (BUILD-SPEC §3B).
-      expiryDate: q.ExpiryDate ? String(q.ExpiryDate).slice(0, 10) : null,
-      date: q.Date ? String(q.Date).slice(0, 10) : null,
+      expiryDate: parseXeroDate(q.ExpiryDate),
+      date: parseXeroDate(q.Date),
     }));
     const [acc, sent] = await Promise.all([
       xeroGet('/api.xro/2.0/Quotes', { Status: 'ACCEPTED' }).catch((e) => { console.error('[xero] Quotes ACCEPTED failed:', e.message); return null; }),
