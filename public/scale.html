@@ -626,9 +626,9 @@ function renderAll(d){
   document.getElementById('sc-content').style.display='block';
 }
 
-async function load(){
+async function load(fresh){
   try {
-    const r = await fetch('/api/scale/data');
+    const r = await fetch('/api/scale/data' + (fresh ? '?fresh=1' : ''));
     const d = await r.json();
     if(d.error) throw new Error(d.error);
     DATA = d; renderAll(d);
@@ -638,6 +638,9 @@ async function load(){
   }
 }
 load();
+// Footer ↻ → cache-busting reload (server caches Xero/Notion data; a plain
+// reload would keep serving a stale snapshot).
+window.lrlFooterRefresh = () => load(true);
 </script>
 <script src="/shell.js"></script>
 </body></html>

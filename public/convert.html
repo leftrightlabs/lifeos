@@ -1017,6 +1017,10 @@ async function load(fresh) {
   }
 }
 load();
+// Footer ↻ → force a cache-busting reload (the server caches /api/convert for
+// 15m, so a plain page reload would keep serving a stale snapshot — e.g. a
+// revenue:null payload built while Xero was briefly down).
+window.lrlFooterRefresh = () => load(true);
 
 // ─── Tab switcher ─────────────────────────────────────────────────────────────
 (() => {
