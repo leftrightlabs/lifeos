@@ -214,10 +214,26 @@ body.state-calm .calm-hero { display:flex; }
 .modal-input, .modal-select, .modal-textarea { width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:9px 11px; font-family:var(--font-body); font-size:13px; color:var(--text); }
 .modal-input:focus, .modal-select:focus, .modal-textarea:focus { outline:none; border-color:var(--zone); }
 .modal-textarea { resize:vertical; min-height:80px; line-height:1.5; }
-/* The date field's native calendar popup (Chrome) scales with the input's font
-   size — bump it so the calendar renders noticeably larger and easier to tap. */
-#log-date { font-size:18px; padding:12px 13px; letter-spacing:.02em; }
-#log-date::-webkit-calendar-picker-indicator { width:20px; height:20px; cursor:pointer; }
+/* ── Custom in-modal date picker ── (replaces the native <input type=date>
+   popup so the calendar is large, dark-themed, and on-brand) */
+.dp { position:relative; }
+.dp-field { width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:9px 12px; font-family:var(--font-body); font-size:13px; color:var(--text); cursor:pointer; }
+.dp-field:hover { border-color:var(--text-4); }
+.dp-field.open { border-color:var(--zone); }
+.dp-field .dp-ic { color:var(--text-3); flex-shrink:0; }
+.dp-cal { margin-top:8px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px; box-shadow:0 12px 32px rgba(0,0,0,.45); }
+.dp-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.dp-title { font-size:14px; font-weight:700; color:var(--text); }
+.dp-nav { width:30px; height:30px; border-radius:8px; border:1px solid var(--border); background:var(--surface-2); color:var(--text-2); font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+.dp-nav:hover { color:var(--text); border-color:var(--text-4); }
+.dp-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+.dp-dow span { text-align:center; font-size:10px; font-weight:700; letter-spacing:.04em; color:var(--text-4); padding-bottom:4px; }
+.dp-day { aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--text-2); border-radius:8px; cursor:pointer; border:1px solid transparent; transition:all .12s; }
+.dp-day:hover { background:var(--surface-2); color:var(--text); }
+.dp-day.muted { color:var(--text-4); opacity:.45; }
+.dp-day.today { border-color:var(--text-4); color:var(--text); }
+.dp-day.sel { background:var(--zone); color:#fff; font-weight:700; }
+.dp-day.sel:hover { background:var(--zone); }
 .modal-search-results { margin-top:6px; max-height:180px; overflow-y:auto; border:1px solid var(--border-soft); border-radius:var(--radius-sm); display:none; }
 .modal-search-results.show { display:block; }
 .msr-item { padding:8px 11px; font-size:13px; color:var(--text-2); cursor:pointer; }
@@ -440,7 +456,21 @@ body.state-calm .calm-hero { display:flex; }
         </div>
         <div class="modal-field">
           <label class="modal-label">Date</label>
-          <input class="modal-input" id="log-date" type="date">
+          <div class="dp" id="log-dp">
+            <button type="button" class="dp-field" id="dp-field" onclick="dpToggle()">
+              <span id="dp-label">—</span>
+              <svg class="dp-ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </button>
+            <div class="dp-cal" id="dp-cal" style="display:none">
+              <div class="dp-head">
+                <button type="button" class="dp-nav" onclick="dpMonth(-1)">‹</button>
+                <span class="dp-title" id="dp-title"></span>
+                <button type="button" class="dp-nav" onclick="dpMonth(1)">›</button>
+              </div>
+              <div class="dp-grid dp-dow"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+              <div class="dp-grid" id="dp-days"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -884,9 +914,49 @@ document.getElementById('fu-tabs').addEventListener('click', (e) => {
 const LOG_TOUCHPOINTS = ['👋 General Touchpoint','📩 Follow-Up','🎯 Offer Sent','📋 Proposal Sent','📞 Sales Call','🙏 Thank You / Nurture','🔁 Re-Engage'];
 const LOG_CHANNELS = ['Email','Text','WhatsApp','LinkedIn DM','LinkedIn Comment','FB Comment','FB Messenger','Instagram DM','Instagram Comment','Phone/Zoom','In Person'];
 let logContactId = null, logContactName = '', logSearchTimer = null, logBy = 'Gretchen';
+let logDate = isoToday();          // selected date (ISO yyyy-mm-dd)
+let dpView = { y: 0, m: 0 };       // month currently shown in the calendar (m 0-based)
 // Populate the type + channel selects once.
 document.getElementById('log-type').innerHTML = LOG_TOUCHPOINTS.map((t) => `<option>${t}</option>`).join('');
 document.getElementById('log-channel').innerHTML = '<option value="">— none —</option>' + LOG_CHANNELS.map((c) => `<option>${c}</option>`).join('');
+
+// ── Custom date picker ──
+const DP_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const dpIso = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`; // m 0-based
+function dpFmt(iso) { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+function dpSetDate(iso) {
+  logDate = iso;
+  document.getElementById('dp-label').textContent = dpFmt(iso);
+  const [y, m] = iso.split('-').map(Number);
+  dpView = { y, m: m - 1 };
+}
+function dpRenderGrid() {
+  document.getElementById('dp-title').textContent = `${DP_MONTHS[dpView.m]} ${dpView.y}`;
+  const first = new Date(dpView.y, dpView.m, 1).getDay();           // 0=Sun
+  const days = new Date(dpView.y, dpView.m + 1, 0).getDate();
+  const prevDays = new Date(dpView.y, dpView.m, 0).getDate();
+  const today = isoToday();
+  const cells = [];
+  for (let i = 0; i < first; i++) cells.push({ d: prevDays - first + 1 + i, muted: true });
+  for (let d = 1; d <= days; d++) cells.push({ d, muted: false });
+  while (cells.length % 7 !== 0) cells.push({ d: cells.length - (first + days) + 1, muted: true });
+  document.getElementById('dp-days').innerHTML = cells.map((c) => {
+    if (c.muted) return `<div class="dp-day muted">${c.d}</div>`;
+    const iso = dpIso(dpView.y, dpView.m, c.d);
+    const cls = 'dp-day' + (iso === logDate ? ' sel' : '') + (iso === today ? ' today' : '');
+    return `<div class="${cls}" onclick="dpPick('${iso}')">${c.d}</div>`;
+  }).join('');
+}
+function dpToggle() {
+  const cal = document.getElementById('dp-cal');
+  const open = cal.style.display === 'none';
+  cal.style.display = open ? 'block' : 'none';
+  document.getElementById('dp-field').classList.toggle('open', open);
+  if (open) dpRenderGrid();
+}
+function dpMonth(delta) { dpView.m += delta; if (dpView.m < 0) { dpView.m = 11; dpView.y--; } else if (dpView.m > 11) { dpView.m = 0; dpView.y++; } dpRenderGrid(); }
+function dpPick(iso) { dpSetDate(iso); dpRenderGrid(); document.getElementById('dp-cal').style.display = 'none'; document.getElementById('dp-field').classList.remove('open'); }
+
 function openLog(name, id) {
   logContactId = id || null;
   logContactName = name || '';
@@ -894,7 +964,9 @@ function openLog(name, id) {
   document.getElementById('log-type').selectedIndex = 0;
   document.getElementById('log-channel').selectedIndex = 0;
   document.getElementById('log-note').value = '';
-  document.getElementById('log-date').value = isoToday();
+  dpSetDate(isoToday());
+  document.getElementById('dp-cal').style.display = 'none';
+  document.getElementById('dp-field').classList.remove('open');
   logBy = 'Gretchen';
   [...document.querySelectorAll('#log-by button')].forEach((b) => b.classList.toggle('on', b.dataset.by === 'Gretchen'));
   document.getElementById('log-results').classList.remove('show');
@@ -960,7 +1032,7 @@ async function submitLog() {
   if (!logContactId) { toast('Pick a contact from the list first'); return; }
   const btn = document.getElementById('log-submit');
   const type = document.getElementById('log-type').value;
-  const dateStr = document.getElementById('log-date').value || isoToday();
+  const dateStr = logDate || isoToday();
   btn.disabled = true; btn.textContent = 'Logging…';
   try {
     const r = await fetch('/api/convert/touchpoint', {
