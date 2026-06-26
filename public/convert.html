@@ -220,6 +220,11 @@ body.state-calm .calm-hero { display:flex; }
 .msr-item:hover { background:var(--surface-2); color:var(--text); }
 .msr-item + .msr-item { border-top:1px solid var(--border-soft); }
 .modal-foot { padding:13px 18px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
+.modal-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.log-toggle { display:inline-flex; background:var(--surface-2); border:1px solid var(--border); border-radius:20px; padding:3px; }
+.log-toggle button { flex:1; background:none; border:none; font-family:var(--font-body); font-size:13px; font-weight:700; color:var(--text-3); padding:7px 14px; border-radius:16px; cursor:pointer; transition:all .15s; }
+.log-toggle button:hover { color:var(--text-2); }
+.log-toggle button.on { background:var(--zone); color:#fff; }
 .gen-output { background:var(--surface-2); border:1px solid var(--border-soft); border-left:2px solid var(--zone); border-radius:0 var(--radius-sm) var(--radius-sm) 0; padding:12px 14px; font-size:13px; color:var(--text); line-height:1.6; white-space:pre-wrap; margin-top:6px; min-height:60px; }
 .gen-loading { color:var(--text-3); font-style:italic; }
 
@@ -407,21 +412,36 @@ body.state-calm .calm-hero { display:flex; }
         <input class="modal-input" id="log-contact" placeholder="Search contacts…" autocomplete="off">
         <div class="modal-search-results" id="log-results"></div>
       </div>
-      <div class="modal-field">
-        <label class="modal-label">Type</label>
-        <select class="modal-select" id="log-type">
-          <option>Email</option><option>Call</option><option>Text</option>
-          <option>LinkedIn</option><option>Meeting</option><option>Other</option>
-        </select>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label class="modal-label">Touchpoint Type</label>
+          <select class="modal-select" id="log-type"></select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Channel</label>
+          <select class="modal-select" id="log-channel"></select>
+        </div>
       </div>
       <div class="modal-field">
-        <label class="modal-label">Note (optional)</label>
-        <textarea class="modal-textarea" id="log-note" placeholder="What happened?"></textarea>
+        <label class="modal-label">Notes</label>
+        <textarea class="modal-textarea" id="log-note" placeholder="optional"></textarea>
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label class="modal-label">Logged By</label>
+          <div class="log-toggle" id="log-by">
+            <button type="button" data-by="Gretchen" class="on">Gretchen</button>
+            <button type="button" data-by="Trina">Trina</button>
+          </div>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Date</label>
+          <input class="modal-input" id="log-date" type="date">
+        </div>
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn-ghost" onclick="closeLog()">Cancel</button>
-      <button class="btn-primary" id="log-submit" onclick="submitLog()">Log it</button>
+      <button class="btn-primary" id="log-submit" onclick="submitLog()" style="width:100%">Log it</button>
     </div>
   </div>
 </div>
@@ -842,17 +862,31 @@ document.getElementById('fu-tabs').addEventListener('click', (e) => {
 });
 
 // ─── Log Touchpoint modal ──────────────────────────────────────────────────────
-let logContactId = null, logContactName = '', logSearchTimer = null;
+const LOG_TOUCHPOINTS = ['👋 General Touchpoint','📩 Follow-Up','🎯 Offer Sent','📋 Proposal Sent','📞 Sales Call','🙏 Thank You / Nurture','🔁 Re-Engage'];
+const LOG_CHANNELS = ['Email','Text','WhatsApp','LinkedIn DM','LinkedIn Comment','FB Comment','FB Messenger','Instagram DM','Instagram Comment','Phone/Zoom','In Person'];
+let logContactId = null, logContactName = '', logSearchTimer = null, logBy = 'Gretchen';
+// Populate the type + channel selects once.
+document.getElementById('log-type').innerHTML = LOG_TOUCHPOINTS.map((t) => `<option>${t}</option>`).join('');
+document.getElementById('log-channel').innerHTML = '<option value="">— none —</option>' + LOG_CHANNELS.map((c) => `<option>${c}</option>`).join('');
 function openLog(name, id) {
   logContactId = id || null;
   logContactName = name || '';
   document.getElementById('log-contact').value = name || '';
-  document.getElementById('log-type').value = 'Email';
+  document.getElementById('log-type').selectedIndex = 0;
+  document.getElementById('log-channel').selectedIndex = 0;
   document.getElementById('log-note').value = '';
+  document.getElementById('log-date').value = isoToday();
+  logBy = 'Gretchen';
+  [...document.querySelectorAll('#log-by button')].forEach((b) => b.classList.toggle('on', b.dataset.by === 'Gretchen'));
   document.getElementById('log-results').classList.remove('show');
   document.getElementById('log-modal').classList.add('open');
 }
 function closeLog() { document.getElementById('log-modal').classList.remove('open'); }
+document.getElementById('log-by').addEventListener('click', (e) => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  logBy = btn.dataset.by;
+  [...document.querySelectorAll('#log-by button')].forEach((b) => b.classList.toggle('on', b === btn));
+});
 document.getElementById('log-contact').addEventListener('input', (e) => {
   const q = e.target.value.trim();
   logContactId = null;  // typing invalidates a prior selection
@@ -882,7 +916,15 @@ async function submitLog() {
   try {
     const r = await fetch('/api/convert/touchpoint', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contactId: logContactId, contactName: logContactName, touchpointType: document.getElementById('log-type').value, notes: document.getElementById('log-note').value })
+      body: JSON.stringify({
+        contactId: logContactId,
+        contactName: logContactName,
+        touchpointType: document.getElementById('log-type').value,
+        channel: document.getElementById('log-channel').value,
+        notes: document.getElementById('log-note').value,
+        loggedBy: logBy,
+        timestamp: document.getElementById('log-date').value,
+      })
     });
     if (!r.ok) throw new Error((await r.json()).error || 'failed');
     toast('Touchpoint logged ✓');
