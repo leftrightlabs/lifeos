@@ -462,7 +462,9 @@ app.get('/api/convert', async (req, res) => {
           const monthsRemainingInQtr = msRemaining / (1000 * 60 * 60 * 24 * 30.44);
 
           const recurringAvg = recurData?.avgMonthly || 0;
-          const approvedQuotesTotal = quoteData?.accepted?.reduce((s, qx) => s + (qx.total || 0), 0) || 0;
+          // Exclude quotes whose issue date falls in a future quarter.
+          const thisQtrQuotes = (quoteData?.accepted || []).filter(qx => !qx.date || qx.date <= q.end);
+          const approvedQuotesTotal = thisQtrQuotes.reduce((s, qx) => s + (qx.total || 0), 0);
           const openQuotesTotal = quoteData?.open?.reduce((s, qx) => s + (qx.total || 0), 0) || 0;
 
           const monthlyRevGoal = goals?.revenue?.goal ?? null;
