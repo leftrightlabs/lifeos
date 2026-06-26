@@ -3379,6 +3379,40 @@ async function xeroGet(path, params) {
   }
 }
 
+// Read-only Xero connection diagnostic (no secret values exposed) — pinpoints
+// WHY revenue shows "Xero not connected": missing config, a failing token
+// refresh (with Xero's exact error), a missing tenant id, or a slow finance
+// compute that the page's 10s timeout would cut off.
+app.get('/api/xero/diag', async (_req, res) => {
+  const out = {
+    refreshTokenLoaded: !!_xeroRefresh,
+    dbEnabled: dbEnabled(),
+    config: {
+      clientId: !!process.env.XERO_CLIENT_ID,
+      clientSecret: !!process.env.XERO_CLIENT_SECRET,
+      tenantId: !!process.env.XERO_TENANT_ID,
+      encryptionKey: !!process.env.ENCRYPTION_KEY,
+    },
+  };
+  try { out.dbTokenPresent = !!(await dbSecrets.get('xero_refresh_token')); }
+  catch (e) { out.dbTokenPresent = 'error: ' + e.message; }
+  try {
+    const t0 = Date.now();
+    await getXeroAccessToken();
+    out.tokenRefresh = { ok: true, ms: Date.now() - t0 };
+  } catch (e) {
+    out.tokenRefresh = { ok: false, error: e.message };
+  }
+  if (out.tokenRefresh.ok) {
+    try {
+      const t0 = Date.now();
+      const fin = await computeXeroFinance();
+      out.financeCompute = { ok: true, ms: Date.now() - t0, qtdRevenue: fin?.qtdRevenue ?? null, exceeds10sTimeout: (Date.now() - t0) > 10000 };
+    } catch (e) { out.financeCompute = { ok: false, error: e.message }; }
+  }
+  res.json(out);
+});
+
 app.get('/auth/xero', (req, res) => {
   if (!process.env.XERO_CLIENT_ID) return res.status(500).send('Set XERO_CLIENT_ID in Railway first.');
   const params = new URLSearchParams({
