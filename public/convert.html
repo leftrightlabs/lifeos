@@ -924,9 +924,39 @@ function pickContact(name, id) {
   logContactId = id; logContactName = name;
   document.getElementById('log-results').classList.remove('show');
 }
+// Touchpoint types that count as "pulse" (relationship) vs "sales" — mirrors
+// PULSE_TOUCHPOINTS in src/config/convert.js.
+const LOG_PULSE_TYPES = ['👋 General Touchpoint', '🙏 Thank You / Nurture'];
+// Optimistically bump the pulse counters so the number jumps the instant a
+// touchpoint is logged — Notion is eventually consistent, so an immediate
+// re-query usually still returns the old count. reconcilePulse() then takes the
+// server numbers as truth once Notion has indexed the new row.
+function bumpPulseOptimistic(type, dateStr) {
+  if (!PULSE) return;
+  const key = LOG_PULSE_TYPES.includes(type) ? 'pulse' : 'sales';
+  const inWeek = PULSE.weekStart && PULSE.weekEnd && dateStr >= PULSE.weekStart && dateStr <= PULSE.weekEnd;
+  const inMonth = dateStr.slice(0, 7) === isoToday().slice(0, 7);
+  if (inWeek) PULSE[key] = (PULSE[key] || 0) + 1;
+  if (inMonth && PULSE.month) { PULSE.month[key] = (PULSE.month[key] || 0) + 1; PULSE.month.total = (PULSE.month.total || 0) + 1; }
+  if (inMonth && PULSE.quarter) { PULSE.quarter[key] = (PULSE.quarter[key] || 0) + 1; PULSE.quarter.total = (PULSE.quarter.total || 0) + 1; }
+  renderPulse();
+}
+async function reconcilePulse(targetMonthTotal) {
+  // Poll the (cache-busted) pulse endpoint until Notion reflects the new row,
+  // then trust the server. Bounded so we don't poll forever on a backdated log.
+  for (let i = 0; i < 5; i++) {
+    await new Promise((r) => setTimeout(r, 1500));
+    try {
+      const p = await (await fetch('/api/convert/pulse?fresh=1')).json();
+      if (p && !p.error && (p.month?.total || 0) >= targetMonthTotal) { PULSE = p; renderPulse(); return; }
+    } catch (_) {}
+  }
+}
 async function submitLog() {
   if (!logContactId) { toast('Pick a contact from the list first'); return; }
   const btn = document.getElementById('log-submit');
+  const type = document.getElementById('log-type').value;
+  const dateStr = document.getElementById('log-date').value || isoToday();
   btn.disabled = true; btn.textContent = 'Logging…';
   try {
     const r = await fetch('/api/convert/touchpoint', {
@@ -934,17 +964,22 @@ async function submitLog() {
       body: JSON.stringify({
         contactId: logContactId,
         contactName: logContactName,
-        touchpointType: document.getElementById('log-type').value,
+        touchpointType: type,
         channel: document.getElementById('log-channel').value,
         notes: document.getElementById('log-note').value,
         loggedBy: logBy,
-        timestamp: document.getElementById('log-date').value,
+        timestamp: dateStr,
       })
     });
     if (!r.ok) throw new Error((await r.json()).error || 'failed');
     toast('Touchpoint logged ✓');
+    bumpPulseOptimistic(type, dateStr);                 // number ticks up instantly
+    const target = PULSE?.month?.total || 0;
     closeLog();
-    await load(true);   // refresh with the new touchpoint
+    // Refresh contacts/deals (Reach Out last-touched, pipeline) without letting a
+    // stale pulse read clobber the optimistic count; pulse reconciles separately.
+    try { DATA = await fetchJSON('/api/convert?fresh=1'); renderPipelineBar(); renderCalm(); renderDoNext(); renderFollowUps(); renderPipeline(); renderReachOut(); } catch (_) {}
+    reconcilePulse(target);
   } catch (err) { toast('Couldn\'t log: ' + err.message); }
   finally { btn.disabled = false; btn.textContent = 'Log it'; }
 }
