@@ -119,6 +119,14 @@ export function registerScaleRoutes(app, {
 }) {
   // Notion id of the signed-in user, for the global "assigned to me" filter.
   const meNotionId = () => (typeof currentNotionUserId === 'function' ? currentNotionUserId() : null) || GRETCHEN_USER_ID;
+  // Xero is the slow/flaky dependency: on a cold cache or token-refresh stall it
+  // can HANG (not error), which would stall the whole request until Railway's
+  // gateway kills it ("upstream error"). Bound it so a hang resolves to null and
+  // the page still renders everything else. (Same fix as /api/convert.)
+  const withTimeout = (promise, ms = 10000) => Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('xero timeout')), ms)),
+  ]);
   // ── Systems (BUSINESS FUNCTIONS) ──
   // Ranks systems needing attention (urgency → priority → impact/effort), flags
   // quick wins, splits into fix-first / quick-wins, and counts the healthy ones.
@@ -173,7 +181,7 @@ export function registerScaleRoutes(app, {
     const needConvert = metrics.some((mt) => mt.source.startsWith('Convert'));
     const needSpeaking = metrics.some((mt) => mt.source.startsWith('Speaking'));
 
-    const fin = needXero ? await cached('xero-finance', computeXeroFinance).catch(() => null) : null;
+    const fin = needXero ? await withTimeout(cached('xero-finance', computeXeroFinance)).catch(() => null) : null;
     const conv = needConvert
       ? await computeConvertActuals(notion, cached, monthStart, quarterStart, today).catch(() => null)
       : null;
@@ -384,8 +392,8 @@ export function registerScaleRoutes(app, {
       const [sysR, scR, finR, quoteR, issR, rockR] = await Promise.allSettled([
         cached('scale-systems', computeSystems),
         cached('scale-scorecard', computeScorecard),
-        cached('xero-finance', computeXeroFinance),
-        cached('scale-quotes', computeXeroQuotes),
+        withTimeout(cached('xero-finance', computeXeroFinance)),
+        withTimeout(cached('scale-quotes', computeXeroQuotes)),
         fetchIssues(notion),
         fetchRocks(notion, rocksCtx),
       ]);
