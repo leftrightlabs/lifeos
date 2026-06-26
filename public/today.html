@@ -1579,9 +1579,13 @@ function _persistPersonal(status) {
 }
 function markPersonalDone() {
   state.personalOneThing = 'done';
-  state.lifeStreak += 1;
   state.lifeSatisfied = true;
   _persistPersonal('done');
+  // Fill today's pip and re-derive the streak from the pips so the number matches
+  // the visual (and survives the next background refresh via applyOneThingToLifePip).
+  const todayPip = lifeWeek.findIndex(d => d.state === 'today');
+  if (todayPip >= 0) lifeWeek[todayPip] = { ...lifeWeek[todayPip], state: 'hit' };
+  state.lifeStreak = lifeStreakFromPips();
   _patchPersonalTask({ status: 'Done' });
   _syncPlanStatus(_personalOneThingTask?.id, 'Done');
   renderOneThing();
@@ -1589,14 +1593,14 @@ function markPersonalDone() {
   fireConfetti();
 }
 function countEffort() {
-  // Task stays Waiting in Notion — blocked, not done.
-  // Fill today's pip and lock the streak.
+  // Task stays Waiting in Notion — blocked, not done. Fill today's pip and lock
+  // the streak; derive the number from the pips so it can't double-count.
   state.personalOneThing = 'credited';
-  state.lifeStreak += 1;
   state.lifeSatisfied = true;
   _persistPersonal('credited');
   const todayPip = lifeWeek.findIndex(d => d.state === 'today');
   if (todayPip >= 0) lifeWeek[todayPip] = { ...lifeWeek[todayPip], state: 'hit' };
+  state.lifeStreak = lifeStreakFromPips();
   renderOneThing();
   renderStreaks();
   fireConfetti();
@@ -1620,13 +1624,12 @@ function setPersonalOneThingStatus(status) {
 function undoPersonalDone() {
   const wasCredited = state.personalOneThing === 'credited';
   state.personalOneThing = wasCredited ? 'waiting' : null;
-  state.lifeStreak = Math.max(0, state.lifeStreak - 1);
   state.lifeSatisfied = false;
-  // countEffort() changed today's pip from 'today' → 'hit'; restore it
-  if (wasCredited) {
-    const last = lifeWeek[lifeWeek.length - 1];
-    if (last) lifeWeek[lifeWeek.length - 1] = { ...last, state: 'today' };
-  }
+  // countEffort()/markPersonalDone() changed today's pip from 'today' → 'hit';
+  // restore it, then re-derive the streak number from the pips.
+  const last = lifeWeek[lifeWeek.length - 1];
+  if (last && last.state === 'hit') lifeWeek[lifeWeek.length - 1] = { ...last, state: 'today' };
+  state.lifeStreak = lifeStreakFromPips();
   if (!wasCredited) {
     _patchPersonalTask({ status: 'Doing' });
     _syncPlanStatus(_personalOneThingTask?.id, 'Doing');
@@ -2737,6 +2740,26 @@ function syncRitualToServer(which) {
   }, 1200);
 }
 
+// Trailing run of hit/today pips = the visible life-streak length.
+function lifeStreakFromPips() {
+  let n = 0;
+  for (let i = lifeWeek.length - 1; i >= 0; i--) {
+    if (lifeWeek[i].state === 'hit' || lifeWeek[i].state === 'today') n++;
+    else break;
+  }
+  return n;
+}
+// Force today's pip to 'hit' when The One Thing was completed/credited today.
+// The body-metric series (swim/walk/journal) doesn't know about The One Thing, so
+// without this the pip rebuilds as an unfilled 'today' on every refresh and the
+// completion looks uncounted.
+function applyOneThingToLifePip() {
+  const pState = getOneThing('personal');
+  if (!pState || (pState.status !== 'done' && pState.status !== 'credited')) return;
+  const ti = lifeWeek.findIndex(d => d.state === 'today');
+  if (ti >= 0) lifeWeek[ti] = { ...lifeWeek[ti], state: 'hit' };
+}
+
 // Apply rings/streaks data
 function applyStreaks(data) {
   const s = data.streaks || {};
@@ -2749,13 +2772,10 @@ function applyStreaks(data) {
       lifeWeek[i] = { d: DAYS[new Date(d.date + 'T12:00:00').getDay()], state: d.date === today ? 'today' : hit ? 'hit' : 'miss' };
     });
   }
+  applyOneThingToLifePip();
   // Derive streak from the pip window so the number always matches the visual.
   // Fall back to max of individual backend streaks for stretches beyond the 7-day window.
-  let pipStreak = 0;
-  for (let i = lifeWeek.length - 1; i >= 0; i--) {
-    if (lifeWeek[i].state === 'hit' || lifeWeek[i].state === 'today') pipStreak++;
-    else break;
-  }
+  const pipStreak = lifeStreakFromPips();
   state.lifeStreak = Math.max(pipStreak, s.swimming || 0, s.walking || 0, s.journal || 0);
   const saved = workStreakLoad();
   if (saved?.days != null) state.workStreak = saved.days;
