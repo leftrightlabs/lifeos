@@ -17,11 +17,13 @@
 
 /* Section header (the title row) */
 .sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; }
-.sec-title { font-size: var(--fs-caption); font-weight: 700; color: var(--label, var(--text-2)); letter-spacing: .09em; text-transform: uppercase; }
+.sec-title { font-size: var(--fs-body); font-weight: 700; color: var(--label, var(--text-2)); letter-spacing: .06em; text-transform: uppercase; }
 .sec-title .count { color: var(--text-4); font-weight: 500; margin-left: 4px; }
 
 /* The card shell */
-.t-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 12px; padding: 15px 17px; }
+.t-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 12px; padding: 15px 17px; transition: border-color .15s, background .15s; }
+.t-card:hover { background: #232c4a; border-color: rgba(255,255,255,.1); }
+html.light .t-card:hover { background: #eceef5; border-color: var(--border); }
 .t-card .sec-head { margin-bottom: 12px; }
 .t-card.collapsed .sec-head { margin-bottom: 0; }
 .t-card.collapsed .t-body { display: none; }
@@ -56,6 +58,15 @@
 .app-footer .footer-logout:hover { color: var(--red); }
 .app-footer .spin { display: inline-block; animation: lrl-foot-spin .7s linear infinite; }
 @keyframes lrl-foot-spin { to { transform: rotate(360deg); } }
+
+/* Tab/panel fade-in — fires whenever a panel becomes active across all zone pages. */
+@keyframes lrl-fade-in {
+  0%   { opacity: 0; transform: translateY(5px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.tab-panel.active,
+.exec-panel.active,
+.ci-panel.active { animation: lrl-fade-in .22s ease-out; }
 html.light .app-footer .footer-stamp { color: var(--text-3); }
 @media (max-width: 640px) {
   .app-footer .footer-stamp { display: none; }

@@ -133,7 +133,7 @@ body[data-state="calm"] .hero .next { border-left-color:var(--green); }
 /* finance */
 .fin-grid-3 { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-bottom:14px; }
 .fin-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:14px 16px; }
-.fin-label { font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); margin-bottom:8px; }
+.fin-label { font-size:var(--fs-body); font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); margin-bottom:8px; }
 .fin-value { font-family:var(--font-display); font-size:24px; font-weight:700; color:var(--text); letter-spacing:-.01em; line-height:1; }
 .fin-value.pos { color:var(--green); } .fin-value.warn { color:var(--amber); } .fin-value.neg { color:var(--red); }
 /* Cash Capacity card (ported from the /index finance board) */
@@ -471,10 +471,21 @@ function finBoard(el, d){
   };
   const nBank = (d.bankAccounts || []).length, nCard = (d.creditCards || []).length;
 
-  // Runway is dropped here (redundant with Cash Capacity below); A/P is dropped
-  // (bills are paid as they come in, never outstanding).
+  // Cash Capacity as a regular fin-card
+  const cc = d.cashCapacity || {}; const ccM = cc.months ?? 0;
+  const capCls = ccM >= 3 ? 'pos' : ccM >= 1 ? 'warn' : 'neg';
+  const capBg = ccM >= 3 ? 'var(--green)' : ccM >= 1 ? 'var(--amber)' : 'var(--red)';
+  const capCard = `<div class="fin-card">
+    <div class="fin-label">Cash Capacity</div>
+    <div class="fin-value ${capCls}">${ccM}<span style="font-size:12px;font-weight:600;margin-left:2px;color:var(--text-3)">mo</span></div>
+    <div class="fin-sub">${money(cc.amount)} / ${money(cc.goalAmount||90000)} goal</div>
+    <div class="fin-bar"><i style="width:${Math.min(100,cc.pctToGoal||0)}%;background:${capBg}"></i></div>
+    ${cc.accountsFound === false ? `<div style="font-size:10px;color:var(--amber);margin-top:4px">⚠ Check Xero account names</div>` : ''}
+  </div>`;
+
   let h = `<div class="fin-grid-3">
     ${card('Cash on Hand', moneyK(d.bankTotal), `${nBank} account${nBank===1?'':'s'}`, (d.bankTotal||0)<0?'neg':'')}
+    ${capCard}
     ${card('Credit Cards', moneyK(d.creditTotal), `${nCard} card${nCard===1?'':'s'}`, (d.creditTotal||0)<0?'warn':'')}
     ${card('A/R — Owed to Us', moneyK(d.accountsReceivable), 'outstanding invoices')}
     ${card('MTD Net', moneyK(d.mtdNet), (d.mtdNet||0)>=0?'in the black':'in the red', (d.mtdNet||0)>=0?'pos':'neg')}
@@ -482,18 +493,6 @@ function finBoard(el, d){
 
   h += `<div class="eyebrow-row"><span class="eyebrow">Revenue tracking</span></div>`;
   h += `<div class="fin-grid-3">${revCard('YTD Revenue', d.ytdRevenue, d.goals?.revenue?.ytd)}${revCard('QTD Revenue', d.qtdRevenue, d.goals?.revenue?.qtd)}${revCard('MTD Revenue', d.mtdRevenue, d.goals?.revenue?.mtd)}</div>`;
-
-  // Cash Capacity
-  const cc = d.cashCapacity || {}; const ccM = cc.months ?? 0;
-  const ccTier = ccM >= 3 ? '' : ccM >= 1 ? 'cap-warn' : 'cap-short';
-  h += `<div class="cap-card ${ccTier}">
-    <div class="cap-label">Cash Capacity</div>
-    <div class="cap-row"><div class="cap-months">${ccM}<span>mo</span></div>
-      <div><div class="cap-amount">${money(cc.amount)}</div><div class="cap-goal">of ${money(cc.goalAmount||90000)} goal · ${cc.goalMonths||3} mo target</div></div></div>
-    <div class="cap-bar"><i style="width:${Math.min(100, cc.pctToGoal||0)}%"></i></div>
-    ${cc.accounts && cc.accounts.length ? `<div class="cap-accts">From ${cc.accounts.map(a=>esc(a.name)+' ('+money(a.balance)+')').join(' + ')}</div>` : ''}
-    ${cc.accountsFound === false ? `<div class="cap-accts" style="color:var(--amber)">⚠ Couldn't find both "Relay OPEX" and "Relay Revenue" accounts in Xero. Check the names match.</div>` : ''}
-  </div>`;
 
   // Bank + credit-card accounts
   let bankBody = '';

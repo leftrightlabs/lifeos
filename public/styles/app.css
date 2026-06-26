@@ -112,20 +112,24 @@ html.privacy-blur :active { filter: none !important; }
 .nav-wrap {
   border-bottom: 1px solid var(--border-soft);
   background: var(--bg);
+  overflow-x: hidden;
 }
 .nav {
-  display: flex; flex-wrap: wrap; padding: 0 22px;
+  display: flex; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; padding: 0 22px;
   max-width: 1080px; margin: 0 auto;
 }
+.nav::-webkit-scrollbar { display: none; }
 .nav-btn {
   background: none; border: none; border-bottom: 2px solid transparent;
   font-size: var(--fs-caption); font-weight: 600; letter-spacing: .05em;
   padding: 11px 14px; cursor: pointer; color: var(--text-3);
   white-space: nowrap; font-family: inherit; gap: 6px;
   text-decoration: none; display: inline-flex; align-items: center;
-  transition: color .15s;
+  transition: color .15s, border-bottom-color .15s;
 }
-.nav-btn:hover { color: var(--text-2); }
+.nav-btn:hover { color: var(--text-2); border-bottom-color: rgba(255,255,255,.15); }
+html.light .nav-btn:hover { border-bottom-color: rgba(0,0,0,.12); }
 .nav-btn.active { color: var(--text); border-bottom-color: var(--accent); }
 .nav-ic { display: inline-flex; flex-shrink: 0; }
 .nav-ic svg { width: 15px; height: 15px; display: block; }

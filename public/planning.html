@@ -31,15 +31,18 @@
   color: var(--text);
 }
 /* exec sub-nav + panels */
-.exec-sub { display:flex; gap:6px; margin: 0 0 22px; flex-wrap:wrap; }
 .exec-root .zone-wrap { padding-top: 16px; }
-.exec-sub-btn { font-size: var(--fs-caption); font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); padding:8px 16px; border-radius:999px; background:var(--surface); border:1px solid var(--border); cursor:pointer; font-family:inherit; transition:all .15s; }
-.exec-sub-btn:hover { color:var(--text-2); border-color:var(--text-4); }
-.exec-sub-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.exec-page-head { margin-bottom:18px; }
+.exec-page-title { font-weight:800; font-size:28px; line-height:1.05; letter-spacing:-.01em; color:var(--text); }
+.exec-page-sub { font-size:12.5px; color:var(--text-2); margin-top:6px; max-width:620px; }
+.tab-bar { display:flex; gap:2px; border-bottom:1px solid var(--border); margin-bottom:22px; overflow-x:auto; scrollbar-width:none; }
+.tab-bar::-webkit-scrollbar { display:none; }
+.exec-tab-btn { display:inline-flex; align-items:center; gap:7px; padding:9px 14px; font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--text-3); background:none; border:none; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; transition:color .15s; font-family:var(--font-body); }
+.exec-tab-btn:hover { color:var(--text-2); }
+.exec-tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
 .exec-panel { display:none; }
 .exec-panel.active { display:block; }
 .exec-head { margin-bottom:18px; }
-.exec-head h2 { font-size: var(--fs-heading); font-weight:800; letter-spacing:-.01em; color:var(--text); margin-bottom:4px; }
 .exec-head p { font-size: var(--fs-body-sm); color:var(--text-2); max-width:640px; }
 /* victory overlay text bits */
 .review-victory-gif { width:180px; max-width:60vw; margin:0 auto 22px; display:block; border-radius:12px; }
@@ -812,22 +815,27 @@
 </head><body class="exec-root">
 <div id="lrl-shell"></div>
 <div class="zone-wrap">
-  <div class="exec-sub">
-    <button class="exec-sub-btn active" data-go="projects">Projects</button>
-    <button class="exec-sub-btn" data-go="tasks">Tasks</button>
-    <button class="exec-sub-btn" data-go="review">Review</button>
-    <button class="exec-sub-btn" data-go="calendar">Calendar</button>
+  <div class="exec-page-head">
+    <span class="exec-page-title">Planning</span>
+    <div class="exec-page-sub">Projects, tasks, schedule, and review — all in one place.</div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="exec-tab-btn active" data-go="projects">PROJECTS</button>
+    <button class="exec-tab-btn" data-go="tasks">TASKS</button>
+    <button class="exec-tab-btn" data-go="review">REVIEW</button>
+    <button class="exec-tab-btn" data-go="calendar">CALENDAR</button>
   </div>
 
   <!-- PROJECTS -->
   <section class="exec-panel active" data-panel="projects">
-    <div class="exec-head"><h2>Projects</h2><p>Every active project across work and life — timeline, status, and inline edits.</p></div>
+    <div class="exec-head"><p>Every active project across work and life — timeline, status, and inline edits.</p></div>
     <div id="projects-body"></div>
   </section>
 
   <!-- TASKS (Autofocus) -->
   <section class="exec-panel" data-panel="tasks">
-    <div class="exec-head"><h2>Tasks</h2><p>Your full task list across all zones. Everything due, in progress, or next up — no context switching.</p></div>
+    <div class="exec-head"><p>Your full task list across all zones. Everything due, in progress, or next up — no context switching.</p></div>
     <div class="autofocus-app">
       <div class="wrap">
         <div class="statgrid" id="hdrstats"></div>
@@ -879,14 +887,14 @@
 
   <!-- REVIEW -->
   <section class="exec-panel" data-panel="review">
-    <div class="exec-head"><h2>Review</h2><p>Round up loose ends. Fix in place, clear to zero. The goal is no flags left.</p></div>
+    <div class="exec-head"><p>Round up loose ends. Fix in place, clear to zero. The goal is no flags left.</p></div>
     <div class="review-streak" id="review-streak"></div>
     <div id="review-body"></div>
   </section>
 
   <!-- CALENDAR -->
   <section class="exec-panel" data-panel="calendar">
-    <div class="exec-head"><h2>Calendar</h2><p>Your week at a glance — all events across work and personal.</p></div>
+    <div class="exec-head"><p>Your week at a glance — all events across work and personal.</p></div>
     <div class="cal-week-nav">
       <button class="cal-nav-btn" id="calPrev">← Prev</button>
       <span class="cal-week-label" id="calWeekLabel"></span>
@@ -2731,7 +2739,7 @@ window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderRevie
 // ---- Execute sub-panel switcher ----
 (function(){
   const panels = [...document.querySelectorAll('.exec-panel')];
-  const btns = [...document.querySelectorAll('.exec-sub-btn')];
+  const btns = [...document.querySelectorAll('.exec-tab-btn')];
   let reviewLoaded = false;
   function showExecPanel(name){
     panels.forEach(p => p.classList.toggle('active', p.dataset.panel === name));
