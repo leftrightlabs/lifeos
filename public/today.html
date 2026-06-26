@@ -547,8 +547,8 @@ body.hide-done-cards .board-done { display: none !important; }
 .plan-add-msg { font-size: var(--fs-caption); color: var(--text-4); margin-top: 4px; }
 
 /* ── FAB ── */
-.fab { position: fixed; bottom: 72px; right: 22px; width: 50px; height: 50px; border-radius: 50%; background: var(--accent); color: #fff; border: none; font-size: var(--fs-title); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 18px rgba(99,102,241,.45); z-index: 80; transition: transform .15s, filter .2s; }
-.fab:hover { filter: brightness(1.12); transform: scale(1.06); }
+.fab { position: fixed; bottom: 72px; right: 22px; width: 50px; height: 50px; border-radius: 50%; background: var(--surface); color: var(--accent); border: 1.5px solid var(--border); font-size: var(--fs-title); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(0,0,0,.45); z-index: 80; transition: transform .15s, filter .2s; }
+.fab:hover { filter: brightness(1.15); transform: scale(1.06); }
 .fab:active { transform: scale(.93); }
 
 /* Footer styles now live in styles/cards.css (.app-footer …), rendered by shell.js. */
@@ -914,7 +914,9 @@ body { overflow-x: hidden; }
 </div>
 
 <!-- Brain dump FAB -->
-<button class="fab" onclick="openCapture()" title="Quick capture">⚡</button>
+<button class="fab" onclick="openCapture()" title="Quick capture">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4.5 13.5H11L10 22 20.5 10.5H14Z"/></svg>
+</button>
 
 <!-- Quick Capture Modal -->
 <div class="qc-overlay hidden" id="qcOverlay" onclick="if(event.target===this)closeCapture()">
@@ -1028,12 +1030,6 @@ function syncModeButtons(m) {
   document.querySelectorAll('.mode-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.mode === m);
   });
-  const fab = document.querySelector('.fab');
-  if (fab) {
-    const c = m === 'work' ? 'var(--work)' : m === 'personal' ? 'var(--personal)' : 'var(--accent)';
-    fab.style.background = c;
-    fab.style.boxShadow = `0 4px 18px ${m === 'work' ? 'rgba(37,99,235,.4)' : m === 'personal' ? 'rgba(6,182,212,.4)' : 'rgba(99,102,241,.4)'}`;
-  }
 }
 
 function renderNav() {
