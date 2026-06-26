@@ -189,23 +189,13 @@ function makeOAuthClient(req, callbackPath = '/auth/google/callback') {
   );
 }
 
-async function queryTasks(dataSourceId, { peopleProp, myDayOnly, includeFollowing } = {}) {
+async function queryTasks(dataSourceId, { peopleProp, myDayOnly } = {}) {
   const and = [{ property: 'Status', status: { does_not_equal: 'Done' } }];
   if (myDayOnly) and.push({ property: 'My Day', checkbox: { equals: true } });
   if (peopleProp) {
     const nid = currentNotionUserId();
-    const fallback = '00000000-0000-0000-0000-000000000000';
     // Member without a resolved Notion id → match nothing (never the owner's tasks).
-    if (includeFollowing) {
-      // My Day tasks: match if assigned OR following — so starred tasks show
-      // in Today's Plan regardless of whether you're primary assignee.
-      and.push({ or: [
-        { property: peopleProp,    people: { contains: nid || fallback } },
-        { property: 'Following',   people: { contains: nid || fallback } },
-      ]});
-    } else {
-      and.push({ property: peopleProp, people: { contains: nid || fallback } });
-    }
+    and.push({ property: peopleProp, people: { contains: nid || '00000000-0000-0000-0000-000000000000' } });
   }
   // Page through every match — a single 100-row page silently dropped tasks once
   // a database had more than 100 non-done tasks (they just never appeared in any
@@ -254,6 +244,8 @@ function simplifyTask(page, source) {
     assigneeIds: assignees,
     assigneeNames: (props.Assigned?.people || []).map((u) => u.name).filter(Boolean),
     assignedToMe: source === 'personal' ? (currentNotionUserId() === GRETCHEN_USER_ID) : assignees.includes(currentNotionUserId()),
+    followingIds: following,
+    followingNames: (props.Following?.people || []).map((u) => u.name).filter(Boolean),
     followingMe: following.includes(currentNotionUserId()),
     url: page.url,
   };
@@ -261,9 +253,11 @@ function simplifyTask(page, source) {
 
 async function workTasks({ myDayOnly, allAssignees }) {
   const data = await queryTasks(WORK_TASKS_DS, {
-    peopleProp: allAssignees ? undefined : 'Assigned',
+    // My Day query: no person filter — My Day is a personal pin, and removing the
+    // person filter makes today.html consistent with planning.html (which also uses
+    // allAssignees: true). This ensures Following tasks you've starred also appear.
+    peopleProp: (allAssignees || myDayOnly) ? undefined : 'Assigned',
     myDayOnly,
-    includeFollowing: !!myDayOnly,
   });
   return data.results.map((p) => simplifyTask(p, 'work'));
 }
@@ -812,8 +806,8 @@ app.get('/api/workspace/members', async (_req, res) => {
       _notionUsersCache = out;
     }
     const members = _notionUsersCache
-      .filter((u) => u.type === 'person')
-      .map((u) => ({ id: u.id, name: u.name, email: u.person?.email || null }));
+      .filter((u) => u.type === 'person' || u.type === 'bot')
+      .map((u) => ({ id: u.id, name: u.name, email: u.person?.email || null, isBot: u.type === 'bot' }));
     res.json({ members });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1297,7 +1291,7 @@ app.patch('/api/projects/:id', async (req, res) => {
 app.patch('/api/tasks/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { id } = req.params;
-  const { name, status, dueStart, dueEnd, myDay, priority, projectId, estHours, assigneeIds } = req.body || {};
+  const { name, status, dueStart, dueEnd, myDay, priority, projectId, estHours, assigneeIds, followingIds } = req.body || {};
   try {
     const properties = {};
     if (name !== undefined && name !== null) {
@@ -1325,6 +1319,9 @@ app.patch('/api/tasks/:id', async (req, res) => {
     }
     if (assigneeIds !== undefined) {
       properties.Assigned = { people: (Array.isArray(assigneeIds) ? assigneeIds : []).map((id) => ({ id })) };
+    }
+    if (followingIds !== undefined) {
+      properties.Following = { people: (Array.isArray(followingIds) ? followingIds : []).map((id) => ({ id })) };
     }
     if (!Object.keys(properties).length) {
       return res.status(400).json({ error: 'No supported fields to update' });

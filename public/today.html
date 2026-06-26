@@ -378,6 +378,10 @@ body {
 .tm-check input { width: 18px; height: 18px; accent-color: var(--accent); }
 .tm-clear { float: right; background: none; border: none; color: var(--text-3); font-size: var(--fs-caption); text-transform: uppercase; letter-spacing: .06em; cursor: pointer; font-weight: 700; }
 .tm-clear:hover { color: var(--text); }
+.tm-checklist { max-height: 110px; overflow-y: auto; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 4px 0; }
+.tm-checklist label { display: flex; align-items: center; gap: 8px; padding: 5px 12px; cursor: pointer; font-size: var(--fs-body-sm); color: var(--text-2); }
+.tm-checklist label:hover { background: rgba(255,255,255,.04); color: var(--text); }
+.tm-checklist input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--accent); flex-shrink: 0; }
 .tm-actions { display: flex; gap: 8px; align-items: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
 .tm-trash { background: none; border: 1px solid var(--border); color: var(--text-3); width: 38px; height: 38px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: var(--fs-body); }
 .tm-trash:hover { color: var(--red); border-color: rgba(242,109,109,.3); }
@@ -888,6 +892,7 @@ body { overflow-x: hidden; }
     <div class="tm-field"><label>Task</label><textarea id="tmName" rows="2" placeholder="Task name"></textarea></div>
     <div class="tm-field"><label>Project</label><select id="tmProject"></select></div>
     <div class="tm-field" id="tmAssigneeField"><label>Assigned to</label><select id="tmAssignee"><option value="">— unassigned —</option></select></div>
+    <div class="tm-field" id="tmFollowingField"><label>Following</label><div id="tmFollowingList" class="tm-checklist"></div></div>
     <label class="tm-check"><input type="checkbox" id="tmMyDay"> Pin to My Day</label>
     <div class="tm-2col">
       <div class="tm-field"><label>Status</label><select id="tmStatus">
@@ -1872,11 +1877,24 @@ async function loadWorkspaceMembers() {
   } catch(e) { _workspaceMembers = []; }
   return _workspaceMembers;
 }
-function populateAssigneeSelect(selEl, currentIds) {
+function populateAssigneeSelect(selEl, currentIds, currentNames) {
   const members = _workspaceMembers || [];
+  const memberIds = new Set(members.map(m => m.id));
+  // Inject any current assignees not in the members list (bots, teams, etc.)
+  const extras = (currentIds || [])
+    .filter(id => id && !memberIds.has(id))
+    .map((id, i) => ({ id, name: (currentNames || [])[i] || id, isBot: true }));
+  const all = [...members, ...extras];
   selEl.innerHTML = '<option value="">— unassigned —</option>' +
-    members.map(m => `<option value="${m.id}">${escName(m.name)}</option>`).join('');
+    all.map(m => `<option value="${m.id}">${escName(m.name)}${m.isBot ? ' ·' : ''}</option>`).join('');
   selEl.value = (currentIds && currentIds.length) ? currentIds[0] : '';
+}
+function populateFollowingList(listEl, currentIds) {
+  const members = _workspaceMembers || [];
+  listEl.innerHTML = members
+    .filter(m => !m.isBot)
+    .map(m => `<label><input type="checkbox" value="${m.id}"${(currentIds||[]).includes(m.id) ? ' checked' : ''}> ${escName(m.name)}</label>`)
+    .join('');
 }
 function openTaskModal(i) {
   const t = plan[i]; if (!t) return;
@@ -1891,10 +1909,17 @@ function openTaskModal(i) {
   sel.value = t.projectId || '';
   const assigneeSel = document.getElementById('tmAssignee');
   const assigneeField = document.getElementById('tmAssigneeField');
+  const followingField = document.getElementById('tmFollowingField');
+  const followingList = document.getElementById('tmFollowingList');
   assigneeField.style.display = isPersonal ? 'none' : '';
-  populateAssigneeSelect(assigneeSel, t.assigneeIds || []);
-  loadWorkspaceMembers().then(members => {
-    if (_editIdx === i) populateAssigneeSelect(assigneeSel, t.assigneeIds || []);
+  followingField.style.display = isPersonal ? 'none' : '';
+  populateAssigneeSelect(assigneeSel, t.assigneeIds || [], t.assigneeNames || []);
+  populateFollowingList(followingList, t.followingIds || []);
+  loadWorkspaceMembers().then(() => {
+    if (_editIdx === i) {
+      populateAssigneeSelect(assigneeSel, t.assigneeIds || [], t.assigneeNames || []);
+      populateFollowingList(followingList, t.followingIds || []);
+    }
   });
   document.getElementById('tmMyDay').checked = true;
   document.getElementById('tmStatus').value = ['Planned', 'Doing', 'Waiting', 'Agenda', 'Billing', 'Done'].includes(t.status) ? t.status : 'Planned';
@@ -1921,9 +1946,13 @@ function saveTaskModal() {
   const isPersonal = t.type === 'personal';
   const assigneeSelVal = document.getElementById('tmAssignee').value;
   const assigneeIds = (!isPersonal && assigneeSelVal) ? [assigneeSelVal] : (!isPersonal ? [] : undefined);
+  const followingChecked = !isPersonal
+    ? Array.from(document.querySelectorAll('#tmFollowingList input[type=checkbox]:checked')).map(cb => cb.value)
+    : undefined;
   if (t.id) {
     const body = { name, projectId, status, priority, estHours, dueStart, myDay };
     if (assigneeIds !== undefined) body.assigneeIds = assigneeIds;
+    if (followingChecked !== undefined) body.followingIds = followingChecked;
     fetch('/api/tasks/' + t.id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body) }).catch(() => {});
   }
@@ -1939,6 +1968,10 @@ function saveTaskModal() {
   if (assigneeIds !== undefined) {
     t.assigneeIds = assigneeIds;
     t.assigneeNames = assigneeIds.map(id => (_workspaceMembers || []).find(m => m.id === id)?.name).filter(Boolean);
+  }
+  if (followingChecked !== undefined) {
+    t.followingIds = followingChecked;
+    t.followingNames = followingChecked.map(id => (_workspaceMembers || []).find(m => m.id === id)?.name).filter(Boolean);
   }
   if (!myDay) plan.splice(idx, 1);   // unpinned → leaves today's plan
   closeTaskModal();
@@ -2626,6 +2659,10 @@ function taskToPlanItem(t) {
     est: (t.estHours != null ? t.estHours : null),
     dueStart: t.dueStart || null,
     dueEnd: t.dueEnd || null,
+    assigneeIds: t.assigneeIds || [],
+    assigneeNames: t.assigneeNames || [],
+    followingIds: t.followingIds || [],
+    followingNames: t.followingNames || [],
   };
 }
 
