@@ -162,7 +162,8 @@ body.state-calm .calm-hero { display:flex; }
 
 /* ─── WEEKLY PULSE (redesigned) ─── */
 .pw-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
-.pw-metric { background:var(--surface-2); border:1px solid var(--border-soft); border-radius:10px; padding:12px 14px; }
+.pw-metric { background:var(--surface-2); border:1px solid var(--border-soft); border-radius:10px; padding:12px 14px; cursor:pointer; transition:border-color .15s; }
+.pw-metric:hover { border-color:var(--text-4); }
 .pw-metric-label { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); margin-bottom:4px; }
 .pw-metric-val { font-family:var(--font-display); font-size:22px; font-weight:800; color:var(--text); line-height:1.15; margin-bottom:8px; }
 .pw-bar { height:5px; background:var(--surface); border-radius:3px; overflow:hidden; }
@@ -170,7 +171,21 @@ body.state-calm .calm-hero { display:flex; }
 .pw-bar-fill.good { background:var(--green); }
 .pw-streak { font-size:11px; color:var(--text-3); margin-bottom:14px; line-height:1.4; }
 .pw-periods { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
-.pw-period { background:var(--surface-2); border:1px solid var(--border-soft); border-radius:10px; padding:12px 14px; }
+.pw-period { background:var(--surface-2); border:1px solid var(--border-soft); border-radius:10px; padding:12px 14px; cursor:pointer; transition:border-color .15s; }
+.pw-period:hover { border-color:var(--text-4); }
+/* ── Touchpoint drill-down modal ── */
+.tp-drill-body { padding:0; max-height:58vh; overflow-y:auto; }
+.tp-list-row { display:flex; align-items:flex-start; gap:12px; padding:13px 18px; border-bottom:1px solid var(--border-soft); }
+.tp-list-row:last-child { border-bottom:none; }
+.tp-list-date { color:var(--text-3); font-size:12px; white-space:nowrap; min-width:50px; padding-top:2px; flex-shrink:0; }
+.tp-list-main { flex:1; min-width:0; }
+.tp-list-name { font-size:14px; font-weight:700; color:var(--text); }
+.tp-list-sub { font-size:12px; color:var(--text-3); margin-top:2px; }
+.tp-list-notes { font-size:12px; color:var(--text-3); margin-top:3px; font-style:italic; }
+.tp-list-actions { flex-shrink:0; display:flex; align-items:center; }
+.tp-list-contact-btn { font-size:11px; font-weight:600; color:var(--text-3); text-decoration:none; padding:5px 10px; border:1px solid var(--border); border-radius:var(--radius-xs); white-space:nowrap; transition:all .15s; }
+.tp-list-contact-btn:hover { color:var(--text-2); border-color:var(--text-3); }
+.tp-drill-empty { color:var(--text-3); font-size:13px; padding:30px 18px; text-align:center; }
 .pw-period-label { font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); margin-bottom:6px; }
 .pw-period-num { font-family:var(--font-display); font-size:24px; font-weight:800; color:var(--accent); line-height:1; margin-bottom:4px; }
 .pw-period-sub { font-size:11px; color:var(--text-3); }
@@ -248,8 +263,9 @@ body.state-calm .calm-hero { display:flex; }
 .gen-output { background:var(--surface-2); border:1px solid var(--border-soft); border-left:2px solid var(--zone); border-radius:0 var(--radius-sm) var(--radius-sm) 0; padding:12px 14px; font-size:13px; color:var(--text); line-height:1.6; white-space:pre-wrap; margin-top:6px; min-height:60px; }
 .gen-loading { color:var(--text-3); font-style:italic; }
 /* ── Contact history in log modal ── */
-.modal-notion-link { font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--text-3); text-decoration:none; padding:3px 9px; border:1px solid var(--border); border-radius:var(--radius-xs); white-space:nowrap; margin-left:auto; margin-right:8px; transition:all .15s; }
+.modal-notion-link { font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--text-3); text-decoration:none; padding:3px 9px; border:1px solid var(--border); border-radius:var(--radius-xs); white-space:nowrap; transition:all .15s; }
 .modal-notion-link:hover { color:var(--text-2); border-color:var(--text-3); }
+.tp-hist-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
 .tp-hist-scroll { max-height:160px; overflow-y:auto; }
 .tp-hist-row { display:flex; gap:8px; padding:6px 0; border-bottom:1px solid var(--border-soft); align-items:baseline; font-size:12px; line-height:1.4; }
 .tp-hist-row:last-child { border-bottom:none; }
@@ -377,12 +393,12 @@ body.state-calm .calm-hero { display:flex; }
       <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">This Week's Pulse</div></div></div>
       <div class="t-body">
         <div class="pw-grid">
-          <div class="pw-metric">
+          <div class="pw-metric" onclick="openTpDrill('This Week · Pulse','week','pulse')">
             <div class="pw-metric-label">Pulse</div>
             <div class="pw-metric-val"><span id="pw-pulse-val">—</span><span style="font-size:14px;color:var(--text-3);font-weight:600"> / <span id="pw-pulse-goal">—</span></span></div>
             <div class="pw-bar"><div class="pw-bar-fill" id="pw-pulse-fill" style="width:0%"></div></div>
           </div>
-          <div class="pw-metric">
+          <div class="pw-metric" onclick="openTpDrill('This Week · Sales','week','sales')">
             <div class="pw-metric-label">Sales</div>
             <div class="pw-metric-val"><span id="pw-sales-val">—</span><span style="font-size:14px;color:var(--text-3);font-weight:600"> / <span id="pw-sales-goal">—</span></span></div>
             <div class="pw-bar"><div class="pw-bar-fill" id="pw-sales-fill" style="width:0%"></div></div>
@@ -435,7 +451,7 @@ body.state-calm .calm-hero { display:flex; }
 <!-- LOG TOUCHPOINT MODAL -->
 <div class="modal-overlay" id="log-modal">
   <div class="modal">
-    <div class="modal-head"><h3>Log Touchpoint</h3><a id="log-notion-link" href="#" target="_blank" class="modal-notion-link" style="display:none">Open in Notion ↗</a><button class="modal-close" onclick="closeLog()">×</button></div>
+    <div class="modal-head"><h3>Log Touchpoint</h3><button class="modal-close" onclick="closeLog()">×</button></div>
     <div class="modal-body">
       <div class="modal-field">
         <label class="modal-label">Contact</label>
@@ -484,8 +500,11 @@ body.state-calm .calm-hero { display:flex; }
         </div>
       </div>
     </div>
-      <div class="modal-field" id="tp-history-wrap" style="display:none">
-        <label class="modal-label">Prior Touchpoints</label>
+      <div class="modal-field" id="tp-history-wrap" style="display:none;padding-left:12px;padding-right:18px;border-left:2px solid var(--border)">
+        <div class="tp-hist-head">
+          <label class="modal-label" style="margin-bottom:0">Prior Touchpoints</label>
+          <a id="log-notion-link" href="#" target="_blank" class="modal-notion-link" style="display:none">Open in Notion ↗</a>
+        </div>
         <div class="tp-hist-scroll" id="tp-history-list"></div>
       </div>
     </div>
@@ -514,6 +533,14 @@ body.state-calm .calm-hero { display:flex; }
       <button class="btn-secondary" id="gen-copy" onclick="copyGen()" style="display:none">Copy</button>
       <button class="btn-primary" id="gen-go" onclick="runGen()">Generate</button>
     </div>
+  </div>
+</div>
+
+<!-- TOUCHPOINT DRILL-DOWN MODAL -->
+<div class="modal-overlay" id="tp-drill-modal">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-head"><h3 id="tp-drill-title">Touchpoints</h3><button class="modal-close" onclick="closeTpDrill()">×</button></div>
+    <div class="tp-drill-body" id="tp-drill-body"><div class="tp-drill-empty">Loading…</div></div>
   </div>
 </div>
 
@@ -829,12 +856,12 @@ function renderPulse() {
     ? new Date(PULSE.weekStart.replace(/-/g, '/')).toLocaleString('default', {month: 'long', year: 'numeric'}).toUpperCase()
     : 'THIS MONTH';
   document.getElementById('pw-periods').innerHTML = `
-    <div class="pw-period">
+    <div class="pw-period" onclick="openTpDrill('${monthLabel}','month',null)">
       <div class="pw-period-label">${monthLabel}</div>
       <div class="pw-period-num">${m.total || 0}</div>
       <div class="pw-period-sub">${m.pulse||0} pulse · ${m.sales||0} sales</div>
     </div>
-    <div class="pw-period">
+    <div class="pw-period" onclick="openTpDrill('${ql}','quarter',null)">
       <div class="pw-period-label">${ql}</div>
       <div class="pw-period-num">${q.total || 0}</div>
       <div class="pw-period-sub">${q.pulse||0} pulse · ${q.sales||0} sales</div>
@@ -1192,6 +1219,50 @@ load();
 // 15m, so a plain page reload would keep serving a stale snapshot — e.g. a
 // revenue:null payload built while Xero was briefly down).
 window.lrlFooterRefresh = () => load(true);
+
+// ─── Touchpoint drill-down modal ──────────────────────────────────────────────
+const LOG_PULSE_TYPES_SET = new Set(LOG_PULSE_TYPES);
+let _tpDrillCache = {};  // { month: [...], quarter: [...] } — avoid re-fetching
+
+async function openTpDrill(title, period, typeFilter) {
+  document.getElementById('tp-drill-title').textContent = 'Touchpoints · ' + title;
+  const body = document.getElementById('tp-drill-body');
+  body.innerHTML = '<div class="tp-drill-empty">Loading…</div>';
+  document.getElementById('tp-drill-modal').classList.add('open');
+  try {
+    const apiPeriod = period === 'week' ? 'month' : period;
+    if (!_tpDrillCache[apiPeriod]) {
+      const r = await fetch('/api/convert/touchpoints?period=' + apiPeriod);
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      _tpDrillCache[apiPeriod] = d.touchpoints || [];
+    }
+    let rows = _tpDrillCache[apiPeriod];
+    if (period === 'week' && PULSE?.weekStart && PULSE?.weekEnd) {
+      rows = rows.filter((t) => t.date >= PULSE.weekStart && t.date <= PULSE.weekEnd);
+    }
+    if (typeFilter === 'pulse') rows = rows.filter((t) => LOG_PULSE_TYPES_SET.has(t.type));
+    if (typeFilter === 'sales') rows = rows.filter((t) => !LOG_PULSE_TYPES_SET.has(t.type));
+    if (!rows.length) { body.innerHTML = '<div class="tp-drill-empty">No touchpoints found</div>'; return; }
+    body.innerHTML = rows.map((t) => {
+      const dateStr = t.date ? new Date(t.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+      const sub = [t.type, t.channel, t.loggedBy].filter(Boolean).join(' · ');
+      const contactHref = t.contactUrl || (t.contactId ? `https://www.notion.so/${t.contactId}` : null);
+      return `<div class="tp-list-row">
+        <span class="tp-list-date">${dateStr}</span>
+        <div class="tp-list-main">
+          <div class="tp-list-name">${esc(t.contactName || '—')}</div>
+          <div class="tp-list-sub">${esc(sub)}</div>
+          ${t.notes ? `<div class="tp-list-notes">${esc(t.notes)}</div>` : ''}
+        </div>
+        <div class="tp-list-actions">
+          ${contactHref ? `<a class="tp-list-contact-btn" href="${contactHref}" target="_blank">Contact ↗</a>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) { body.innerHTML = `<div class="tp-drill-empty">${esc(e.message)}</div>`; }
+}
+function closeTpDrill() { document.getElementById('tp-drill-modal').classList.remove('open'); }
 
 // ─── Tab switcher ─────────────────────────────────────────────────────────────
 (() => {
