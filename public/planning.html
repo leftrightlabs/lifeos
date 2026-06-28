@@ -302,6 +302,9 @@
   .autofocus-app .ghead h2 {font-family:var(--font-d);font-weight:700;font-size: var(--fs-title);margin:0;flex:1}
   .autofocus-app .ghead h2 span {display:inline}
   .autofocus-app .ghead .cnt {font-size: var(--fs-body-sm);color:var(--muted);font-weight:600}
+  .autofocus-app .ghead .gh-notion {display:inline-flex;align-items:center;margin-left:7px;color:var(--muted);vertical-align:middle;opacity:.6;transition:opacity .15s,color .15s}
+  .autofocus-app .ghead .gh-notion:hover {opacity:1;color:var(--accent)}
+  .autofocus-app .ghead .gh-notion svg {width:14px;height:14px}
   .autofocus-app .ghead.over {border-color:var(--over)}
   .autofocus-app .ghead.over h2, .autofocus-app .ghead.over .car {color:var(--over)}
   .autofocus-app .ghead.today {border-color:var(--today)}
@@ -1090,15 +1093,8 @@ function deleteTaskModal() {
   if (!confirm('Delete this task in Notion? This cannot be undone.')) return;
   const id = _editTask.id;
   if (id) fetch('/api/tasks/' + id, { method: 'DELETE' }).catch(() => {});
-  // Remove from tasks tab store
-  if (typeof BASE !== 'undefined' && BASE && id) {
-    delete BASE[id];
-    if (typeof SEED_TASKS !== 'undefined') {
-      const idx = SEED_TASKS.findIndex(t => t.id === id);
-      if (idx !== -1) SEED_TASKS.splice(idx, 1);
-    }
-    if (typeof render === 'function') render();
-  }
+  // Remove from tasks tab store (engine is IIFE-scoped — use its exposed hook)
+  if (id && typeof window.lrlRemovePlanningTask === 'function') window.lrlRemovePlanningTask(id);
   // Remove from review tab store
   if (REVIEW_DATA) {
     for (const key of Object.keys(REVIEW_DATA)) {
@@ -1424,6 +1420,19 @@ async function fetchTasks(){
 function task(id){return Object.assign({},BASE[id],state.edits[id]||{},{done:!!state.done[id]});}
 function allTasks(){return SEED_TASKS.map(t=>task(t.id));}
 
+// Exposed so the (globally-scoped) Edit Task modal can optimistically drop a
+// deleted task from this IIFE-closed store and re-render immediately.
+window.lrlRemovePlanningTask = function(id){
+  if(!id) return false;
+  let found = !!BASE[id];
+  delete BASE[id];
+  const i = SEED_TASKS.findIndex(t => t.id === id);
+  if(i !== -1){ SEED_TASKS.splice(i,1); found = true; }
+  try { window.lrlCache.save('tasks', SEED_TASKS); } catch(e){}
+  render();
+  return found;
+};
+
 const TODAY=new Date();
 const today=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
 function parseD(s){if(!s)return null;const p=s.slice(0,10).split('-').map(Number);return new Date(p[0],p[1]-1,p[2]);}
@@ -1569,8 +1578,10 @@ function row(t){
 function isCollapsed(k){const m=ui.group;return !!(state.collapsed[m]&&state.collapsed[m][k]);}
 function setCollapsed(k,v){const m=ui.group;state.collapsed[m]=state.collapsed[m]||{};state.collapsed[m][k]=v;saveState();}
 const CARET='<svg class="car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>';
-function section(key,label,items,extraCls){const col=isCollapsed(key);
-  return '<div class="group"><div class="ghead '+(extraCls||'')+(col?' collapsed':'')+'" data-gkey="'+key+'">'+CARET+'<h2><span>'+label+'</span></h2><span class="cnt">'+items.length+'</span></div><div class="gbody'+(col?' collapsed':'')+'">'+items.map(row).join('')+'</div></div>';}
+const GH_NOTION_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h7v7"/><path d="M10 14L21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>';
+function section(key,label,items,extraCls,notionUrl){const col=isCollapsed(key);
+  const gh=notionUrl?'<a class="gh-notion" href="'+notionUrl+'" target="_blank" rel="noopener" title="Open project in Notion" aria-label="Open project in Notion">'+GH_NOTION_ICON+'</a>':'';
+  return '<div class="group"><div class="ghead '+(extraCls||'')+(col?' collapsed':'')+'" data-gkey="'+key+'">'+CARET+'<h2><span>'+label+'</span>'+gh+'</h2><span class="cnt">'+items.length+'</span></div><div class="gbody'+(col?' collapsed':'')+'">'+items.map(row).join('')+'</div></div>';}
 
 function render(){
   const arr=sortTasks(visible());const L=el('list');
@@ -1578,7 +1589,7 @@ function render(){
   let html='';
   if(ui.group==='none'){html=section('all','All Tasks',arr);}
   else if(ui.group==='source'){[['work','Work'],['personal','Personal']].forEach(([k,lab])=>{const g=arr.filter(t=>t.source===k);if(g.length)html+=section(k,lab,g);});}
-  else if(ui.group==='project'){const map={};arr.forEach(t=>{const k=t.project||'No Project';(map[k]=map[k]||[]).push(t);});Object.keys(map).sort().forEach(k=>{html+=section('p_'+k,k,map[k]);});}
+  else if(ui.group==='project'){const map={};arr.forEach(t=>{const k=t.project||'No Project';(map[k]=map[k]||[]).push(t);});Object.keys(map).sort().forEach(k=>{const pid=(map[k].find(t=>t.projectId)||{}).projectId;const url=pid?'https://www.notion.so/'+String(pid).replace(/-/g,''):null;html+=section('p_'+k,k,map[k],'',url);});}
   else if(ui.group==='status'){const ORDER=['Doing','Planned','Waiting','Agenda','Billing','Done'];const map={};arr.forEach(t=>{const k=t.status||'Planned';(map[k]=map[k]||[]).push(t);});ORDER.forEach(k=>{if(map[k])html+=section('st_'+k,k,map[k]);});Object.keys(map).filter(k=>!ORDER.includes(k)).sort().forEach(k=>{html+=section('st_'+k,k,map[k]);});}
   else{const buckets={};arr.forEach(t=>{const b=bucketOf(t);(buckets[b.key]=buckets[b.key]||{label:b.label,rank:b.rank,items:[]}).items.push(t);});Object.entries(buckets).sort((a,b)=>a[1].rank-b[1].rank).forEach(([key,b])=>{const cls=b.label==='Overdue'?'over':(b.label==='Today'?'today':'');html+=section(key,b.label,b.items,cls);});}
   L.innerHTML=html;updateHeader();
@@ -1650,6 +1661,7 @@ function afPatch(id, body){
     .then(r=>{if(!r.ok)throw new Error('sync failed');return r.json();});
 }
 el('list').addEventListener('click',e=>{
+  if(e.target.closest('.gh-notion'))return;   // let the Notion link open; don't toggle collapse
   const head=e.target.closest('.ghead');
   if(head){const k=head.dataset.gkey;const now=!isCollapsed(k);setCollapsed(k,now);head.classList.toggle('collapsed',now);head.parentElement.querySelector('.gbody').classList.toggle('collapsed',now);return;}
   const rowEl=e.target.closest('.quest-item');
