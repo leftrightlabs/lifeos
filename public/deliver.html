@@ -136,6 +136,26 @@ body[data-state="calm"] .statebanner h2 { color:var(--green); }
 .rev-leg b { color:var(--text); font-weight:700; }
 .rev-demo { font-size:11px; color:var(--amber); margin-top:10px; display:flex; gap:7px; align-items:center; }
 
+/* ─── TABS ─── */
+.tab-bar { display:flex; gap:2px; border-bottom:1px solid var(--border); margin-bottom:22px; overflow-x:auto; scrollbar-width:none; }
+.tab-bar::-webkit-scrollbar { display:none; }
+.exec-tab-btn { display:inline-flex; align-items:center; gap:7px; padding:9px 14px; font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--text-3); background:none; border:none; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; transition:color .15s; font-family:var(--font-body); }
+.exec-tab-btn:hover { color:var(--text-2); }
+.exec-tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+.exec-panel { display:none; }
+.exec-panel.active { display:block; }
+
+/* ─── OFFER LADDER ─── */
+.off-rungs { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:16px; }
+.off-rung { background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:13px 15px; cursor:pointer; transition:border-color .15s,background .15s; }
+.off-rung:hover { border-color:var(--text-3); }
+.off-rung.gap { border-color:rgba(235,180,84,.4); background:var(--amber-soft); }
+.off-rung.gap .off-rung-meta { color:var(--amber); }
+.off-rung.sel { border-color:var(--zone); background:var(--zone-soft); }
+.off-rung-name { font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text); }
+.off-rung-meta { font-size:11.5px; color:var(--text-3); margin-top:5px; }
+.off-note { font-size:11.5px; color:var(--text-3); margin:14px 0 9px; }
+
 /* state visibility */
 body[data-state="calm"] .show-stressed { display:none !important; }
 body[data-state="stressed"] .show-calm { display:none !important; }
@@ -183,6 +203,12 @@ body:not([data-state]) .dv-content { display:none; }
     </div>
   </div>
 
+  <div class="tab-bar">
+    <button class="exec-tab-btn active" data-go="clients">CLIENTS</button>
+    <button class="exec-tab-btn" data-go="offers">OFFERS</button>
+  </div>
+
+  <section class="exec-panel active" data-panel="clients">
   <div id="dv-error"></div>
   <div id="dv-loading">Loading delivery…</div>
 
@@ -222,6 +248,17 @@ body:not([data-state]) .dv-content { display:none; }
     </div>
     <div class="section show-calm t-card" data-persist-key="deliver-clean" id="sec-clean"></div>
   </div>
+  </section>
+
+  <section class="exec-panel" data-panel="offers">
+    <div class="t-card" data-persist-key="deliver-offers-card">
+      <div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Offer catalog health</div></div><span class="count zone" id="off-count"></span></div>
+      <div class="t-body">
+        <div style="font-size:12px;color:var(--text-3);margin-bottom:14px">Products — finish, publish, and close ladder gaps</div>
+        <div id="off-body"><div class="empty-line">Loading offer catalog…</div></div>
+      </div>
+    </div>
+  </section>
 </div>
 
 <!-- LOG TIME / ESTIMATE MODAL -->
@@ -546,6 +583,67 @@ window.onMeModeChange = function(){
 };
 ME = (window.LRLShell && LRLShell.meMode()) ? 1 : 0;
 load(ME);
+
+// ── Offers tab ──
+let OFFERS = null, offerRungOpen = null;
+async function loadOffers(fresh) {
+  try { OFFERS = await fetch('/api/deliver/offers' + (fresh ? '?fresh=1' : '')).then(r => r.json()); }
+  catch (e) { OFFERS = { error: String((e && e.message) || e) }; }
+  renderOffers();
+}
+function offerRowHTML(o) {
+  const live = o.status === 'Published';
+  const url = o.url || o.notionUrl;
+  const why = o.status + (o.url ? ' · has landing URL' : ' · no URL yet') + (o.fillsGap ? ' · fills a ladder gap' : '');
+  return `<div class="row ${live ? 'l-green' : 'l-amber'}">
+    <div class="main"><div class="title"><span class="chip ${live ? 'green' : 'amber'}">${esc(o.status)}</span> ${esc(o.name)}</div><div class="meta">${esc(why)}</div></div>
+    <div class="right">${url ? `<a class="miniact" href="${url}" target="_blank">Open</a>` : ''}</div></div>`;
+}
+function renderOffers() {
+  const el = document.getElementById('off-body'); if (!el) return;
+  const d = OFFERS;
+  if (!d) { el.innerHTML = '<div class="empty-line">Loading offer catalog…</div>'; return; }
+  if (d.error) { el.innerHTML = '<div class="empty-line">Couldn\'t load offers: ' + esc(d.error) + '</div>'; return; }
+  document.getElementById('off-count').textContent = d.totalOffers ?? (d.offers || []).length;
+  const rungs = (d.ladder || []).map((l) => {
+    const live = l.live > 0, draftN = l.total - l.live, sel = offerRungOpen === l.name;
+    return `<div class="off-rung${live ? '' : ' gap'}${sel ? ' sel' : ''}" data-rung="${esc(l.name)}"><div class="off-rung-name">${esc(l.name)}</div><div class="off-rung-meta">${live ? ('✓ ' + l.live + ' live') : '⚠ none live'}${draftN > 0 ? (' · ' + draftN + ' draft') : ''}</div></div>`;
+  }).join('');
+  let html = '<div class="off-rungs">' + rungs + '</div>';
+  if (offerRungOpen) {
+    const list = (d.offers || []).filter((o) => (o.categories || []).includes(offerRungOpen))
+      .sort((a, b) => ((a.status === 'Published' ? 0 : 1) - (b.status === 'Published' ? 0 : 1)) || a.name.localeCompare(b.name));
+    html += '<div class="off-note">' + esc(offerRungOpen) + ' — ' + list.length + ' offer' + (list.length === 1 ? '' : 's') + ' · tap the rung again to clear</div>';
+    html += list.length ? '<div class="rows">' + list.map(offerRowHTML).join('') + '</div>' : '<div class="empty-line">No offers in this rung yet.</div>';
+  } else {
+    const drafts = d.drafts || [];
+    if (drafts.length) {
+      html += '<div class="off-note">Finish &amp; publish (' + drafts.length + ') · or tap a rung above to filter:</div>';
+      html += '<div class="rows">' + drafts.slice(0, 10).map(offerRowHTML).join('') + '</div>';
+      if (drafts.length > 10) html += '<div class="more-line">+' + (drafts.length - 10) + ' more drafts</div>';
+    } else html += '<div class="off-note">Every offer is published. 🎉 Tap a rung to see its offers.</div>';
+  }
+  el.innerHTML = html;
+  el.querySelectorAll('[data-rung]').forEach((c) => c.addEventListener('click', () => {
+    const n = c.getAttribute('data-rung'); offerRungOpen = offerRungOpen === n ? null : n; renderOffers();
+  }));
+}
+
+// ── Tab switcher ──
+(() => {
+  const panels = [...document.querySelectorAll('.exec-panel')];
+  const btns = [...document.querySelectorAll('.exec-tab-btn')];
+  function showPanel(name) {
+    panels.forEach((p) => p.classList.toggle('active', p.dataset.panel === name));
+    btns.forEach((b) => b.classList.toggle('active', b.dataset.go === name));
+    try { localStorage.setItem('lrl-delight-panel', name); } catch (e) {}
+    if (name === 'offers' && OFFERS === null) loadOffers();
+  }
+  btns.forEach((b) => b.addEventListener('click', () => showPanel(b.dataset.go)));
+  let start = 'clients';
+  try { const s = localStorage.getItem('lrl-delight-panel'); if (s && panels.some((p) => p.dataset.panel === s)) start = s; } catch (e) {}
+  showPanel(start);
+})();
 </script>
 <script src="/shell.js"></script>
 </body></html>

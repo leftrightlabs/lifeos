@@ -373,6 +373,13 @@ body {
 .tm-field input, .tm-field select, .tm-field textarea { width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: var(--font-body); font-size: var(--fs-body); color: var(--text); }
 .tm-field textarea { resize: vertical; min-height: 54px; }
 .tm-field input:focus, .tm-field select:focus, .tm-field textarea:focus { outline: none; border-color: var(--accent); }
+.tm-combo { position: relative; }
+.tm-combo-list { position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; max-height: 240px; overflow-y: auto; z-index: 10; display: none; box-shadow: 0 14px 36px rgba(0,0,0,.55); }
+.tm-combo-list.open { display: block; }
+.tm-combo-opt { padding: 9px 12px; font-size: var(--fs-body); color: var(--text); cursor: pointer; }
+.tm-combo-opt:hover { background: var(--surface-3, rgba(255,255,255,.05)); }
+.tm-combo-opt.sel { color: var(--accent); font-weight: 600; }
+.tm-combo-empty { padding: 9px 12px; font-size: 13px; color: var(--text-3); }
 .tm-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .tm-check { display: flex; align-items: center; gap: 9px; font-size: var(--fs-body-sm); color: var(--text-2); margin-bottom: 14px; cursor: pointer; }
 .tm-check input { width: 18px; height: 18px; accent-color: var(--accent); }
@@ -891,7 +898,13 @@ body { overflow-x: hidden; }
     <div class="tm-head"><div class="tm-title">Edit Task</div><button class="tm-close" onclick="closeTaskModal()" aria-label="Close">×</button></div>
     <div class="tm-pill work" id="tmPill"><span class="dot"></span><span id="tmPillLabel">Work</span></div>
     <div class="tm-field"><label>Task</label><textarea id="tmName" rows="2" placeholder="Task name"></textarea></div>
-    <div class="tm-field"><label>Project</label><select id="tmProject"></select></div>
+    <div class="tm-field"><label>Project</label>
+      <div class="tm-combo">
+        <input type="text" id="tmProjectSearch" placeholder="Search projects…" autocomplete="off" oninput="tmProjectFilter(this.value)" onfocus="tmProjectOpen()" onblur="tmProjectBlur()">
+        <input type="hidden" id="tmProject">
+        <div class="tm-combo-list" id="tmProjectList"></div>
+      </div>
+    </div>
     <div class="tm-field" id="tmAssigneeField"><label>Assigned to</label><select id="tmAssignee"><option value="">— unassigned —</option></select></div>
     <div class="tm-field" id="tmFollowingField"><label>Following</label><div id="tmFollowingList" class="tm-checklist"></div></div>
     <label class="tm-check"><input type="checkbox" id="tmMyDay"> Pin to My Day</label>
@@ -1896,6 +1909,36 @@ function populateFollowingList(listEl, currentIds) {
     .map(m => `<label><input type="checkbox" value="${m.id}"${(currentIds||[]).includes(m.id) ? ' checked' : ''}> ${escName(m.name)}</label>`)
     .join('');
 }
+// ── Searchable project picker (combobox over _projectMap) ──
+let _tmProjects = [];
+function tmRenderProjectList(filter) {
+  const q = (filter || '').trim().toLowerCase();
+  const selId = document.getElementById('tmProject').value;
+  const matches = _tmProjects.filter(p => !q || p.name.toLowerCase().includes(q));
+  let html = `<div class="tm-combo-opt${!selId ? ' sel' : ''}" data-pid="">— none —</div>`;
+  html += matches.map(p => `<div class="tm-combo-opt${selId === p.id ? ' sel' : ''}" data-pid="${p.id}">${escName(p.name)}</div>`).join('');
+  if (!matches.length && q) html += '<div class="tm-combo-empty">No projects match</div>';
+  const list = document.getElementById('tmProjectList');
+  list.innerHTML = html;
+  list.querySelectorAll('[data-pid]').forEach(el => el.addEventListener('mousedown', (e) => {
+    e.preventDefault();                       // keep focus so blur doesn't fire first
+    tmSelectProject(el.getAttribute('data-pid'));
+    document.getElementById('tmProjectList').classList.remove('open');
+  }));
+}
+function tmSelectProject(pid) {
+  document.getElementById('tmProject').value = pid || '';
+  const p = _tmProjects.find(x => x.id === pid);
+  document.getElementById('tmProjectSearch').value = p ? p.name : '';
+}
+function tmProjectOpen() { document.getElementById('tmProjectList').classList.add('open'); tmRenderProjectList(''); document.getElementById('tmProjectSearch').select(); }
+function tmProjectFilter(v) { document.getElementById('tmProjectList').classList.add('open'); tmRenderProjectList(v); }
+function tmProjectBlur() {
+  setTimeout(() => {
+    document.getElementById('tmProjectList').classList.remove('open');
+    tmSelectProject(document.getElementById('tmProject').value);   // restore display text
+  }, 120);
+}
 function openTaskModal(i) {
   const t = plan[i]; if (!t) return;
   _editIdx = i;
@@ -1903,10 +1946,11 @@ function openTaskModal(i) {
   document.getElementById('tmPill').className = 'tm-pill ' + (isPersonal ? 'personal' : 'work');
   document.getElementById('tmPillLabel').textContent = isPersonal ? 'Personal' : 'Work';
   document.getElementById('tmName').value = t.name || '';
-  const sel = document.getElementById('tmProject');
-  const opts = Object.values(_projectMap).filter(p => p && p.name).sort((a, b) => a.name.localeCompare(b.name));
-  sel.innerHTML = `<option value="">— none —</option>` + opts.map(p => `<option value="${p.id}">${escName(p.name)}</option>`).join('');
-  sel.value = t.projectId || '';
+  // Scope the picker to the task's kind: personal tasks → personal projects, work → work.
+  _tmProjects = Object.values(_projectMap)
+    .filter(p => p && p.name && (p.source === 'personal') === isPersonal)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  tmSelectProject(t.projectId || '');
   const assigneeSel = document.getElementById('tmAssignee');
   const assigneeField = document.getElementById('tmAssigneeField');
   const followingField = document.getElementById('tmFollowingField');
