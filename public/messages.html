@@ -161,7 +161,7 @@
 .detail-overlay.open { opacity:1; pointer-events:all; }
 .detail-panel { width:560px; max-width:100vw; height:100%; background:var(--surface); border-left:1px solid var(--border); display:flex; flex-direction:column; transform:translateX(100%); transition:transform .26s cubic-bezier(.4,0,.2,1); }
 .detail-overlay.open .detail-panel { transform:translateX(0); }
-.dp-hdr { display:flex; align-items:flex-start; gap:10px; padding:14px 16px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.dp-hdr { display:flex; align-items:flex-start; gap:10px; padding:14px 16px; padding-top:max(14px, env(safe-area-inset-top)); border-bottom:1px solid var(--border); flex-shrink:0; }
 .dp-close { width:30px; height:30px; border-radius:50%; border:none; background:var(--surface-2); color:var(--text-2); font-size:17px; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all .15s; }
 .dp-close:hover { background:var(--border); color:var(--text); }
 .dp-subject-wrap { flex:1; min-width:0; }
@@ -190,7 +190,12 @@
 .dp-plain { white-space:pre-wrap; word-break:break-word; }
 .open-external { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:var(--rs); border:1px solid var(--border); background:transparent; color:var(--text-3); font-size:12px; font-weight:500; text-decoration:none; transition:all .15s; margin-top:16px; }
 .open-external:hover { border-color:var(--accent); color:var(--accent); }
-.dp-acts { display:flex; align-items:center; gap:5px; flex-wrap:wrap; padding:10px 14px; border-top:1px solid var(--border); background:var(--surface); flex-shrink:0; }
+.dp-acts { display:flex; justify-content:space-around; align-items:center; gap:4px; padding:6px 4px; padding-bottom:max(8px, env(safe-area-inset-bottom)); border-top:1px solid var(--border); background:var(--surface); flex-shrink:0; }
+.dp-act-btn { background:transparent; border:none; cursor:pointer; color:var(--text-3); padding:10px 18px; border-radius:10px; display:flex; align-items:center; justify-content:center; transition:color .15s, background .15s; }
+.dp-act-btn svg { width:22px; height:22px; display:block; }
+.dp-act-btn:hover { color:var(--accent); background:color-mix(in srgb, var(--accent) 10%, transparent); }
+.dp-act-btn.active { color:var(--accent); }
+.dp-act-btn.danger:hover { color:var(--red); background:var(--red-soft); }
 .dp-btn { display:flex; align-items:center; gap:5px; padding:6px 11px; border-radius:var(--rs); border:1px solid var(--border); background:transparent; color:var(--text-2); font-size:12px; font-weight:500; transition:all .15s; white-space:nowrap; font-family:inherit; }
 .dp-btn:hover { background:var(--surface-2); color:var(--text); border-color:var(--text-4); }
 .dp-btn.primary { background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
@@ -307,13 +312,21 @@
       </div>
     </div>
     <div class="dp-acts" id="dp-acts">
-      <button class="dp-btn primary" onclick="openReply()">↩ Reply</button>
-      <div class="dp-sep"></div>
-      <button class="dp-btn" onclick="taskFromDetail()">✓ Task</button>
-      <button class="dp-btn" onclick="archiveDetail()">📥 Archive</button>
-      <button class="dp-btn" onclick="snoozeDetail()">⏰ Snooze</button>
-      <div class="dp-sep"></div>
-      <button class="dp-btn danger" onclick="deleteDetail()">🗑 Delete</button>
+      <button class="dp-act-btn danger" onclick="deleteDetail()" title="Delete" aria-label="Delete">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+      </button>
+      <button class="dp-act-btn" onclick="archiveDetail()" title="Archive" aria-label="Archive">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+      </button>
+      <button class="dp-act-btn" onclick="openReply()" title="Reply" aria-label="Reply">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 00-4-4H4"/></svg>
+      </button>
+      <button class="dp-act-btn" onclick="snoozeDetail()" title="Snooze" aria-label="Snooze">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/></svg>
+      </button>
+      <button class="dp-act-btn" onclick="taskFromDetail()" title="Create Notion task" aria-label="Create Notion task">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/></svg>
+      </button>
     </div>
   </div>
 </div>
@@ -636,10 +649,23 @@ async function openGmail(id){
       bodyEl.innerHTML = '';
       const iframe = document.createElement('iframe');
       iframe.className = 'dp-iframe';
-      iframe.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox');
+      // allow-same-origin (but NOT allow-scripts) lets us measure the content
+      // height to auto-size the frame; email scripts still never run.
+      iframe.setAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox');
       iframe.srcdoc = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.6;color:#1a2340;background:#fff;padding:16px 18px;margin:0;word-break:break-word}a{color:#2563EB}img{max-width:100%;height:auto}pre,code{font-size:12px;background:#f4f4f4;padding:2px 4px;border-radius:3px}</style></head><body>${d.bodyHtml}</body></html>`;
       bodyEl.appendChild(iframe);
-      iframe.addEventListener('load', () => { try { iframe.style.height = (iframe.contentDocument.body.scrollHeight + 32) + 'px'; } catch(_) {} });
+      // Re-measure as images/fonts load so the whole email shows (a single
+      // measure on load fires before images settle, cutting the body short).
+      const fitIframe = () => { try { const h = iframe.contentDocument.body.scrollHeight; if (h) iframe.style.height = (h + 24) + 'px'; } catch(_) {} };
+      iframe.addEventListener('load', () => {
+        fitIframe();
+        try {
+          const doc = iframe.contentDocument;
+          doc.querySelectorAll('img').forEach(img => { if (!img.complete) { img.addEventListener('load', fitIframe, { once:true }); img.addEventListener('error', fitIframe, { once:true }); } });
+          if (window.ResizeObserver) new ResizeObserver(fitIframe).observe(doc.body);
+        } catch(_) {}
+        [150, 500, 1200].forEach(t => setTimeout(fitIframe, t));   // safety re-measures
+      });
       bodyEl.insertAdjacentHTML('beforeend', gmailLink);
     } else {
       const text = d.bodyText ? `<div class="dp-plain">${esc(d.bodyText)}</div>` : '<p>(no content)</p>';
