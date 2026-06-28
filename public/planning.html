@@ -1661,7 +1661,8 @@ function afPatch(id, body){
     .then(r=>{if(!r.ok)throw new Error('sync failed');return r.json();});
 }
 el('list').addEventListener('click',e=>{
-  if(e.target.closest('.gh-notion'))return;   // let the Notion link open; don't toggle collapse
+  const ghn=e.target.closest('.gh-notion');
+  if(ghn){ e.preventDefault(); window.openNotion(ghn.getAttribute('href')); return; }  // hand off to the Notion app; don't toggle collapse
   const head=e.target.closest('.ghead');
   if(head){const k=head.dataset.gkey;const now=!isCollapsed(k);setCollapsed(k,now);head.classList.toggle('collapsed',now);head.parentElement.querySelector('.gbody').classList.toggle('collapsed',now);return;}
   const rowEl=e.target.closest('.quest-item');
