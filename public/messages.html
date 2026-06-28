@@ -186,6 +186,8 @@
 .dp-body-text blockquote { border-left:3px solid var(--border); margin:0 0 10px; padding:2px 0 2px 14px; color:var(--text-2); }
 .dp-body-text hr { border:none; border-top:1px solid var(--border); margin:18px 0; }
 .dp-body-text table { border-collapse:collapse; max-width:100%; } .dp-body-text td,.dp-body-text th { padding:4px 8px; text-align:left; vertical-align:top; }
+.dp-iframe { width:100%; border:none; display:block; background:#fff; border-radius:10px; min-height:200px; }
+.dp-plain { white-space:pre-wrap; word-break:break-word; }
 .open-external { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:var(--rs); border:1px solid var(--border); background:transparent; color:var(--text-3); font-size:12px; font-weight:500; text-decoration:none; transition:all .15s; margin-top:16px; }
 .open-external:hover { border-color:var(--accent); color:var(--accent); }
 .dp-acts { display:flex; align-items:center; gap:5px; flex-wrap:wrap; padding:10px 14px; border-top:1px solid var(--border); background:var(--surface); flex-shrink:0; }
@@ -307,6 +309,7 @@
     <div class="dp-acts" id="dp-acts">
       <button class="dp-btn primary" onclick="openReply()">↩ Reply</button>
       <div class="dp-sep"></div>
+      <button class="dp-btn" onclick="taskFromDetail()">✓ Task</button>
       <button class="dp-btn" onclick="archiveDetail()">📥 Archive</button>
       <button class="dp-btn" onclick="snoozeDetail()">⏰ Snooze</button>
       <div class="dp-sep"></div>
@@ -492,6 +495,7 @@ function gmailRow(m){
 // before it's sent to Notion as a to-do.
 let _taskSource = 'work';
 let _allProjects = null;
+let _taskEmailCtx = null;   // email reference baked into the new Notion task body
 function taskFromEmail(e, id){
   if (e) e.stopPropagation();
   const m = findG(id); if(!m) return;
@@ -501,10 +505,13 @@ function taskFromEmail(e, id){
   document.getElementById('tmStatus').value = 'Planned';
   document.getElementById('tmPriority').value = '';
   document.getElementById('tmDue').value = '';
+  _taskEmailCtx = { sender: m.from || m.email || '', subject: m.subject || '', url: m.url || '', snippet: m.preview || '' };
   document.getElementById('taskModal').classList.add('open');
   setTimeout(()=>document.getElementById('tmName').focus(), 30);
 }
-function closeTaskModal(){ document.getElementById('taskModal').classList.remove('open'); }
+// Open the New Task modal from the currently-open message detail view.
+function taskFromDetail(){ if(state.openSrc==='gmail' && state.openId) taskFromEmail(null, state.openId); }
+function closeTaskModal(){ document.getElementById('taskModal').classList.remove('open'); _taskEmailCtx = null; }
 function setTaskSource(s){
   _taskSource = s;
   document.querySelectorAll('#tmSeg button').forEach(b=>b.classList.toggle('active', b.dataset.src===s));
@@ -530,6 +537,15 @@ async function createTaskSubmit(){
     priority: document.getElementById('tmPriority').value || undefined,
     dueStart: document.getElementById('tmDue').value || undefined,
   };
+  if (_taskEmailCtx) {
+    const ec = _taskEmailCtx;
+    body.taskBody = [
+      ec.sender ? `From: ${ec.sender}` : null,
+      ec.subject ? `Subject: ${ec.subject}` : null,
+      ec.url ? `Link: ${ec.url}` : null,
+      ec.snippet ? `\n${ec.snippet}` : null,
+    ].filter(Boolean).join('\n');
+  }
   const btn = document.querySelector('#taskModal .tm-btn.primary');
   if(btn){ btn.disabled = true; btn.textContent = '…'; }
   try {
@@ -612,8 +628,23 @@ async function openGmail(id){
     const r = await fetch(`/api/comms/message/${id}?account=${encodeURIComponent(m.account||'work')}`); const d = await r.json();
     if (d.error) throw new Error(d.error);
     detail = d;
-    const safe = d.bodyHtml ? sanitize(d.bodyHtml) : (d.bodyText? esc(d.bodyText).split('\n').filter(Boolean).map(l=>`<p>${l}</p>`).join('') : '<p>(no content)</p>');
-    document.getElementById('dp-body-text').innerHTML = safe + `<a class="open-external" href="${esc(m.url)}" target="_blank">↗ Open in Gmail</a>`;
+    const bodyEl = document.getElementById('dp-body-text');
+    const gmailLink = `<a class="open-external" href="${esc(m.url)}" target="_blank">↗ Open in Gmail</a>`;
+    if (d.bodyHtml) {
+      // Render the real HTML email in a sandboxed iframe so it looks exactly as
+      // designed (white bg, original layout), rather than a stripped-down version.
+      bodyEl.innerHTML = '';
+      const iframe = document.createElement('iframe');
+      iframe.className = 'dp-iframe';
+      iframe.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox');
+      iframe.srcdoc = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.6;color:#1a2340;background:#fff;padding:16px 18px;margin:0;word-break:break-word}a{color:#2563EB}img{max-width:100%;height:auto}pre,code{font-size:12px;background:#f4f4f4;padding:2px 4px;border-radius:3px}</style></head><body>${d.bodyHtml}</body></html>`;
+      bodyEl.appendChild(iframe);
+      iframe.addEventListener('load', () => { try { iframe.style.height = (iframe.contentDocument.body.scrollHeight + 32) + 'px'; } catch(_) {} });
+      bodyEl.insertAdjacentHTML('beforeend', gmailLink);
+    } else {
+      const text = d.bodyText ? `<div class="dp-plain">${esc(d.bodyText)}</div>` : '<p>(no content)</p>';
+      bodyEl.innerHTML = text + gmailLink;
+    }
   } catch(e){ document.getElementById('dp-body-text').innerHTML = `<p style="color:var(--red)">Couldn't load message: ${esc(e.message)}</p>`; }
 }
 function openSlack(id){ const ch=(state.cache.slack.data?.channels||[]); let m; for(const c of ch){ const f=c.messages.find(x=>x.id===id); if(f){m=f;break;} } if(!m)return;
