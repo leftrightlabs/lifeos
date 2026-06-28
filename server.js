@@ -347,10 +347,27 @@ function parseFromHeader(value) {
 
 function findMimePart(payload, mimeType) {
   if (!payload) return null;
-  if (payload.mimeType === mimeType && payload.body?.data) return payload;
+  // Match a part by mime type whether its body is inline (`data`) or delivered
+  // as a separate attachment (`attachmentId`) — large HTML bodies (e.g. rich
+  // newsletters) come through as attachments, not inline.
+  if (payload.mimeType === mimeType && (payload.body?.data || payload.body?.attachmentId)) return payload;
   for (const part of payload.parts || []) {
     const found = findMimePart(part, mimeType);
     if (found) return found;
+  }
+  return null;
+}
+
+// Resolve a MIME part's decoded body — inline `data` if present, otherwise fetch
+// the referenced attachment (Gmail offloads large part bodies to attachments).
+async function resolveMimePartBody(gmail, messageId, part) {
+  if (!part?.body) return null;
+  if (part.body.data) return base64UrlDecode(part.body.data);
+  if (part.body.attachmentId) {
+    try {
+      const att = await gmail.users.messages.attachments.get({ userId: 'me', messageId, id: part.body.attachmentId });
+      if (att.data?.data) return base64UrlDecode(att.data.data);
+    } catch (e) { console.error('attachment body fetch failed:', e.message); }
   }
   return null;
 }
@@ -1562,8 +1579,10 @@ app.get('/api/comms/message/:id', async (req, res) => {
     const hdrs = Object.fromEntries((data.payload?.headers || []).map(h => [h.name.toLowerCase(), h.value]));
     const htmlPart = findMimePart(data.payload, 'text/html');
     const textPart = findMimePart(data.payload, 'text/plain');
-    const bodyHtml = htmlPart?.body?.data ? base64UrlDecode(htmlPart.body.data) : null;
-    const bodyText = textPart?.body?.data ? base64UrlDecode(textPart.body.data) : null;
+    const [bodyHtml, bodyText] = await Promise.all([
+      resolveMimePartBody(gmail, id, htmlPart),
+      resolveMimePartBody(gmail, id, textPart),
+    ]);
     const from = parseFromHeader(hdrs.from || '');
     // Mark as read — best-effort, scope may not exist yet
     gmail.users.messages.modify({ userId: 'me', id, requestBody: { removeLabelIds: ['UNREAD'] } }).catch(() => {});

@@ -178,8 +178,14 @@
 .dp-date { font-size:11px; color:var(--text-3); flex-shrink:0; }
 .dp-body { flex:1; overflow-y:auto; padding:20px; }
 .dp-body-text { font-size:14px; line-height:1.65; color:var(--text); word-wrap:break-word; }
-.dp-body-text p { margin-bottom:10px; } .dp-body-text a { color:var(--accent); }
-.dp-body-text img { max-width:100%; height:auto; }
+.dp-body-text p { margin-bottom:10px; } .dp-body-text a { color:var(--accent); text-decoration:underline; }
+.dp-body-text img { max-width:100%; height:auto; margin:8px 0; }
+.dp-body-text h1,.dp-body-text h2,.dp-body-text h3,.dp-body-text h4,.dp-body-text h5,.dp-body-text h6 { font-family:var(--font-display); font-weight:700; line-height:1.25; margin:18px 0 8px; color:var(--text); }
+.dp-body-text h1 { font-size:20px; } .dp-body-text h2 { font-size:18px; } .dp-body-text h3 { font-size:16px; } .dp-body-text h4,.dp-body-text h5,.dp-body-text h6 { font-size:14px; }
+.dp-body-text ul,.dp-body-text ol { margin:0 0 10px 20px; } .dp-body-text li { margin-bottom:4px; }
+.dp-body-text blockquote { border-left:3px solid var(--border); margin:0 0 10px; padding:2px 0 2px 14px; color:var(--text-2); }
+.dp-body-text hr { border:none; border-top:1px solid var(--border); margin:18px 0; }
+.dp-body-text table { border-collapse:collapse; max-width:100%; } .dp-body-text td,.dp-body-text th { padding:4px 8px; text-align:left; vertical-align:top; }
 .open-external { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:var(--rs); border:1px solid var(--border); background:transparent; color:var(--text-3); font-size:12px; font-weight:500; text-decoration:none; transition:all .15s; margin-top:16px; }
 .open-external:hover { border-color:var(--accent); color:var(--accent); }
 .dp-acts { display:flex; align-items:center; gap:5px; flex-wrap:wrap; padding:10px 14px; border-top:1px solid var(--border); background:var(--surface); flex-shrink:0; }
@@ -638,13 +644,22 @@ function snoozeDetail(){ state.snoozeTarget=state.openId; openSnooze(); }
 
 /* ── minimal HTML sanitizer (no library) ── */
 function sanitize(html){
-  const allowed = new Set(['P','BR','B','I','EM','STRONG','UL','OL','LI','A','BLOCKQUOTE','DIV','SPAN']);
+  const allowed = new Set(['P','BR','B','I','EM','STRONG','U','UL','OL','LI','A','BLOCKQUOTE','DIV','SPAN',
+    'H1','H2','H3','H4','H5','H6','HR','IMG','FIGURE','FIGCAPTION','TABLE','THEAD','TBODY','TR','TD','TH']);
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  doc.querySelectorAll('script,style,iframe,object,embed,link,meta,head,title,img').forEach(n=>n.remove());
+  doc.querySelectorAll('script,style,iframe,object,embed,link,meta,head,title').forEach(n=>n.remove());
   const walk = (node) => {
     [...node.children].forEach(el=>{
       walk(el);
       if (!allowed.has(el.tagName)) { el.replaceWith(...el.childNodes); return; }
+      if (el.tagName==='IMG'){
+        // Keep only an https/data src; drop everything else and make it responsive.
+        const src = el.getAttribute('src') || '';
+        [...el.attributes].forEach(a=>el.removeAttribute(a.name));
+        if (/^(https:|data:image\/)/i.test(src)) { el.setAttribute('src', src); el.setAttribute('loading','lazy'); el.setAttribute('style','max-width:100%;height:auto;border-radius:8px'); }
+        else { el.remove(); }
+        return;
+      }
       [...el.attributes].forEach(a=>{ const ok = el.tagName==='A' && a.name==='href' && /^(https?:|mailto:)/i.test(a.value); if(!ok) el.removeAttribute(a.name); });
       if (el.tagName==='A'){ el.setAttribute('target','_blank'); el.setAttribute('rel','noopener'); }
     });
