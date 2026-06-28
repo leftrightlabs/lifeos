@@ -663,16 +663,20 @@ function serveZone(zone) {
 }
 
 // Work zones — available to every authenticated team member.
-['attract','scale','messages','planning','reference'].forEach(zone => {
+['scale','messages','planning','reference'].forEach(zone => {
   app.get(`/${zone}`, serveZone(zone));
 });
-// Renamed zones: the page files stay convert.html / deliver.html, but the public
-// routes are /win and /delight. Old paths 301-redirect so existing links/bookmarks
-// keep working.
-app.get('/win', serveZone('convert'));
-app.get('/delight', serveZone('deliver'));
-app.get('/convert', (_req, res) => res.redirect(301, '/win'));
-app.get('/deliver', (_req, res) => res.redirect(301, '/delight'));
+// Renamed zones: the page files stay attract.html / convert.html / deliver.html,
+// but the public routes are /marketing, /sales and /production. Old paths
+// 301-redirect so existing links/bookmarks keep working.
+app.get('/marketing', serveZone('attract'));
+app.get('/sales', serveZone('convert'));
+app.get('/production', serveZone('deliver'));
+app.get('/attract', (_req, res) => res.redirect(301, '/marketing'));
+app.get('/win', (_req, res) => res.redirect(301, '/sales'));
+app.get('/delight', (_req, res) => res.redirect(301, '/production'));
+app.get('/convert', (_req, res) => res.redirect(301, '/sales'));
+app.get('/deliver', (_req, res) => res.redirect(301, '/production'));
 app.get('/execute', (_req, res) => res.redirect(301, '/planning'));
 
 // Personal (LIFE) zones — owner only. Team members are redirected to Today.

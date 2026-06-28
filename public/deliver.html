@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LRL OS · Delight</title>
+<title>LRL OS · Production</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="stylesheet" href="/styles/tokens.css">
 <link rel="stylesheet" href="/styles/app.css">
@@ -199,7 +199,7 @@ body:not([data-state]) .dv-content { display:none; }
 <div class="deliver-page">
   <div class="dv-head">
     <div class="dv-head-left">
-      <span class="dv-title">Delight</span>
+      <span class="dv-title">Production</span>
     </div>
   </div>
 
@@ -425,7 +425,7 @@ function render() {
     document.getElementById('hero').innerHTML = `<div class="eyebrow">⚡ Do this next</div><h1 class="scotch">Nothing urgent assigned to you.</h1><p class="sub">No overdue or due-soon production tasks in this view.</p>`;
   }
   const c = d.calm;
-  document.getElementById('calmpayoff').innerHTML = `${BURST}<h1 class="scotch">Everything's handled.</h1><p>All ${c.activeCount} active production project${c.activeCount === 1 ? '' : 's'} are on track. No overdue tasks, no stale client waits, nothing unbilled.</p>${c.nextDeadline ? `<p style="color:var(--text-3); font-size:12px;">Next deadline — <b style="color:var(--text-2)">${esc(c.nextDeadline.name)}, ${fmtDate(c.nextDeadline.deadline)}</b>.</p>` : ''}<div class="gozone"><a href="/attract">→ Go to Attract</a><a href="/win">→ Go to Win</a><a href="/scale">→ Go to Scale</a></div>`;
+  document.getElementById('calmpayoff').innerHTML = `${BURST}<h1 class="scotch">Everything's handled.</h1><p>All ${c.activeCount} active production project${c.activeCount === 1 ? '' : 's'} are on track. No overdue tasks, no stale client waits, nothing unbilled.</p>${c.nextDeadline ? `<p style="color:var(--text-3); font-size:12px;">Next deadline — <b style="color:var(--text-2)">${esc(c.nextDeadline.name)}, ${fmtDate(c.nextDeadline.deadline)}</b>.</p>` : ''}<div class="gozone"><a href="/marketing">→ Go to Marketing</a><a href="/sales">→ Go to Sales</a><a href="/scale">→ Go to Scale</a></div>`;
 
   const p = d.pulse;
   const wkPct = p.lastWeek ? Math.min(100, Math.round((p.shippedThisWeek / Math.max(p.lastWeek, 1)) * 100)) : (p.shippedThisWeek ? 100 : 0);
