@@ -430,6 +430,19 @@ export function registerScaleRoutes(app, {
       });
       const annualGoal = vtoQuarterList.reduce((s, q) => s + (q.goal || 0), 0) || null;
 
+      // Projected annual revenue = collected YTD + invoiced-unpaid (A/R) +
+      // accepted quotes + recurring × remaining full months of the year.
+      const currentMonthNum = Number(chicagoToday().slice(5, 7));
+      const remainingMonths = Math.max(0, 12 - currentMonthNum);
+      const collectedYtd = finance?.ytdRevenue?.actual ?? null;
+      const ar = finance?.ar ?? null;
+      const acceptedQuotes = finance?.projection?.quotesAvailable ? (finance?.projection?.acceptedQuotes ?? 0) : null;
+      const recurringMonthly = finance?.projection?.recurring ?? null;
+      const recurringRest = recurringMonthly != null ? Math.round(recurringMonthly * remainingMonths) : null;
+      const projectedAnnual = (collectedYtd != null)
+        ? Math.round((collectedYtd || 0) + (ar || 0) + (acceptedQuotes || 0) + (recurringRest || 0))
+        : null;
+
       const autoFlags = computeAutoFlags({ finance, scorecard, systemsData, rocks });
       const heroIssue = pickHero({ systemsData, autoFlags, rocks });
 
@@ -480,7 +493,16 @@ export function registerScaleRoutes(app, {
         vtoQuarters: {
           year,
           currentQ,
-          annual: { goal: annualGoal, actual: finance?.ytdRevenue?.actual ?? null },
+          annual: {
+            goal: annualGoal,
+            actual: collectedYtd,            // collected YTD (cash basis)
+            ar,                              // invoiced, not yet paid
+            acceptedQuotes,                  // null when the quotes scope isn't granted
+            recurringMonthly,
+            recurringRest,                   // recurring × remaining full months
+            remainingMonths,
+            projected: projectedAnnual,      // collected + ar + quotes + recurringRest
+          },
           quarters: vtoQuarterList,
         },
       });

@@ -248,7 +248,19 @@ body[data-state="calm"] .vto-group-head span { color:var(--green); }
 .vq-annual-pct.good { color:var(--green); }
 .vq-bar { height:10px; background:var(--surface-2); border-radius:99px; overflow:hidden; } .vq-bar i { display:block; height:100%; border-radius:99px; background:var(--zone); }
 .vq-bar.sm { height:5px; margin-top:8px; }
-.vq-gap { font-size:11px; color:var(--text-3); margin-top:8px; }
+.vq-bar.stack { display:flex; }
+.vq-bar.stack i { border-radius:0; }
+.vq-bar.stack .seg-collected { background:var(--green); }
+.vq-bar.stack .seg-proj { background:var(--zone); opacity:.55; }
+.vq-lines { margin-top:12px; }
+.vq-line { display:flex; align-items:center; justify-content:space-between; font-size:12px; padding:5px 0; border-bottom:1px solid var(--border-soft); }
+.vq-line:last-child { border-bottom:none; }
+.vq-line-l { color:var(--text-3); } .vq-line-v { color:var(--text-2); font-weight:600; }
+.vq-line-v.collected { color:var(--green); }
+.vq-line.total { margin-top:2px; padding-top:8px; border-top:1px solid var(--border); } .vq-line.total .vq-line-l { color:var(--text); font-weight:700; } .vq-line.total .vq-line-v { color:var(--text); font-weight:800; font-size:13px; }
+.vq-gap { font-size:12px; font-weight:700; color:var(--amber); margin-top:10px; }
+.vq-gap.good { color:var(--green); }
+.vq-note { font-size:10.5px; color:var(--text-4); margin-top:6px; }
 .vq-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
 @media(max-width:640px){ .vq-grid { grid-template-columns:repeat(2,1fr); } }
 .vq-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:13px 14px; cursor:pointer; transition:border-color .15s, background .15s; }
@@ -608,17 +620,33 @@ function renderVto(d){
   if(!vq){ el.innerHTML = unavail('VTO unavailable','Could not load quarterly data.'); return; }
   if(_vtoSelQ == null) _vtoSelQ = vq.currentQ || 1;
 
-  // 1. Annual financial progress
-  const ag = vq.annual?.goal, aa = vq.annual?.actual;
-  const apct = (ag && aa!=null) ? Math.min(100, Math.round((aa/ag)*100)) : null;
+  // 1. Annual financial progress — collected + pipeline (A/R + quotes +
+  // recurring rest-of-year) projected against the annual goal, with the gap.
+  const a = vq.annual || {};
+  const ag = a.goal, aa = a.actual;
+  const proj = a.projected;                     // collected + ar + quotes + recurringRest
+  const extra = (proj!=null && aa!=null) ? Math.max(0, proj - aa) : 0;  // projected-but-not-yet-collected
+  const projPct = (ag && proj!=null) ? Math.min(100, Math.round((proj/ag)*100)) : null;
+  const collPct = (ag && aa!=null) ? Math.min(100, Math.round((aa/ag)*100)) : 0;
+  const extraPct = (ag && extra) ? Math.min(100-collPct, Math.round((extra/ag)*100)) : 0;
+  const gap = (ag!=null && proj!=null) ? ag - proj : null;
+  const row = (label, val, cls) => val==null ? '' : `<div class="vq-line"><span class="vq-line-l">${label}</span><span class="vq-line-v ${cls||''}">${moneyK(val)}</span></div>`;
   const annualBody = `
     <div class="vq-annual">
       <div class="vq-annual-top">
-        <div><div class="vq-big">${aa!=null?moneyK(aa):'—'}</div><div class="vq-sub">collected of ${ag?moneyK(ag):'—'} ${vq.year} goal</div></div>
-        <div class="vq-annual-pct ${apct!=null&&apct>=100?'good':''}">${apct!=null?apct+'%':'—'}</div>
+        <div><div class="vq-big">${proj!=null?moneyK(proj):(aa!=null?moneyK(aa):'—')}</div><div class="vq-sub">projected of ${ag?moneyK(ag):'—'} ${vq.year} goal</div></div>
+        <div class="vq-annual-pct ${projPct!=null&&projPct>=100?'good':''}">${projPct!=null?projPct+'%':'—'}</div>
       </div>
-      <div class="vq-bar"><i style="width:${apct||0}%"></i></div>
-      ${ag&&aa!=null?`<div class="vq-gap">${aa>=ag?'Goal met 🎉':moneyK(ag-aa)+' to go this year'}</div>`:''}
+      <div class="vq-bar stack"><i class="seg-collected" style="width:${collPct}%"></i><i class="seg-proj" style="width:${extraPct}%"></i></div>
+      <div class="vq-lines">
+        ${row('Collected (YTD)', aa, 'collected')}
+        ${row('Invoiced, unpaid (A/R)', a.ar)}
+        ${a.acceptedQuotes!=null ? row('Accepted quotes', a.acceptedQuotes) : ''}
+        ${row(`Recurring (${a.remainingMonths!=null?a.remainingMonths+' mo':'rest of yr'})`, a.recurringRest)}
+        <div class="vq-line total"><span class="vq-line-l">Projected total</span><span class="vq-line-v">${proj!=null?moneyK(proj):'—'}</span></div>
+      </div>
+      ${gap!=null?`<div class="vq-gap ${gap<=0?'good':''}">${gap<=0?('Projected to beat goal by '+moneyK(-gap)+' 🎉'):(moneyK(gap)+' gap left to fill this year')}</div>`:''}
+      ${a.acceptedQuotes==null?`<div class="vq-note">Quotes unavailable (Xero scope) — projection excludes signed quotes.</div>`:''}
     </div>`;
   let h = scCard(`${vq.year} — Annual Revenue`, annualBody, {key:'scale-vq-annual'});
 
@@ -655,7 +683,7 @@ function renderVto(d){
         </div>`;
       }).join('') +`</div>`
     : `<div class="empty-line">No rocks for ${esc(selLabel)} in PROJECTS [DB].</div>`;
-  h += scCard(`${esc(selLabel)} Rocks (MOCs)`, rocksBody, {count:(off?off+' off track':(done?done+' done':rocks.length)), tone:off?'red':(done?'green':'zone'), key:'scale-rocks'});
+  h += scCard(`${esc(selLabel)} Rocks`, rocksBody, {count:(off?off+' off track':(done?done+' done':rocks.length)), tone:off?'red':(done?'green':'zone'), key:'scale-rocks'});
 
   // 4. EOS links out (no duplication — scorecard + issues are their own tabs)
   h += `<div class="vq-links"><button class="vq-link" onclick="showTab('scorecard')">View Scorecard →</button><button class="vq-link" onclick="showTab('issues')">Review Issues →</button></div>`;
