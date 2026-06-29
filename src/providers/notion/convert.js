@@ -37,6 +37,7 @@ export function serializeDeal(page, productMap, opts = {}) {
     assignedTo: meKey((p['Assigned To']?.people || [])[0]?.name || ''),
     assignedIds: (p['Assigned To']?.people || []).map((u) => u.id),
     products: (p['Product Interest']?.relation || []).map((r) => productMap[r.id.replace(/-/g, '')]).filter(Boolean),
+    productIds: (p['Product Interest']?.relation || []).map((r) => r.id.replace(/-/g, '')),
     archived: archivedName === '__YES__',
     created: page.created_time || null,
   };

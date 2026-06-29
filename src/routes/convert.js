@@ -1,4 +1,4 @@
-import { SALES_STAGES, SALES_STAGE_GROUP, CONTACTS_DS, SALES_ACTIVITY_DS, TRINA_USER_ID, PULSE_RELATIONSHIPS, PULSE_TOUCHPOINTS, PULSE_GOAL, SALES_GOAL, CONVERT_FOLLOWUP_STAGES } from '../config/convert.js';
+import { SALES_STAGES, SALES_STAGE_GROUP, SALES_PIPELINE_DS, CONTACTS_DS, SALES_ACTIVITY_DS, TRINA_USER_ID, PULSE_RELATIONSHIPS, PULSE_TOUCHPOINTS, PULSE_GOAL, SALES_GOAL, CONVERT_FOLLOWUP_STAGES } from '../config/convert.js';
 import { serializeDeal, serializeContactRow, queryAllDeals, fetchSalesProductMap } from '../providers/notion/convert.js';
 
 export function registerConvertRoutes(app, ctx) {
@@ -59,12 +59,39 @@ app.get('/api/convert/deal/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// PATCH /api/convert/deal/:id — move stage, edit value, mark won/lost.
+// GET /api/convert/deal-meta — option lists for the deal-edit modal: pipeline
+// statuses, Type of Sale select options, and the product catalog (for the
+// searchable Product Interest picker).
+app.get('/api/convert/deal-meta', async (_req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    const meta = await cached('sales-deal-meta', async () => {
+      const productMap = await fetchSalesProductMap(notion, cached).catch(() => ({}));
+      const products = Object.entries(productMap)
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      let typesOfSale = [];
+      try {
+        const ds = await notion.dataSources.retrieve({ data_source_id: SALES_PIPELINE_DS });
+        typesOfSale = (ds.properties?.['Type of Sale']?.select?.options || []).map((o) => o.name);
+      } catch (e) { /* leave empty — modal still works without type options */ }
+      return { statuses: SALES_STAGES.map((s) => s.name), typesOfSale, products };
+    });
+    res.json(meta);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// PATCH /api/convert/deal/:id — edit a deal: name, value, stage, type of sale,
+// product interest, call-booked / won / lost dates. (Last Touched is a rollup
+// computed from logged touchpoints and is therefore read-only.)
 app.patch('/api/convert/deal/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  const { status, value, dateWon, dateLost } = req.body || {};
+  const { name, status, value, typeOfSale, productIds, callBooked, dateWon, dateLost } = req.body || {};
   try {
     const properties = {};
+    if (name !== undefined && String(name).trim()) {
+      properties['Deal Name'] = { title: [{ text: { content: String(name).trim().slice(0, 200) } }] };
+    }
     if (status !== undefined && status !== null) {
       properties['Pipeline Status'] = { status: { name: status } };
       // Stamp the win/loss date automatically when entering a closed stage.
@@ -72,11 +99,15 @@ app.patch('/api/convert/deal/:id', async (req, res) => {
       if (status === 'Closed Lost' && dateLost === undefined) properties['Date Lost'] = { date: { start: chicagoTodayISODate() } };
     }
     if (value !== undefined) properties['Deal Value'] = { number: value === null || value === '' ? null : Number(value) };
+    if (typeOfSale !== undefined) properties['Type of Sale'] = typeOfSale ? { select: { name: typeOfSale } } : { select: null };
+    if (Array.isArray(productIds)) properties['Product Interest'] = { relation: productIds.map((id) => ({ id: dashifyId(id) })) };
+    if (callBooked !== undefined) properties['Call Booked'] = callBooked ? { date: { start: callBooked } } : { date: null };
     if (dateWon !== undefined) properties['Date Won'] = dateWon ? { date: { start: dateWon } } : { date: null };
     if (dateLost !== undefined) properties['Date Lost'] = dateLost ? { date: { start: dateLost } } : { date: null };
     if (!Object.keys(properties).length) return res.status(400).json({ error: 'no supported fields to update' });
     await notion.pages.update({ page_id: dashifyId(req.params.id), properties });
     cache.delete('sales-pipeline');
+    cache.delete('convert-page');
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

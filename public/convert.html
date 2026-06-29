@@ -265,6 +265,10 @@ body.state-calm .calm-hero { display:flex; }
 /* ── Contact history in log modal ── */
 .modal-notion-link { font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--text-3); text-decoration:none; padding:3px 9px; border:1px solid var(--border); border-radius:var(--radius-xs); white-space:nowrap; transition:all .15s; }
 .modal-notion-link:hover { color:var(--text-2); border-color:var(--text-3); }
+.tm-clear { background:none; border:none; color:var(--text-3); font-size:10px; font-weight:600; cursor:pointer; padding:0 0 0 6px; text-transform:uppercase; letter-spacing:.04em; float:right; }
+.tm-clear:hover { color:var(--text-2); }
+#deal-prod-list { position:absolute; left:0; right:0; top:100%; z-index:20; background:var(--surface); box-shadow:0 12px 32px rgba(0,0,0,.45); }
+#deal-callbooked, #deal-won { color-scheme:dark; }
 .tp-hist-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
 .tp-hist-scroll { max-height:160px; overflow-y:auto; }
 .tp-hist-row { display:flex; gap:8px; padding:6px 0; border-bottom:1px solid var(--border-soft); align-items:baseline; font-size:12px; line-height:1.4; }
@@ -544,6 +548,60 @@ body.state-calm .calm-hero { display:flex; }
   </div>
 </div>
 
+<!-- DEAL EDIT MODAL -->
+<div class="modal-overlay" id="deal-modal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head"><h3>Edit Deal</h3><a id="deal-notion-link" href="#" target="_blank" class="modal-notion-link" style="display:none">Open in Notion ↗</a><button class="modal-close" onclick="closeDeal()">×</button></div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label class="modal-label">Name</label>
+        <input class="modal-input" id="deal-name" placeholder="Deal name" autocomplete="off">
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label class="modal-label">Deal Value</label>
+          <input class="modal-input" id="deal-value" type="number" min="0" step="50" inputmode="decimal" placeholder="e.g. 2500">
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Pipeline Status</label>
+          <select class="modal-select" id="deal-status"></select>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Product Interest</label>
+        <div class="dp" id="deal-prod-combo">
+          <input class="modal-input" id="deal-prod-search" placeholder="Search products…" autocomplete="off" oninput="dealProdFilter(this.value)" onfocus="dealProdOpen()" onblur="dealProdBlur()">
+          <input type="hidden" id="deal-prod-id">
+          <div class="modal-search-results" id="deal-prod-list"></div>
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label class="modal-label">Type of Sale</label>
+          <select class="modal-select" id="deal-type"></select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Last Touched</label>
+          <input class="modal-input" id="deal-touched" disabled title="Set automatically from logged touchpoints">
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label class="modal-label">Call Booked <button type="button" class="tm-clear" onclick="document.getElementById('deal-callbooked').value=''">Clear</button></label>
+          <input class="modal-input" id="deal-callbooked" type="date">
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Date Won <button type="button" class="tm-clear" onclick="document.getElementById('deal-won').value=''">Clear</button></label>
+          <input class="modal-input" id="deal-won" type="date">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-primary" id="deal-save" onclick="submitDeal()" style="width:100%">Save</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"><span class="toast-dot"></span><span id="toast-text"></span></div>
 <a href="/" class="fab" title="Back to Today">⚡</a>
 
@@ -814,12 +872,12 @@ function renderPipeline() {
       const age = daysSince(d.lastTouched);
       const ac = age >= 14 ? 'bad' : age >= 7 ? 'warn' : 'ok';
       const ageTxt = isFinite(age) ? (age === 0 ? 'today' : age + 'd') : '—';
-      return `<a class="kan-card" href="${d.url}" target="_blank">
+      return `<div class="kan-card" onclick="openDeal('${d.id}')" style="cursor:pointer">
         <div class="kan-card-name">${esc(d.name)}</div>
         <div class="kan-card-foot">
           <span class="kan-card-val">${d.value ? fmtMoneyK(d.value) : ''}</span>
           <span class="kan-card-age ${ac}">${ageTxt}</span>
-        </div></a>`;
+        </div></div>`;
     }).join('') : '<div class="kan-empty">—</div>';
     return `<div class="kan-col">
       <div class="kan-col-head"><span class="kan-col-title">${col}</span><span class="kan-col-count">${inCol.length}</span></div>
@@ -1263,6 +1321,102 @@ async function openTpDrill(title, period, typeFilter) {
   } catch (e) { body.innerHTML = `<div class="tp-drill-empty">${esc(e.message)}</div>`; }
 }
 function closeTpDrill() { document.getElementById('tp-drill-modal').classList.remove('open'); }
+
+// ─── Deal edit modal ──────────────────────────────────────────────────────────
+// Notion URL → notion:// deep link so "Open in Notion" hands off to the app.
+function dealNotionLink(url) { if (!url) return url; const m = url.match(/([a-f0-9]{32})/i); if (m) return 'notion://www.notion.so/' + m[1]; if (url.startsWith('https://www.notion.so/')) return url.replace('https://', 'notion://'); return url; }
+function openDealInNotion() { const u = _dealNotionUrl; if (!u) return; const link = dealNotionLink(u); if (link && link.startsWith('notion://')) window.location.href = link; else window.open(u, '_blank', 'noopener'); }
+
+let _dealId = null, _dealNotionUrl = null, _dealMeta = null, _dealProducts = [];
+const fmtDealDate = (iso) => iso ? new Date(iso.slice(0,10) + 'T00:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '—';
+
+async function loadDealMeta() {
+  if (_dealMeta) return _dealMeta;
+  try { _dealMeta = await (await fetch('/api/convert/deal-meta')).json(); }
+  catch (_) { _dealMeta = { statuses: [], typesOfSale: [], products: [] }; }
+  _dealProducts = _dealMeta.products || [];
+  return _dealMeta;
+}
+// ── searchable product picker ──
+function dealProdRender(filter) {
+  const q = (filter || '').trim().toLowerCase();
+  const selId = document.getElementById('deal-prod-id').value;
+  const matches = _dealProducts.filter((p) => !q || p.name.toLowerCase().includes(q));
+  let html = `<div class="msr-item${!selId ? '' : ''}" data-pid="">— none —</div>`;
+  html += matches.slice(0, 50).map((p) => `<div class="msr-item" data-pid="${p.id}"${selId === p.id ? ' style="color:var(--accent)"' : ''}>${esc(p.name)}</div>`).join('');
+  if (!matches.length && q) html += '<div class="msr-item" style="color:var(--text-3)">No products match</div>';
+  const list = document.getElementById('deal-prod-list');
+  list.innerHTML = html;
+  list.querySelectorAll('[data-pid]').forEach((el) => el.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    dealProdSelect(el.getAttribute('data-pid'));
+    list.classList.remove('show');
+  }));
+}
+function dealProdSelect(pid) {
+  document.getElementById('deal-prod-id').value = pid || '';
+  const p = _dealProducts.find((x) => x.id === pid);
+  document.getElementById('deal-prod-search').value = p ? p.name : '';
+}
+function dealProdOpen() { const l = document.getElementById('deal-prod-list'); l.classList.add('show'); dealProdRender(''); document.getElementById('deal-prod-search').select(); }
+function dealProdFilter(v) { document.getElementById('deal-prod-list').classList.add('show'); dealProdRender(v); }
+function dealProdBlur() { setTimeout(() => { document.getElementById('deal-prod-list').classList.remove('show'); dealProdSelect(document.getElementById('deal-prod-id').value); }, 150); }
+
+async function openDeal(id) {
+  _dealId = id;
+  document.getElementById('deal-modal').classList.add('open');
+  // Reset to a loading-ish state
+  document.getElementById('deal-name').value = '…';
+  document.getElementById('deal-notion-link').style.display = 'none';
+  await loadDealMeta();
+  // Fill the status + type selects from meta
+  document.getElementById('deal-status').innerHTML = (_dealMeta.statuses || []).map((s) => `<option>${esc(s)}</option>`).join('');
+  document.getElementById('deal-type').innerHTML = '<option value="">— none —</option>' + (_dealMeta.typesOfSale || []).map((t) => `<option>${esc(t)}</option>`).join('');
+  let deal;
+  try { deal = (await (await fetch('/api/convert/deal/' + encodeURIComponent(id))).json()).deal; }
+  catch (_) { toast("Couldn't load deal"); return; }
+  if (!deal) { toast('Deal not found'); return; }
+  _dealNotionUrl = deal.url || null;
+  const nl = document.getElementById('deal-notion-link');
+  if (_dealNotionUrl) { nl.style.display = ''; nl.onclick = (e) => { e.preventDefault(); openDealInNotion(); }; } else { nl.style.display = 'none'; }
+  document.getElementById('deal-name').value = deal.name && deal.name !== '(untitled deal)' ? deal.name : '';
+  document.getElementById('deal-value').value = (deal.value != null ? deal.value : '');
+  if (deal.status) document.getElementById('deal-status').value = deal.status;
+  document.getElementById('deal-type').value = deal.typeOfSale || '';
+  document.getElementById('deal-touched').value = fmtDealDate(deal.lastTouched);
+  document.getElementById('deal-callbooked').value = deal.callBooked ? deal.callBooked.slice(0, 10) : '';
+  document.getElementById('deal-won').value = deal.dateWon ? deal.dateWon.slice(0, 10) : '';
+  dealProdSelect((deal.productIds || [])[0] || '');
+  document.getElementById('deal-prod-list').classList.remove('show');
+}
+function closeDeal() { document.getElementById('deal-modal').classList.remove('open'); _dealId = null; }
+
+async function submitDeal() {
+  if (!_dealId) return;
+  const btn = document.getElementById('deal-save');
+  const valRaw = document.getElementById('deal-value').value;
+  const prodId = document.getElementById('deal-prod-id').value;
+  const body = {
+    name: document.getElementById('deal-name').value.trim(),
+    value: valRaw === '' ? null : Number(valRaw),
+    status: document.getElementById('deal-status').value,
+    typeOfSale: document.getElementById('deal-type').value || null,
+    productIds: prodId ? [prodId] : [],
+    callBooked: document.getElementById('deal-callbooked').value || null,
+    dateWon: document.getElementById('deal-won').value || null,
+  };
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await fetch('/api/convert/deal/' + encodeURIComponent(_dealId), {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'failed');
+    toast('Deal saved ✓');
+    closeDeal();
+    try { DATA = await fetchJSON('/api/convert?fresh=1'); renderPipelineBar(); renderCalm(); renderDoNext(); renderFollowUps(); renderPipeline(); renderReachOut(); } catch (_) {}
+  } catch (err) { toast("Couldn't save: " + err.message); }
+  finally { btn.disabled = false; btn.textContent = 'Save'; }
+}
 
 // ─── Tab switcher ─────────────────────────────────────────────────────────────
 (() => {
