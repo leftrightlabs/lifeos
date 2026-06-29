@@ -1153,6 +1153,10 @@ function renderOneThing() {
   setCardDone('oneThingArea', false); // reset; done paths below will override to true
   const area = document.getElementById('oneThingArea');
 
+  // A manual pick for the current mode (Work or Personal) wins over the auto-pick.
+  const _otOv = getOTOverride();
+  if (_otOv) { _renderOTOverride(area, _otOv); return; }
+
   if (state.mode === 'personal') {
     if (state.personalOneThing === 'done' || state.personalOneThing === 'credited') {
       const tname = _personalOneThingTask?.name || 'task';
@@ -1241,10 +1245,6 @@ function renderOneThing() {
     _restoreCardCollapse('onething', '#otCard');
     return;
   }
-
-  // Check for a manual override (work / all mode only)
-  const _otOv = getOTOverride();
-  if (_otOv) { _renderOTOverride(area, _otOv); return; }
 
   if (!_oneThingTask && state.oneThing !== 'done') { area.innerHTML = oneThingEmpty('work'); return; }
 
@@ -1405,7 +1405,10 @@ function undoOneThing() {
 }
 
 // ── ONE THING OVERRIDE ──
-function _otKey() { return 'lrl-ot-override-' + todayISO(); }
+// Scoped per mode so Work and Personal each keep their own manual pick — picking
+// in one mode never overwrites the other. 'all' shares the Work pick.
+function _otScope() { return state.mode === 'personal' ? 'personal' : 'work'; }
+function _otKey(scope) { return 'lrl-ot-override-' + (scope || _otScope()) + '-' + todayISO(); }
 function getOTOverride() { try { return JSON.parse(localStorage.getItem(_otKey())); } catch { return null; } }
 function setOTOverride(o) { try { localStorage.setItem(_otKey(), JSON.stringify(o)); } catch {} syncTodayState(); }
 function clearOTOverride() { try { localStorage.removeItem(_otKey()); } catch {} syncTodayState(); }
@@ -1419,9 +1422,11 @@ function syncTodayState() {
   _stateSyncT = setTimeout(() => {
     let onething = {};
     try { onething = JSON.parse(localStorage.getItem('today-onething') || '{}'); } catch {}
+    const otWork = (() => { try { return JSON.parse(localStorage.getItem(_otKey('work')) || 'null'); } catch { return null; } })();
+    const otPersonal = (() => { try { return JSON.parse(localStorage.getItem(_otKey('personal')) || 'null'); } catch { return null; } })();
     fetch('/api/today/state', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: todayISO(), otOverride: getOTOverride(), onething }),
+      body: JSON.stringify({ date: todayISO(), otWork, otPersonal, onething }),
     }).catch(() => {});
   }, 250);
 }
@@ -1431,8 +1436,11 @@ async function loadTodayStateFromServer() {
   try {
     const d = await fetch('/api/today/state').then(r => r.json());
     if (!d || !d.date || d.date !== todayISO()) return;
-    if (d.otOverride) localStorage.setItem(_otKey(), JSON.stringify(d.otOverride));
-    else localStorage.removeItem(_otKey());
+    // Per-mode picks. Fall back to the legacy single otOverride (→ work) for any
+    // record written before the split.
+    const otWork = d.otWork ?? d.otOverride ?? null;
+    if (otWork) localStorage.setItem(_otKey('work'), JSON.stringify(otWork)); else localStorage.removeItem(_otKey('work'));
+    if (d.otPersonal) localStorage.setItem(_otKey('personal'), JSON.stringify(d.otPersonal)); else localStorage.removeItem(_otKey('personal'));
     if (d.onething) localStorage.setItem('today-onething', JSON.stringify(d.onething));
   } catch {}
 }
@@ -1529,11 +1537,17 @@ function markOverrideDone() {
     renderOneThing();
     return;
   }
-  // Task: slot it into _oneThingTask so markDone() fires correctly
+  // Task: route to the completion flow for the current mode.
   const planTask = plan.find(t => t.id === ov.id);
-  _oneThingTask = planTask || { id: ov.id, name: ov.name, url: ov.url, status: 'Planned', source: 'work' };
-  clearOTOverride();
-  markDone();
+  if (_otScope() === 'personal') {
+    _personalOneThingTask = planTask || { id: ov.id, name: ov.name, url: ov.url, status: 'Planned', type: 'personal' };
+    clearOTOverride();
+    markPersonalDone();
+  } else {
+    _oneThingTask = planTask || { id: ov.id, name: ov.name, url: ov.url, status: 'Planned', source: 'work' };
+    clearOTOverride();
+    markDone();
+  }
 }
 function _renderOTOverride(area, ov) {
   const typeCfg = {

@@ -704,7 +704,14 @@ app.get('/api/today/state', (req, res) => {
 });
 app.put('/api/today/state', (req, res) => {
   const b = req.body || {};
-  _todayState[_todayStateKey(req)] = { date: String(b.date || ''), otOverride: b.otOverride ?? null, onething: b.onething ?? null };
+  // One Thing pick is scoped per mode (otWork / otPersonal). Accept the legacy
+  // single otOverride as the work pick for older clients.
+  _todayState[_todayStateKey(req)] = {
+    date: String(b.date || ''),
+    otWork: b.otWork ?? b.otOverride ?? null,
+    otPersonal: b.otPersonal ?? null,
+    onething: b.onething ?? null,
+  };
   _persistTodayState();
   res.json({ ok: true, stored: true });
 });
@@ -3087,6 +3094,12 @@ async function checkinFetchCalendar() {
 async function checkinFetchTasks() {
   const data = await queryTasks(WORK_TASKS_DS, { peopleProp: 'Assigned', myDayOnly: true });
   const pages = data.results.filter((p) => {
+    // queryTasks(myDayOnly) also returns anything completed today (to catch tasks
+    // Notion auto-unchecks on completion). The check-in only lists what's actually
+    // planned for today, so keep only genuine My Day tasks — this mirrors Today's
+    // Plan and drops e.g. a recurring task that was completed then rescheduled to
+    // Planned with My Day unchecked.
+    if (!p.properties?.['My Day']?.checkbox) return false;
     const name = (p.properties?.Name?.title?.[0]?.plain_text || '').toLowerCase();
     // Exclude any "Daily Planning" task (e.g. "Daily Planning", "G's Daily Planning", etc.)
     return !name.includes('daily planning');
