@@ -915,14 +915,12 @@ async function fetchGoalsForSource(projectsDs, tasksDs, source, projectPropName)
     const props = proj.properties || {};
     let milestones = [];
     try {
+      // Every task in a Rock project is treated as a milestone — progress tracks
+      // task completion across the whole rock, so the bar moves as tasks get
+      // checked off (the Milestone field is no longer used to gate this).
       const tasksRes = await notion.dataSources.query({
         data_source_id: tasksDs,
-        filter: {
-          and: [
-            { property: projectPropName, relation: { contains: proj.id } },
-            { property: 'Milestone', checkbox: { equals: true } },
-          ],
-        },
+        filter: { property: projectPropName, relation: { contains: proj.id } },
         sorts: [
           { property: 'Due', direction: 'ascending' },
           { timestamp: 'created_time', direction: 'ascending' },

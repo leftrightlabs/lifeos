@@ -145,15 +145,13 @@ export async function fetchRocks(notion, { projectsDs, tasksDs, projectPropName 
   }
   return Promise.all(res.results.map(async (page) => {
     const rock = serializeRock(page);
-    // Milestone sub-tasks → fallback % + next action.
+    // Every task in a Rock project counts toward progress (the Milestone field
+    // is no longer used to gate this) → fallback % + next action.
     let milestones = [];
     try {
       const t = await notion.dataSources.query({
         data_source_id: tasksDs,
-        filter: { and: [
-          { property: projectPropName, relation: { contains: page.id } },
-          { property: 'Milestone', checkbox: { equals: true } },
-        ] },
+        filter: { property: projectPropName, relation: { contains: page.id } },
         sorts: [{ property: 'Due', direction: 'ascending' }, { timestamp: 'created_time', direction: 'ascending' }],
         page_size: 100,
       });
