@@ -240,6 +240,31 @@ body[data-state="calm"] .vto-group-head span { color:var(--green); }
 .vto-cell { font-size:12px; color:var(--text-3); } .vto-cell.goal { color:var(--text-2); font-weight:600; }
 .vto-actual { text-align:right; font-size:13px; font-weight:800; } .vto-actual .u { font-size:10px; color:var(--text-3); font-weight:400; }
 
+/* VTO quarterly view */
+.vq-annual-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:10px; }
+.vq-big { font-family:var(--font-display); font-size:28px; font-weight:800; color:var(--text); line-height:1; }
+.vq-sub { font-size:12px; color:var(--text-3); margin-top:4px; }
+.vq-annual-pct { font-size:15px; font-weight:800; color:var(--amber); white-space:nowrap; }
+.vq-annual-pct.good { color:var(--green); }
+.vq-bar { height:10px; background:var(--surface-2); border-radius:99px; overflow:hidden; } .vq-bar i { display:block; height:100%; border-radius:99px; background:var(--zone); }
+.vq-bar.sm { height:5px; margin-top:8px; }
+.vq-gap { font-size:11px; color:var(--text-3); margin-top:8px; }
+.vq-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
+@media(max-width:640px){ .vq-grid { grid-template-columns:repeat(2,1fr); } }
+.vq-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:13px 14px; cursor:pointer; transition:border-color .15s, background .15s; }
+.vq-card:hover { border-color:var(--text-3); }
+.vq-card.sel { border-color:var(--zone); background:var(--zone-soft); }
+.vq-card.future { opacity:.6; }
+.vq-card-head { display:flex; align-items:center; justify-content:space-between; }
+.vq-card-q { font-size:11px; font-weight:800; letter-spacing:.06em; color:var(--text-2); }
+.vq-now { font-size:8px; font-weight:800; letter-spacing:.08em; color:var(--zone); background:var(--zone-soft); padding:2px 5px; border-radius:4px; }
+.vq-amt { font-family:var(--font-display); font-size:20px; font-weight:800; color:var(--text); line-height:1.1; margin-top:8px; }
+.vq-goal { font-size:10.5px; color:var(--text-3); margin-top:2px; }
+.vq-tbd { font-size:11px; color:var(--text-4); margin-top:10px; font-style:italic; }
+.vq-links { display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; }
+.vq-link { flex:1; min-width:140px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-2); font-size:12px; font-weight:700; padding:11px; cursor:pointer; font-family:inherit; transition:all .15s; }
+.vq-link:hover { border-color:var(--zone); color:var(--text); }
+
 .empty-line { font-size:12px; color:var(--text-3); padding:14px 4px; }
 .unavail { background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius); padding:20px; text-align:center; color:var(--text-3); font-size:12.5px; }
 .unavail b { color:var(--text-2); display:block; margin-bottom:4px; font-size:13px; }
@@ -285,6 +310,7 @@ body[data-state="calm"] .vto-group-head span { color:var(--green); }
       <button class="tab-btn" data-tab="scorecard" onclick="showTab('scorecard')">SCORECARD <span class="tab-badge red" id="badge-scorecard" style="display:none"></span></button>
       <button class="tab-btn" data-tab="finance" onclick="showTab('finance')">FINANCE</button>
       <button class="tab-btn" data-tab="systems" onclick="showTab('systems')">SYSTEMS <span class="tab-badge amber" id="badge-systems" style="display:none"></span></button>
+      <button class="tab-btn" data-tab="issues" onclick="showTab('issues')">ISSUES <span class="tab-badge red" id="badge-issues" style="display:none"></span></button>
       <button class="tab-btn" data-tab="vto" onclick="showTab('vto')">VTO <span class="tab-badge red" id="badge-vto" style="display:none"></span></button>
     </div>
 
@@ -292,6 +318,7 @@ body[data-state="calm"] .vto-group-head span { color:var(--green); }
     <div class="tab-panel" id="tab-scorecard"></div>
     <div class="tab-panel" id="tab-finance"></div>
     <div class="tab-panel" id="tab-systems"></div>
+    <div class="tab-panel" id="tab-issues"></div>
     <div class="tab-panel" id="tab-vto"></div>
 
     <div class="refreshed" id="refreshed"></div>
@@ -393,14 +420,28 @@ function renderPulse(d){
     }
   }
 
-  // auto-flags (stressed only — calm shows the green empty state instead)
+  // A nudge toward the dedicated Issues tab (flags + IDS queue live there now).
+  const flagN = flags.length, issN = issues.length;
+  if(flagN || issN){
+    const bits=[flagN?`${flagN} auto-flag${flagN>1?'s':''}`:null, `${issN} open issue${issN===1?'':'s'}`].filter(Boolean).join(' · ');
+    h += `<button class="add-issue-btn" onclick="showTab('issues')">${esc(bits)} → Review on Issues tab</button>`;
+  }
+  document.getElementById('tab-pulse').innerHTML = h;
+}
+
+// ── ISSUES (auto-flags + IDS queue, moved off Pulse) ──
+function renderIssues(d){
+  const calm = d.state==='calm';
+  const flags = d.pulse?.autoFlags||[];
+  const issues = (d.pulse?.teamIssues||[]).filter(scaleMine);
+  let h='';
+
   if(flags.length){
     const flagsBody = `<div class="issue-list">`+ flags.map(f=>`
       <div class="flag-card ${f.severity==='red'?'red':''}"><span class="fi">${f.severity==='red'?'🔴':'🟡'}</span><div><div class="ft">${esc(f.message)}</div><div class="fs">${esc(f.source)}</div></div></div>`).join('') +`</div>`;
     h += scCard('⚑ Auto-flags', flagsBody, {count:flags.length, tone:'red', key:'scale-flags'});
   }
 
-  // IDS queue
   const issuesBody = issues.length
     ? `<div class="issue-list">`+ issues.map(i=>{
         const meta=[i.assigned?('Assigned '+esc(i.assigned)):null, i.status?('Status: '+esc(i.status)):null, i.due?relDate(i.due):'No due date'].filter(Boolean).join(' · ');
@@ -412,9 +453,8 @@ function renderPulse(d){
   if(calm && !flags.length){
     h += `<div class="empty-state"><div class="ei">✓</div><div class="et">No auto-flags</div><div>Scorecard metrics are on track. No critical system gaps. Revenue pacing to goal.</div></div>`;
   }
-
   h += `<button class="add-issue-btn" onclick="toast('Add an issue in Notion → ISSUES [DB]')">+ Add issue to IDS queue</button>`;
-  document.getElementById('tab-pulse').innerHTML = h;
+  document.getElementById('tab-issues').innerHTML = h;
 }
 
 // ── SCORECARD ──
@@ -558,10 +598,49 @@ function renderSystems(d){
   el.innerHTML = h;
 }
 
-// ── VTO ──
+// ── VTO (quarterly EOS view) ──
+// Selected quarter for the MOCs section; defaults to the current quarter.
+let _vtoSelQ = null;
+function vtoSelectQuarter(n){ _vtoSelQ = n; if(DATA) renderVto(DATA); }
 function renderVto(d){
   const el = document.getElementById('tab-vto');
-  const rocks = (d.vto?.rocks||[]).filter(scaleMine);
+  const vq = d.vtoQuarters;
+  if(!vq){ el.innerHTML = unavail('VTO unavailable','Could not load quarterly data.'); return; }
+  if(_vtoSelQ == null) _vtoSelQ = vq.currentQ || 1;
+
+  // 1. Annual financial progress
+  const ag = vq.annual?.goal, aa = vq.annual?.actual;
+  const apct = (ag && aa!=null) ? Math.min(100, Math.round((aa/ag)*100)) : null;
+  const annualBody = `
+    <div class="vq-annual">
+      <div class="vq-annual-top">
+        <div><div class="vq-big">${aa!=null?moneyK(aa):'—'}</div><div class="vq-sub">collected of ${ag?moneyK(ag):'—'} ${vq.year} goal</div></div>
+        <div class="vq-annual-pct ${apct!=null&&apct>=100?'good':''}">${apct!=null?apct+'%':'—'}</div>
+      </div>
+      <div class="vq-bar"><i style="width:${apct||0}%"></i></div>
+      ${ag&&aa!=null?`<div class="vq-gap">${aa>=ag?'Goal met 🎉':moneyK(ag-aa)+' to go this year'}</div>`:''}
+    </div>`;
+  let h = scCard(`${vq.year} — Annual Revenue`, annualBody, {key:'scale-vq-annual'});
+
+  // 2. Four quarter cards (click to filter the MOCs section)
+  const cards = (vq.quarters||[]).map(q=>{
+    const sel = q.n === _vtoSelQ;
+    if(q.state==='future'){
+      return `<div class="vq-card future${sel?' sel':''}" onclick="vtoSelectQuarter(${q.n})"><div class="vq-card-q">Q${q.n}</div><div class="vq-tbd">To be determined</div></div>`;
+    }
+    const pct = (q.goal && q.actual!=null) ? Math.min(100, Math.round((q.actual/q.goal)*100)) : null;
+    return `<div class="vq-card${sel?' sel':''}${q.state==='current'?' current':''}" onclick="vtoSelectQuarter(${q.n})">
+      <div class="vq-card-head"><span class="vq-card-q">Q${q.n}</span>${q.state==='current'?'<span class="vq-now">NOW</span>':''}</div>
+      <div class="vq-amt">${q.actual!=null?moneyK(q.actual):'—'}</div>
+      <div class="vq-goal">of ${q.goal?moneyK(q.goal):'—'}</div>
+      <div class="vq-bar sm"><i style="width:${pct||0}%"></i></div>
+    </div>`;
+  }).join('');
+  h += `<div class="vq-grid">${cards}</div>`;
+
+  // 3. MOCs (Rocks) for the selected quarter
+  const selLabel = `${vq.year} Q${_vtoSelQ}`;
+  const rocks = (d.vto?.rocks||[]).filter(r=>r.quarter===selLabel).filter(scaleMine);
   const off = rocks.filter(r=>r.status==='offTrack'||r.status==='atRisk').length;
   const done = rocks.filter(r=>r.status==='complete').length;
   const rocksBody = rocks.length
@@ -575,31 +654,12 @@ function renderVto(d){
           ${r.nextAction?`<div class="rock-next">→ ${esc(r.nextAction)}</div>`:''}
         </div>`;
       }).join('') +`</div>`
-    : `<div class="empty-line">No rocks flagged for this quarter in PROJECTS [DB].</div>`;
-  let h = scCard(`${esc(d.vto?.quarter||'')} Rocks`, rocksBody, {count:(off?off+' off track':(done?done+' done':rocks.length)), tone:off?'red':(done?'green':'zone'), key:'scale-rocks'});
+    : `<div class="empty-line">No rocks for ${esc(selLabel)} in PROJECTS [DB].</div>`;
+  h += scCard(`${esc(selLabel)} Rocks (MOCs)`, rocksBody, {count:(off?off+' off track':(done?done+' done':rocks.length)), tone:off?'red':(done?'green':'zone'), key:'scale-rocks'});
 
-  // 1-year plan (scorecard metrics grouped by category)
-  const metrics = d.vto?.metrics||[];
-  if(metrics.length){
-    h += `<div class="vto-divider"></div><div class="eyebrow-row"><span class="eyebrow ${d.state==='calm'?'green':'zone'}">VTO — 1-Year Plan</span></div>`;
-    h += `<div class="vto-plan"><div class="vto-col-head"><div class="l">Metric</div><div class="l">Break Even</div><div class="l">Goal</div><div class="l" style="text-align:right">Actual</div></div>`;
-    const groups = {};
-    metrics.forEach(m=>{ const g=m.category||'Other'; (groups[g]=groups[g]||[]).push(m); });
-    h += Object.entries(groups).map(([g,ms])=>`
-      <div class="vto-group-head"><span>${esc(g)}</span></div>`+
-      ms.map(m=>{
-        const fmt=(v)=> v==null?'—': CUR_SOURCES.includes(m.source)?moneyK(v): (m.source==='Xero Cash Capacity'?(Math.round(v*100)/100).toFixed(2):num(v));
-        const dir = m.direction? esc(m.direction) : '';
-        return `<div class="vto-row">
-          <div><div class="vto-mname">${esc(m.metric)}</div><div class="vto-msub">${esc(m.cadence||'')}${m.source?' · '+esc(m.source):''}${dir?' · '+dir:''}</div></div>
-          <div class="vto-cell vto-be">${m.breakEven==null?'—':fmt(m.breakEven)}</div>
-          <div class="vto-cell goal vto-goal">${fmt(m.goal)}</div>
-          <div class="vto-actual ${valClass(m.status)}">${fmt(m.actual)}</div>
-        </div>`;
-      }).join('')
-    ).join('');
-    h += `</div>`;
-  }
+  // 4. EOS links out (no duplication — scorecard + issues are their own tabs)
+  h += `<div class="vq-links"><button class="vq-link" onclick="showTab('scorecard')">View Scorecard →</button><button class="vq-link" onclick="showTab('issues')">Review Issues →</button></div>`;
+
   el.innerHTML = h;
 }
 
@@ -608,16 +668,16 @@ function unavail(title,msg){ return `<div class="unavail"><b>${esc(title)}</b>${
 function renderBadges(d){
   const set=(id,n,show)=>{ const e=document.getElementById(id); if(!e)return; if(show && n){ e.textContent=n; e.style.display=''; } else e.style.display='none'; };
   const stressed = d.state==='stressed';
-  set('badge-pulse', (d.pulse?.teamIssues||[]).filter(scaleMine).length, stressed);
   set('badge-scorecard', d.scorecard?.offTrackCount||0, stressed);
   set('badge-systems', d.systems?.counts?.needsAttention||0, stressed);
+  set('badge-issues', (d.pulse?.autoFlags||[]).length + (d.pulse?.teamIssues||[]).filter(scaleMine).length, stressed);
   set('badge-vto', (d.vto?.rocks||[]).filter(scaleMine).filter(r=>r.status==='offTrack'||r.status==='atRisk').length, stressed);
 }
 
 function renderAll(d){
   document.body.setAttribute('data-state', d.state||'stressed');
   renderBadges(d);
-  renderPulse(d); renderScorecard(d); renderFinance(d); renderSystems(d); renderVto(d);
+  renderPulse(d); renderScorecard(d); renderFinance(d); renderSystems(d); renderIssues(d); renderVto(d);
   if(window.restoreCards) restoreCards();
   restoreScaleTab();
   const t = d.refreshedAt? new Date(d.refreshedAt).toLocaleString('en-US',{ month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : '';

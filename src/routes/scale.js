@@ -114,7 +114,8 @@ function scoreStatus(actual, goal, breakEven, direction) {
 const STATUS_KIND = { green: 'on', amber: 'at-risk', red: 'behind', unknown: 'unknown' };
 
 export function registerScaleRoutes(app, {
-  notion, cached, clearCached, computeXeroFinance, computeXeroQuotes, chicagoToday, currentQuarter,
+  notion, cached, clearCached, computeXeroFinance, computeXeroQuotes, computeXeroQuarterlyRevenue,
+  fetchQuarterlyTargets, fetchVtoGoals, chicagoToday, currentQuarter,
   WORK_PROJECTS_DS, WORK_TASKS_DS, currentNotionUserId, GRETCHEN_USER_ID,
 }) {
   // Notion id of the signed-in user, for the global "assigned to me" filter.
@@ -275,6 +276,7 @@ export function registerScaleRoutes(app, {
         : null;
       return {
         name: r.name,
+        quarter: r.quarter,          // parsed from the rock name (e.g. "2026 Q2")
         owner: r.owner,
         mine: (r.ownerIds || []).includes(meNotionId()),
         function: r.function,
@@ -386,16 +388,19 @@ export function registerScaleRoutes(app, {
   app.get('/api/scale/data', async (req, res) => {
     try {
       if (req.query.fresh === '1' && clearCached) {
-        ['scale-systems', 'scale-scorecard', 'xero-finance', 'scale-quotes'].forEach((k) => clearCached(k));
+        ['scale-systems', 'scale-scorecard', 'xero-finance', 'scale-quotes', 'scale-qtr-revenue'].forEach((k) => clearCached(k));
       }
       const rocksCtx = { projectsDs: WORK_PROJECTS_DS, tasksDs: WORK_TASKS_DS, projectPropName: 'Project' };
-      const [sysR, scR, finR, quoteR, issR, rockR] = await Promise.allSettled([
+      const year = Number(chicagoToday().slice(0, 4));
+      const [sysR, scR, finR, quoteR, issR, rockR, qtrRevR, qtrGoalR] = await Promise.allSettled([
         cached('scale-systems', computeSystems),
         cached('scale-scorecard', computeScorecard),
         withTimeout(cached('xero-finance', computeXeroFinance)),
         withTimeout(cached('scale-quotes', computeXeroQuotes)),
         fetchIssues(notion),
         fetchRocks(notion, rocksCtx),
+        computeXeroQuarterlyRevenue ? withTimeout(cached('scale-qtr-revenue', () => computeXeroQuarterlyRevenue(year))) : Promise.resolve(null),
+        fetchQuarterlyTargets ? fetchQuarterlyTargets() : Promise.resolve({}),
       ]);
       const val = (r) => (r.status === 'fulfilled' ? r.value : null);
       const systemsData = val(sysR);
@@ -404,9 +409,26 @@ export function registerScaleRoutes(app, {
       const quotes = val(quoteR);
       const teamIssues = (val(issR) || []).map((i) => ({ ...i, mine: (i.assignedIds || []).includes(meNotionId()) }));
       const rawRocks = val(rockR) || [];
+      const qtrRevenue = val(qtrRevR) || {};
+      const qtrTargets = val(qtrGoalR) || {};
 
       const finance = buildFinance(finRaw, quotes);
       const rocks = buildRocks(rawRocks);
+
+      // ── VTO quarterly view: annual progress + per-quarter goal/actual ──
+      // Goal per quarter = the Quarterly Targets DB value if set, else monthly
+      // revenue goal × 3 (derived from finance.qtdRevenue.goal). Annual = sum.
+      const monthlyRevGoal = finance?.qtdRevenue?.goal != null ? finance.qtdRevenue.goal / 3 : null;
+      const quarterGoalFallback = monthlyRevGoal != null ? Math.round(monthlyRevGoal * 3) : null;
+      const currentQ = Math.floor((Number(chicagoToday().slice(5, 7)) - 1) / 3) + 1;
+      const vtoQuarterList = [1, 2, 3, 4].map((n) => {
+        const label = `${year} Q${n}`;
+        const state = n < currentQ ? 'past' : n === currentQ ? 'current' : 'future';
+        const goal = qtrTargets[label] != null ? qtrTargets[label] : quarterGoalFallback;
+        const actual = state === 'future' ? null : (qtrRevenue[n] ?? null);
+        return { n, label, goal, actual, state };
+      });
+      const annualGoal = vtoQuarterList.reduce((s, q) => s + (q.goal || 0), 0) || null;
 
       const autoFlags = computeAutoFlags({ finance, scorecard, systemsData, rocks });
       const heroIssue = pickHero({ systemsData, autoFlags, rocks });
@@ -454,6 +476,12 @@ export function registerScaleRoutes(app, {
           metrics: scorecard?.metrics || [],
           quarter: scorecard?.quarter || (currentQuarter ? currentQuarter().label : null),
           rocksOffTrack,
+        },
+        vtoQuarters: {
+          year,
+          currentQ,
+          annual: { goal: annualGoal, actual: finance?.ytdRevenue?.actual ?? null },
+          quarters: vtoQuarterList,
         },
       });
     } catch (err) {

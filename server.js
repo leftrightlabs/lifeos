@@ -3861,6 +3861,63 @@ async function fetchVtoGoals() {
   }
 }
 
+// Per-quarter revenue goals from the existing VTO Scorecard DB. Each quarter has
+// a "Xero Revenue" metric row tagged with a Quarter ("2026 Q2") and a Goal. The
+// Goal is per its Cadence, so the quarter goal = Goal × (Monthly→3, Weekly→13,
+// Quarterly→1). Returns { '2026 Q2': quarterGoal, … }; quarters without a row
+// fall back to the monthly-goal×3 derivation in the route.
+async function fetchQuarterlyTargets() {
+  if (!notion) return {};
+  try {
+    const data = await notion.dataSources.query({
+      data_source_id: VTO_SCORECARD_DS,
+      filter: { property: 'Source', select: { equals: 'Xero Revenue' } },
+      page_size: 50,
+    });
+    const out = {};
+    for (const page of data.results) {
+      const p = page.properties || {};
+      const q = p.Quarter?.select?.name;
+      const goal = p.Goal?.number;
+      if (!q || typeof goal !== 'number') continue;
+      const cadence = p.Cadence?.select?.name;
+      const mult = cadence === 'Quarterly' ? 1 : cadence === 'Weekly' ? 13 : 3; // Monthly default
+      out[q] = Math.round(goal * mult);
+    }
+    return out;
+  } catch (err) {
+    console.warn('[vto] quarterly revenue goals fetch failed:', err.message);
+    return {};
+  }
+}
+
+// Collected (cash-basis) revenue per quarter of `year` from Xero. Past + current
+// quarters return a number (current capped at today); future quarters → null.
+// Reuses the same P&L endpoint + parser as computeXeroFinance.
+async function computeXeroQuarterlyRevenue(year) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const todayStr = chicagoToday();
+  const [tY, tM] = todayStr.split('-').map(Number);
+  const curQ = Math.floor((tM - 1) / 3) + 1;
+  const out = {};
+  const jobs = [];
+  for (let q = 1; q <= 4; q++) {
+    if (year > tY || (year === tY && q > curQ)) { out[q] = null; continue; }
+    const startMonth = (q - 1) * 3 + 1;
+    const endMonth = startMonth + 2;
+    const lastDay = new Date(year, endMonth, 0).getDate();
+    const fromDate = `${year}-${pad(startMonth)}-01`;
+    const toDate = (year === tY && q === curQ) ? todayStr : `${year}-${pad(endMonth)}-${pad(lastDay)}`;
+    jobs.push(
+      xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate, toDate, paymentsOnly: 'true' })
+        .then((raw) => { out[q] = raw ? (parseProfitAndLoss(raw.Reports?.[0]).income || 0) : null; })
+        .catch(() => { out[q] = null; }),
+    );
+  }
+  await Promise.all(jobs);
+  return out;
+}
+
 // Period multipliers for monthly metrics → MTD/QTD/YTD goal values
 function periodGoals(monthlyMetric, currentMonth) {
   if (!monthlyMetric || monthlyMetric.goal == null) return null;
@@ -4041,7 +4098,8 @@ const { MARKETING_ASSETS_DS, fetchMarketingChannelMap, serializeMarketingAsset }
   registerAttractRoutes(app, { notion, cache, cached, currentQuarter, chicagoTodayISODate, chicagoDateNDaysAgo, dashifyId, anthropic, userContext, currentNotionUserId, GRETCHEN_USER_ID });
 registerWealthRoutes(app, { cached, cache, userContext });
 registerScaleRoutes(app, {
-  notion, cached, clearCached, computeXeroFinance, computeXeroQuotes, chicagoToday, currentQuarter,
+  notion, cached, clearCached, computeXeroFinance, computeXeroQuotes, computeXeroQuarterlyRevenue,
+  fetchQuarterlyTargets, fetchVtoGoals, chicagoToday, currentQuarter,
   WORK_PROJECTS_DS, WORK_TASKS_DS, currentNotionUserId, GRETCHEN_USER_ID,
 });
 // Reuses the existing Slack user-token OAuth (/auth/slack) + currentSlackToken().

@@ -117,10 +117,16 @@ export function serializeRock(page) {
     if (typeof pf.number === 'number') pct = pf.number <= 1 ? Math.round(pf.number * 100) : Math.round(pf.number);
     else if (pf.string) { const n = parseFloat(pf.string); if (!Number.isNaN(n)) pct = n <= 1 ? Math.round(n * 100) : Math.round(n); }
   }
+  const name = txt(p.Name?.title) || '(untitled)';
+  // Quarter is derived from the rock name (convention: "2026 Q2 Rocks - 5 - …").
+  // Used to group MOCs by quarter on the VTO tab.
+  const qm = name.match(/\b(20\d\d)\s*Q([1-4])\b/i);
+  const quarter = qm ? `${qm[1]} Q${qm[2]}` : null;
   return {
     id: page.id,
     notionUrl: page.url,
-    name: txt(p.Name?.title) || '(untitled)',
+    name,
+    quarter,
     owner: p.Assigned?.people?.[0]?.name || null,
     ownerIds: (p.Assigned?.people || []).map((u) => u.id),
     function: p.Function?.select?.name || null,
