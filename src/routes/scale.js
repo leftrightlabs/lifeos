@@ -22,6 +22,7 @@ import {
   SCORECARD_SOURCE_TYPE,
   SCORECARD_PAIRS,
   SPEAKING_OUTREACH_DS,
+  ISSUES_DS,
 } from '../config/scale.js';
 // Reuse Convert's data primitives for the sales actuals (no Convert route changes).
 import { queryAllDeals, serializeDeal, fetchSalesProductMap } from '../providers/notion/convert.js';
@@ -554,5 +555,54 @@ export function registerScaleRoutes(app, {
       }
       res.json(await cached('scale-scorecard', computeScorecard));
     } catch (err) { console.error('scale/scorecard error:', err.message); res.status(500).json({ error: err.message }); }
+  });
+  // Promote an auto-flag (or any text) into the Issues List (ISSUES [DB]) as a new
+  // open issue. Severity → Priority (red = HIGH, amber = NORMAL); lands as "Current"
+  // so it shows in the queue immediately. fetchIssues is uncached, so the next
+  // /api/scale/data picks it up with no cache bust.
+  app.post('/api/scale/issue', async (req, res) => {
+    try {
+      if (!notion) return res.status(500).json({ error: 'Notion not configured' });
+      const title = String((req.body && req.body.message) || '').trim();
+      if (!title) return res.status(400).json({ error: 'message required' });
+      const priority = (req.body && req.body.severity) === 'red' ? 'HIGH' : 'NORMAL';
+      const page = await notion.pages.create({
+        parent: { type: 'data_source_id', data_source_id: ISSUES_DS },
+        properties: {
+          'Task Name': { title: [{ text: { content: title.slice(0, 1900) } }] },
+          Status: { status: { name: 'Current' } },
+          Priority: { select: { name: priority } },
+        },
+      });
+      res.json({ ok: true, id: page.id, url: page.url });
+    } catch (err) { console.error('scale/issue create error:', err.message); res.status(500).json({ error: err.message }); }
+  });
+  // Update an issue's Status (board column / Done) and/or Priority. Used by the
+  // Issues board: drag between Current/Agenda, check-off to Done, change priority.
+  app.patch('/api/scale/issue/:id', async (req, res) => {
+    try {
+      if (!notion) return res.status(500).json({ error: 'Notion not configured' });
+      const { status, priority, title, order } = req.body || {};
+      const props = {};
+      if (status) props.Status = { status: { name: status } };
+      if (priority) props.Priority = { select: { name: priority } }; // "none" is a real option
+      if (typeof title === 'string' && title.trim()) props['Task Name'] = { title: [{ text: { content: title.trim().slice(0, 1900) } }] };
+      if (typeof order === 'number') props['Board Order'] = { number: order };
+      if (!Object.keys(props).length) return res.status(400).json({ error: 'nothing to update' });
+      await notion.pages.update({ page_id: req.params.id, properties: props });
+      res.json({ ok: true });
+    } catch (err) { console.error('scale/issue patch error:', err.message); res.status(500).json({ error: err.message }); }
+  });
+  // Bulk drag-to-reorder: persist the new Board Order for the cards that moved.
+  app.post('/api/scale/issues/reorder', async (req, res) => {
+    try {
+      if (!notion) return res.status(500).json({ error: 'Notion not configured' });
+      const updates = (req.body && req.body.updates) || [];
+      if (!Array.isArray(updates) || !updates.length) return res.status(400).json({ error: 'no updates' });
+      await Promise.all(updates
+        .filter((u) => u && u.id && typeof u.order === 'number')
+        .map((u) => notion.pages.update({ page_id: u.id, properties: { 'Board Order': { number: u.order } } })));
+      res.json({ ok: true });
+    } catch (err) { console.error('scale/issues reorder error:', err.message); res.status(500).json({ error: err.message }); }
   });
 }

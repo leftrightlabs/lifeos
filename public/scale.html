@@ -106,6 +106,70 @@ body[data-state="calm"] .hero .next { border-left-color:var(--green); }
 .open-link { font-size:11px; font-weight:600; color:var(--zone); text-decoration:none; white-space:nowrap; } .open-link:hover { text-decoration:underline; }
 .add-issue-btn { width:100%; padding:10px; background:none; border:1px dashed var(--border); border-radius:var(--radius-sm); color:var(--text-3); font-size:12px; font-weight:600; cursor:pointer; letter-spacing:.03em; transition:all .15s; font-family:var(--font-body); }
 .add-issue-btn:hover { border-color:var(--zone); color:var(--zone); }
+/* ── Issues board (Current | Agenda) ── */
+.sc-issbar { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+.sc-chip { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:999px; border:1px solid var(--border); background:none; color:var(--text-3); font-size:11.5px; font-weight:600; cursor:pointer; letter-spacing:.02em; transition:all .15s; font-family:var(--font-body); }
+.sc-chip:hover { border-color:var(--zone); color:var(--text-2); }
+.sc-chip.on { border-color:var(--zone); color:var(--zone); background:rgba(124,109,255,.1); }
+.sc-board { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.sc-col { background:rgba(255,255,255,.015); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px; min-height:80px; transition:border-color .15s,background .15s; }
+.sc-col.over { border-color:var(--zone); background:rgba(124,109,255,.06); }
+.sc-col-hd { display:flex; align-items:center; gap:7px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text-2); margin:2px 2px 10px; }
+.sc-col-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.sc-col-dot.current { background:#5b9bff; } .sc-col-dot.agenda { background:#d96fb0; }
+.sc-col-n { margin-left:auto; color:var(--text-3); font-weight:600; }
+.sc-col-body { display:flex; flex-direction:column; gap:8px; }
+.sc-col-empty { font-size:11.5px; color:var(--text-3); padding:10px 4px; opacity:.7; }
+.sc-daygrp { display:flex; flex-direction:column; gap:8px; }
+.sc-daygrp + .sc-daygrp { margin-top:6px; }
+.sc-dayhd { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-3); padding:2px; }
+.sc-icard { display:flex; align-items:flex-start; gap:9px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px 11px; cursor:grab; transition:border-color .15s,opacity .15s; }
+.sc-icard:hover { border-color:var(--zone); }
+.sc-icard.dragging { opacity:.45; }
+.sc-icard-main { flex:1; min-width:0; }
+.sc-check { flex-shrink:0; width:18px; height:18px; margin-top:1px; border-radius:5px; border:1.5px solid var(--text-3); background:none; cursor:pointer; transition:all .15s; }
+.sc-check:hover { border-color:var(--green); background:rgba(74,222,128,.12); }
+.sc-iname { font-size:12.5px; font-weight:600; color:var(--text); line-height:1.35; cursor:pointer; }
+.sc-iname:hover { color:var(--zone); }
+.sc-imeta { display:flex; align-items:center; gap:8px; margin-top:6px; flex-wrap:wrap; }
+.sc-prio { font-size:9.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:2px 7px; border-radius:999px; cursor:pointer; border:1px solid transparent; transition:filter .15s; }
+.sc-prio:hover { filter:brightness(1.2); }
+.sc-prio.p-urgent { background:rgba(244,63,63,.16); color:#ff6b6b; }
+.sc-prio.p-high { background:rgba(245,179,0,.16); color:#f5b300; }
+.sc-prio.p-normal { background:rgba(124,109,255,.16); color:#a99bff; }
+.sc-prio.p-none { background:rgba(255,255,255,.05); color:var(--text-3); }
+.sc-added { font-size:10.5px; color:var(--text-3); }
+.sc-move { flex-shrink:0; width:24px; height:24px; border-radius:6px; border:1px solid var(--border); background:none; color:var(--text-3); font-size:13px; cursor:pointer; transition:all .15s; }
+.sc-move:hover { border-color:var(--zone); color:var(--zone); }
+.sc-menu { position:absolute; z-index:9000; background:var(--surface-2,var(--surface)); border:1px solid var(--border); border-radius:var(--radius-sm); padding:5px; box-shadow:0 8px 24px rgba(0,0,0,.4); display:flex; flex-direction:column; gap:2px; min-width:130px; }
+.sc-menu-it { text-align:left; padding:6px 9px; border-radius:6px; border:none; background:none; cursor:pointer; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; font-family:var(--font-body); }
+.sc-menu-it:hover { background:rgba(255,255,255,.06); }
+.sc-menu-it.p-urgent { color:#ff6b6b; } .sc-menu-it.p-high { color:#f5b300; } .sc-menu-it.p-normal { color:#a99bff; } .sc-menu-it.p-none { color:var(--text-3); }
+@media (max-width:640px){ .sc-board { grid-template-columns:1fr; } }
+/* ── Issue edit modal ── */
+.sc-modal-bg { position:fixed; inset:0; background:rgba(6,8,16,.66); backdrop-filter:blur(3px); z-index:9500; display:flex; align-items:center; justify-content:center; padding:20px; opacity:0; pointer-events:none; transition:opacity .18s; }
+.sc-modal-bg.show { opacity:1; pointer-events:auto; }
+.sc-modal { width:100%; max-width:460px; background:var(--surface-2,var(--surface)); border:1px solid var(--border); border-radius:14px; box-shadow:0 24px 60px rgba(0,0,0,.5); padding:22px; transform:translateY(10px) scale(.98); transition:transform .18s; max-height:90vh; overflow:auto; }
+.sc-modal-bg.show .sc-modal { transform:none; }
+.sc-modal-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.sc-modal-hd h3 { font-size:14px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--text-2); margin:0; }
+.sc-modal-x { background:none; border:none; color:var(--text-3); font-size:22px; line-height:1; cursor:pointer; padding:0 4px; } .sc-modal-x:hover { color:var(--text); }
+.sc-field { margin-bottom:16px; }
+.sc-field label { display:block; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-3); margin-bottom:7px; }
+.sc-input { width:100%; box-sizing:border-box; background:var(--surface); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13.5px; padding:10px 12px; font-family:var(--font-body); line-height:1.4; resize:vertical; }
+.sc-input:focus { outline:none; border-color:var(--zone); }
+.sc-seg { display:flex; gap:6px; flex-wrap:wrap; }
+.sc-seg button { flex:1; min-width:64px; padding:8px 6px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-3); font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; cursor:pointer; font-family:var(--font-body); transition:all .15s; }
+.sc-seg button:hover { color:var(--text-2); }
+.sc-seg button.sel { border-color:var(--zone); color:var(--text); background:rgba(124,109,255,.12); }
+.sc-seg button.sel.p-urgent { border-color:#ff6b6b; color:#ff6b6b; background:rgba(244,63,63,.14); }
+.sc-seg button.sel.p-high { border-color:#f5b300; color:#f5b300; background:rgba(245,179,0,.14); }
+.sc-seg button.sel.p-normal { border-color:#a99bff; color:#a99bff; background:rgba(124,109,255,.14); }
+.sc-modal-ft { display:flex; align-items:center; gap:10px; margin-top:22px; }
+.sc-modal-ft .sc-notion { font-size:11.5px; font-weight:600; color:var(--text-3); text-decoration:none; cursor:pointer; margin-right:auto; } .sc-modal-ft .sc-notion:hover { color:var(--zone); }
+.sc-btn { padding:9px 18px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; border:1px solid var(--border); background:none; color:var(--text-2); font-family:var(--font-body); }
+.sc-btn:hover { color:var(--text); }
+.sc-btn.primary { background:var(--zone); border-color:var(--zone); color:#fff; } .sc-btn.primary:hover { filter:brightness(1.08); } .sc-btn.primary:disabled { opacity:.5; cursor:default; }
 
 .empty-state { text-align:center; padding:28px 20px; color:var(--text-3); font-size:13px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:18px; }
 .empty-state .ei { font-size:26px; margin-bottom:8px; }
@@ -114,6 +178,11 @@ body[data-state="calm"] .hero .next { border-left-color:var(--green); }
 .flag-card.red { border-left-color:var(--red); }
 .flag-card .fi { font-size:15px; line-height:1.2; }
 .flag-card .ft { font-size:12.5px; color:var(--text); } .flag-card .fs { font-size:10px; color:var(--text-3); text-transform:uppercase; letter-spacing:.08em; margin-top:2px; }
+.flag-card .fbody { flex:1; min-width:0; }
+.flag-add { flex-shrink:0; width:26px; height:26px; border-radius:50%; border:1px solid var(--border); background:none; color:var(--text-3); font-size:17px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; font-family:var(--font-body); }
+.flag-add:hover { border-color:var(--zone); color:var(--zone); background:rgba(124,109,255,.08); }
+.flag-add:disabled { opacity:.5; cursor:default; }
+.issue-name.link { cursor:pointer; } .issue-name.link:hover { color:var(--zone); text-decoration:underline; }
 
 /* scorecard */
 .scorecard { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:14px; }
@@ -472,25 +541,254 @@ function renderIssues(d){
   const issues = (d.pulse?.teamIssues||[]).filter(scaleMine);
   let h='';
 
+  window._scFlags = flags;
   if(flags.length){
-    const flagsBody = `<div class="issue-list">`+ flags.map(f=>`
-      <div class="flag-card ${f.severity==='red'?'red':''}"><span class="fi">${f.severity==='red'?'🔴':'🟡'}</span><div><div class="ft">${esc(f.message)}</div><div class="fs">${esc(f.source)}</div></div></div>`).join('') +`</div>`;
+    const flagsBody = `<div class="issue-list">`+ flags.map((f,idx)=>`
+      <div class="flag-card ${f.severity==='red'?'red':''}"><span class="fi">${f.severity==='red'?'🔴':'🟡'}</span><div class="fbody"><div class="ft">${esc(f.message)}</div><div class="fs">${esc(f.source)}</div></div><button class="flag-add" title="Add to Issues List" onclick="addFlagToIssues(${idx}, this)">+</button></div>`).join('') +`</div>`;
     h += scCard('⚑ Auto-flags', flagsBody, {count:flags.length, tone:'red', key:'scale-flags'});
   }
 
-  const issuesBody = issues.length
-    ? `<div class="issue-list">`+ issues.map(i=>{
-        const meta=[i.assigned?('Assigned '+esc(i.assigned)):null, i.status?('Status: '+esc(i.status)):null, i.due?relDate(i.due):'No due date'].filter(Boolean).join(' · ');
-        return `<div class="issue-card">${prioBadge(i.priority)}<div class="issue-body"><div class="issue-name">${esc(i.name)}</div><div class="issue-meta">${meta}</div></div><div class="issue-tail">${i.notionUrl?`<a class="open-link" href="${esc(i.notionUrl)}" target="_blank">→ Open</a>`:''}</div></div>`;
-      }).join('') +`</div>`
-    : `<div class="empty-line">No open issues in the IDS queue.</div>`;
-  h += scCard('Issues — IDS queue', issuesBody, {count:issues.length, tone:calm?'green':'zone', key:'scale-issues'});
+  // Working copy for the board: clone so optimistic drag/complete/priority edits
+  // don't mutate DATA. Only the two open columns (Current/Agenda) live here.
+  window._scIssues = issues.map(o => ({ ...o, status: o.status || 'Current' }));
+  h += scCard('Issues List', `<div id="sc-issues-board">${scIssuesBoardHtml()}</div>`, {count:issues.length, tone:calm?'green':'zone', key:'scale-issues'});
 
   if(calm && !flags.length){
     h += `<div class="empty-state"><div class="ei">✓</div><div class="et">No auto-flags</div><div>Scorecard metrics are on track. No critical system gaps. Revenue pacing to goal.</div></div>`;
   }
-  h += `<button class="add-issue-btn" onclick="toast('Add an issue in Notion → ISSUES [DB]')">+ Add issue to IDS queue</button>`;
+  h += `<button class="add-issue-btn" onclick="toast('Add an issue in Notion → ISSUES [DB]')">+ Add issue in Notion</button>`;
   document.getElementById('tab-issues').innerHTML = h;
+}
+
+// notion:// deep link so "Open in Notion" hands off to the app (not the browser).
+window.toNotionLink = function(url){
+  if (!url) return url;
+  const m = url.match(/([a-f0-9]{32})/i);
+  if (m) return `notion://www.notion.so/${m[1]}`;
+  if (url.startsWith('https://www.notion.so/')) return url.replace('https://', 'notion://');
+  if (url.startsWith('https://app.notion.com/')) return url.replace('https://app.notion.com/', 'notion://www.notion.so/');
+  return url;
+};
+window.openNotion = function(url){
+  const link = window.toNotionLink(url);
+  if (link && link.startsWith('notion://')) { window.location.href = link; return; }
+  window.open(url, '_blank', 'noopener');
+};
+
+// Promote an auto-flag into the Issues List (creates a Notion issue), then refresh.
+async function addFlagToIssues(idx, btn){
+  const f = (window._scFlags||[])[idx];
+  if(!f) return;
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    const r = await fetch('/api/scale/issue', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message:f.message, severity:f.severity, source:f.source }) });
+    const d = await r.json();
+    if(!r.ok || d.error) throw new Error(d.error||'failed');
+    btn.textContent = '✓';
+    toast('Added to Issues List');
+    await load(true);
+  } catch(e){
+    btn.disabled = false; btn.textContent = '+';
+    toast("Couldn't add: "+e.message);
+  }
+}
+
+// ── Issues board (Current | Agenda) — drag to move, check to complete ──
+const SC_PRIO_RANK = { URGENT:4, HIGH:3, NORMAL:2, none:1 };
+let _scSortPri  = localStorage.getItem('sc-iss-sort')  === '1';
+let _scGroupDate= localStorage.getItem('sc-iss-group') === '1';
+function scPrioKey(p){ return (p||'none').toLowerCase(); }
+function scAddedShort(iso){ if(!iso) return ''; const d=new Date(iso); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+// Relative-age buckets for "Group by date added" (newest rank first).
+function scDateBucket(iso){
+  if(!iso) return {rank:9, label:'No date'};
+  const days = Math.floor((Date.now()-new Date(iso).getTime())/86400000);
+  if(days<=7)  return {rank:0, label:'This Week'};
+  if(days<=14) return {rank:1, label:'Last Week'};
+  if(days<=30) return {rank:2, label:'This Month'};
+  if(days<=60) return {rank:3, label:'Last Month'};
+  if(days<=90) return {rank:4, label:'Last 3 Months'};
+  return {rank:5, label:'Over 90 Days Ago'};
+}
+function scOrderVal(i){ return i.order==null ? Infinity : i.order; }
+function scIssueCard(i){
+  const pr = i.priority || 'none';
+  const date = scAddedShort(i.createdTime);
+  const other = i.status==='Agenda' ? 'Current' : 'Agenda';
+  const arrow = i.status==='Agenda' ? '←' : '→';
+  return `<div class="sc-icard" draggable="true" data-id="${i.id}" ondragstart="scDragStart(event,'${i.id}')" ondragend="scDragEnd(event)">
+    <button class="sc-check" title="Mark complete" onclick="scComplete(event,'${i.id}')"></button>
+    <div class="sc-icard-main">
+      <div class="sc-iname" onclick="scOpenIssueModal('${i.id}')" title="Edit issue">${esc(i.name)}</div>
+      <div class="sc-imeta">
+        <span class="sc-prio p-${scPrioKey(pr)}" onclick="scPriorityMenu(event,'${i.id}')" title="Change priority">${pr==='none'?'No priority':esc(pr)}</span>
+        ${date?`<span class="sc-added">Added ${date}</span>`:''}
+      </div>
+    </div>
+    <button class="sc-move" title="Move to ${other}" onclick="scMove('${i.id}','${other}')">${arrow}</button>
+  </div>`;
+}
+function scColumn(key,label,dotCls){
+  let list = (window._scIssues||[]).filter(i=>(i.status||'Current')===key).slice();
+  // Default view follows the saved manual order; the toggle overrides with priority.
+  list.sort(_scSortPri
+    ? (a,b)=>(SC_PRIO_RANK[b.priority||'none']||0)-(SC_PRIO_RANK[a.priority||'none']||0)
+    : (a,b)=>scOrderVal(a)-scOrderVal(b));
+  let inner;
+  if(!list.length){ inner = `<div class="sc-col-empty">Nothing here yet.</div>`; }
+  else if(_scGroupDate){
+    const buckets={}, labels={};
+    list.forEach(i=>{ const b=scDateBucket(i.createdTime); (buckets[b.rank]=buckets[b.rank]||[]).push(i); labels[b.rank]=b.label; });
+    inner = Object.keys(buckets).map(Number).sort((a,b)=>a-b).map(r=>
+      `<div class="sc-daygrp"><div class="sc-dayhd">${labels[r]}</div>${buckets[r].map(scIssueCard).join('')}</div>`).join('');
+  } else { inner = list.map(scIssueCard).join(''); }
+  return `<div class="sc-col" data-status="${key}" ondragover="scDragOver(event)" ondragleave="scDragLeave(event)" ondrop="scDrop(event,'${key}')">
+    <div class="sc-col-hd"><span class="sc-col-dot ${dotCls}"></span>${label}<span class="sc-col-n">${list.length}</span></div>
+    <div class="sc-col-body">${inner}</div>
+  </div>`;
+}
+function scIssuesBoardHtml(){
+  const bar = `<div class="sc-issbar">
+    <button class="sc-chip ${_scSortPri?'on':''}" onclick="scToggleSort()">⇅ Sort by priority</button>
+    <button class="sc-chip ${_scGroupDate?'on':''}" onclick="scToggleGroup()">📅 Group by date added</button>
+  </div>`;
+  return bar + `<div class="sc-board">${scColumn('Current','Current','current')+scColumn('Agenda','Agenda','agenda')}</div>`;
+}
+function paintIssuesBoard(){ const el=document.getElementById('sc-issues-board'); if(el) el.innerHTML=scIssuesBoardHtml(); }
+function scToggleSort(){ _scSortPri=!_scSortPri; localStorage.setItem('sc-iss-sort',_scSortPri?'1':'0'); paintIssuesBoard(); }
+function scToggleGroup(){ _scGroupDate=!_scGroupDate; localStorage.setItem('sc-iss-group',_scGroupDate?'1':'0'); paintIssuesBoard(); }
+function scUpdateIssueBadge(){
+  const n=(window._scFlags||[]).length+(window._scIssues||[]).length;
+  const el=document.getElementById('badge-issues'); if(el){ el.textContent=n; el.style.display=n?'':'none'; }
+}
+async function scPatchIssue(id, body){
+  const r=await fetch('/api/scale/issue/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await r.json(); if(!r.ok||d.error) throw new Error(d.error||'failed'); return d;
+}
+let _scDragId=null;
+function scDragStart(e,id){ _scDragId=id; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',id);}catch(_){} e.currentTarget.classList.add('dragging'); }
+function scDragEnd(e){ e.currentTarget.classList.remove('dragging'); document.querySelectorAll('.sc-col.over').forEach(c=>c.classList.remove('over')); }
+function scDragOver(e){ e.preventDefault(); e.dataTransfer.dropEffect='move'; e.currentTarget.classList.add('over'); }
+function scDragLeave(e){ if(e.currentTarget.contains(e.relatedTarget)) return; e.currentTarget.classList.remove('over'); }
+function scDropIndex(colBody, clientY){
+  const cards=[...colBody.querySelectorAll('.sc-icard:not(.dragging)')];
+  for(let i=0;i<cards.length;i++){ const r=cards[i].getBoundingClientRect(); if(clientY < r.top + r.height/2) return i; }
+  return cards.length;
+}
+function scDrop(e,status){
+  e.preventDefault(); e.currentTarget.classList.remove('over');
+  const id=_scDragId||(e.dataTransfer&&e.dataTransfer.getData('text/plain')); _scDragId=null;
+  if(!id) return;
+  // Positional reordering only makes sense in the flat default view; when sorted
+  // by priority or grouped by date the auto-arrangement wins, so a drop just
+  // moves the card between columns (status change).
+  if(_scSortPri || _scGroupDate){ scMove(id,status); return; }
+  const body=e.currentTarget.querySelector('.sc-col-body')||e.currentTarget;
+  scReorderDrop(id, status, scDropIndex(body, e.clientY));
+}
+async function scMove(id,status){
+  const it=(window._scIssues||[]).find(x=>x.id===id); if(!it||it.status===status) return;
+  const prev=it.status; it.status=status; paintIssuesBoard();
+  try{ await scPatchIssue(id,{status}); }
+  catch(e){ it.status=prev; paintIssuesBoard(); toast("Couldn't move: "+e.message); }
+}
+// Drag within/into a column at a position → persist the new Board Order. Renumbers
+// the target column 0..n and writes only the cards whose order actually changed.
+async function scReorderDrop(id, status, dropIndex){
+  const arr=window._scIssues||[]; const moved=arr.find(x=>x.id===id); if(!moved) return;
+  const prevStatus=moved.status, prevOrder=moved.order;
+  moved.status=status;
+  const col=arr.filter(x=>x.status===status && x.id!==id).sort((a,b)=>scOrderVal(a)-scOrderVal(b));
+  dropIndex=Math.max(0, Math.min(dropIndex, col.length));
+  col.splice(dropIndex, 0, moved);
+  const updates=[];
+  col.forEach((it,idx)=>{ if(it.order!==idx){ it.order=idx; updates.push({id:it.id, order:idx}); } });
+  paintIssuesBoard();
+  try{
+    if(prevStatus!==status) await scPatchIssue(id,{status});
+    if(updates.length){
+      const r=await fetch('/api/scale/issues/reorder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({updates})});
+      const d=await r.json(); if(!r.ok||d.error) throw new Error(d.error||'failed');
+    }
+  }catch(e){ moved.status=prevStatus; moved.order=prevOrder; toast("Couldn't reorder: "+e.message); await load(true); }
+}
+async function scComplete(e,id){
+  e.stopPropagation();
+  const arr=window._scIssues||[]; const idx=arr.findIndex(x=>x.id===id); if(idx<0) return; const it=arr[idx];
+  arr.splice(idx,1); paintIssuesBoard(); scUpdateIssueBadge();
+  try{ await scPatchIssue(id,{status:'Done'}); toast('Marked complete'); }
+  catch(err){ arr.splice(idx,0,it); paintIssuesBoard(); scUpdateIssueBadge(); toast("Couldn't complete: "+err.message); }
+}
+function scClosePrioMenu(){ const m=document.getElementById('sc-prio-menu'); if(m) m.remove(); }
+function scPriorityMenu(e,id){
+  e.stopPropagation(); scClosePrioMenu();
+  const m=document.createElement('div'); m.className='sc-menu'; m.id='sc-prio-menu';
+  m.innerHTML=[['URGENT','URGENT'],['HIGH','HIGH'],['NORMAL','NORMAL'],['none','No priority']]
+    .map(([v,lbl])=>`<button class="sc-menu-it p-${v.toLowerCase()}" onclick="scSetPriority(event,'${id}','${v}')">${lbl}</button>`).join('');
+  document.body.appendChild(m);
+  const r=e.currentTarget.getBoundingClientRect();
+  m.style.left=Math.round(window.scrollX+r.left)+'px';
+  m.style.top=Math.round(window.scrollY+r.bottom+5)+'px';
+  setTimeout(()=>document.addEventListener('click',scClosePrioMenu,{once:true}),0);
+}
+async function scSetPriority(e,id,val){
+  e.stopPropagation(); scClosePrioMenu();
+  const it=(window._scIssues||[]).find(x=>x.id===id); if(!it) return;
+  const prev=it.priority; it.priority=val; paintIssuesBoard();
+  try{ await scPatchIssue(id,{priority:val}); }
+  catch(err){ it.priority=prev; paintIssuesBoard(); toast("Couldn't update priority: "+err.message); }
+}
+
+// ── Issue edit modal (title · priority · status) ──
+let _scEditId=null, _scEditPrio='none', _scEditStatus='Current';
+function scOpenIssueModal(id){
+  const it=(window._scIssues||[]).find(x=>x.id===id); if(!it) return;
+  _scEditId=id; _scEditPrio=it.priority||'none'; _scEditStatus=it.status||'Current';
+  let bg=document.getElementById('sc-issue-modal');
+  if(!bg){ bg=document.createElement('div'); bg.id='sc-issue-modal'; bg.className='sc-modal-bg'; bg.onclick=(e)=>{ if(e.target===bg) scCloseIssueModal(); }; document.body.appendChild(bg); }
+  const prios=[['URGENT','p-urgent'],['HIGH','p-high'],['NORMAL','p-normal'],['none','p-none']];
+  const stats=['Current','Agenda','Done'];
+  bg.innerHTML=`<div class="sc-modal" onclick="event.stopPropagation()">
+    <div class="sc-modal-hd"><h3>Edit issue</h3><button class="sc-modal-x" onclick="scCloseIssueModal()">×</button></div>
+    <div class="sc-field"><label>Title</label><textarea id="sc-edit-title" class="sc-input" rows="2">${esc(it.name)}</textarea></div>
+    <div class="sc-field"><label>Priority</label><div class="sc-seg" id="sc-edit-prio">${prios.map(([v,c])=>`<button class="${c} ${(_scEditPrio===v)?'sel':''}" onclick="scModalPick('prio','${v}')">${v==='none'?'None':v}</button>`).join('')}</div></div>
+    <div class="sc-field"><label>Status</label><div class="sc-seg" id="sc-edit-status">${stats.map(v=>`<button class="${(_scEditStatus===v)?'sel':''}" onclick="scModalPick('status','${v}')">${v}</button>`).join('')}</div></div>
+    <div class="sc-modal-ft">
+      ${it.notionUrl?`<span class="sc-notion" onclick="openNotion('${esc(it.notionUrl)}')">↗ Open in Notion</span>`:''}
+      <button class="sc-btn" onclick="scCloseIssueModal()">Cancel</button>
+      <button class="sc-btn primary" id="sc-edit-save" onclick="scSaveIssue()">Save</button>
+    </div>
+  </div>`;
+  requestAnimationFrame(()=>bg.classList.add('show'));
+  setTimeout(()=>{ const t=document.getElementById('sc-edit-title'); if(t){ t.focus(); t.setSelectionRange(t.value.length,t.value.length); } },60);
+}
+function scCloseIssueModal(){ const bg=document.getElementById('sc-issue-modal'); if(bg){ bg.classList.remove('show'); setTimeout(()=>bg.remove(),200);} _scEditId=null; }
+function scModalPick(kind,val){
+  if(kind==='prio'){ _scEditPrio=val; document.querySelectorAll('#sc-edit-prio button').forEach(b=>b.classList.toggle('sel', b.textContent===(val==='none'?'None':val))); }
+  else { _scEditStatus=val; document.querySelectorAll('#sc-edit-status button').forEach(b=>b.classList.toggle('sel', b.textContent===val)); }
+}
+async function scSaveIssue(){
+  const id=_scEditId; const it=(window._scIssues||[]).find(x=>x.id===id); if(!it) return;
+  const title=(document.getElementById('sc-edit-title').value||'').trim();
+  if(!title){ toast('Title required'); return; }
+  const btn=document.getElementById('sc-edit-save'); btn.disabled=true; btn.textContent='Saving…';
+  const prev={name:it.name,priority:it.priority,status:it.status};
+  const newStatus=_scEditStatus, newPrio=_scEditPrio;
+  // optimistic local update
+  it.name=title; it.priority=newPrio; it.status=newStatus;
+  const arr=window._scIssues||[]; let removed=false;
+  if(newStatus==='Done'){ const idx=arr.findIndex(x=>x.id===id); if(idx>=0){ arr.splice(idx,1); removed=true; } }
+  paintIssuesBoard(); scUpdateIssueBadge(); scCloseIssueModal();
+  try{
+    await scPatchIssue(id,{ title, priority:newPrio, status:newStatus });
+    toast(newStatus==='Done'?'Marked complete':'Issue updated');
+  }catch(err){
+    // rollback
+    it.name=prev.name; it.priority=prev.priority; it.status=prev.status;
+    if(removed) arr.push(it);
+    paintIssuesBoard(); scUpdateIssueBadge();
+    toast("Couldn't save: "+err.message);
+  }
 }
 
 // ── SCORECARD ──

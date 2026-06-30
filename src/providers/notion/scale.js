@@ -89,6 +89,10 @@ export function serializeIssue(page) {
     assigned: (p.Assigned?.people || []).map((u) => u.name).filter(Boolean).join(', ') || null,
     assignedIds: (p.Assigned?.people || []).map((u) => u.id),
     due: p.Due?.date?.start || null,
+    // "Date added" for the Issues board — Notion's page creation timestamp.
+    createdTime: p['Created time']?.created_time || page.created_time || null,
+    // Manual board ordering (drag-to-reorder); null until the user arranges.
+    order: typeof p['Board Order']?.number === 'number' ? p['Board Order'].number : null,
   };
 }
 
@@ -101,7 +105,15 @@ export async function fetchIssues(notion) {
     page_size: 50,
   });
   const issues = res.results.map(serializeIssue);
-  issues.sort((a, b) => (ISSUE_PRIORITY_RANK[b.priority] || 0) - (ISSUE_PRIORITY_RANK[a.priority] || 0));
+  // Manual Board Order first (issues the user has arranged); the rest fall back
+  // to priority. Within "ordered", lower number = higher on the board.
+  issues.sort((a, b) => {
+    const ao = a.order, bo = b.order;
+    if (ao != null && bo != null) return ao - bo;
+    if (ao != null) return -1;
+    if (bo != null) return 1;
+    return (ISSUE_PRIORITY_RANK[b.priority] || 0) - (ISSUE_PRIORITY_RANK[a.priority] || 0);
+  });
   return issues;
 }
 
