@@ -5,6 +5,10 @@ node_modules/
 *.log
 .claude/
 
+# Local persisted tokens (Xero refresh token rotates here) — NEVER commit
+data/
+.data/
+
 # Service-account / API keys — NEVER commit
 ga-service-account.json
 *-service-account.json
