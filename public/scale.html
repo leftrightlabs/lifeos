@@ -129,6 +129,31 @@ body[data-state="calm"] .hero .next { border-left-color:var(--green); }
 .sc-val { font-size:13px; font-weight:800; text-align:right; white-space:nowrap; }
 .sc-val .g { font-size:10px; color:var(--text-3); font-weight:400; }
 .c-green { color:var(--green); } .c-amber { color:var(--amber); } .c-red { color:var(--red); } .c-unknown { color:var(--text-3); }
+/* scorecard quarter selector + leading/lagging pairs */
+.sc-qbar { display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+.sc-qtab { background:var(--surface-2); border:1px solid var(--border); border-radius:99px; color:var(--text-3); font-size:11px; font-weight:700; letter-spacing:.04em; padding:6px 14px; cursor:pointer; font-family:inherit; transition:all .15s; }
+.sc-qtab:hover { color:var(--text-2); border-color:var(--text-4); }
+.sc-qtab.sel { background:var(--accent); border-color:var(--accent); color:#fff; }
+.sc-qtab.future { opacity:.5; }
+.sc-pairhead { display:grid; grid-template-columns:1fr 30px 1fr; gap:10px; margin-bottom:6px; }
+.sc-pairhead span { font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-4); }
+.sc-pairhead .lag { text-align:right; }
+.sc-pair { display:grid; grid-template-columns:1fr 30px 1fr; gap:10px; align-items:stretch; margin-bottom:10px; }
+.sc-pair-arrow { display:flex; align-items:center; justify-content:center; color:var(--text-4); font-size:16px; }
+.sc-metric { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--border); border-radius:var(--radius-sm); padding:12px 14px; }
+.sc-metric.l-green { border-left-color:var(--green); } .sc-metric.l-amber { border-left-color:var(--amber); } .sc-metric.l-red { border-left-color:var(--red); } .sc-metric.l-unknown { border-left-color:var(--border); }
+.sc-metric-top { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.sc-metric-name { font-size:13px; font-weight:700; color:var(--text); }
+.sc-metric-val { font-size:13px; font-weight:800; white-space:nowrap; }
+.sc-metric-val .g { font-size:10px; color:var(--text-3); font-weight:400; }
+.sc-metric-foot { display:flex; align-items:center; gap:8px; }
+.sc-metric-foot .sc-bar { flex:1; }
+.sc-metric-pct { font-size:10px; font-weight:700; white-space:nowrap; }
+.sc-metric.empty { border-style:dashed; background:none; }
+.sc-metric.empty .sc-metric-name { color:var(--text-4); font-weight:600; }
+.sc-metric-empty-note { font-size:11px; color:var(--text-4); font-style:italic; }
+.sc-other-head { font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); margin:20px 0 10px; }
+@media(max-width:600px){ .sc-pair, .sc-pairhead { grid-template-columns:1fr; } .sc-pair-arrow { transform:rotate(90deg); height:18px; } .sc-pairhead .lag { text-align:left; } }
 
 /* finance */
 .fin-grid-3 { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-bottom:14px; }
@@ -469,26 +494,74 @@ function renderIssues(d){
 }
 
 // ── SCORECARD ──
+// Per-quarter scorecard with a quarter selector + leading→lagging pairs.
+let _scSelQ = null, _scCache = {};
+function scQLabel(d, n) { return `${d.vtoQuarters?.year || new Date().getFullYear()} Q${n}`; }
+async function scSelectQuarter(d, n) {
+  _scSelQ = n;
+  const label = scQLabel(d, n);
+  if (!_scCache[label]) {
+    renderScorecard(d);  // paints a "Loading…" state for the selected quarter
+    try { _scCache[label] = await (await fetch('/api/scale/scorecard?quarter=' + encodeURIComponent(label))).json(); }
+    catch (e) { _scCache[label] = { error: true }; }
+  }
+  renderScorecard(d);
+}
+function scMetricCard(m, sideLabel) {
+  if (!m) return `<div class="sc-metric empty"><div class="sc-metric-top"><span class="sc-metric-name">${sideLabel}</span></div><div class="sc-metric-empty-note">not tracked yet</div></div>`;
+  const w = m.pct == null ? 0 : Math.max(2, Math.min(100, m.pct));
+  return `<div class="sc-metric l-${m.status || 'unknown'}">
+    <div class="sc-metric-top"><span class="sc-metric-name">${esc(m.metric)}</span><span class="sc-metric-val ${valClass(m.status)}">${fmtMetricVal(m)}</span></div>
+    <div class="sc-metric-foot"><div class="sc-bar"><i style="width:${w}%;background:${barColor(m.status)}"></i></div><span class="sc-metric-pct" style="color:${barColor(m.status)}">${m.pct == null ? '—' : m.pct + '%'}</span></div>
+  </div>`;
+}
 function renderScorecard(d){
   const el = document.getElementById('tab-scorecard');
   if(!d.scorecard){ el.innerHTML = unavail('Scorecard unavailable','Could not load the VTO scorecard metrics.'); return; }
-  const metrics = d.scorecard.metrics||[];
-  const off = d.scorecard.offTrackCount||0;
-  let h = `<div class="eyebrow-row"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:13px;font-weight:700;color:var(--text-2)">${esc(d.scorecard.quarter)} Scorecard</span><span class="badge ${off?'b-amber':'b-on-track'}">${off?off+' off-track':'on track'}</span></div><div style="display:flex;gap:8px;"><span class="badge b-leading">→ Leading</span><span class="badge b-lagging">← Lagging</span></div></div>`;
-  if(!metrics.length){ el.innerHTML = h + `<div class="empty-line">No wired scorecard metrics for this quarter.</div>`; return; }
-  h += `<div class="scorecard"><div class="sc-grid sc-head-row"><div class="lbl">Metric</div><div class="lbl">Period</div><div class="lbl">Type</div><div class="lbl">Progress</div><div class="lbl" style="text-align:right">Actual / Goal</div></div>`;
-  h += metrics.map(m=>{
-    const w = m.pct==null?0:Math.max(2,Math.min(100,m.pct));
-    const typeBadge = m.type==='leading'?'<span class="badge b-leading">→ leading</span>':'<span class="badge b-lagging">← lagging</span>';
-    return `<div class="sc-grid sc-row">
-      <div><div class="sc-name">${esc(m.metric)}</div><div class="sc-cat">${esc(m.category||'')}</div></div>
-      <div class="sc-period">${esc(m.period||'')}</div>
-      <div class="sc-type-cell">${typeBadge}</div>
-      <div class="sc-bar-cell"><div class="sc-bar"><i style="width:${w}%;background:${barColor(m.status)}"></i></div></div>
-      <div class="sc-val ${valClass(m.status)}">${fmtMetricVal(m)}</div>
-    </div>`;
+  const currentQ = d.vtoQuarters?.currentQ || 2;
+  if(_scSelQ == null) _scSelQ = currentQ;
+  const curLabel = scQLabel(d, currentQ);
+  if(!_scCache[curLabel]) _scCache[curLabel] = d.scorecard;   // seed current quarter from initial payload
+  const selLabel = scQLabel(d, _scSelQ);
+  const sc = _scCache[selLabel];
+
+  const qtabs = [1,2,3,4].map(n => `<button class="sc-qtab${n===_scSelQ?' sel':''}${n>currentQ?' future':''}" onclick="scSelectQuarter(DATA,${n})">Q${n}</button>`).join('');
+  let h = `<div class="sc-qbar">${qtabs}</div>`;
+
+  if(!sc){ el.innerHTML = h + `<div class="empty-line">Loading ${esc(selLabel)}…</div>`; return; }
+  if(sc.error){ el.innerHTML = h + unavail('Unavailable','Could not load '+esc(selLabel)+'.'); return; }
+
+  const metrics = sc.metrics || [];
+  const off = (sc.offTrack ? sc.offTrack.length : sc.offTrackCount) || 0;
+  const byName = {}; metrics.forEach(m => byName[(m.metric||'').toLowerCase()] = m);
+  const pairs = sc.pairs || d.scorecard.pairs || [];
+  const used = new Set();
+
+  h += `<div class="eyebrow-row"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:13px;font-weight:700;color:var(--text-2)">${esc(selLabel)} Scorecard</span><span class="badge ${off?'b-amber':'b-on-track'}">${off?off+' off-track':(sc.state==='future'?'upcoming':'on track')}</span></div></div>`;
+
+  if(!metrics.length){ el.innerHTML = h + `<div class="empty-line">No wired scorecard metrics for ${esc(selLabel)}.</div>`; return; }
+
+  // Leading → lagging pairs
+  h += `<div class="sc-pairhead"><span>Leading (input)</span><span></span><span class="lag">Lagging (outcome)</span></div>`;
+  h += pairs.map(([lead, lag]) => {
+    const lm = byName[lead.toLowerCase()], gm = byName[lag.toLowerCase()];
+    if(lm) used.add(lead.toLowerCase()); if(gm) used.add(lag.toLowerCase());
+    return `<div class="sc-pair">${scMetricCard(lm, esc(lead))}<div class="sc-pair-arrow">→</div>${scMetricCard(gm, esc(lag))}</div>`;
   }).join('');
-  h += `</div><div style="font-size:11px;color:var(--text-3);text-align:center;margin-top:4px;">Actuals computed live from Xero + Convert/Speaking activity.</div>`;
+
+  // Everything not in a pair (financials, etc.)
+  const others = metrics.filter(m => !used.has((m.metric||'').toLowerCase()));
+  if(others.length){
+    h += `<div class="sc-other-head">Other metrics</div>`;
+    h += others.map(m => {
+      const w = m.pct==null?0:Math.max(2,Math.min(100,m.pct));
+      return `<div class="sc-metric l-${m.status||'unknown'}" style="margin-bottom:8px">
+        <div class="sc-metric-top"><span class="sc-metric-name">${esc(m.metric)} <span style="font-size:10px;color:var(--text-4);font-weight:500">${esc(m.category||'')}</span></span><span class="sc-metric-val ${valClass(m.status)}">${fmtMetricVal(m)}</span></div>
+        <div class="sc-metric-foot"><div class="sc-bar"><i style="width:${w}%;background:${barColor(m.status)}"></i></div><span class="sc-metric-pct" style="color:${barColor(m.status)}">${m.pct==null?'—':m.pct+'%'}</span></div>
+      </div>`;
+    }).join('');
+  }
+  h += `<div style="font-size:11px;color:var(--text-3);text-align:center;margin-top:10px;">Actuals computed live from Xero + Convert/Speaking for ${esc(selLabel)}.</div>`;
   el.innerHTML = h;
 }
 
@@ -667,6 +740,7 @@ function renderVto(d){
   const rocks = (d.vto?.rocks||[]).filter(r=>r.quarter===selLabel).filter(scaleMine);
   const off = rocks.filter(r=>r.status==='offTrack'||r.status==='atRisk').length;
   const done = rocks.filter(r=>r.status==='complete').length;
+  const avgPct = rocks.length ? Math.round(rocks.reduce((s,r)=>s+(r.pct||0),0)/rocks.length) : 0;
   const rocksBody = rocks.length
     ? `<div class="rocks">`+ rocks.map(r=>{
         const [label,cls]=ROCK_BADGE[r.status]||['',''];
@@ -679,7 +753,8 @@ function renderVto(d){
         </div>`;
       }).join('') +`</div>`
     : `<div class="empty-line">No rocks for ${esc(selLabel)} in PROJECTS [DB].</div>`;
-  h += scCard(`${esc(selLabel)} Rocks`, rocksBody, {count:(off?off+' off track':(done?done+' done':rocks.length)), tone:off?'red':(done?'green':'zone'), key:'scale-rocks'});
+  const rockCount = rocks.length ? `${avgPct}% complete · ${off?off+' off track':(done?done+' done':rocks.length+' rocks')}` : '0 rocks';
+  h += scCard(`${esc(selLabel)} Rocks`, rocksBody, {count:rockCount, tone:off?'red':(done?'green':'zone'), key:'scale-rocks'});
 
   // 4. EOS links out (no duplication — scorecard + issues are their own tabs)
   h += `<div class="vq-links"><button class="vq-link" onclick="showTab('scorecard')">View Scorecard →</button><button class="vq-link" onclick="showTab('issues')">Review Issues →</button></div>`;

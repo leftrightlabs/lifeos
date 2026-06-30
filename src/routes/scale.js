@@ -20,58 +20,45 @@ import {
   QUICK_WIN_MAX_EFFORT,
   SCORECARD_SOURCES,
   SCORECARD_SOURCE_TYPE,
+  SCORECARD_PAIRS,
   SPEAKING_OUTREACH_DS,
 } from '../config/scale.js';
 // Reuse Convert's data primitives for the sales actuals (no Convert route changes).
 import { queryAllDeals, serializeDeal, fetchSalesProductMap } from '../providers/notion/convert.js';
 import { SALES_STAGE_GROUP, SALES_ACTIVITY_DS } from '../config/convert.js';
 
-// Won-deal value + touchpoint counts for the current month and quarter.
-async function computeConvertActuals(notion, cached, monthStart, quarterStart, today) {
+// Won-deal value + touchpoint count within an arbitrary [start, end] (inclusive).
+async function computeConvertActuals(notion, cached, start, end) {
   const productMap = await fetchSalesProductMap(notion, cached).catch(() => ({}));
   const deals = (await queryAllDeals(notion)).map((pg) => serializeDeal(pg, productMap)).filter((d) => !d.archived);
-  let dealsWonValueMonth = 0, dealsWonValueQuarter = 0;
+  let dealsWonValue = 0;
   for (const d of deals) {
     if ((SALES_STAGE_GROUP[d.status] || 'open') !== 'won' || !d.dateWon) continue;
-    if (d.dateWon >= quarterStart && d.dateWon <= today) dealsWonValueQuarter += d.value || 0;
-    if (d.dateWon >= monthStart && d.dateWon <= today) dealsWonValueMonth += d.value || 0;
+    if (d.dateWon >= start && d.dateWon <= end) dealsWonValue += d.value || 0;
   }
-  let touchpointsMonth = 0, touchpointsQuarter = 0, cursor;
+  let touchpoints = 0, cursor;
   do {
     const r = await notion.dataSources.query({
       data_source_id: SALES_ACTIVITY_DS,
       filter: { and: [
-        { property: 'Timestamp', date: { on_or_after: quarterStart } },
-        { property: 'Timestamp', date: { on_or_before: today } },
+        { property: 'Timestamp', date: { on_or_after: start } },
+        { property: 'Timestamp', date: { on_or_before: end } },
       ] },
       page_size: 100,
       start_cursor: cursor,
     });
-    for (const pg of r.results) {
-      const ts = pg.properties?.Timestamp?.date?.start?.slice(0, 10);
-      if (!ts) continue;
-      touchpointsQuarter++;
-      if (ts >= monthStart) touchpointsMonth++;
-    }
+    for (const pg of r.results) { if (pg.properties?.Timestamp?.date?.start) touchpoints++; }
     cursor = r.has_more ? r.next_cursor : null;
   } while (cursor);
-  return { dealsWonValueMonth, dealsWonValueQuarter, touchpointsMonth, touchpointsQuarter };
+  return { dealsWonValue, touchpoints };
 }
 
-// Speaking "stages" (SPEAKING OUTREACH [DB]) — counts by the relevant date field
-// in the period: Booked = Booking Confirmed, Pitched = Date Pitched, Touchpoints =
-// Last Touched. Small DB, so one full sweep tallies all three.
-async function computeSpeakingActuals(notion, monthStart, quarterStart, today) {
-  const c = {
-    stagesBookedMonth: 0, stagesBookedQuarter: 0,
-    stagesPitchedMonth: 0, stagesPitchedQuarter: 0,
-    stagesTouchpointsMonth: 0, stagesTouchpointsQuarter: 0,
-  };
-  const tally = (d, base) => {
-    if (!d || d > today || d < quarterStart) return;
-    c[base + 'Quarter']++;
-    if (d >= monthStart) c[base + 'Month']++;
-  };
+// Speaking "stages" (SPEAKING OUTREACH [DB]) tallied within [start, end] by the
+// relevant date field: Booked = Booking Confirmed, Pitched = Date Pitched,
+// Touchpoints = Last Touched. Small DB, so one full sweep tallies all three.
+async function computeSpeakingActuals(notion, start, end) {
+  const c = { stagesBooked: 0, stagesPitched: 0, stagesTouchpoints: 0 };
+  const tally = (d, key) => { if (!d || d > end || d < start) return; c[key]++; };
   let cursor;
   do {
     const r = await notion.dataSources.query({ data_source_id: SPEAKING_OUTREACH_DS, page_size: 100, start_cursor: cursor });
@@ -86,20 +73,29 @@ async function computeSpeakingActuals(notion, monthStart, quarterStart, today) {
   return c;
 }
 
-// Map a metric's Source + cadence → its live actual.
-function actualFor(source, cadence, fin, conv, speaking) {
-  const q = cadence === 'Quarterly';
+// Map a metric Source → its actual for the period. `pnl` = {revenue, profit} for
+// the quarter; cashCapacity (point-in-time) only passed for the current quarter.
+function actualFor(source, pnl, conv, speaking, cashCapacity) {
   switch (source) {
-    case 'Xero Revenue': return fin ? (q ? fin.qtdRevenue : fin.mtdRevenue) : null;
-    case 'Xero Profit': return fin ? (q ? fin.qtdNet : fin.mtdNet) : null;
-    case 'Xero Cash Capacity': return fin?.cashCapacity ? Math.round((fin.cashCapacity.months / 3) * 100) / 100 : null;
-    case 'Convert Touchpoints': return conv ? (q ? conv.touchpointsQuarter : conv.touchpointsMonth) : null;
-    case 'Convert Deals Won': return conv ? (q ? conv.dealsWonValueQuarter : conv.dealsWonValueMonth) : null;
-    case 'Speaking Stages Booked': return speaking ? (q ? speaking.stagesBookedQuarter : speaking.stagesBookedMonth) : null;
-    case 'Speaking Stages Pitched': return speaking ? (q ? speaking.stagesPitchedQuarter : speaking.stagesPitchedMonth) : null;
-    case 'Speaking Stages Touchpoints': return speaking ? (q ? speaking.stagesTouchpointsQuarter : speaking.stagesTouchpointsMonth) : null;
+    case 'Xero Revenue': return pnl ? pnl.revenue : null;
+    case 'Xero Profit': return pnl ? pnl.profit : null;
+    case 'Xero Cash Capacity': return cashCapacity != null ? cashCapacity : null;
+    case 'Convert Touchpoints': return conv ? conv.touchpoints : null;
+    case 'Convert Deals Won': return conv ? conv.dealsWonValue : null;
+    case 'Speaking Stages Booked': return speaking ? speaking.stagesBooked : null;
+    case 'Speaking Stages Pitched': return speaking ? speaking.stagesPitched : null;
+    case 'Speaking Stages Touchpoints': return speaking ? speaking.stagesTouchpoints : null;
     default: return null;
   }
+}
+
+// Quarter goal = raw Goal × cadence multiplier (a quarter = 3 months ≈ 13 weeks).
+// Cash Capacity is a point-in-time ratio, not accumulated, so it isn't scaled.
+function quarterGoal(rawGoal, cadence, source) {
+  if (rawGoal == null) return null;
+  if (source === 'Xero Cash Capacity') return rawGoal;
+  const mult = cadence === 'Quarterly' ? 1 : cadence === 'Weekly' ? 13 : 3;
+  return rawGoal * mult;
 }
 
 // Red / amber / green honoring Direction + Break Even.
@@ -115,7 +111,7 @@ const STATUS_KIND = { green: 'on', amber: 'at-risk', red: 'behind', unknown: 'un
 
 export function registerScaleRoutes(app, {
   notion, cached, clearCached, computeXeroFinance, computeXeroQuotes, computeXeroQuarterlyRevenue,
-  computeRecurringRevenueAvg, fetchQuarterlyTargets, fetchVtoGoals, chicagoToday, currentQuarter,
+  computeXeroPnlForRange, computeRecurringRevenueAvg, fetchQuarterlyTargets, fetchVtoGoals, chicagoToday, currentQuarter,
   WORK_PROJECTS_DS, WORK_TASKS_DS, currentNotionUserId, GRETCHEN_USER_ID,
 }) {
   // Notion id of the signed-in user, for the global "assigned to me" filter.
@@ -166,47 +162,69 @@ export function registerScaleRoutes(app, {
     return { systems: flagged, fixFirst, quickWins, needsReview, healthy, counts, asOf: new Date().toISOString() };
   }
 
-  // ── Scorecard (VTO metrics scored against live actuals) ──
-  async function computeScorecard() {
+  // ── Scorecard for a specific quarter ("2026 Q2"), scored against live actuals
+  // for THAT quarter's date range (current quarter capped at today; future → goals
+  // only). Goals are scaled to the quarter (monthly×3, etc.) so a quarter total is
+  // compared to a quarter goal.
+  async function computeScorecardForQuarter(quarterLabel) {
     const today = chicagoToday();
-    const [y, m] = today.split('-').map(Number);
     const pad = (n) => String(n).padStart(2, '0');
-    const monthStart = `${y}-${pad(m)}-01`;
-    const qn = Math.floor((m - 1) / 3) + 1;
-    const quarterStart = `${y}-${pad((qn - 1) * 3 + 1)}-01`;
-    const quarterLabel = `${y} Q${qn}`;
+    const ym = String(quarterLabel || '').match(/(\d{4}).*?Q([1-4])/i);
+    if (!ym) return null;
+    const year = Number(ym[1]), qn = Number(ym[2]);
+    const qStartMonth = (qn - 1) * 3 + 1, qEndMonth = qStartMonth + 2;
+    const qStart = `${year}-${pad(qStartMonth)}-01`;
+    const qEndFull = `${year}-${pad(qEndMonth)}-${pad(new Date(year, qEndMonth, 0).getDate())}`;
+    const isFuture = qStart > today;
+    const isCurrent = !isFuture && today <= qEndFull;
+    const end = isCurrent ? today : qEndFull;
 
     const all = await fetchScorecardMetrics(notion, quarterLabel);
     const metrics = all.filter((mt) => SCORECARD_SOURCES.includes(mt.source));
-    const needXero = metrics.some((mt) => mt.source.startsWith('Xero'));
-    const needConvert = metrics.some((mt) => mt.source.startsWith('Convert'));
-    const needSpeaking = metrics.some((mt) => mt.source.startsWith('Speaking'));
 
-    const fin = needXero ? await withTimeout(cached('xero-finance', computeXeroFinance)).catch(() => null) : null;
-    const conv = needConvert
-      ? await computeConvertActuals(notion, cached, monthStart, quarterStart, today).catch(() => null)
-      : null;
-    const speaking = needSpeaking
-      ? await computeSpeakingActuals(notion, monthStart, quarterStart, today).catch(() => null)
-      : null;
+    let pnl = null, cashCap = null, conv = null, speaking = null;
+    if (!isFuture) {
+      const needXero = metrics.some((mt) => mt.source.startsWith('Xero'));
+      const needConvert = metrics.some((mt) => mt.source.startsWith('Convert'));
+      const needSpeaking = metrics.some((mt) => mt.source.startsWith('Speaking'));
+      if (needXero && computeXeroPnlForRange) {
+        pnl = await withTimeout(cached(`xero-pnl-${qStart}-${end}`, () => computeXeroPnlForRange(qStart, end))).catch(() => null);
+      }
+      // Cash Capacity is point-in-time, so only the current quarter has a value.
+      if (isCurrent && metrics.some((mt) => mt.source === 'Xero Cash Capacity')) {
+        cashCap = await withTimeout(cached('xero-finance', computeXeroFinance))
+          .then((f) => f?.cashCapacity ? Math.round((f.cashCapacity.months / 3) * 100) / 100 : null).catch(() => null);
+      }
+      if (needConvert) conv = await computeConvertActuals(notion, cached, qStart, end).catch(() => null);
+      if (needSpeaking) speaking = await computeSpeakingActuals(notion, qStart, end).catch(() => null);
+    }
 
     const scored = metrics.map((mt) => {
-      const actual = actualFor(mt.source, mt.cadence, fin, conv, speaking);
-      const status = scoreStatus(actual, mt.goal, mt.breakEven, mt.direction);
-      const period = mt.cadence === 'Quarterly' ? 'this quarter' : (mt.cadence === 'Weekly' ? 'this week' : 'this month');
-      const pct = (actual != null && mt.goal) ? Math.round((actual / mt.goal) * 100) : null;
-      return { ...mt, type: SCORECARD_SOURCE_TYPE[mt.source] || 'lagging', actual, status, kind: STATUS_KIND[status], period, pct };
+      const goal = quarterGoal(mt.goal, mt.cadence, mt.source);
+      const breakEven = quarterGoal(mt.breakEven, mt.cadence, mt.source);
+      const actual = isFuture ? null : actualFor(mt.source, pnl, conv, speaking, cashCap);
+      const status = scoreStatus(actual, goal, breakEven, mt.direction);
+      const pct = (actual != null && goal) ? Math.round((actual / goal) * 100) : null;
+      return { ...mt, type: SCORECARD_SOURCE_TYPE[mt.source] || 'lagging', goal, breakEven, actual, status, kind: STATUS_KIND[status], period: quarterLabel, pct };
     });
     const rank = { red: 0, amber: 1, green: 2, unknown: 3 };
     scored.sort((a, b) => (rank[a.status] - rank[b.status]) || (a.metric || '').localeCompare(b.metric || ''));
     const offTrack = scored.filter((s) => s.status === 'red' || s.status === 'amber');
     return {
       quarter: quarterLabel,
+      state: isFuture ? 'future' : isCurrent ? 'current' : 'past',
       metrics: scored,
       offTrack,
       counts: { total: scored.length, offTrack: offTrack.length },
+      pairs: SCORECARD_PAIRS,
       asOf: new Date().toISOString(),
     };
+  }
+
+  // Current-quarter scorecard — feeds /api/scale/data (badge + initial paint).
+  async function computeScorecard() {
+    const [y, m] = chicagoToday().split('-').map(Number);
+    return computeScorecardForQuarter(`${y} Q${Math.floor((m - 1) / 3) + 1}`);
   }
 
   // ── Finance (Xero) + revenue projection ──
@@ -475,7 +493,7 @@ export function registerScaleRoutes(app, {
         },
         pulse: { autoFlags, teamIssues, heroIssue },
         scorecard: scorecard
-          ? { quarter: scorecard.quarter, metrics: scorecard.metrics, offTrackCount }
+          ? { quarter: scorecard.quarter, state: scorecard.state, metrics: scorecard.metrics, offTrackCount, pairs: scorecard.pairs }
           : null,
         finance,
         systems: systemsData
@@ -522,8 +540,19 @@ export function registerScaleRoutes(app, {
     try { res.json(await cached('scale-systems', computeSystems)); }
     catch (err) { console.error('scale/systems error:', err.message); res.status(500).json({ error: err.message }); }
   });
-  app.get('/api/scale/scorecard', async (_req, res) => {
-    try { res.json(await cached('scale-scorecard', computeScorecard)); }
-    catch (err) { console.error('scale/scorecard error:', err.message); res.status(500).json({ error: err.message }); }
+  // ?quarter=2026 Q2 → that quarter's scorecard (lazy, cached per label). No
+  // param → current quarter (used by the /today briefing peek).
+  app.get('/api/scale/scorecard', async (req, res) => {
+    try {
+      const q = String(req.query.quarter || '').trim();
+      const ym = q.match(/(\d{4}).*?Q([1-4])/i);
+      const label = ym ? `${ym[1]} Q${ym[2]}` : null;
+      if (label) {
+        const key = `scale-scorecard-${label}`;
+        if (req.query.fresh === '1' && clearCached) clearCached(key);
+        return res.json(await cached(key, () => computeScorecardForQuarter(label)));
+      }
+      res.json(await cached('scale-scorecard', computeScorecard));
+    } catch (err) { console.error('scale/scorecard error:', err.message); res.status(500).json({ error: err.message }); }
   });
 }

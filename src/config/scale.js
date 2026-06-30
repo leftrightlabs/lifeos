@@ -47,6 +47,18 @@ export const SCORECARD_SOURCE_TYPE = {
   Manual: 'lagging',
 };
 
+// Scorecard leading→lagging pairs, by metric NAME (case-insensitive), shown as
+// rows on the Scorecard tab: input on the left drives the outcome on the right.
+// Pairs whose metric rows don't exist yet render as "not tracked yet" until added
+// to the VTO Scorecard DB (and a data Source is wired for the actual).
+export const SCORECARD_PAIRS = [
+  ['Touchpoints', 'Deals Won'],
+  ['Stages Pitched', 'Stages Booked'],
+  ['Marketing Content Published', 'New Opt-Ins'],
+  ['Stages Published', 'Leads Generated'],
+  ['Web Care Plans Pitched', 'New Web Care Plans'],
+];
+
 // --- PULSE: IDS issue queue (ISSUES [DB]) ---
 // The build spec lists the *database* id (2ce458f08cd980fb9eb6e194e9122386); the
 // Notion API's dataSources.query needs the *data source* id, which differs — it's

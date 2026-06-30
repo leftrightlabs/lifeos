@@ -3975,6 +3975,19 @@ async function computeXeroQuarterlyRevenue(year) {
   return out;
 }
 
+// Cash-basis revenue + profit (net) for an arbitrary date range — used by the
+// per-quarter scorecard. Returns null on failure so callers degrade gracefully.
+async function computeXeroPnlForRange(fromDate, toDate) {
+  try {
+    const raw = await xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate, toDate, paymentsOnly: 'true' });
+    const pl = raw ? parseProfitAndLoss(raw.Reports?.[0]) : { income: 0, net: 0 };
+    return { revenue: Math.round(pl.income || 0), profit: Math.round(pl.net || 0) };
+  } catch (e) {
+    console.error('[xero] pnlForRange error:', e.message);
+    return null;
+  }
+}
+
 // Period multipliers for monthly metrics → MTD/QTD/YTD goal values
 function periodGoals(monthlyMetric, currentMonth) {
   if (!monthlyMetric || monthlyMetric.goal == null) return null;
@@ -4156,7 +4169,7 @@ const { MARKETING_ASSETS_DS, fetchMarketingChannelMap, serializeMarketingAsset }
 registerWealthRoutes(app, { cached, cache, userContext });
 registerScaleRoutes(app, {
   notion, cached, clearCached, computeXeroFinance, computeXeroQuotes, computeXeroQuarterlyRevenue,
-  computeRecurringRevenueAvg, fetchQuarterlyTargets, fetchVtoGoals, chicagoToday, currentQuarter,
+  computeXeroPnlForRange, computeRecurringRevenueAvg, fetchQuarterlyTargets, fetchVtoGoals, chicagoToday, currentQuarter,
   WORK_PROJECTS_DS, WORK_TASKS_DS, currentNotionUserId, GRETCHEN_USER_ID,
 });
 // Reuses the existing Slack user-token OAuth (/auth/slack) + currentSlackToken().
