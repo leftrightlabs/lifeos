@@ -111,7 +111,18 @@
     st.value = project.status || 'Active';
     document.getElementById('pmDeadline').value = (project.end || project.deadline || '').slice(0, 10);
     var open = document.getElementById('pmOpen');
-    if (project.url) { open.href = project.url; open.style.display = ''; } else { open.style.display = 'none'; }
+    if (project.url) {
+      open.href = project.url;
+      open.style.display = '';
+      // Hand off to the Notion app (notion://) instead of the browser; fall back
+      // to the web URL if the app isn't installed.
+      open.onclick = function (e) {
+        var m = String(project.url).match(/([a-f0-9]{32})/i);
+        if (!m) return; // let the normal href open
+        e.preventDefault();
+        window.location.href = 'notion://www.notion.so/' + m[1];
+      };
+    } else { open.style.display = 'none'; }
     document.getElementById('pmModal').classList.add('open');
     setTimeout(function () { document.getElementById('pmName').focus(); }, 30);
   };

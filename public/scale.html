@@ -315,6 +315,7 @@ body[data-state="calm"] .hero .next { border-left-color:var(--green); }
 .rock.l-green { border-left-color:var(--green); } .rock.l-amber { border-left-color:var(--amber); } .rock.l-red { border-left-color:var(--red); } .rock.l-gray { border-left-color:var(--border); }
 .rock-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:10px; }
 .rock-name { font-size:13px; font-weight:700; color:var(--text); margin-bottom:3px; }
+.rock-link { cursor:pointer; } .rock-link:hover { color:var(--zone); text-decoration:underline; }
 .rock-meta { font-size:11px; color:var(--text-3); }
 .rock-prog { display:flex; align-items:center; gap:10px; }
 .rock-bar { flex:1; height:4px; border-radius:99px; background:var(--surface-2); overflow:hidden; } .rock-bar i { display:block; height:100%; border-radius:99px; }
@@ -354,6 +355,52 @@ body[data-state="calm"] .vto-group-head span { color:var(--green); }
 .vqa-sw.quotes    { background:var(--zone); }
 .vqa-sw.recur     { background:var(--green); }
 .vq-note { font-size:10.5px; color:var(--text-4); margin-top:8px; }
+/* ── VTO Vision (EOS top half) ── */
+.vis { display:flex; flex-direction:column; gap:16px; }
+.vis-row { display:flex; flex-direction:column; gap:8px; }
+.vis-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--text-3); }
+.vis-vals { display:flex; flex-wrap:wrap; gap:8px; }
+.vis-chip { font-size:12px; font-weight:600; color:var(--text); background:var(--surface-2); border:1px solid var(--border); border-radius:999px; padding:6px 13px; }
+.vis-purpose { font-size:14px; line-height:1.6; color:var(--text-2); }
+.vis-tag { font-size:13px; font-weight:700; color:var(--text); margin-top:6px; }
+.vis-niche { font-size:12.5px; color:var(--text-3); margin-top:4px; }
+.vis-bhag { background:linear-gradient(135deg, rgba(124,109,255,.12), rgba(124,109,255,.03)); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.vis-bhag-val { font-family:var(--font-display); font-size:20px; font-weight:800; color:var(--text); margin-top:4px; }
+.vis-bhag-sub { font-size:12px; color:var(--text-3); margin-top:2px; }
+.v3-sum { font-size:13.5px; line-height:1.6; color:var(--text-2); margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+.v3-sum b { color:var(--text); }
+.v3-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px 18px; }
+.v3-item { font-size:12.5px; color:var(--text-2); line-height:1.45; display:flex; gap:8px; }
+.v3-item::before { content:'✦'; color:var(--zone); flex-shrink:0; }
+.vmk { display:flex; flex-direction:column; gap:13px; }
+.vmk-row { display:grid; grid-template-columns:130px 1fr; gap:14px; align-items:start; }
+.vmk-lbl { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--zone); padding-top:2px; }
+.vmk-txt { font-size:12.5px; line-height:1.55; color:var(--text-2); }
+.vg { display:flex; flex-direction:column; gap:13px; }
+.vg-goal { display:flex; flex-direction:column; gap:6px; }
+.vg-top { display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+.vg-name { font-size:13px; font-weight:600; color:var(--text); }
+.vg-val { font-size:12.5px; font-weight:700; color:var(--text); white-space:nowrap; } .vg-val.neg { color:var(--red); } .vg-val.muted { color:var(--text-3); font-weight:600; }
+.vg-of { color:var(--text-3); font-weight:600; }
+.vg-bar { height:7px; background:var(--surface-2); border-radius:4px; overflow:hidden; }
+.vg-bar i { display:block; height:100%; border-radius:4px; transition:width .6s ease; }
+.vg-goal.manual { flex-direction:row; align-items:center; gap:10px; }
+.vg-check { width:17px; height:17px; flex-shrink:0; border:1.5px solid var(--text-3); border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--green); }
+.vg-check.done { border-color:var(--green); background:rgba(74,222,128,.14); }
+@media (max-width:640px){ .v3-grid { grid-template-columns:1fr; } .vmk-row { grid-template-columns:1fr; gap:3px; } }
+.sec-head-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.sc-edit-btn { background:none; border:1px solid var(--border); border-radius:7px; width:28px; height:28px; color:var(--text-3); cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+.sc-edit-btn:hover { border-color:var(--zone); color:var(--zone); }
+.ve-list { display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
+.ve-row { display:flex; gap:8px; align-items:flex-start; background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:10px; }
+.ve-row.del { opacity:.4; }
+.ve-fields { flex:1; min-width:0; display:flex; flex-direction:column; gap:7px; }
+.ve-ftag { font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-3); }
+.ve-srow { display:flex; gap:7px; flex-wrap:wrap; }
+.ve-srow .sc-input { flex:1; min-width:90px; }
+.ve-del { flex-shrink:0; background:none; border:none; color:var(--text-3); font-size:18px; cursor:pointer; line-height:1; padding:2px 4px; } .ve-del:hover { color:var(--red); }
+.ve-add { width:100%; padding:9px; background:none; border:1px dashed var(--border); border-radius:8px; color:var(--text-3); font-size:12px; font-weight:600; cursor:pointer; font-family:var(--font-body); } .ve-add:hover { border-color:var(--zone); color:var(--zone); }
+.ve-check { display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--text-2); cursor:pointer; }
 .vq-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
 @media(max-width:640px){ .vq-grid { grid-template-columns:repeat(2,1fr); } }
 .vq-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:13px 14px; cursor:pointer; transition:border-color .15s, background .15s; }
@@ -480,8 +527,9 @@ function restoreScaleTab(){
 function scCard(title, body, opts){
   opts = opts || {};
   const count = opts.count != null ? `<span class="eyebrow-count ${opts.tone||''}">${opts.count}</span>` : '';
+  const action = opts.action || '';
   const key = opts.key ? ` data-persist-key="${opts.key}"` : '';
-  return `<div class="t-card"${key}><div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">${title}</div></div>${count}</div><div class="t-body">${body}</div></div>`;
+  return `<div class="t-card"${key}><div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">${title}</div></div><div class="sec-head-right">${action}${count}</div></div><div class="t-body">${body}</div></div>`;
 }
 
 function renderPulse(d){
@@ -985,11 +1033,155 @@ function renderSystems(d){
 // Selected quarter for the MOCs section; defaults to the current quarter.
 let _vtoSelQ = null;
 function vtoSelectQuarter(n){ _vtoSelQ = n; if(DATA) renderVto(DATA); }
+// ── VTO Vision side (EOS top half): Core Values, Core Focus, 10-Year Target,
+// 3-Year Picture, Marketing Strategy. All read from the VTO [DB]. ──
+const VE_GROUPS = {
+  vision:    { sections:['Core Value','Core Focus','10-Year Target'], title:'Vision & Core Focus' },
+  three:     { sections:['3-Year Picture'], title:'3-Year Picture' },
+  marketing: { sections:['Marketing Strategy'], title:'Marketing Strategy' },
+  goals:     { sections:['1-Year Goal'], title:'1-Year Goals' },
+};
+const vesPencil = (key) => `<button class="sc-edit-btn" title="Edit" onclick="event.stopPropagation();scEditVision('${key}')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>`;
+function scVisionHtml(v){
+  let h='';
+  const cv=(v.coreValues||[]).map(x=>`<span class="vis-chip">${esc(x.item)}</span>`).join('');
+  const focus=v.coreFocus||[];
+  const purpose=focus.find(f=>f.field==='Purpose'), tag=focus.find(f=>f.field==='Tagline'), niche=focus.find(f=>f.field==='Niche');
+  const ten=v.tenYear;
+  let vb='<div class="vis">';
+  if(cv) vb+=`<div class="vis-row"><div class="vis-label">Core Values</div><div class="vis-vals">${cv}</div></div>`;
+  if(purpose||tag||niche){
+    vb+=`<div class="vis-row"><div class="vis-label">Core Focus</div><div>`;
+    if(purpose) vb+=`<div class="vis-purpose">${esc(purpose.detail||purpose.label)}</div>`;
+    if(tag) vb+=`<div class="vis-tag">${esc(tag.label)}${tag.detail?` — ${esc(tag.detail)}`:''}</div>`;
+    if(niche) vb+=`<div class="vis-niche"><b>Niche:</b> ${esc(niche.label)}</div>`;
+    vb+=`</div></div>`;
+  }
+  if(ten) vb+=`<div class="vis-bhag"><div class="vis-label">10-Year Target (BHAG)</div><div class="vis-bhag-val">${esc(ten.label)}</div>${ten.detail?`<div class="vis-bhag-sub">${esc(ten.detail)}</div>`:''}</div>`;
+  vb+='</div>';
+  h += scCard('Vision & Core Focus', vb, {key:'scale-vis', action:vesPencil('vision')});
+
+  const ty=v.threeYear||{};
+  if((ty.looksLike&&ty.looksLike.length)||ty.summary){
+    let b='<div class="v3">';
+    if(ty.summary) b+=`<div class="v3-sum"><b>${esc(ty.summary.label)}</b>${ty.summary.detail?` — ${esc(ty.summary.detail)}`:''}</div>`;
+    if(ty.looksLike&&ty.looksLike.length) b+=`<div class="v3-grid">${ty.looksLike.map(x=>`<div class="v3-item">${esc(x.item)}</div>`).join('')}</div>`;
+    b+='</div>';
+    h += scCard('3-Year Picture', b, {key:'scale-3yr', action:vesPencil('three')});
+  }
+
+  const mk=v.marketing||[];
+  if(mk.length){
+    const body=`<div class="vmk">${mk.map(m=>`<div class="vmk-row"><div class="vmk-lbl">${esc(m.label||'')}</div><div class="vmk-txt">${esc(m.detail||'')}</div></div>`).join('')}</div>`;
+    h += scCard('Marketing Strategy', body, {key:'scale-mktg', action:vesPencil('marketing')});
+  }
+  return h;
+}
+function vgBarColor(pct){ return pct>=70?'var(--green)':pct>=40?'var(--amber)':'var(--red)'; }
+function vgGoal(g){
+  const money=['Recurring Revenue','Revenue','Profit','Debt Paydown'];
+  const fmt=(val)=> (g.metric&&money.includes(g.metric))?moneyK(val):String(val);
+  if(g.metric && g.current!=null && g.target!=null){
+    const neg=g.current<0; const pct=Math.max(0,Math.min(100,Math.round((g.current/g.target)*100)));
+    return `<div class="vg-goal"><div class="vg-top"><span class="vg-name">${esc(g.text)}</span><span class="vg-val ${neg?'neg':''}">${fmt(g.current)} <span class="vg-of">/ ${fmt(g.target)}</span></span></div><div class="vg-bar"><i style="width:${neg?2:Math.max(2,pct)}%;background:${neg?'var(--red)':vgBarColor(pct)}"></i></div></div>`;
+  }
+  if(g.metric && g.target!=null){
+    return `<div class="vg-goal"><div class="vg-top"><span class="vg-name">${esc(g.text)}</span><span class="vg-val muted">target ${fmt(g.target)}</span></div></div>`;
+  }
+  return `<div class="vg-goal manual"><span class="vg-check ${g.done?'done':''}">${g.done?'✓':''}</span><span class="vg-name">${esc(g.text)}</span></div>`;
+}
+function scYearGoalsHtml(v){
+  const goals=v.yearGoals||[]; if(!goals.length) return '';
+  const live=goals.filter(g=>g.metric&&g.current!=null);
+  const onTrack=live.filter(g=>g.current/g.target>=0.7).length;
+  const count=live.length?`${onTrack}/${live.length} on pace`:`${goals.length} goals`;
+  return scCard('1-Year Goals', `<div class="vg">${goals.map(vgGoal).join('')}</div>`, {count, tone:'zone', key:'scale-ygoals', action:vesPencil('goals')});
+}
+
+// ── Vision in-app editor (writes to VTO [DB]) ──
+const VE_SEC_LABEL={'Core Value':'Core Values','Core Focus':'Core Focus','10-Year Target':'10-Year Target','3-Year Picture':'3-Year Picture','Marketing Strategy':'Marketing Strategy','1-Year Goal':'1-Year Goals'};
+let _veRows=[], _veSections=[], _veTitle='';
+function scEditVision(key){
+  const g=VE_GROUPS[key]; if(!g) return;
+  _veSections=g.sections; _veTitle=g.title;
+  const all=(window.DATA?.vision?.rows)||[];
+  _veRows = all.filter(r=>_veSections.includes(r.section)).map(r=>({
+    id:r.id, section:r.section, field:r.field||null, item:r.item||'', detail:r.detail||'',
+    metric:r.metric||null, target:(r.target!=null?r.target:''), done:!!r.done, sort:r.sort||0,
+    _orig:JSON.stringify({item:r.item||'',detail:r.detail||'',metric:r.metric||null,target:(r.target!=null?r.target:''),done:!!r.done,field:r.field||null})
+  }));
+  scPaintVision();
+}
+function scVeRow(r, idx){
+  const sec=r.section;
+  let inner;
+  if(sec==='1-Year Goal'){
+    const metricOpts=['','Recurring Revenue','Revenue','Profit','Speaking Stages','Debt Paydown'];
+    inner=`<input class="sc-input" value="${esc(r.item)}" placeholder="Goal" oninput="scVeSet(${idx},'item',this.value)">
+      <div class="ve-srow">
+        <select class="sc-input" onchange="scVeSet(${idx},'metric',this.value||null)">${metricOpts.map(m=>`<option value="${esc(m)}" ${(r.metric||'')===m?'selected':''}>${m?esc(m):'No live metric'}</option>`).join('')}</select>
+        <input class="sc-input" type="number" style="max-width:110px" value="${esc(r.target)}" placeholder="Target" oninput="scVeSet(${idx},'target',this.value)">
+        <label class="ve-check"><input type="checkbox" ${r.done?'checked':''} onchange="scVeSet(${idx},'done',this.checked)"> Done</label>
+      </div>`;
+  } else if(sec==='Core Value' || (sec==='3-Year Picture' && r.field!=='Summary')){
+    inner=`<input class="sc-input" value="${esc(r.item)}" placeholder="${sec==='Core Value'?'Core value':'What it looks like…'}" oninput="scVeSet(${idx},'item',this.value)">`;
+  } else {
+    inner=`${r.field?`<div class="ve-ftag">${esc(r.field)}</div>`:''}<input class="sc-input" value="${esc(r.item)}" placeholder="Heading" oninput="scVeSet(${idx},'item',this.value)"><textarea class="sc-input" rows="2" placeholder="Detail" oninput="scVeSet(${idx},'detail',this.value)">${esc(r.detail)}</textarea>`;
+  }
+  return `<div class="ve-row"><div class="ve-fields">${inner}</div><button class="ve-del" title="Remove" onclick="scVeDelete(${idx})">×</button></div>`;
+}
+function scPaintVision(){
+  let bg=document.getElementById('sc-vision-modal');
+  if(!bg){ bg=document.createElement('div'); bg.id='sc-vision-modal'; bg.className='sc-modal-bg'; bg.onclick=e=>{ if(e.target===bg) scCloseVision(); }; document.body.appendChild(bg); }
+  let groups='';
+  _veSections.forEach(sec=>{
+    const rows=_veRows.map((r,idx)=>({r,idx})).filter(x=>x.r.section===sec && !x.r._deleted);
+    const rowsHtml=rows.length?rows.map(x=>scVeRow(x.r,x.idx)).join(''):'<div class="empty-line">None yet.</div>';
+    const noun=(VE_SEC_LABEL[sec]||sec).replace(/s$/,'');
+    groups+=`<div class="ve-group"><div class="vis-label" style="margin-bottom:8px">${esc(VE_SEC_LABEL[sec]||sec)}</div><div class="ve-list">${rowsHtml}</div><button class="ve-add" onclick="scVeAdd('${sec}')">+ Add ${esc(noun)}</button></div>`;
+  });
+  bg.innerHTML=`<div class="sc-modal" onclick="event.stopPropagation()" style="max-width:560px">
+    <div class="sc-modal-hd"><h3>Edit ${esc(_veTitle)}</h3><button class="sc-modal-x" onclick="scCloseVision()">×</button></div>
+    ${groups}
+    <div class="sc-modal-ft"><button class="sc-btn" onclick="scCloseVision()">Cancel</button><button class="sc-btn primary" id="sc-vis-save" onclick="scSaveVision()">Save</button></div>
+  </div>`;
+  requestAnimationFrame(()=>bg.classList.add('show'));
+}
+function scVeSet(idx,key,val){ if(_veRows[idx]) _veRows[idx][key]=val; }
+function scVeDelete(idx){ const r=_veRows[idx]; if(!r) return; if(!r.id){ _veRows.splice(idx,1); } else { r._deleted=true; } scPaintVision(); }
+function scVeAdd(sec){
+  const field = sec==='3-Year Picture' ? 'Looks Like' : (sec==='Core Focus' ? 'Purpose' : null);
+  const maxSort=_veRows.filter(r=>r.section===sec).reduce((m,r)=>Math.max(m,r.sort||0),0);
+  _veRows.push({ id:null, section:sec, field, item:'', detail:'', metric:null, target:'', done:false, sort:maxSort+1, _new:true });
+  scPaintVision();
+}
+function scCloseVision(){ const bg=document.getElementById('sc-vision-modal'); if(bg){ bg.classList.remove('show'); setTimeout(()=>bg.remove(),200); } }
+async function scSaveVision(){
+  const btn=document.getElementById('sc-vis-save'); if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+  const H={'Content-Type':'application/json'};
+  const ops=[];
+  _veRows.forEach(r=>{
+    if(r._deleted && r.id){ ops.push(fetch('/api/scale/vision/'+r.id,{method:'DELETE'})); return; }
+    if(r._deleted) return;
+    const payload={ section:r.section, field:r.field, item:r.item, detail:r.detail, metric:r.metric, target:r.target, done:r.done, sort:r.sort };
+    if(!r.id){ if(!(r.item||'').trim()) return; ops.push(fetch('/api/scale/vision',{method:'POST',headers:H,body:JSON.stringify(payload)})); return; }
+    const cur=JSON.stringify({item:r.item||'',detail:r.detail||'',metric:r.metric||null,target:(r.target!=null?r.target:''),done:!!r.done,field:r.field||null});
+    if(cur!==r._orig){ ops.push(fetch('/api/scale/vision/'+r.id,{method:'PATCH',headers:H,body:JSON.stringify({item:r.item,detail:r.detail,metric:r.metric,target:r.target,done:r.done,field:r.field})})); }
+  });
+  if(!ops.length){ scCloseVision(); return; }
+  try{
+    const res=await Promise.all(ops);
+    for(const x of res){ if(!x.ok){ const d=await x.json().catch(()=>({})); throw new Error(d.error||'save failed'); } }
+    toast('Vision updated'); scCloseVision(); await load(true);
+  }catch(e){ if(btn){ btn.disabled=false; btn.textContent='Save'; } toast("Couldn't save: "+e.message); }
+}
+
 function renderVto(d){
   const el = document.getElementById('tab-vto');
   const vq = d.vtoQuarters;
   if(!vq){ el.innerHTML = unavail('VTO unavailable','Could not load quarterly data.'); return; }
   if(_vtoSelQ == null) _vtoSelQ = vq.currentQ || 1;
+  const vision = d.vision;
 
   // 1. Annual revenue — projected to year end as a stacked, multi-color bar
   // (collected + A/R + all future quotes + recurring×remaining-months) vs goal.
@@ -1015,7 +1207,11 @@ function renderVto(d){
       <div class="vqa-legend">${legend}</div>
       ${a.acceptedQuotes == null ? `<div class="vq-note">Quotes unavailable (Xero scope) — projection excludes signed quotes.</div>` : ''}
     </div>`;
-  let h = scCard(`${vq.year} — Annual Revenue`, annualBody, {key:'scale-vq-annual'});
+  // Vision (EOS top half) leads the tab; then the 1-Year Plan (annual revenue +
+  // goals), the quarter breakdown, and finally the quarterly Rocks.
+  let h = vision ? scVisionHtml(vision) : '';
+  h += scCard(`${vq.year} — Annual Revenue`, annualBody, {key:'scale-vq-annual'});
+  if(vision) h += scYearGoalsHtml(vision);
 
   // 2. Four quarter cards (click to filter the MOCs section)
   const cards = (vq.quarters||[]).map(q=>{
@@ -1045,7 +1241,7 @@ function renderVto(d){
         const w = r.pct==null?0:Math.max(2,Math.min(100,r.pct));
         const metaBits=[r.owner?('Owner: '+esc(r.owner)):null, r.function?esc(r.function):null, (r.milestonesTotal?`${r.milestonesDone}/${r.milestonesTotal} milestones`:null), r.dueDate?('Due '+relDate(r.dueDate)):null].filter(Boolean).join(' · ');
         return `<div class="rock ${ROCK_BORDER[r.status]||'l-gray'}">
-          <div class="rock-top"><div><div class="rock-name">${r.notionUrl?`<a href="${esc(r.notionUrl)}" target="_blank" style="color:inherit;text-decoration:none">${esc(r.name)}</a>`:esc(r.name)}</div><div class="rock-meta">${metaBits}</div></div><span class="badge ${cls}" style="flex-shrink:0">${label}</span></div>
+          <div class="rock-top"><div><div class="rock-name"><span class="rock-link" onclick="scOpenRock('${r.id}')" title="Edit rock">${esc(r.name)}</span></div><div class="rock-meta">${metaBits}</div></div><span class="badge ${cls}" style="flex-shrink:0">${label}</span></div>
           <div class="rock-prog"><div class="rock-bar"><i style="width:${w}%;background:${rockBarColor(r.status)}"></i></div><span class="rock-pct" style="color:${rockBarColor(r.status)}">${r.pct==null?'—':r.pct+'%'}</span></div>
           ${r.nextAction?`<div class="rock-next">→ ${esc(r.nextAction)}</div>`:''}
         </div>`;
@@ -1060,6 +1256,16 @@ function renderVto(d){
   el.innerHTML = h;
 }
 
+// Click a rock title → the shared Edit Project modal (project-modal.js), same as
+// the Today page. Rocks are work projects; saving re-fetches so the card updates.
+function scOpenRock(id){
+  if(!window.openProjectModal) return;
+  const r=(window.DATA?.vto?.rocks||[]).find(x=>x.id===id); if(!r) return;
+  openProjectModal({
+    id, name:r.name, source:'work',
+    status:r.notionStatus||'', end:r.dueDate||null, url:r.notionUrl||'',
+  }, { onSaved:()=>load() });
+}
 function unavail(title,msg){ return `<div class="unavail"><b>${esc(title)}</b>${esc(msg)}</div>`; }
 
 function renderBadges(d){
@@ -1099,5 +1305,6 @@ load();
 // reload would keep serving a stale snapshot).
 window.lrlFooterRefresh = () => load(true);
 </script>
+<script src="/project-modal.js"></script>
 <script src="/shell.js"></script>
 </body></html>

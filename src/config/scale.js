@@ -18,6 +18,10 @@ export const QUICK_WIN_MAX_EFFORT = 2; // Effort to Fix is a 1-5 scale
 
 // --- Scorecard off-track (VTO Scorecard scored against live systems) ---
 export const VTO_SCORECARD_DS = 'c359c68c-02bb-4fae-b4cb-3a512e5eafab';
+// VTO [DB] — the EOS Vision side (Core Values, Core Focus, 10-Year Target,
+// 3-Year Picture, Marketing Strategy, 1-Year Goals). One row per element,
+// tagged by Section; editable in Notion, read-only in the app.
+export const VTO_VISION_DS = 'c3931601-5bd1-41f0-8839-3b1c0051d695';
 // Speaking engagements ("stages") — SPEAKING OUTREACH [DB]; "booked" = Booking Confirmed set.
 export const SPEAKING_OUTREACH_DS = '96f47e7e-9797-4d96-9abb-e5dcb7df13a3';
 // The "Source" select on each metric → which live actual the app computes.

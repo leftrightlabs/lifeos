@@ -5,6 +5,7 @@
 import {
   BUSINESS_FUNCTIONS_DS,
   VTO_SCORECARD_DS,
+  VTO_VISION_DS,
   ISSUES_DS,
   ISSUE_QUEUE_STATUSES,
   ISSUE_PRIORITY_RANK,
@@ -115,6 +116,48 @@ export async function fetchIssues(notion) {
     return (ISSUE_PRIORITY_RANK[b.priority] || 0) - (ISSUE_PRIORITY_RANK[a.priority] || 0);
   });
   return issues;
+}
+
+// ── VTO Vision side (Core Values, Core Focus, 10-Year, 3-Year, Marketing, Goals) ──
+export function serializeVtoRow(page) {
+  const p = page.properties || {};
+  return {
+    id: page.id,
+    section: p.Section?.select?.name || null,
+    field: p.Field?.select?.name || null,
+    item: txt(p.Item?.title) || '',
+    detail: txt(p.Detail?.rich_text) || '',
+    sort: typeof p.Sort?.number === 'number' ? p.Sort.number : 0,
+    metric: p.Metric?.select?.name || null,
+    target: typeof p.Target?.number === 'number' ? p.Target.number : null,
+    done: !!p.Done?.checkbox,
+  };
+}
+
+// Reads the VTO [DB] and shapes it into the EOS Vision structure the tab renders.
+// All text is owner-editable in Notion; the app never writes here.
+export async function fetchVtoVision(notion) {
+  if (!notion) return null;
+  const res = await notion.dataSources.query({ data_source_id: VTO_VISION_DS, page_size: 100 });
+  const rows = res.results.map(serializeVtoRow).filter((r) => r.section);
+  rows.sort((a, b) => (a.sort || 0) - (b.sort || 0));
+  const bySec = (s) => rows.filter((r) => r.section === s);
+  const ten = bySec('10-Year Target')[0] || null;
+  const three = bySec('3-Year Picture');
+  const summary = three.find((r) => r.field === 'Summary') || null;
+  return {
+    // Raw rows (with ids) power the in-app editor; the shaped fields below drive rendering.
+    rows,
+    coreValues: bySec('Core Value').map((r) => ({ id: r.id, item: r.item })),
+    coreFocus: bySec('Core Focus').map((r) => ({ id: r.id, field: r.field, label: r.item, detail: r.detail })),
+    tenYear: ten ? { id: ten.id, label: ten.item, detail: ten.detail } : null,
+    threeYear: {
+      summary: summary ? { id: summary.id, label: summary.item, detail: summary.detail } : null,
+      looksLike: three.filter((r) => r.field === 'Looks Like').map((r) => ({ id: r.id, item: r.item })),
+    },
+    marketing: bySec('Marketing Strategy').map((r) => ({ id: r.id, field: r.field, label: r.field || r.item, detail: r.detail })),
+    yearGoals: bySec('1-Year Goal').map((r) => ({ id: r.id, text: r.item, metric: r.metric, target: r.target, done: r.done })),
+  };
 }
 
 // ── VTO: quarterly Rocks ──

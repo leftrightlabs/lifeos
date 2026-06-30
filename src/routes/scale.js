@@ -11,6 +11,7 @@ import {
   fetchScorecardMetrics,
   fetchIssues,
   fetchRocks,
+  fetchVtoVision,
 } from '../providers/notion/scale.js';
 import {
   SYSTEM_ATTENTION_STATUSES,
@@ -23,6 +24,7 @@ import {
   SCORECARD_PAIRS,
   SPEAKING_OUTREACH_DS,
   ISSUES_DS,
+  VTO_VISION_DS,
 } from '../config/scale.js';
 // Reuse Convert's data primitives for the sales actuals (no Convert route changes).
 import { queryAllDeals, serializeDeal, fetchSalesProductMap } from '../providers/notion/convert.js';
@@ -294,6 +296,7 @@ export function registerScaleRoutes(app, {
         ? Math.round((Date.parse(r.deadline + 'T00:00:00Z') - Date.parse(chicagoToday() + 'T00:00:00Z')) / 86400000)
         : null;
       return {
+        id: r.id,                    // project page id — for the edit modal
         name: r.name,
         quarter: r.quarter,          // parsed from the rock name (e.g. "2026 Q2")
         owner: r.owner,
@@ -411,7 +414,7 @@ export function registerScaleRoutes(app, {
       }
       const rocksCtx = { projectsDs: WORK_PROJECTS_DS, tasksDs: WORK_TASKS_DS, projectPropName: 'Project' };
       const year = Number(chicagoToday().slice(0, 4));
-      const [sysR, scR, finR, quoteR, issR, rockR, qtrRevR, qtrGoalR, recurR] = await Promise.allSettled([
+      const [sysR, scR, finR, quoteR, issR, rockR, qtrRevR, qtrGoalR, recurR, visionR] = await Promise.allSettled([
         cached('scale-systems', computeSystems),
         cached('scale-scorecard', computeScorecard),
         withTimeout(cached('xero-finance', computeXeroFinance)),
@@ -421,6 +424,7 @@ export function registerScaleRoutes(app, {
         computeXeroQuarterlyRevenue ? withTimeout(cached('scale-qtr-revenue', () => computeXeroQuarterlyRevenue(year))) : Promise.resolve(null),
         fetchQuarterlyTargets ? fetchQuarterlyTargets() : Promise.resolve({}),
         computeRecurringRevenueAvg ? withTimeout(cached('xero-recurring-rev-avg', computeRecurringRevenueAvg)) : Promise.resolve(null),
+        fetchVtoVision(notion),
       ]);
       const val = (r) => (r.status === 'fulfilled' ? r.value : null);
       const systemsData = val(sysR);
@@ -481,6 +485,30 @@ export function registerScaleRoutes(app, {
 
       const rocksOffTrack = rocks.filter((r) => r.status === 'offTrack' || r.status === 'atRisk').length;
 
+      // ── VTO Vision: attach live "current" to any 1-year goal with a Metric ──
+      // (recurring = monthly avg; revenue/profit = YTD cash basis; speaking =
+      // stages booked YTD). Debt Paydown has no live source yet → stays manual.
+      const vision = val(visionR);
+      if (vision && Array.isArray(vision.yearGoals) && vision.yearGoals.some((g) => g.metric)) {
+        const yStart = `${year}-01-01`;
+        const today = chicagoToday();
+        const [ytdPnl, speakingYtd] = await Promise.all([
+          computeXeroPnlForRange ? computeXeroPnlForRange(yStart, today).catch(() => null) : Promise.resolve(null),
+          computeSpeakingActuals(notion, yStart, today).catch(() => null),
+        ]);
+        const currents = {
+          'Recurring Revenue': recurringMonthly,
+          'Revenue': ytdPnl?.revenue ?? null,
+          'Profit': ytdPnl?.profit ?? null,
+          'Speaking Stages': speakingYtd?.stagesBooked ?? null,
+          // 'Debt Paydown' intentionally absent — no live source wired.
+        };
+        vision.yearGoals = vision.yearGoals.map((g) => ({
+          ...g,
+          current: g.metric && (g.metric in currents) ? currents[g.metric] : null,
+        }));
+      }
+
       res.json({
         refreshedAt: new Date().toISOString(),
         state: stressed ? 'stressed' : 'calm',
@@ -507,6 +535,7 @@ export function registerScaleRoutes(app, {
               remainingCount: systemsData.needsReview.length,
             }
           : null,
+        vision,
         vto: {
           rocks,
           metrics: scorecard?.metrics || [],
@@ -604,5 +633,45 @@ export function registerScaleRoutes(app, {
         .map((u) => notion.pages.update({ page_id: u.id, properties: { 'Board Order': { number: u.order } } })));
       res.json({ ok: true });
     } catch (err) { console.error('scale/issues reorder error:', err.message); res.status(500).json({ error: err.message }); }
+  });
+
+  // ── VTO Vision in-app editing (writes to VTO [DB]) ──
+  // Build a Notion properties patch from a request body; only keys present are set.
+  const visionProps = (b) => {
+    const p = {};
+    if (typeof b.item === 'string') p.Item = { title: [{ text: { content: b.item.trim().slice(0, 1900) } }] };
+    if (b.section) p.Section = { select: { name: b.section } };
+    if ('field' in b) p.Field = b.field ? { select: { name: b.field } } : { select: null };
+    if (typeof b.detail === 'string') p.Detail = { rich_text: b.detail ? [{ text: { content: b.detail.slice(0, 1900) } }] : [] };
+    if ('sort' in b && b.sort != null) p.Sort = { number: Number(b.sort) };
+    if ('metric' in b) p.Metric = b.metric ? { select: { name: b.metric } } : { select: null };
+    if ('target' in b) p.Target = (b.target != null && b.target !== '') ? { number: Number(b.target) } : { number: null };
+    if ('done' in b) p.Done = { checkbox: !!b.done };
+    return p;
+  };
+  app.post('/api/scale/vision', async (req, res) => {
+    try {
+      if (!notion) return res.status(500).json({ error: 'Notion not configured' });
+      const b = req.body || {};
+      if (!b.section || typeof b.item !== 'string' || !b.item.trim()) return res.status(400).json({ error: 'section + item required' });
+      const page = await notion.pages.create({ parent: { type: 'data_source_id', data_source_id: VTO_VISION_DS }, properties: visionProps(b) });
+      res.json({ ok: true, id: page.id });
+    } catch (err) { console.error('scale/vision create error:', err.message); res.status(500).json({ error: err.message }); }
+  });
+  app.patch('/api/scale/vision/:id', async (req, res) => {
+    try {
+      if (!notion) return res.status(500).json({ error: 'Notion not configured' });
+      const props = visionProps(req.body || {});
+      if (!Object.keys(props).length) return res.status(400).json({ error: 'nothing to update' });
+      await notion.pages.update({ page_id: req.params.id, properties: props });
+      res.json({ ok: true });
+    } catch (err) { console.error('scale/vision patch error:', err.message); res.status(500).json({ error: err.message }); }
+  });
+  app.delete('/api/scale/vision/:id', async (req, res) => {
+    try {
+      if (!notion) return res.status(500).json({ error: 'Notion not configured' });
+      await notion.pages.update({ page_id: req.params.id, archived: true });
+      res.json({ ok: true });
+    } catch (err) { console.error('scale/vision delete error:', err.message); res.status(500).json({ error: err.message }); }
   });
 }
