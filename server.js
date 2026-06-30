@@ -2585,10 +2585,14 @@ function buildBriefUserPrompt({ calEvents, workMyDay, lifeMyDay, goals }) {
   const pastSummary = past.length ? `(${past.length} earlier event${past.length === 1 ? '' : 's'} already done — do not mention)` : '';
   const taskLine = (t) => `  - [${t.source}] ${t.name}${t.dueStart ? ` (due ${t.dueStart})` : ''}${t.priority ? ` [${t.priority}]` : ''}`;
   const isWaiting = (t) => t.status === 'Waiting';
-  const workActionable = workMyDay.filter((t) => !isWaiting(t));
-  const workWaiting = workMyDay.filter(isWaiting);
-  const lifeActionable = lifeMyDay.filter((t) => !isWaiting(t));
-  const lifeWaiting = lifeMyDay.filter(isWaiting);
+  // queryTasks(myDayOnly) also returns tasks completed today (so the plan can
+  // show them struck-through). They're done — never surface them in the brief's
+  // forward-looking ACTIONABLE buckets, or it'll tell her to do finished work.
+  const isDone = (t) => t.status === 'Done';
+  const workActionable = workMyDay.filter((t) => !isWaiting(t) && !isDone(t));
+  const workWaiting = workMyDay.filter((t) => isWaiting(t) && !isDone(t));
+  const lifeActionable = lifeMyDay.filter((t) => !isWaiting(t) && !isDone(t));
+  const lifeWaiting = lifeMyDay.filter((t) => isWaiting(t) && !isDone(t));
   const goalsLines = goals.map((g) => {
     const pct = g.progress.total ? Math.round((g.progress.done / g.progress.total) * 100) : 0;
     return `  - [${g.source}] ${g.name} — ${g.progress.done}/${g.progress.total} milestones (${pct}%)${g.targetDeadline ? `, target ${g.targetDeadline}` : ''}`;
