@@ -3777,6 +3777,27 @@ app.get('/api/finance/xero', async (_req, res) => {
   }
 });
 
+// Diagnostic: dump the trailing-12-month P&L row labels + values so we can see
+// exactly how Xero names the Recurring Revenue line(s) and why the avg is $0.
+app.get('/api/finance/recurring-diag', async (_req, res) => {
+  try {
+    const todayStr = chicagoToday();
+    const [yNum, mNum] = todayStr.split('-').map(Number);
+    const pad = (n) => String(n).padStart(2, '0');
+    let startM = mNum - 11, startY = yNum;
+    while (startM < 1) { startM += 12; startY -= 1; }
+    const fromDate = `${startY}-${pad(startM)}-01`;
+    const raw = await xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate, toDate: todayStr, paymentsOnly: 'true' });
+    const rows = flattenReportRows(raw?.Reports?.[0]?.Rows);
+    const rowValue = (r) => { const c = r.Cells || []; for (let i = c.length - 1; i >= 1; i--) { const v = parseNum(c[i].Value); if (v) return v; } return 0; };
+    const allLabels = rows.map((r) => ({ label: String(r.Cells?.[0]?.Value || ''), type: r.RowType, value: rowValue(r) })).filter((x) => x.label);
+    const recurringLike = allLabels.filter((x) => /recurr/i.test(x.label));
+    res.json({ fromDate, toDate: todayStr, matched: recurringRevenueFromReport(raw?.Reports?.[0]), recurringLike, allLabels });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Xero Quotes for the Scale revenue projection: accepted (committed) + sent
 // (open pipeline). These need the `accounting.transactions.read` scope, which is
 // NOT in this Xero app's allowed-scope list (see XERO_SCOPES note) — so quotes are
@@ -3834,14 +3855,21 @@ async function computeRecurringAvg() {
   }
 }
 
-// Pull the "Recurring Revenue" line specifically from a Xero P&L report (the
-// "Total Recurring Revenue" subtotal, falling back to a "Recurring Revenue" row).
+// Pull the "Recurring Revenue" figure from a Xero P&L report. Prefer an explicit
+// "Total Recurring Revenue" subtotal; otherwise sum every line that mentions
+// "recurring revenue" (e.g. "GET SUPPORT:Recurring Revenue"). Label matching is
+// loose because cash-basis P&Ls vary in how the group/subtotal is named.
 function recurringRevenueFromReport(report) {
   const rows = flattenReportRows(report?.Rows);
   const rowValue = (r) => { const c = r.Cells || []; for (let i = c.length - 1; i >= 1; i--) { const v = parseNum(c[i].Value); if (v) return v; } return 0; };
-  for (const r of rows) { if (/total\s+recurring\s+revenue/i.test(String(r.Cells?.[0]?.Value || ''))) return rowValue(r); }
-  for (const r of rows) { const l = String(r.Cells?.[0]?.Value || ''); if (/recurring\s+revenue/i.test(l) && !/:/.test(l)) return rowValue(r); }
-  return 0;
+  const label = (r) => String(r.Cells?.[0]?.Value || '').trim();
+  for (const r of rows) { if (/total\s+recurring\s+revenue/i.test(label(r))) return rowValue(r); }
+  let sum = 0, hit = false;
+  for (const r of rows) {
+    const l = label(r);
+    if (/recurring\s*revenue/i.test(l) && !/^total/i.test(l)) { sum += rowValue(r); hit = true; }
+  }
+  return hit ? sum : 0;
 }
 
 // Rolling last-12-months Recurring Revenue (the Xero "Recurring Revenue" account)
