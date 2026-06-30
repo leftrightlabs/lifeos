@@ -2816,6 +2816,9 @@ function applyOneThingToLifePip() {
   if (!pState || (pState.status !== 'done' && pState.status !== 'credited')) return;
   const ti = lifeWeek.findIndex(d => d.state === 'today');
   if (ti >= 0) lifeWeek[ti] = { ...lifeWeek[ti], state: 'hit' };
+  // The One Thing is done for today — mark the day satisfied so the streak card
+  // shows "Locked in" (and quiets) instead of still nagging after a refresh.
+  state.lifeSatisfied = true;
 }
 
 // Apply rings/streaks data
