@@ -3855,19 +3855,16 @@ async function computeRecurringAvg() {
   }
 }
 
-// Pull the "Recurring Revenue" figure from a Xero P&L report. Prefer an explicit
-// "Total Recurring Revenue" subtotal; otherwise sum every line that mentions
-// "recurring revenue" (e.g. "GET SUPPORT:Recurring Revenue"). Label matching is
-// loose because cash-basis P&Ls vary in how the group/subtotal is named.
+// Sum the "Recurring Revenue" income line(s) from a Xero P&L report — the live
+// account is "GET SUPPORT:Recurring Revenue". Match any "recurring revenue" line
+// but EXCLUDE "Non-Recurring Revenue" (a separate account) and subtotal rows.
 function recurringRevenueFromReport(report) {
   const rows = flattenReportRows(report?.Rows);
   const rowValue = (r) => { const c = r.Cells || []; for (let i = c.length - 1; i >= 1; i--) { const v = parseNum(c[i].Value); if (v) return v; } return 0; };
-  const label = (r) => String(r.Cells?.[0]?.Value || '').trim();
-  for (const r of rows) { if (/total\s+recurring\s+revenue/i.test(label(r))) return rowValue(r); }
   let sum = 0, hit = false;
   for (const r of rows) {
-    const l = label(r);
-    if (/recurring\s*revenue/i.test(l) && !/^total/i.test(l)) { sum += rowValue(r); hit = true; }
+    const l = String(r.Cells?.[0]?.Value || '').trim();
+    if (/recurring\s*revenue/i.test(l) && !/non-?\s*recurring/i.test(l) && !/^total/i.test(l)) { sum += rowValue(r); hit = true; }
   }
   return hit ? sum : 0;
 }
