@@ -115,7 +115,7 @@ const STATUS_KIND = { green: 'on', amber: 'at-risk', red: 'behind', unknown: 'un
 
 export function registerScaleRoutes(app, {
   notion, cached, clearCached, computeXeroFinance, computeXeroQuotes, computeXeroQuarterlyRevenue,
-  fetchQuarterlyTargets, fetchVtoGoals, chicagoToday, currentQuarter,
+  computeRecurringRevenueAvg, fetchQuarterlyTargets, fetchVtoGoals, chicagoToday, currentQuarter,
   WORK_PROJECTS_DS, WORK_TASKS_DS, currentNotionUserId, GRETCHEN_USER_ID,
 }) {
   // Notion id of the signed-in user, for the global "assigned to me" filter.
@@ -388,11 +388,11 @@ export function registerScaleRoutes(app, {
   app.get('/api/scale/data', async (req, res) => {
     try {
       if (req.query.fresh === '1' && clearCached) {
-        ['scale-systems', 'scale-scorecard', 'xero-finance', 'scale-quotes', 'scale-qtr-revenue'].forEach((k) => clearCached(k));
+        ['scale-systems', 'scale-scorecard', 'xero-finance', 'scale-quotes', 'scale-qtr-revenue', 'xero-recurring-rev-avg'].forEach((k) => clearCached(k));
       }
       const rocksCtx = { projectsDs: WORK_PROJECTS_DS, tasksDs: WORK_TASKS_DS, projectPropName: 'Project' };
       const year = Number(chicagoToday().slice(0, 4));
-      const [sysR, scR, finR, quoteR, issR, rockR, qtrRevR, qtrGoalR] = await Promise.allSettled([
+      const [sysR, scR, finR, quoteR, issR, rockR, qtrRevR, qtrGoalR, recurR] = await Promise.allSettled([
         cached('scale-systems', computeSystems),
         cached('scale-scorecard', computeScorecard),
         withTimeout(cached('xero-finance', computeXeroFinance)),
@@ -401,6 +401,7 @@ export function registerScaleRoutes(app, {
         fetchRocks(notion, rocksCtx),
         computeXeroQuarterlyRevenue ? withTimeout(cached('scale-qtr-revenue', () => computeXeroQuarterlyRevenue(year))) : Promise.resolve(null),
         fetchQuarterlyTargets ? fetchQuarterlyTargets() : Promise.resolve({}),
+        computeRecurringRevenueAvg ? withTimeout(cached('xero-recurring-rev-avg', computeRecurringRevenueAvg)) : Promise.resolve(null),
       ]);
       const val = (r) => (r.status === 'fulfilled' ? r.value : null);
       const systemsData = val(sysR);
@@ -431,13 +432,16 @@ export function registerScaleRoutes(app, {
       const annualGoal = vtoQuarterList.reduce((s, q) => s + (q.goal || 0), 0) || null;
 
       // Projected annual revenue = collected YTD + invoiced-unpaid (A/R) +
-      // accepted quotes + recurring × remaining full months of the year.
+      // ALL future accepted quotes + (12-month recurring avg × remaining months).
       const currentMonthNum = Number(chicagoToday().slice(5, 7));
       const remainingMonths = Math.max(0, 12 - currentMonthNum);
       const collectedYtd = finance?.ytdRevenue?.actual ?? null;
       const ar = finance?.ar ?? null;
-      const acceptedQuotes = finance?.projection?.quotesAvailable ? (finance?.projection?.acceptedQuotes ?? 0) : null;
-      const recurringMonthly = finance?.projection?.recurring ?? null;
+      const quotesAvailable = quotes != null;
+      const acceptedQuotes = quotesAvailable
+        ? Math.round((quotes.accepted || []).reduce((s, qx) => s + (qx.total || 0), 0))
+        : null;
+      const recurringMonthly = val(recurR)?.avgMonthly != null ? Math.round(val(recurR).avgMonthly) : null;
       const recurringRest = recurringMonthly != null ? Math.round(recurringMonthly * remainingMonths) : null;
       const projectedAnnual = (collectedYtd != null)
         ? Math.round((collectedYtd || 0) + (ar || 0) + (acceptedQuotes || 0) + (recurringRest || 0))

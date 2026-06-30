@@ -3764,8 +3764,11 @@ async function computeXeroFinance() {
 
 app.get('/api/finance/xero', async (_req, res) => {
   try {
-    const data = await cached('xero-finance', computeXeroFinance);
-    res.json(data);
+    const [data, recur] = await Promise.all([
+      cached('xero-finance', computeXeroFinance),
+      cached('xero-recurring-rev-avg', computeRecurringRevenueAvg).catch(() => null),
+    ]);
+    res.json({ ...data, recurringRevenueAvg: recur?.avgMonthly ?? null, recurringRevenue12mo: recur?.total12 ?? null });
   } catch (err) {
     console.error('Xero finance error:', err.message);
     const needsAuth = /XERO_(REFRESH_TOKEN|TENANT_ID)/.test(err.message)
@@ -3828,6 +3831,35 @@ async function computeRecurringAvg() {
   } catch (e) {
     console.error('[xero] recurringAvg error:', e.message);
     return { totalIncome: 0, avgMonthly: 0 };
+  }
+}
+
+// Pull the "Recurring Revenue" line specifically from a Xero P&L report (the
+// "Total Recurring Revenue" subtotal, falling back to a "Recurring Revenue" row).
+function recurringRevenueFromReport(report) {
+  const rows = flattenReportRows(report?.Rows);
+  const rowValue = (r) => { const c = r.Cells || []; for (let i = c.length - 1; i >= 1; i--) { const v = parseNum(c[i].Value); if (v) return v; } return 0; };
+  for (const r of rows) { if (/total\s+recurring\s+revenue/i.test(String(r.Cells?.[0]?.Value || ''))) return rowValue(r); }
+  for (const r of rows) { const l = String(r.Cells?.[0]?.Value || ''); if (/recurring\s+revenue/i.test(l) && !/:/.test(l)) return rowValue(r); }
+  return 0;
+}
+
+// Rolling last-12-months Recurring Revenue (the Xero "Recurring Revenue" account)
+// ÷ 12. Cash basis, matching the rest of the finance view.
+async function computeRecurringRevenueAvg() {
+  const todayStr = chicagoToday();
+  const [yNum, mNum] = todayStr.split('-').map(Number);
+  const pad = (n) => String(n).padStart(2, '0');
+  let startM = mNum - 11, startY = yNum;
+  while (startM < 1) { startM += 12; startY -= 1; }
+  const fromDate = `${startY}-${pad(startM)}-01`;
+  try {
+    const raw = await xeroGet('/api.xro/2.0/Reports/ProfitAndLoss', { fromDate, toDate: todayStr, paymentsOnly: 'true' });
+    const total12 = raw ? recurringRevenueFromReport(raw.Reports?.[0]) : 0;
+    return { total12, avgMonthly: Math.round(total12 / 12) };
+  } catch (e) {
+    console.error('[xero] recurringRevenueAvg error:', e.message);
+    return { total12: 0, avgMonthly: 0 };
   }
 }
 
@@ -4099,7 +4131,7 @@ const { MARKETING_ASSETS_DS, fetchMarketingChannelMap, serializeMarketingAsset }
 registerWealthRoutes(app, { cached, cache, userContext });
 registerScaleRoutes(app, {
   notion, cached, clearCached, computeXeroFinance, computeXeroQuotes, computeXeroQuarterlyRevenue,
-  fetchQuarterlyTargets, fetchVtoGoals, chicagoToday, currentQuarter,
+  computeRecurringRevenueAvg, fetchQuarterlyTargets, fetchVtoGoals, chicagoToday, currentQuarter,
   WORK_PROJECTS_DS, WORK_TASKS_DS, currentNotionUserId, GRETCHEN_USER_ID,
 });
 // Reuses the existing Slack user-token OAuth (/auth/slack) + currentSlackToken().

@@ -241,26 +241,25 @@ body[data-state="calm"] .vto-group-head span { color:var(--green); }
 .vto-actual { text-align:right; font-size:13px; font-weight:800; } .vto-actual .u { font-size:10px; color:var(--text-3); font-weight:400; }
 
 /* VTO quarterly view */
-.vq-annual-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:10px; }
-.vq-big { font-family:var(--font-display); font-size:28px; font-weight:800; color:var(--text); line-height:1; }
-.vq-sub { font-size:12px; color:var(--text-3); margin-top:4px; }
-.vq-annual-pct { font-size:15px; font-weight:800; color:var(--amber); white-space:nowrap; }
-.vq-annual-pct.good { color:var(--green); }
-.vq-bar { height:10px; background:var(--surface-2); border-radius:99px; overflow:hidden; } .vq-bar i { display:block; height:100%; border-radius:99px; background:var(--zone); }
-.vq-bar.sm { height:5px; margin-top:8px; }
-.vq-bar.stack { display:flex; }
-.vq-bar.stack i { border-radius:0; }
-.vq-bar.stack .seg-collected { background:var(--green); }
-.vq-bar.stack .seg-proj { background:var(--zone); opacity:.55; }
-.vq-lines { margin-top:12px; }
-.vq-line { display:flex; align-items:center; justify-content:space-between; font-size:12px; padding:5px 0; border-bottom:1px solid var(--border-soft); }
-.vq-line:last-child { border-bottom:none; }
-.vq-line-l { color:var(--text-3); } .vq-line-v { color:var(--text-2); font-weight:600; }
-.vq-line-v.collected { color:var(--green); }
-.vq-line.total { margin-top:2px; padding-top:8px; border-top:1px solid var(--border); } .vq-line.total .vq-line-l { color:var(--text); font-weight:700; } .vq-line.total .vq-line-v { color:var(--text); font-weight:800; font-size:13px; }
-.vq-gap { font-size:12px; font-weight:700; color:var(--amber); margin-top:10px; }
-.vq-gap.good { color:var(--green); }
-.vq-note { font-size:10.5px; color:var(--text-4); margin-top:6px; }
+.vqa-top { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+.vqa-amt { font-family:var(--font-display); font-size:28px; font-weight:800; color:var(--text); line-height:1; }
+.vqa-amt-sub { font-size:13px; font-weight:600; color:var(--text-3); font-family:var(--font-body); }
+.vqa-gap { font-size:13px; color:var(--text-3); } .vqa-gap.good { color:var(--green); }
+.vqa-bar { height:18px; background:var(--surface-2); border-radius:9px; overflow:hidden; display:flex; margin-bottom:12px; }
+.vqa-seg { height:100%; transition:width .6s ease; min-width:0; }
+.vqa-seg.collected { background:var(--accent); }
+.vqa-seg.invoiced  { background:var(--amber); opacity:.85; }
+.vqa-seg.quotes    { background:var(--zone); opacity:.85; }
+.vqa-seg.recur     { background:var(--green); opacity:.7; }
+.vqa-legend { display:flex; gap:16px; flex-wrap:wrap; }
+.vqa-leg { display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--text-2); }
+.vqa-leg b { color:var(--text); font-weight:700; }
+.vqa-sw { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+.vqa-sw.collected { background:var(--accent); }
+.vqa-sw.invoiced  { background:var(--amber); }
+.vqa-sw.quotes    { background:var(--zone); }
+.vqa-sw.recur     { background:var(--green); }
+.vq-note { font-size:10.5px; color:var(--text-4); margin-top:8px; }
 .vq-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
 @media(max-width:640px){ .vq-grid { grid-template-columns:repeat(2,1fr); } }
 .vq-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:13px 14px; cursor:pointer; transition:border-color .15s, background .15s; }
@@ -541,6 +540,7 @@ function finBoard(el, d){
     ${card('Credit Cards', moneyK(d.creditTotal), `${nCard} card${nCard===1?'':'s'}`, (d.creditTotal||0)<0?'warn':'')}
     ${card('A/R — Owed to Us', moneyK(d.accountsReceivable), 'outstanding invoices')}
     ${card('MTD Net', moneyK(d.mtdNet), (d.mtdNet||0)>=0?'in the black':'in the red', (d.mtdNet||0)>=0?'pos':'neg')}
+    ${card('Avg Recurring Rev', d.recurringRevenueAvg!=null?moneyK(d.recurringRevenueAvg)+'<span style="font-size:12px;font-weight:600;color:var(--text-3)">/mo</span>':'—', 'rolling 12 mo ÷ 12')}
   </div>`;
 
   h += `<div class="eyebrow-row"><span class="eyebrow">Revenue tracking</span></div>`;
@@ -620,33 +620,29 @@ function renderVto(d){
   if(!vq){ el.innerHTML = unavail('VTO unavailable','Could not load quarterly data.'); return; }
   if(_vtoSelQ == null) _vtoSelQ = vq.currentQ || 1;
 
-  // 1. Annual financial progress — collected + pipeline (A/R + quotes +
-  // recurring rest-of-year) projected against the annual goal, with the gap.
+  // 1. Annual revenue — projected to year end as a stacked, multi-color bar
+  // (collected + A/R + all future quotes + recurring×remaining-months) vs goal.
   const a = vq.annual || {};
-  const ag = a.goal, aa = a.actual;
-  const proj = a.projected;                     // collected + ar + quotes + recurringRest
-  const extra = (proj!=null && aa!=null) ? Math.max(0, proj - aa) : 0;  // projected-but-not-yet-collected
-  const projPct = (ag && proj!=null) ? Math.min(100, Math.round((proj/ag)*100)) : null;
-  const collPct = (ag && aa!=null) ? Math.min(100, Math.round((aa/ag)*100)) : 0;
-  const extraPct = (ag && extra) ? Math.min(100-collPct, Math.round((extra/ag)*100)) : 0;
-  const gap = (ag!=null && proj!=null) ? ag - proj : null;
-  const row = (label, val, cls) => val==null ? '' : `<div class="vq-line"><span class="vq-line-l">${label}</span><span class="vq-line-v ${cls||''}">${moneyK(val)}</span></div>`;
+  const ag = a.goal, proj = a.projected;
+  const segs = [
+    ['Collected', a.actual || 0, 'collected'],
+    ['Invoiced (A/R)', a.ar || 0, 'invoiced'],
+    ...(a.acceptedQuotes != null ? [['Future quotes', a.acceptedQuotes, 'quotes']] : []),
+    [`Recurring (${a.remainingMonths != null ? a.remainingMonths + ' mo' : 'rest of yr'})`, a.recurringRest || 0, 'recur'],
+  ];
+  const pctOf = (v) => ag ? Math.max(0, Math.min(100, (v / ag) * 100)) : 0;
+  const gap = (ag != null && proj != null) ? ag - proj : null;
+  const bar = segs.map(([, v, cls]) => v > 0 ? `<div class="vqa-seg ${cls}" style="width:${pctOf(v)}%"></div>` : '').join('');
+  const legend = segs.map(([label, v, cls]) => `<span class="vqa-leg"><span class="vqa-sw ${cls}"></span>${esc(label)} <b>${moneyK(v || 0)}</b></span>`).join('');
   const annualBody = `
-    <div class="vq-annual">
-      <div class="vq-annual-top">
-        <div><div class="vq-big">${proj!=null?moneyK(proj):(aa!=null?moneyK(aa):'—')}</div><div class="vq-sub">projected of ${ag?moneyK(ag):'—'} ${vq.year} goal</div></div>
-        <div class="vq-annual-pct ${projPct!=null&&projPct>=100?'good':''}">${projPct!=null?projPct+'%':'—'}</div>
+    <div class="vqa">
+      <div class="vqa-top">
+        <div class="vqa-amt">${proj != null ? moneyK(proj) : '—'} <span class="vqa-amt-sub">projected</span></div>
+        <div class="vqa-gap ${gap != null && gap <= 0 ? 'good' : ''}">${gap == null ? '' : (gap <= 0 ? 'beats goal by ' + moneyK(-gap) : moneyK(gap) + ' to go')} · goal ${ag ? moneyK(ag) : '—'}</div>
       </div>
-      <div class="vq-bar stack"><i class="seg-collected" style="width:${collPct}%"></i><i class="seg-proj" style="width:${extraPct}%"></i></div>
-      <div class="vq-lines">
-        ${row('Collected (YTD)', aa, 'collected')}
-        ${row('Invoiced, unpaid (A/R)', a.ar)}
-        ${a.acceptedQuotes!=null ? row('Accepted quotes', a.acceptedQuotes) : ''}
-        ${row(`Recurring (${a.remainingMonths!=null?a.remainingMonths+' mo':'rest of yr'})`, a.recurringRest)}
-        <div class="vq-line total"><span class="vq-line-l">Projected total</span><span class="vq-line-v">${proj!=null?moneyK(proj):'—'}</span></div>
-      </div>
-      ${gap!=null?`<div class="vq-gap ${gap<=0?'good':''}">${gap<=0?('Projected to beat goal by '+moneyK(-gap)+' 🎉'):(moneyK(gap)+' gap left to fill this year')}</div>`:''}
-      ${a.acceptedQuotes==null?`<div class="vq-note">Quotes unavailable (Xero scope) — projection excludes signed quotes.</div>`:''}
+      <div class="vqa-bar">${bar}</div>
+      <div class="vqa-legend">${legend}</div>
+      ${a.acceptedQuotes == null ? `<div class="vq-note">Quotes unavailable (Xero scope) — projection excludes signed quotes.</div>` : ''}
     </div>`;
   let h = scCard(`${vq.year} — Annual Revenue`, annualBody, {key:'scale-vq-annual'});
 
