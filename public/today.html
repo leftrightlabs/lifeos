@@ -1883,7 +1883,9 @@ document.addEventListener('click', closePlanMenus);
 function toNotionApp(url) { return url ? url.replace(/^https?:/i, 'notion:') : url; }
 function openInNotion(i) {
   const t = plan[i];
-  if (t && t.notionUrl) { window.location.href = toNotionApp(t.notionUrl); }
+  if (!t || !t.notionUrl) return;
+  if (window.openNotion) { window.openNotion(t.notionUrl); return; } // app-first + browser fallback
+  window.location.href = toNotionApp(t.notionUrl);
 }
 
 // Collapse/expand a card or section-wrap. Persists state keyed by today's date

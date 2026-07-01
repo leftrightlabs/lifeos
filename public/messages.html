@@ -381,7 +381,7 @@ const AVC = ['#6366F1','#2563EB','#06B6D4','#059669','#D97706','#DC2626','#7C3AE
 function avColor(n){ let h=0; for(const c of String(n||'')) h=(h*31+c.charCodeAt(0))&0xffffffff; return AVC[Math.abs(h)%AVC.length]; }
 // Notion URL → notion:// deep link so it opens in the Notion desktop/mobile app.
 function toNotionLink(url){ if(!url) return url; const m=url.match(/([a-f0-9]{32})/i); if(m) return `notion://www.notion.so/${m[1]}`; if(url.startsWith('https://www.notion.so/')) return url.replace('https://','notion://'); if(url.startsWith('https://app.notion.com/')) return url.replace('https://app.notion.com/','notion://www.notion.so/'); return url; }
-function openNotionLink(url){ const link=toNotionLink(url); if(link&&link.startsWith('notion://')){ window.location.href=link; } else { window.open(url,'_blank','noopener'); } return false; }
+function openNotionLink(url){ if(window.openNotion){ window.openNotion(url); return false; } const link=toNotionLink(url); if(link&&link.startsWith('notion://')){ window.location.href=link; } else { window.open(url,'_blank','noopener'); } return false; }
 
 const state = { tab:'gmail', filter:'all', mode:'all', selected:new Set(), openId:null, openSrc:null,
   cache:{ gmail:{data:[],t:0}, slack:{data:null,t:0}, notion:{data:[],t:0} } };

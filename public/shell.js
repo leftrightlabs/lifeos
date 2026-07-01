@@ -13,6 +13,40 @@
 (function () {
   'use strict';
 
+  // ── Open in Notion: app-first with a browser fallback ──
+  // shell.js loads last on every page, so these become the canonical globals
+  // (overriding any page-local copies). Default: hand off to the Notion app via
+  // the notion:// scheme. If the app grabs focus we're done; if nothing takes
+  // over within a short beat (app not installed), fall back to the web — a new
+  // tab when allowed, same tab if the popup is blocked.
+  window.toNotionLink = function (url) {
+    if (!url) return url;
+    var m = String(url).match(/([a-f0-9]{32})/i);
+    if (m) return 'notion://www.notion.so/' + m[1];
+    if (url.indexOf('https://www.notion.so/') === 0) return url.replace('https://', 'notion://');
+    if (url.indexOf('https://app.notion.com/') === 0) return url.replace('https://app.notion.com/', 'notion://www.notion.so/');
+    return url;
+  };
+  window.openNotion = function (url) {
+    if (!url) return;
+    var deep = window.toNotionLink(url);
+    if (!deep || deep.indexOf('notion://') !== 0) { window.open(url, '_blank', 'noopener'); return; }
+    var handled = false;
+    var cancel = function () { handled = true; };
+    var vis = function () { if (document.hidden) handled = true; };
+    window.addEventListener('blur', cancel, { once: true });
+    document.addEventListener('visibilitychange', vis, { once: true });
+    setTimeout(function () {
+      window.removeEventListener('blur', cancel);
+      document.removeEventListener('visibilitychange', vis);
+      if (!handled && !document.hidden) {
+        var w = window.open(url, '_blank', 'noopener');
+        if (!w) window.location.href = url; // popup blocked → same tab
+      }
+    }, 1200);
+    window.location.href = deep;
+  };
+
   // ── NAV DATA ──
   var NAV_WORK = [
     { label: 'TODAY',      href: '/today' },

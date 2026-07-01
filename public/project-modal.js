@@ -114,13 +114,11 @@
     if (project.url) {
       open.href = project.url;
       open.style.display = '';
-      // Hand off to the Notion app (notion://) instead of the browser; fall back
-      // to the web URL if the app isn't installed.
+      // Hand off to the Notion app with a browser fallback (shell.js's openNotion).
       open.onclick = function (e) {
-        var m = String(project.url).match(/([a-f0-9]{32})/i);
-        if (!m) return; // let the normal href open
         e.preventDefault();
-        window.location.href = 'notion://www.notion.so/' + m[1];
+        if (window.openNotion) window.openNotion(project.url);
+        else window.open(project.url, '_blank', 'noopener');
       };
     } else { open.style.display = 'none'; }
     document.getElementById('pmModal').classList.add('open');

@@ -11,6 +11,7 @@ import {
   fetchScorecardMetrics,
   fetchIssues,
   fetchRocks,
+  fetchRockReviews,
   fetchVtoVision,
 } from '../providers/notion/scale.js';
 import {
@@ -25,6 +26,7 @@ import {
   SPEAKING_OUTREACH_DS,
   ISSUES_DS,
   VTO_VISION_DS,
+  ROCK_REVIEW_DS,
 } from '../config/scale.js';
 // Reuse Convert's data primitives for the sales actuals (no Convert route changes).
 import { queryAllDeals, serializeDeal, fetchSalesProductMap } from '../providers/notion/convert.js';
@@ -311,8 +313,28 @@ export function registerScaleRoutes(app, {
         milestonesDone: r.milestonesDone,
         milestonesTotal: r.milestonesTotal,
         notionUrl: r.notionUrl,
+        disposition: r.disposition,       // quarter-end outcome (null until set)
+        continuesId: r.continuesId,       // origin rock this one continues
+        continuedById: r.continuedById,
       };
     });
+  }
+
+  // Completion scoring for one quarter. Past/closed quarters read the frozen
+  // ROCK REVIEW snapshot; open quarters score live rocks (Done or Disposition
+  // Completed = done; Dropped is excluded from the denominator). Returns null
+  // when there's nothing to score.
+  function quarterRockStats(label, rocks, reviews) {
+    const snap = (reviews || []).filter((r) => r.quarter === label);
+    if (snap.length) {
+      const committed = snap.filter((r) => r.disposition !== 'Dropped');
+      const completed = committed.filter((r) => r.finalStatus === 'Completed' || r.disposition === 'Completed');
+      return { committed: committed.length, completed: completed.length, missed: committed.length - completed.length, rate: committed.length ? Math.round((completed.length / committed.length) * 100) : 0, frozen: true };
+    }
+    const live = (rocks || []).filter((r) => r.quarter === label && r.disposition !== 'Dropped');
+    if (!live.length) return null;
+    const completed = live.filter((r) => r.status === 'complete' || r.disposition === 'Completed');
+    return { committed: live.length, completed: completed.length, missed: live.length - completed.length, rate: live.length ? Math.round((completed.length / live.length) * 100) : 0, frozen: false };
   }
 
   // ── Auto-flags (BUILD-SPEC §5) ──
@@ -414,7 +436,7 @@ export function registerScaleRoutes(app, {
       }
       const rocksCtx = { projectsDs: WORK_PROJECTS_DS, tasksDs: WORK_TASKS_DS, projectPropName: 'Project' };
       const year = Number(chicagoToday().slice(0, 4));
-      const [sysR, scR, finR, quoteR, issR, rockR, qtrRevR, qtrGoalR, recurR, visionR] = await Promise.allSettled([
+      const [sysR, scR, finR, quoteR, issR, rockR, qtrRevR, qtrGoalR, recurR, visionR, reviewR] = await Promise.allSettled([
         cached('scale-systems', computeSystems),
         cached('scale-scorecard', computeScorecard),
         withTimeout(cached('xero-finance', computeXeroFinance)),
@@ -425,6 +447,7 @@ export function registerScaleRoutes(app, {
         fetchQuarterlyTargets ? fetchQuarterlyTargets() : Promise.resolve({}),
         computeRecurringRevenueAvg ? withTimeout(cached('xero-recurring-rev-avg', computeRecurringRevenueAvg)) : Promise.resolve(null),
         fetchVtoVision(notion),
+        fetchRockReviews(notion),
       ]);
       const val = (r) => (r.status === 'fulfilled' ? r.value : null);
       const systemsData = val(sysR);
@@ -445,12 +468,14 @@ export function registerScaleRoutes(app, {
       const monthlyRevGoal = finance?.qtdRevenue?.goal != null ? finance.qtdRevenue.goal / 3 : null;
       const quarterGoalFallback = monthlyRevGoal != null ? Math.round(monthlyRevGoal * 3) : null;
       const currentQ = Math.floor((Number(chicagoToday().slice(5, 7)) - 1) / 3) + 1;
+      const rockReviews = val(reviewR) || [];
       const vtoQuarterList = [1, 2, 3, 4].map((n) => {
         const label = `${year} Q${n}`;
         const state = n < currentQ ? 'past' : n === currentQ ? 'current' : 'future';
         const goal = qtrTargets[label] != null ? qtrTargets[label] : quarterGoalFallback;
         const actual = state === 'future' ? null : (qtrRevenue[n] ?? null);
-        return { n, label, goal, actual, state };
+        const rockStats = quarterRockStats(label, rocks, rockReviews);
+        return { n, label, goal, actual, state, rockStats };
       });
       const annualGoal = vtoQuarterList.reduce((s, q) => s + (q.goal || 0), 0) || null;
 
@@ -556,6 +581,7 @@ export function registerScaleRoutes(app, {
             projected: projectedAnnual,      // collected + ar + quotes + recurringRest
           },
           quarters: vtoQuarterList,
+          reviews: rockReviews,           // frozen end-of-quarter snapshots
         },
       });
     } catch (err) {
@@ -673,5 +699,83 @@ export function registerScaleRoutes(app, {
       await notion.pages.update({ page_id: req.params.id, archived: true });
       res.json({ ok: true });
     } catch (err) { console.error('scale/vision delete error:', err.message); res.status(500).json({ error: err.message }); }
+  });
+
+  // ── Rock history: disposition · carry-over · quarter close ──
+  const rocksCtx = () => ({ projectsDs: WORK_PROJECTS_DS, tasksDs: WORK_TASKS_DS, projectPropName: 'Project' });
+  // Set a rock's quarter-end disposition (and optionally re-home its quarter/status).
+  app.patch('/api/scale/rock/:id', async (req, res) => {
+    try {
+      if (!notion) return res.status(500).json({ error: 'Notion not configured' });
+      const { disposition, quarter, status } = req.body || {};
+      const props = {};
+      if (disposition !== undefined) props['Rock Disposition'] = disposition ? { select: { name: disposition } } : { select: null };
+      if (quarter !== undefined) props['Rock Quarter'] = quarter ? { select: { name: quarter } } : { select: null };
+      if (status) props.Status = { status: { name: status } };
+      if (!Object.keys(props).length) return res.status(400).json({ error: 'nothing to update' });
+      await notion.pages.update({ page_id: req.params.id, properties: props });
+      res.json({ ok: true });
+    } catch (err) { console.error('scale/rock patch error:', err.message); res.status(500).json({ error: err.message }); }
+  });
+  // Carry an incomplete rock forward: score the original (default "Carried over")
+  // and clone a fresh, linked rock into the target quarter — history stays intact.
+  app.post('/api/scale/rock/:id/carry', async (req, res) => {
+    try {
+      if (!notion) return res.status(500).json({ error: 'Notion not configured' });
+      const toQuarter = (req.body && req.body.toQuarter) || null;
+      if (!toQuarter) return res.status(400).json({ error: 'toQuarter required' });
+      const disposition = (req.body && req.body.disposition) || 'Carried over';
+      const orig = await notion.pages.retrieve({ page_id: req.params.id });
+      const op = orig.properties || {};
+      const name = (op.Name?.title || []).map((t) => t.plain_text).join('') || 'Rock';
+      const assigned = (op.Assigned?.people || []).map((u) => ({ id: u.id }));
+      await notion.pages.update({ page_id: req.params.id, properties: { 'Rock Disposition': { select: { name: disposition } } } });
+      const created = await notion.pages.create({
+        parent: { type: 'data_source_id', data_source_id: WORK_PROJECTS_DS },
+        properties: {
+          Name: { title: [{ text: { content: name } }] },
+          ROCK: { checkbox: true },
+          'Rock Quarter': { select: { name: toQuarter } },
+          Status: { status: { name: 'Planned' } },
+          Continues: { relation: [{ id: req.params.id }] },
+          ...(assigned.length ? { Assigned: { people: assigned } } : {}),
+        },
+      });
+      res.json({ ok: true, id: created.id, url: created.url });
+    } catch (err) { console.error('scale/rock carry error:', err.message); res.status(500).json({ error: err.message }); }
+  });
+  // Close a quarter: freeze every (non-dropped, not-yet-snapshotted) rock into ROCK
+  // REVIEW and set the live rock's disposition if unset. Idempotent per rock/quarter.
+  app.post('/api/scale/quarter/close', async (req, res) => {
+    try {
+      if (!notion) return res.status(500).json({ error: 'Notion not configured' });
+      const quarter = (req.body && req.body.quarter) || null;
+      if (!quarter) return res.status(400).json({ error: 'quarter required' });
+      const [allRocks, reviews] = await Promise.all([fetchRocks(notion, rocksCtx()), fetchRockReviews(notion)]);
+      const already = new Set(reviews.filter((r) => r.quarter === quarter && r.rockId).map((r) => r.rockId));
+      const rocks = allRocks.filter((r) => r.quarter === quarter && !already.has(r.id) && r.disposition !== 'Dropped');
+      const today = chicagoToday();
+      let completed = 0, missed = 0;
+      await Promise.all(rocks.map(async (r) => {
+        const done = r.statusKey === 'complete' || r.disposition === 'Completed';
+        if (done) completed++; else missed++;
+        const disp = r.disposition || (done ? 'Completed' : 'Missed');
+        await notion.pages.create({
+          parent: { type: 'data_source_id', data_source_id: ROCK_REVIEW_DS },
+          properties: {
+            Name: { title: [{ text: { content: r.name } }] },
+            Quarter: { select: { name: quarter } },
+            Rock: { relation: [{ id: r.id }] },
+            ...(r.owner ? { Owner: { rich_text: [{ text: { content: r.owner } }] } } : {}),
+            'Final %': { number: r.pct == null ? 0 : r.pct },
+            'Final Status': { select: { name: done ? 'Completed' : 'Missed' } },
+            Disposition: { select: { name: disp } },
+            Closed: { date: { start: today } },
+          },
+        });
+        if (!r.disposition) await notion.pages.update({ page_id: r.id, properties: { 'Rock Disposition': { select: { name: done ? 'Completed' : 'Missed' } } } });
+      }));
+      res.json({ ok: true, quarter, snapshotted: completed + missed, completed, missed });
+    } catch (err) { console.error('scale/quarter close error:', err.message); res.status(500).json({ error: err.message }); }
   });
 }

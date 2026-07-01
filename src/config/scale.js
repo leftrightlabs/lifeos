@@ -22,6 +22,9 @@ export const VTO_SCORECARD_DS = 'c359c68c-02bb-4fae-b4cb-3a512e5eafab';
 // 3-Year Picture, Marketing Strategy, 1-Year Goals). One row per element,
 // tagged by Section; editable in Notion, read-only in the app.
 export const VTO_VISION_DS = 'c3931601-5bd1-41f0-8839-3b1c0051d695';
+// ROCK REVIEW [DB] — end-of-quarter rock snapshots (frozen history + completion
+// rates). One row per rock per closed quarter; the app never mutates a closed row.
+export const ROCK_REVIEW_DS = '8d615008-89b2-45d1-b79d-83affaf67375';
 // Speaking engagements ("stages") — SPEAKING OUTREACH [DB]; "booked" = Booking Confirmed set.
 export const SPEAKING_OUTREACH_DS = '96f47e7e-9797-4d96-9abb-e5dcb7df13a3';
 // The "Source" select on each metric → which live actual the app computes.

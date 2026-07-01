@@ -6,6 +6,7 @@ import {
   BUSINESS_FUNCTIONS_DS,
   VTO_SCORECARD_DS,
   VTO_VISION_DS,
+  ROCK_REVIEW_DS,
   ISSUES_DS,
   ISSUE_QUEUE_STATUSES,
   ISSUE_PRIORITY_RANK,
@@ -173,10 +174,10 @@ export function serializeRock(page) {
     else if (pf.string) { const n = parseFloat(pf.string); if (!Number.isNaN(n)) pct = n <= 1 ? Math.round(n * 100) : Math.round(n); }
   }
   const name = txt(p.Name?.title) || '(untitled)';
-  // Quarter is derived from the rock name (convention: "2026 Q2 Rocks - 5 - …").
-  // Used to group MOCs by quarter on the VTO tab.
+  // Quarter: prefer the explicit "Rock Quarter" select (the committed quarter, stable
+  // across carry-overs); fall back to parsing the name ("2026 Q2 Rocks - 5 - …").
   const qm = name.match(/\b(20\d\d)\s*Q([1-4])\b/i);
-  const quarter = qm ? `${qm[1]} Q${qm[2]}` : null;
+  const quarter = p['Rock Quarter']?.select?.name || (qm ? `${qm[1]} Q${qm[2]}` : null);
   return {
     id: page.id,
     notionUrl: page.url,
@@ -188,6 +189,9 @@ export function serializeRock(page) {
     status: p.Status?.status?.name || null,
     deadline: p['Target Deadline']?.date?.start || p['Target Deadline']?.date?.end || p.Due?.date?.start || null,
     pct,
+    disposition: p['Rock Disposition']?.select?.name || null,   // Completed | Missed | Carried over | Rolled into new | Dropped
+    continuesId: p.Continues?.relation?.[0]?.id || null,        // the origin rock this one continues
+    continuedById: p['Continued By']?.relation?.[0]?.id || null,
   };
 }
 
@@ -234,4 +238,31 @@ export async function fetchRocks(notion, { projectsDs, tasksDs, projectPropName 
     rock.statusKey = rockStatusFromPct(rock.pct);
     return rock;
   }));
+}
+
+// Frozen end-of-quarter rock snapshots (ROCK REVIEW [DB]). Past-quarter completion
+// rates read from here so later edits to a live rock never rewrite a closed quarter.
+export function serializeRockReview(page) {
+  const p = page.properties || {};
+  return {
+    id: page.id,
+    name: txt(p.Name?.title) || '(untitled)',
+    quarter: p.Quarter?.select?.name || null,
+    rockId: p.Rock?.relation?.[0]?.id || null,
+    owner: txt(p.Owner?.rich_text) || null,
+    finalPct: typeof p['Final %']?.number === 'number' ? p['Final %'].number : null,
+    finalStatus: p['Final Status']?.select?.name || null,   // Completed | Missed
+    disposition: p.Disposition?.select?.name || null,
+    closed: p.Closed?.date?.start || null,
+  };
+}
+export async function fetchRockReviews(notion) {
+  if (!notion) return [];
+  try {
+    const res = await notion.dataSources.query({ data_source_id: ROCK_REVIEW_DS, page_size: 200 });
+    return res.results.map(serializeRockReview);
+  } catch (err) {
+    console.error('scale rock reviews query failed:', err.message);
+    return [];
+  }
 }

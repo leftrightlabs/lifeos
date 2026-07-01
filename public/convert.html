@@ -1325,7 +1325,7 @@ function closeTpDrill() { document.getElementById('tp-drill-modal').classList.re
 // ─── Deal edit modal ──────────────────────────────────────────────────────────
 // Notion URL → notion:// deep link so "Open in Notion" hands off to the app.
 function dealNotionLink(url) { if (!url) return url; const m = url.match(/([a-f0-9]{32})/i); if (m) return 'notion://www.notion.so/' + m[1]; if (url.startsWith('https://www.notion.so/')) return url.replace('https://', 'notion://'); return url; }
-function openDealInNotion() { const u = _dealNotionUrl; if (!u) return; const link = dealNotionLink(u); if (link && link.startsWith('notion://')) window.location.href = link; else window.open(u, '_blank', 'noopener'); }
+function openDealInNotion() { const u = _dealNotionUrl; if (!u) return; if (window.openNotion) { window.openNotion(u); return; } const link = dealNotionLink(u); if (link && link.startsWith('notion://')) window.location.href = link; else window.open(u, '_blank', 'noopener'); }
 
 let _dealId = null, _dealNotionUrl = null, _dealMeta = null, _dealProducts = [];
 const fmtDealDate = (iso) => iso ? new Date(iso.slice(0,10) + 'T00:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '—';
