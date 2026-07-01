@@ -2331,7 +2331,50 @@ function togglePlan(i) {
     state.workSatisfied = true;
     renderStreaks();
   }
+  // If this plan row IS the current One Thing, mirror the (un)check into the One
+  // Thing card + streak — completion sync must work from either place.
+  syncOneThingFromPlan(plan[i]);
   renderPlan();
+}
+
+// Keep The One Thing in sync when its matching plan row is toggled. The Notion
+// PATCH + plan-row state were already handled by the caller; this only updates
+// the One Thing state, streak, and card (no re-PATCH).
+function syncOneThingFromPlan(t) {
+  if (!t || !t.id) return;
+  // Work One Thing
+  if (_oneThingTask && t.id === _oneThingTask.id) {
+    if (t.done && state.oneThing !== 'done') {
+      state.oneThing = 'done';
+      state.workStreak += 1; state.workSatisfied = true; workStreakSave(state.workStreak); fillWorkTodayPip();
+      const rock = _loadedGoals.find(g => g.id === _oneThingTask.projectId) || null;
+      _oneThingDone = { name: _oneThingTask.name || null, rock, prevStatus: _oneThingTask.status || 'Planned', taskId: _oneThingTask.id };
+      setOneThing('work', { status:'done', name:_oneThingDone.name, rockName:rock?.name || null, prevStatus:_oneThingDone.prevStatus, taskId:_oneThingDone.taskId });
+    } else if (!t.done && state.oneThing === 'done') {
+      state.oneThing = 'active';
+      if (state.workStreak > 0) state.workStreak -= 1;
+      state.workSatisfied = false; workStreakSave(state.workStreak); clearWorkTodayPip();
+      setOneThing('work', null); _oneThingDone = null;
+    } else return;
+    renderOneThing(); renderStreaks();
+    return;
+  }
+  // Personal One Thing
+  if (_personalOneThingTask && t.id === _personalOneThingTask.id) {
+    if (t.done && state.personalOneThing !== 'done') {
+      state.personalOneThing = 'done'; state.lifeSatisfied = true; _persistPersonal('done');
+      const todayPip = lifeWeek.findIndex(d => d.state === 'today');
+      if (todayPip >= 0) lifeWeek[todayPip] = { ...lifeWeek[todayPip], state: 'hit' };
+      state.lifeStreak = lifeStreakFromPips();
+    } else if (!t.done && (state.personalOneThing === 'done' || state.personalOneThing === 'credited')) {
+      state.personalOneThing = null; state.lifeSatisfied = false;
+      const last = lifeWeek[lifeWeek.length - 1];
+      if (last && last.state === 'hit') lifeWeek[lifeWeek.length - 1] = { ...last, state: 'today' };
+      state.lifeStreak = lifeStreakFromPips();
+      _persistPersonal(null);
+    } else return;
+    renderOneThing(); renderStreaks();
+  }
 }
 
 let _sortable = null;
