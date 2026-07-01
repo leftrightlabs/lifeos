@@ -438,7 +438,7 @@ export function registerScaleRoutes(app, {
       const year = Number(chicagoToday().slice(0, 4));
       const [sysR, scR, finR, quoteR, issR, rockR, qtrRevR, qtrGoalR, recurR, visionR, reviewR] = await Promise.allSettled([
         cached('scale-systems', computeSystems),
-        cached('scale-scorecard', computeScorecard),
+        withTimeout(cached('scale-scorecard', computeScorecard)), // scorecard hits Xero internally → bound it
         withTimeout(cached('xero-finance', computeXeroFinance)),
         withTimeout(cached('scale-quotes', computeXeroQuotes)),
         fetchIssues(notion),
@@ -517,9 +517,14 @@ export function registerScaleRoutes(app, {
       if (vision && Array.isArray(vision.yearGoals) && vision.yearGoals.some((g) => g.metric)) {
         const yStart = `${year}-01-01`;
         const today = chicagoToday();
+        // Bound both — Xero can HANG (not error) on a token-refresh stall, which
+        // would otherwise wedge the whole /api/scale/data response (page stuck on
+        // "Loading…"). A timeout degrades the live goal to no-current, page loads.
+        // Skip the P&L call when the main Xero fetch already came back null (Xero
+        // down/hanging) so we don't wait out a second timeout for nothing.
         const [ytdPnl, speakingYtd] = await Promise.all([
-          computeXeroPnlForRange ? computeXeroPnlForRange(yStart, today).catch(() => null) : Promise.resolve(null),
-          computeSpeakingActuals(notion, yStart, today).catch(() => null),
+          (computeXeroPnlForRange && finRaw != null) ? withTimeout(computeXeroPnlForRange(yStart, today)).catch(() => null) : Promise.resolve(null),
+          withTimeout(computeSpeakingActuals(notion, yStart, today)).catch(() => null),
         ]);
         const currents = {
           'Recurring Revenue': recurringMonthly,
