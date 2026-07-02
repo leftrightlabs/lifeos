@@ -173,6 +173,8 @@ body.state-calm .calm-hero { display:flex; }
 .pw-periods { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
 .pw-period { background:var(--surface-2); border:1px solid var(--border-soft); border-radius:10px; padding:12px 14px; cursor:pointer; transition:border-color .15s; }
 .pw-period:hover { border-color:var(--text-4); }
+.pw-period.static { cursor:default; } .pw-period.static:hover { border-color:var(--border-soft); }
+.pw-won-label { font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); margin:2px 0 8px; }
 /* ── Touchpoint drill-down modal ── */
 .tp-drill-body { padding:0; max-height:58vh; overflow-y:auto; }
 .tp-list-row { display:flex; align-items:flex-start; gap:12px; padding:13px 18px; border-bottom:1px solid var(--border-soft); }
@@ -410,6 +412,8 @@ body.state-calm .calm-hero { display:flex; }
         </div>
         <div class="pw-streak" id="pw-streak"></div>
         <div class="pw-periods" id="pw-periods"></div>
+        <div class="pw-won-label">Deals Won</div>
+        <div class="pw-periods" id="pw-won"></div>
         <button class="pw-log-btn" onclick="openLog('','')">+ Log Touchpoint</button>
       </div>
     </div>
@@ -910,9 +914,8 @@ function renderPulse() {
     : `Log ${Math.max(0, sg - s)} more sales touchpoints to start a streak`;
 
   const m = PULSE.month || {}, q = PULSE.quarter || {}, ql = (PULSE.quarterLabel || 'This Quarter').toUpperCase();
-  const monthLabel = PULSE.weekStart
-    ? new Date(PULSE.weekStart.replace(/-/g, '/')).toLocaleString('default', {month: 'long', year: 'numeric'}).toUpperCase()
-    : 'THIS MONTH';
+  const monthLabel = (PULSE.monthLabel
+    || (PULSE.weekStart ? new Date(PULSE.weekStart.replace(/-/g, '/')).toLocaleString('default', {month: 'long', year: 'numeric'}) : 'This Month')).toUpperCase();
   document.getElementById('pw-periods').innerHTML = `
     <div class="pw-period" onclick="openTpDrill('${monthLabel}','month',null)">
       <div class="pw-period-label">${monthLabel}</div>
@@ -924,6 +927,18 @@ function renderPulse() {
       <div class="pw-period-num">${q.total || 0}</div>
       <div class="pw-period-sub">${q.pulse||0} pulse · ${q.sales||0} sales</div>
     </div>`;
+
+  // Deals won — total $, count, avg per sale (month + quarter to date).
+  const dw = PULSE.dealsWon || {}, dm = dw.month || {}, dq = dw.quarter || {};
+  const money = (v) => '$' + Math.round(v || 0).toLocaleString();
+  const wonTile = (label, w) => `
+    <div class="pw-period static">
+      <div class="pw-period-label">${label}</div>
+      <div class="pw-period-num">${money(w.value)}</div>
+      <div class="pw-period-sub">${w.count||0} sale${w.count===1?'':'s'} · ${money(w.avg)} avg</div>
+    </div>`;
+  const pw = document.getElementById('pw-won');
+  if (pw) pw.innerHTML = wonTile('WON · ' + monthLabel, dm) + wonTile('WON · ' + ql, dq);
 }
 
 // ─── Reach Out ──────────────────────────────────────────────────────────────────

@@ -272,6 +272,22 @@ app.get('/api/convert/pulse', async (req, res) => {
         if (r.date >= monthStart && r.date <= today) { if (r.isPulse) month.pulse++; else month.sales++; }
         if (r.date >= q.start && r.date <= today) { if (r.isPulse) quarter.pulse++; else quarter.sales++; }
       }
+      // Deals WON — month-to-date + quarter-to-date: total $, count, avg per deal.
+      // (Won = Pipeline Status in the "won" group, dated by Date Won.)
+      let dealsWon = { month: { count: 0, value: 0, avg: 0 }, quarter: { count: 0, value: 0, avg: 0 } };
+      try {
+        const productMap = await fetchSalesProductMap(notion, cached).catch(() => ({}));
+        const deals = (await queryAllDeals(notion)).map((pg) => serializeDeal(pg, productMap)).filter((d) => !d.archived);
+        const mW = { count: 0, value: 0 }, qW = { count: 0, value: 0 };
+        for (const d of deals) {
+          if ((SALES_STAGE_GROUP[d.status] || 'open') !== 'won' || !d.dateWon) continue;
+          const wd = d.dateWon.slice(0, 10);
+          if (wd >= monthStart && wd <= today) { mW.count++; mW.value += d.value || 0; }
+          if (wd >= q.start && wd <= today) { qW.count++; qW.value += d.value || 0; }
+        }
+        const stat = (w) => ({ count: w.count, value: Math.round(w.value), avg: w.count ? Math.round(w.value / w.count) : 0 });
+        dealsWon = { month: stat(mW), quarter: stat(qW) };
+      } catch (e) { /* deals unavailable → zeros */ }
       const cur = wk[curMon] || { pulse: 0, sales: 0 };
       // Streak: count consecutive met weeks ending at the current week. A current
       // week that hasn't hit goal yet doesn't break the streak (it's in progress).
@@ -291,6 +307,8 @@ app.get('/api/convert/pulse', async (req, res) => {
         streak, weekStart: curMon, weekEnd: addDaysISO(curMon, 6),
         month: { total: month.pulse + month.sales, pulse: month.pulse, sales: month.sales },
         quarter: { total: quarter.pulse + quarter.sales, pulse: quarter.pulse, sales: quarter.sales },
+        dealsWon,
+        monthLabel: `${['January','February','March','April','May','June','July','August','September','October','November','December'][Number(today.slice(5, 7)) - 1]} ${today.slice(0, 4)}`,
         quarterLabel: q.label,
       };
     });
