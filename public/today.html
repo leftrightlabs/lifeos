@@ -3147,7 +3147,9 @@ function qcRenderPlanItems(plan, editable) {
     if (a._result) {
       let rUrl = a._result.url || '';
       try { if (isNotion && rUrl) { const id = rUrl.split('-').pop().replace(/\//g,''); rUrl = `https://www.notion.so/leftrightlabs/${id}`; } } catch(e){}
-      resultLine = `<div class="qc-ameta"><a href="${rUrl}" target="_blank" rel="noopener">→ open in ${isNotion?'Notion':'Calendar'}</a></div>`;
+      resultLine = isNotion
+        ? `<div class="qc-ameta"><a href="${rUrl}" onclick="event.preventDefault();(window.openNotion||function(u){window.open(u,'_blank','noopener')})('${rUrl}')">→ open in Notion</a></div>`
+        : `<div class="qc-ameta"><a href="${rUrl}" target="_blank" rel="noopener">→ open in Calendar</a></div>`;
     }
     if (a._error) errLine = `<div class="qc-ameta-err">Error: ${escapeHtml(a._error)}</div>`;
     const appliedCls = a._result ? ' applied' : (a._error ? ' failed' : '');
