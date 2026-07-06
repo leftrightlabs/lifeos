@@ -985,7 +985,7 @@ function finBoard(el, d){
     const legend = segs.map(([label, v, cls]) => `<span class="vqa-leg"><span class="vqa-sw ${cls}"></span>${label} <b>${money(v || 0)}</b></span>`).join('');
     const key = 'fin-' + title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     return `<div class="t-card" data-persist-key="${key}"><div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">${title}</div></div></div>
-      <div class="vqa">
+      <div class="t-body"><div class="vqa">
         <div class="vqa-bar">${bar}</div>
         <div class="vqa-top">
           <div class="vqa-amt">${money(booked)} <span class="vqa-amt-sub">booked</span></div>
@@ -993,7 +993,7 @@ function finBoard(el, d){
         </div>
         <div class="vqa-legend">${legend}</div>
         ${note || ''}
-      </div></div>`;
+      </div></div></div>`;
   };
   const P = (A && A.periods) || {};
   const netCls = (d.mtdNet||0)>=0 ? 'var(--green)' : 'var(--red)';
