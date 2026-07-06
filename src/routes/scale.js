@@ -479,21 +479,35 @@ export function registerScaleRoutes(app, {
       });
       const annualGoal = vtoQuarterList.reduce((s, q) => s + (q.goal || 0), 0) || null;
 
-      // Projected annual revenue = collected YTD + invoiced-unpaid (A/R) +
-      // ALL future accepted quotes + (12-month recurring avg × remaining months).
+      // ── Revenue projections per period (Year / Quarter / Month) ──
+      // Each period = collected (period-to-date cash) + invoiced (current A/R) +
+      // accepted quotes closing by the period end + recurring avg × months left
+      // through the period end (incl. the current month), vs that period's goal.
+      // Same object shape as the old `annual` block so the VTO tab + the three
+      // Finance bars share one renderer.
       const currentMonthNum = Number(chicagoToday().slice(5, 7));
-      const remainingMonths = Math.max(0, 12 - currentMonthNum);
-      const collectedYtd = finance?.ytdRevenue?.actual ?? null;
       const ar = finance?.ar ?? null;
-      const quotesAvailable = quotes != null;
-      const acceptedQuotes = quotesAvailable
-        ? Math.round((quotes.accepted || []).reduce((s, qx) => s + (qx.total || 0), 0))
-        : null;
+      const collectedYtd = finance?.ytdRevenue?.actual ?? null;
       const recurringMonthly = val(recurR)?.avgMonthly != null ? Math.round(val(recurR).avgMonthly) : null;
-      const recurringRest = recurringMonthly != null ? Math.round(recurringMonthly * remainingMonths) : null;
-      const projectedAnnual = (collectedYtd != null)
-        ? Math.round((collectedYtd || 0) + (ar || 0) + (acceptedQuotes || 0) + (recurringRest || 0))
+      const quotesAvailable = quotes != null;
+      const pad2 = (n) => String(n).padStart(2, '0');
+      const lastDay = (y, m) => new Date(y, m, 0).getDate(); // m = 1-based month
+      const quotesThrough = (endDate) => quotesAvailable
+        ? Math.round((quotes.accepted || []).filter((qx) => { const dt = qx.expiryDate || qx.date; return !dt || dt <= endDate; }).reduce((s, qx) => s + (qx.total || 0), 0))
         : null;
+      const mkPeriod = (goal, collected, endMonth) => {
+        const endDate = `${year}-${pad2(endMonth)}-${pad2(lastDay(year, endMonth))}`;
+        const months = Math.max(0, endMonth - currentMonthNum + 1); // months left incl. current
+        const recRest = recurringMonthly != null ? Math.round(recurringMonthly * months) : null;
+        const q = quotesThrough(endDate);
+        const projected = collected != null ? Math.round((collected || 0) + (ar || 0) + (q || 0) + (recRest || 0)) : null;
+        return { goal, actual: collected, ar, acceptedQuotes: q, recurringMonthly, recurringRest: recRest, remainingMonths: months, projected };
+      };
+      const periods = {
+        year: mkPeriod(annualGoal, collectedYtd, 12),
+        quarter: mkPeriod(finance?.qtdRevenue?.goal ?? null, finance?.qtdRevenue?.actual ?? null, currentQ * 3),
+        month: mkPeriod(finance?.mtdRevenue?.goal ?? null, finance?.mtdRevenue?.actual ?? null, currentMonthNum),
+      };
 
       const autoFlags = computeAutoFlags({ finance, scorecard, systemsData, rocks });
       const heroIssue = pickHero({ systemsData, autoFlags, rocks });
@@ -575,16 +589,8 @@ export function registerScaleRoutes(app, {
         vtoQuarters: {
           year,
           currentQ,
-          annual: {
-            goal: annualGoal,
-            actual: collectedYtd,            // collected YTD (cash basis)
-            ar,                              // invoiced, not yet paid
-            acceptedQuotes,                  // null when the quotes scope isn't granted
-            recurringMonthly,
-            recurringRest,                   // recurring × remaining full months
-            remainingMonths,
-            projected: projectedAnnual,      // collected + ar + quotes + recurringRest
-          },
+          annual: periods.year,              // back-compat for the VTO tab bar
+          periods,                           // { year, quarter, month } projections
           quarters: vtoQuarterList,
           reviews: rockReviews,           // frozen end-of-quarter snapshots
         },

@@ -226,7 +226,9 @@ body[data-state="calm"] .hero .next { border-left-color:var(--green); }
 
 /* finance */
 .fin-grid-3 { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-bottom:14px; }
-@media (max-width:600px){ .fin-grid-3 { grid-template-columns:repeat(2, 1fr); } }
+.fin-grid-2 { display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; margin-bottom:14px; }
+@media (max-width:600px){ .fin-grid-3, .fin-grid-2 { grid-template-columns:repeat(2, 1fr); } }
+@media (max-width:420px){ .fin-grid-3, .fin-grid-2 { grid-template-columns:1fr; } }
 .fin-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:14px 16px; }
 .fin-label { font-size:var(--fs-body); font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); margin-bottom:8px; }
 .fin-value { font-family:var(--font-display); font-size:24px; font-weight:700; color:var(--text); letter-spacing:-.01em; line-height:1; }
@@ -941,12 +943,12 @@ function renderFinance(){
 function finBoard(el, d){
   const pctClass = (p) => p >= 90 ? 'c-green' : p >= 65 ? 'c-amber' : 'c-red';
   const card = (label, val, sub, cls) => `<div class="fin-card"><div class="fin-label">${label}</div><div class="fin-value ${cls||''}">${val}</div><div class="fin-sub">${sub||''}</div></div>`;
-  const revCard = (label, actual, goalObj) => {
+  const revCard = (label, actual, goalObj, note) => {
     const goal = goalObj && goalObj.goal || 0;
     const p = goal ? Math.round((actual / goal) * 100) : null;
     const w = p == null ? 0 : Math.max(2, Math.min(100, p));
     const c = p == null ? '' : (p >= 90 ? 'pos' : p >= 65 ? 'warn' : 'neg');
-    return `<div class="fin-card"><div class="fin-label">${label}</div><div class="fin-value ${c}">${moneyK(actual)}</div><div class="fin-sub">vs ${moneyK(goal)} goal</div><div class="fin-bar"><i style="width:${w}%;background:${p==null?'var(--text-4)':(p>=90?'var(--green)':p>=65?'var(--amber)':'var(--red)')}"></i></div><div class="fin-pct ${p==null?'':pctClass(p)}">${p==null?'—':p+'%'}</div></div>`;
+    return `<div class="fin-card"><div class="fin-label">${label}</div><div class="fin-value ${c}">${moneyK(actual)}</div><div class="fin-sub">vs ${moneyK(goal)} goal</div><div class="fin-bar"><i style="width:${w}%;background:${p==null?'var(--text-4)':(p>=90?'var(--green)':p>=65?'var(--amber)':'var(--red)')}"></i></div><div class="fin-pct ${p==null?'':pctClass(p)}">${p==null?'—':p+'%'}</div>${note||''}</div>`;
   };
   const nBank = (d.bankAccounts || []).length, nCard = (d.creditCards || []).length;
 
@@ -962,17 +964,51 @@ function finBoard(el, d){
     ${cc.accountsFound === false ? `<div style="font-size:10px;color:var(--amber);margin-top:4px">⚠ Check Xero account names</div>` : ''}
   </div>`;
 
-  let h = `<div class="fin-grid-3">
-    ${card('Cash on Hand', moneyK(d.bankTotal), `${nBank} account${nBank===1?'':'s'}`, (d.bankTotal||0)<0?'neg':'')}
-    ${capCard}
-    ${card('Credit Cards', moneyK(d.creditTotal), `${nCard} card${nCard===1?'':'s'}`, (d.creditTotal||0)<0?'warn':'')}
-    ${card('A/R — Owed to Us', moneyK(d.accountsReceivable), 'outstanding invoices')}
-    ${card('MTD Net', moneyK(d.mtdNet), (d.mtdNet||0)>=0?'in the black':'in the red', (d.mtdNet||0)>=0?'pos':'neg')}
-    ${card('Avg Recurring Rev', d.recurringRevenueAvg!=null?moneyK(d.recurringRevenueAvg)+'<span style="font-size:12px;font-weight:600;color:var(--text-3)">/mo</span>':'—', 'rolling 12 mo ÷ 12')}
-  </div>`;
-
-  h += `<div class="eyebrow-row"><span class="eyebrow">Revenue tracking</span></div>`;
-  h += `<div class="fin-grid-3">${revCard('YTD Revenue', d.ytdRevenue, d.goals?.revenue?.ytd)}${revCard('QTD Revenue', d.qtdRevenue, d.goals?.revenue?.qtd)}${revCard('MTD Revenue', d.mtdRevenue, d.goals?.revenue?.mtd)}</div>`;
+  // Three revenue projection bars (same look as the Sales pulse) — Year → Quarter
+  // → Month. Each period scopes collected / approved quotes / recurring to its own
+  // timeframe (from DATA.vtoQuarters.periods) so the numbers differ per period.
+  const A = (typeof DATA !== 'undefined' && DATA && DATA.vtoQuarters) ? DATA.vtoQuarters : null;
+  const periodBar = (title, p, note) => {
+    if (!p || !(p.goal || p.projected != null)) return '';
+    const goal = p.goal, proj = p.projected;
+    const collected = p.actual || 0, invoiced = p.ar || 0, quotes = p.acceptedQuotes, recur = p.recurringRest || 0;
+    const booked = collected + invoiced;
+    const segs = [
+      ['Collected', collected, 'collected'],
+      ['Invoiced', invoiced, 'invoiced'],
+      ...(quotes != null ? [['Approved quotes', quotes, 'quotes']] : []),
+      [`Recurring (${p.remainingMonths != null ? p.remainingMonths + ' mo' : 'proj'})`, recur, 'recur'],
+    ];
+    const pctOf = (v) => goal ? Math.max(0, Math.min(100, (v / goal) * 100)) : 0;
+    const gap = (goal != null && proj != null) ? goal - proj : null;
+    const bar = segs.map(([, v, cls]) => v > 0 ? `<div class="vqa-seg ${cls}" style="width:${pctOf(v)}%"></div>` : '').join('');
+    const legend = segs.map(([label, v, cls]) => `<span class="vqa-leg"><span class="vqa-sw ${cls}"></span>${label} <b>${money(v || 0)}</b></span>`).join('');
+    const key = 'fin-' + title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    return `<div class="t-card" data-persist-key="${key}"><div class="sec-head"><div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">${title}</div></div></div>
+      <div class="vqa">
+        <div class="vqa-bar">${bar}</div>
+        <div class="vqa-top">
+          <div class="vqa-amt">${money(booked)} <span class="vqa-amt-sub">booked</span></div>
+          <div class="vqa-gap ${gap != null && gap <= 0 ? 'good' : ''}">${gap == null ? '' : (gap <= 0 ? 'beats goal by ' + moneyK(-gap) : moneyK(gap) + ' to go')} · goal ${goal ? moneyK(goal) : '—'}</div>
+        </div>
+        <div class="vqa-legend">${legend}</div>
+        ${note || ''}
+      </div></div>`;
+  };
+  const P = (A && A.periods) || {};
+  const netCls = (d.mtdNet||0)>=0 ? 'var(--green)' : 'var(--red)';
+  const monthNote = `<div class="fin-sub" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-soft,var(--border));">Net-to-date <b style="color:${netCls}">${moneyK(d.mtdNet)}</b> · ${(d.mtdNet||0)>=0?'in the black':'in the red'}</div>`;
+  // Year / Quarter / Month projections, then current cash position. YTD revenue and
+  // A/R aren't separate cards — they're the Collected + Invoiced segments here.
+  let h = periodBar(`Revenue · ${A ? A.year : ''}`, P.year)
+    + periodBar(`This Quarter${A && A.currentQ ? ' · Q' + A.currentQ : ''}`, P.quarter)
+    + periodBar('This Month', P.month, monthNote)
+    + `<div class="eyebrow-row"><span class="eyebrow">Cash position</span></div>`
+    + `<div class="fin-grid-3">`
+      + card('Cash on Hand', moneyK(d.bankTotal), `${nBank} account${nBank===1?'':'s'}`, (d.bankTotal||0)<0?'neg':'')
+      + capCard
+      + card('Avg Recurring Rev', d.recurringRevenueAvg!=null?moneyK(d.recurringRevenueAvg)+'<span style="font-size:12px;font-weight:600;color:var(--text-3)">/mo</span>':'—', 'rolling 12 mo ÷ 12')
+    + `</div>`;
 
   // Bank + credit-card accounts
   let bankBody = '';
@@ -983,7 +1019,8 @@ function finBoard(el, d){
   }
   if (nCard) {
     bankBody += `<div class="accounts"><div class="acc-head"><span>Credit Card</span><span>Balance</span></div>`
-      + d.creditCards.map(a => `<div class="acc-row"><span class="acc-name">${esc(a.name)}</span><span class="acc-val neg">${money(a.balance)}</span></div>`).join('') + `</div>`;
+      + d.creditCards.map(a => `<div class="acc-row"><span class="acc-name">${esc(a.name)}</span><span class="acc-val neg">${money(a.balance)}</span></div>`).join('')
+      + `<div class="acc-row total"><span class="acc-name bold">Total</span><span class="acc-val neg">${money(d.creditTotal)}</span></div></div>`;
   }
   if (bankBody) h += scCard('Bank accounts', bankBody, { key: 'scale-bank' });
 
