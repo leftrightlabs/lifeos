@@ -2375,14 +2375,8 @@ function renderPlan() {
   const order = PLAN_STATUS_ORDER.filter(s => groups[s]?.length);
   Object.keys(groups).forEach(s => { if (!order.includes(s)) order.push(s); }); // any non-standard statuses last
 
-  // Follow Ups section first — the "circle back" queue.
+  // Status groups first (Doing → Planned → Agenda → Waiting → …).
   let html = '';
-  if (fuItems.length) {
-    html += `<div class="plan-status-div" data-no-drag data-status="Follow Ups" onclick="toggleStatusSection('follow-ups')" style="--sdiv:${FU_COLOR}">
-      <span style="color:${FU_COLOR}"><span class="wchev">${fuCollapsed ? '▶' : '▼'}</span> Follow Ups · ${fuItems.length}</span></div>`;
-    html += fuItems.map(followupRowHtml).join('');
-  }
-
   order.forEach(status => {
     const sk = status.toLowerCase().replace(/\s+/g, '-');
     const collapsed = getSection('status-' + sk);
@@ -2391,6 +2385,13 @@ function renderPlan() {
       <span style="color:${color}"><span class="wchev">${collapsed ? '▶' : '▼'}</span> ${escName(status)} · ${groups[status].length}</span></div>`;
     html += groups[status].map(t => rowHtml(t, collapsed)).join('');
   });
+
+  // Follow Ups last — the "circle back" queue sits below the day's action groups.
+  if (fuItems.length) {
+    html += `<div class="plan-status-div" data-no-drag data-status="Follow Ups" onclick="toggleStatusSection('follow-ups')" style="--sdiv:${FU_COLOR}">
+      <span style="color:${FU_COLOR}"><span class="wchev">${fuCollapsed ? '▶' : '▼'}</span> Follow Ups · ${fuItems.length}</span></div>`;
+    html += fuItems.map(followupRowHtml).join('');
+  }
   const list = document.getElementById('planList');
   list.innerHTML = html || `<div style="padding:10px 4px;color:var(--text-3);font-size:var(--fs-body-sm)">Nothing on My Day yet.</div>`;
   const allPlanDone = visible.length > 0 && visible.every(t => t.done);
