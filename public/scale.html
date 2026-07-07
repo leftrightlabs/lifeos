@@ -38,7 +38,20 @@ body[data-state="calm"] .tab-badge { display:none; }
 body:not([data-state]) #sc-content { display:none; }
 
 /* state banner (PULSE) */
-.statebanner { display:flex; align-items:center; gap:14px; padding:14px 18px; border-radius:var(--radius); margin-bottom:22px; border:1px solid; }
+.statebanner { display:flex; align-items:center; gap:14px; padding:14px 18px; border-radius:var(--radius); margin-bottom:16px; border:1px solid; }
+/* ── Business-health cockpit (Pulse) ── */
+.cockpit { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:22px; }
+@media(max-width:820px){ .cockpit { grid-template-columns:repeat(2,1fr); } }
+@media(max-width:460px){ .cockpit { grid-template-columns:1fr; } }
+.ck-tile { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--text-4); border-radius:var(--radius-sm); padding:13px 15px; cursor:pointer; transition:border-color .15s; }
+.ck-tile:hover { border-color:var(--zone); }
+.ck-tile:hover .ck-arrow { color:var(--zone); }
+.ck-tile.good { border-left-color:var(--green); } .ck-tile.warn { border-left-color:var(--amber); } .ck-tile.bad { border-left-color:var(--red); }
+.ck-label { font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--text-3); display:flex; align-items:center; gap:6px; }
+.ck-arrow { margin-left:auto; color:var(--text-4); font-size:13px; transition:color .15s; }
+.ck-val { font-family:var(--font-display); font-size:22px; font-weight:800; color:var(--text); line-height:1.1; margin-top:7px; }
+.ck-val.good{ color:var(--green); } .ck-val.warn{ color:var(--amber); } .ck-val.bad{ color:var(--red); }
+.ck-sub { font-size:11px; color:var(--text-3); margin-top:4px; }
 .statebanner .bigicon { font-size:20px; }
 .statebanner .txt h2 { font-family:var(--font-display); font-weight:700; font-size:17px; margin-bottom:1px; }
 .statebanner .txt p { font-size:12.5px; color:var(--text-2); }
@@ -561,6 +574,9 @@ function renderPulse(d){
     h += `<div class="statebanner"><span class="bigicon">🛠️</span><div class="txt"><h2 class="scotch">The machine needs work</h2><p>${esc(parts.join(' · ')||'Review the flags below')}. Fix the highest-leverage one first.</p></div></div>`;
   }
 
+  // ── Business-health cockpit — one-glance rollup; each tile clicks into its tab ──
+  h += pulseCockpit(d);
+
   // hero / next-move
   if(hero){
     if(hero.kind==='flag'){
@@ -584,13 +600,48 @@ function renderPulse(d){
     }
   }
 
-  // A nudge toward the dedicated Issues tab (flags + IDS queue live there now).
-  const flagN = flags.length, issN = issues.length;
-  if(flagN || issN){
-    const bits=[flagN?`${flagN} auto-flag${flagN>1?'s':''}`:null, `${issN} open issue${issN===1?'':'s'}`].filter(Boolean).join(' · ');
-    h += `<button class="add-issue-btn" onclick="showTab('issues')">${esc(bits)} → Review on Issues tab</button>`;
-  }
   document.getElementById('tab-pulse').innerHTML = h;
+}
+
+// Business-health cockpit tiles for the Pulse tab. Each tile is a live rollup of
+// one area (finance / rocks / scorecard / systems / issues) with a status color,
+// and clicks straight into that tab — no dead-end static numbers.
+function pulseCockpit(d){
+  const fin = d.finance || {}, per = d.vtoQuarters?.periods || {}, sys = d.systems?.counts || {};
+  const tile = (tab,label,icon,val,valTone,sub,tone) =>
+    `<div class="ck-tile ${tone||''}" onclick="showTab('${tab}')"><div class="ck-label">${icon} ${label}<span class="ck-arrow">→</span></div><div class="ck-val ${valTone||''}">${val}</div><div class="ck-sub">${esc(sub||'')}</div></div>`;
+
+  // Cash runway
+  const rw = fin.runway?.months;
+  const rwT = rw==null?'':(rw>=3?'good':rw>=1?'warn':'bad');
+  const cashTile = tile('finance','Cash runway','💵', rw!=null?rw.toFixed(1)+' mo':'—', rwT, fin.ar!=null?`${moneyK(fin.ar)} A/R outstanding`:'runway on current burn', rwT);
+
+  // Quarter revenue (projected vs goal)
+  const q = per.quarter||{}, qgoal=q.goal, qproj=q.projected, qcol=q.actual;
+  const qpct = (qgoal&&qproj!=null)?Math.round(qproj/qgoal*100):null;
+  const qT = qpct==null?'':(qpct>=90?'good':qpct>=50?'warn':'bad');
+  const revTile = tile('finance','Quarter revenue','📈', qproj!=null?moneyK(qproj):'—', qT, `${moneyK(qcol||0)} in · goal ${qgoal?moneyK(qgoal):'—'}`, qT);
+
+  // Rocks on track
+  const rkTotal=(d.vto?.rocks||[]).length, rkOff=d.vto?.rocksOffTrack||0, rkOn=Math.max(0,rkTotal-rkOff);
+  const rkT = rkTotal===0?'':(rkOff>2?'bad':rkOff>0?'warn':'good');
+  const rockTile = tile('vto','Rocks on track','🎯', `${rkOn}/${rkTotal}`, rkT, rkOff?`${rkOff} off track`:'all on track', rkT);
+
+  // Scorecard
+  const oc=d.scorecard?.offTrackCount, mc=(d.scorecard?.metrics||[]).length;
+  const scT = oc==null?'':(oc>3?'bad':oc>0?'warn':'good');
+  const scTile = tile('scorecard','Scorecard','📊', oc!=null?`${oc} off`:'—', scT, mc?`of ${mc} metric${mc===1?'':'s'}`:'', scT);
+
+  // Systems
+  const sysT = (sys.critical>0||sys.brokenMissing>2)?'bad':(sys.needsAttention>0?'warn':'good');
+  const sysTile = tile('systems','Systems to fix','⚙️', `${sys.needsAttention||0}`, sysT, `${sys.critical||0} critical · ${sys.healthy||0} healthy`, sysT);
+
+  // Issues
+  const iss=(d.pulse?.teamIssues||[]).filter(scaleMine).length, fl=(d.pulse?.autoFlags||[]).length;
+  const isT = fl>0?'warn':'';
+  const issTile = tile('issues','Open issues','🚩', `${iss}`, isT, fl?`${fl} auto-flag${fl===1?'':'s'}`:'no flags', isT);
+
+  return `<div class="cockpit">${cashTile}${revTile}${rockTile}${scTile}${sysTile}${issTile}</div>`;
 }
 
 // ── ISSUES (auto-flags + IDS queue, moved off Pulse) ──
