@@ -162,7 +162,8 @@ body {
 .streak-rule { font-size: var(--fs-caption); color: var(--text-4); margin-top: 9px; line-height: 1.4; }
 
 /* ── LAYOUT ── */
-.page-col { display: flex; flex-direction: row; align-items: flex-start; gap: 16px; padding: 16px 22px 24px; max-width: 1080px; margin: 0 auto; }
+.page-col { display: flex; flex-direction: column; gap: 16px; padding: 16px 22px 24px; max-width: 1080px; margin: 0 auto; }
+.today-cols { display: flex; flex-direction: row; align-items: flex-start; gap: 16px; }
 .col-left, .col-right { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 /* .sec-head / .sec-title / .count → shared in styles/cards.css */
 .mini-btn { background: none; border: 1px solid var(--border); border-radius: 5px; font-size: var(--fs-caption); font-weight: 600; color: var(--text-3); padding: 4px 9px; cursor: pointer; font-family: inherit; letter-spacing: .03em; }
@@ -733,7 +734,7 @@ html.light .snap-val { color: var(--text); }
   .nav-ic svg { width: 18px; height: 18px; }
 }
 @media (max-width: 699px) {
-  .page-col { flex-direction: column; }
+  .today-cols { flex-direction: column; }
   .col-left, .col-right { flex: none; width: 100%; }
 }
 .hide-done-row { display: flex; justify-content: center; padding: 4px 22px 20px; max-width: 1080px; margin: 0 auto; }
@@ -825,43 +826,29 @@ body { overflow-x: hidden; }
   <!-- ACTION BOARD — two columns on desktop, single column on mobile -->
   <div class="page-col">
 
-    <!-- LEFT COLUMN: focus context + schedule -->
-    <div class="col-left">
-
-      <!-- 1. Current Focus — always visible, never "done" -->
-      <div class="t-card" id="card-briefing" data-persist-key="briefing">
-        <div class="sec-head">
-          <div class="card-toggle" onclick="toggleCard(this)">
-            <span class="chev">▾</span>
-            <div class="sec-title">🎯 Current Focus</div>
-          </div>
-        </div>
-        <div class="t-body">
-          <div class="brief-lines" id="briefLines"></div>
+    <!-- Current Focus — full width across the top -->
+    <div class="t-card" id="card-briefing" data-persist-key="briefing">
+      <div class="sec-head">
+        <div class="card-toggle" onclick="toggleCard(this)">
+          <span class="chev">▾</span>
+          <div class="sec-title">🎯 Current Focus</div>
         </div>
       </div>
-
-      <!-- 2. Today's Schedule — future events only; hides when nothing remains -->
-      <div class="t-card" id="card-schedule" data-persist-key="schedule">
-        <div class="sec-head">
-          <div class="card-toggle" onclick="toggleCard(this)">
-            <span class="chev">▾</span>
-            <div class="sec-title">🗓 Today's Schedule</div>
-          </div>
-          <span class="wx-chip" id="wxChip"></span>
-        </div>
-        <div class="t-body"><div class="vcal" id="vcal"></div></div>
+      <div class="t-body">
+        <div class="brief-lines" id="briefLines"></div>
       </div>
-
     </div>
 
-    <!-- RIGHT COLUMN: action items for the day -->
-    <div class="col-right">
+    <!-- Two columns: LEFT = the plan (morning · plan · evening), RIGHT = schedule -->
+    <div class="today-cols">
+
+    <!-- LEFT COLUMN: the day's action list -->
+    <div class="col-left">
 
       <!-- Morning Startup — own card; hides when all items checked -->
       <div class="ritual" id="morningRitual"></div>
 
-      <!-- 5. Today's Plan — hides when all tasks done -->
+      <!-- Today's Plan — hides when all tasks done -->
       <div class="t-card" id="card-plan" data-persist-key="plan">
         <div class="sec-head">
           <div class="card-toggle" onclick="toggleCard(this)">
@@ -894,6 +881,26 @@ body { overflow-x: hidden; }
       <div class="ritual evening" id="eveningRitual"></div>
 
     </div>
+
+    <!-- RIGHT COLUMN: today's schedule -->
+    <div class="col-right">
+
+      <!-- Today's Schedule — future events only; hides when nothing remains -->
+      <div class="t-card" id="card-schedule" data-persist-key="schedule">
+        <div class="sec-head">
+          <div class="card-toggle" onclick="toggleCard(this)">
+            <span class="chev">▾</span>
+            <div class="sec-title">🗓 Today's Schedule</div>
+          </div>
+          <span class="wx-chip" id="wxChip"></span>
+        </div>
+        <div class="t-body"><div class="vcal" id="vcal"></div></div>
+      </div>
+
+    </div>
+
+    </div>
+    <!-- /today-cols -->
 
   </div>
 
