@@ -486,23 +486,6 @@ body.state-calm .calm-hero { display:flex; }
       </div>
       <div class="modal-row">
         <div class="modal-field">
-          <label class="modal-label" style="display:flex;align-items:center;gap:7px;cursor:pointer;">
-            <input type="checkbox" id="log-followup" onchange="logFollowUpToggle()"> Flag for follow-up
-          </label>
-        </div>
-      </div>
-      <div class="modal-row" id="log-followby-field" style="display:none;">
-        <div class="modal-field">
-          <label class="modal-label">Follow up owner</label>
-          <select class="modal-select" id="log-followowner"></select>
-        </div>
-        <div class="modal-field">
-          <label class="modal-label">Follow up by <button type="button" class="tm-clear" onclick="document.getElementById('log-followby').value=''">Clear</button></label>
-          <input class="modal-input" id="log-followby" type="date">
-        </div>
-      </div>
-      <div class="modal-row">
-        <div class="modal-field">
           <label class="modal-label">Logged By</label>
           <div class="log-toggle" id="log-by">
             <button type="button" data-by="Gretchen" class="on">Gretchen</button>
@@ -1167,11 +1150,6 @@ function openLog(name, id, url) {
   document.getElementById('log-type').selectedIndex = 0;
   document.getElementById('log-channel').selectedIndex = 0;
   document.getElementById('log-note').value = '';
-  document.getElementById('log-followup').checked = false;
-  document.getElementById('log-followby').value = '';
-  populateFuOwner(document.getElementById('log-followowner'), null);
-  loadFuMembers().then(() => populateFuOwner(document.getElementById('log-followowner'), null));
-  logFollowUpToggle();
   dpSetDate(isoToday());
   document.getElementById('dp-cal').style.display = 'none';
   document.getElementById('dp-field').classList.remove('open');
@@ -1184,10 +1162,6 @@ function openLog(name, id, url) {
   document.getElementById('log-modal').classList.add('open');
 }
 function closeLog() { document.getElementById('log-modal').classList.remove('open'); }
-function logFollowUpToggle() {
-  document.getElementById('log-followby-field').style.display =
-    document.getElementById('log-followup').checked ? '' : 'none';
-}
 document.getElementById('log-by').addEventListener('click', (e) => {
   const btn = e.target.closest('button'); if (!btn) return;
   logBy = btn.dataset.by;
@@ -1262,9 +1236,6 @@ async function submitLog() {
         notes: document.getElementById('log-note').value,
         loggedBy: logBy,
         timestamp: dateStr,
-        followUp: document.getElementById('log-followup').checked,
-        followUpOwnerId: document.getElementById('log-followup').checked ? (document.getElementById('log-followowner').value || _myNotionId || null) : null,
-        followUpBy: document.getElementById('log-followup').checked ? (document.getElementById('log-followby').value || null) : null,
       })
     });
     if (!r.ok) throw new Error((await r.json()).error || 'failed');

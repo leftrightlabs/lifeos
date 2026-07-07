@@ -2865,7 +2865,6 @@ function renderBrief() {
 const FOLLOWUP_KIND = {
   task:       { label: 'TASK',       cls: 'pt-work' },
   deal:       { label: 'DEAL',       cls: 'pt-deal' },
-  touchpoint: { label: 'TOUCHPOINT', cls: 'pt-touch' },
   contact:    { label: 'CONTACT',    cls: 'pt-touch' },
   speaking:   { label: 'SPEAKING',   cls: 'pt-deal' },
 };
@@ -2914,7 +2913,6 @@ function followupContext(it) {
     return proj || '';
   }
   if (it.kind === 'deal') return 'Sales deal' + (it.status ? ' · ' + it.status : '');
-  if (it.kind === 'touchpoint') return 'Sales touchpoint' + (it.channel ? ' · ' + it.channel : '');
   if (it.kind === 'contact') return 'Contact' + (it.status ? ' · ' + it.status : '');
   if (it.kind === 'speaking') return 'Speaking outreach' + (it.status ? ' · ' + it.status : '');
   return '';

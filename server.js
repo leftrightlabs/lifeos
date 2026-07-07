@@ -47,7 +47,6 @@ const LIFE_TASKS_DS = '265458f08cd981699efe000b4de14ca4';
 // four DBs share the "Follow Up" checkbox + "Follow Up By" date properties, so
 // the toggle endpoint is DB-agnostic.
 const SALES_PIPELINE_DS = 'cec1b3e9-791d-4a55-bd80-b0226552f543';
-const SALES_ACTIVITY_DS = 'b5d8dd3c-303b-49c2-96cf-23b2cfa476ae';
 // CONTACTS_DS is imported from ./src/config/convert.js above.
 const SPEAKING_OUTREACH_DS = '96f47e7e-9797-4d96-9abb-e5dcb7df13a3'; // SPEAKING OUTREACH [DB]
 const WORK_PROJECTS_DS = '28c458f08cd98131a475000b81db3c1b';
@@ -1479,7 +1478,8 @@ const FOLLOWUP_SOURCES = [
   { ds: WORK_TASKS_DS, kind: 'task', source: 'work', titleProp: 'Name' },
   { ds: LIFE_TASKS_DS, kind: 'task', source: 'personal', titleProp: 'Name' },
   { ds: SALES_PIPELINE_DS, kind: 'deal', source: 'sales', titleProp: 'Deal Name' },
-  { ds: SALES_ACTIVITY_DS, kind: 'touchpoint', source: 'sales', titleProp: 'Description' },
+  // Sales touchpoints intentionally excluded — you follow up on the CONTACT, not
+  // a single logged activity (a touchpoint row's title is just its type).
   { ds: CONTACTS_DS, kind: 'contact', source: 'sales', titleProp: 'Full Name' },
   { ds: SPEAKING_OUTREACH_DS, kind: 'speaking', source: 'sales', titleProp: 'Name' },
 ];

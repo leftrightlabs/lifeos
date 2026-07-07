@@ -358,7 +358,7 @@ app.get('/api/convert/contacts', async (req, res) => {
 // POST /api/convert/touchpoint — log an activity + bump the contact's Last Touched.
 app.post('/api/convert/touchpoint', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  const { contactId, contactName, touchpointType, channel, notes, loggedBy, timestamp, followUp, followUpBy, followUpOwnerId } = req.body || {};
+  const { contactId, contactName, touchpointType, channel, notes, loggedBy, timestamp } = req.body || {};
   if (!contactId || !touchpointType) return res.status(400).json({ error: 'contactId and touchpointType are required' });
   const when = /^\d{4}-\d{2}-\d{2}$/.test(timestamp || '') ? timestamp : chicagoTodayISODate();
   try {
@@ -372,18 +372,11 @@ app.post('/api/convert/touchpoint', async (req, res) => {
     };
     if (channel) properties.Channel = { select: { name: channel } };
     if (notes && String(notes).trim()) properties.Notes = { rich_text: [{ text: { content: String(notes).slice(0, 1900) } }] };
-    if (followUp) {
-      applyFollowupProps(properties, {
-        followUpOwnerId: followUpOwnerId || currentNotionUserId() || undefined,
-        followUpBy: /^\d{4}-\d{2}-\d{2}$/.test(followUpBy || '') ? followUpBy : undefined,
-      });
-    }
     const page = await notion.pages.create({ parent: { type: 'data_source_id', data_source_id: SALES_ACTIVITY_DS }, properties });
     // Bump Last Touched on the contact to the interaction date.
     try { await notion.pages.update({ page_id: dashifyId(contactId), properties: { 'Last Touched': { date: { start: when } } } }); } catch (e) { console.error('Last Touched update failed:', e.message); }
     cache.delete('sales-pulse');
     for (const k of cache.keys()) if (k.startsWith('sales-overdue')) cache.delete(k);
-    if (followUp) clearFollowupsCache();
     res.json({ ok: true, id: page.id });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
