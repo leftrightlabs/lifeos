@@ -301,7 +301,7 @@ body {
 .pt-touch    { background: var(--accent-soft);   color: #A99EFF; }
 
 /* Follow Ups section rows — live inside Today's Plan; check clears the flag */
-.qdot.status-follow-ups { background: #c99bff; box-shadow: 0 0 6px rgba(201,155,255,.4); }
+.qdot.status-follow-ups { background: #e8843f; box-shadow: 0 0 6px rgba(232,132,63,.4); }
 .fu-row.clearing { opacity: .3; transition: opacity .2s; }
 .fu-kind { font-size: var(--fs-caption); font-weight: 700; letter-spacing: .04em; padding: 1px 6px; border-radius: 4px; margin-left: 7px; vertical-align: middle; }
 
@@ -327,10 +327,12 @@ body {
 .qcheck.checked { background: var(--green-soft); border-color: var(--green); color: var(--green); }
 .qcheck.checked::after { content: "✓"; font-size: var(--fs-body-sm); font-weight: 700; }
 .qdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-right: -3px; }
-.qdot.status-planned { background: var(--text-4); }
+/* Status dot colors mirror Notion's status palette for consistency:
+   Planned=blue, Agenda=pink, Doing=green, Waiting=yellow, Billing=purple, Done=gray. */
+.qdot.status-planned { background: #5d9cec; box-shadow: 0 0 6px rgba(93,156,236,.35); }
 .qdot.status-doing { background: var(--green); box-shadow: 0 0 6px rgba(79,214,160,.45); }
 .qdot.status-waiting { background: var(--amber); box-shadow: 0 0 6px rgba(235,180,84,.4); }
-.qdot.status-agenda { background: #5d9cec; box-shadow: 0 0 6px rgba(93,156,236,.35); }
+.qdot.status-agenda { background: #d472a8; box-shadow: 0 0 6px rgba(212,114,168,.4); }
 .qdot.status-billing { background: var(--accent); }
 .qdot.status-done { background: var(--text-4); }
 .qbody { flex: 1; min-width: 0; cursor: pointer; }
@@ -2336,7 +2338,7 @@ function renderPlan() {
 
   // A follow-up row (task/deal/touchpoint) — looks like a task row but the check
   // clears the flag and the sub-line shows context (project or sales hint).
-  const FU_COLOR = '#c99bff';
+  const FU_COLOR = '#e8843f';   // orange — Notion has no such status color, so it's unique to follow-ups
   const fuCollapsed = getSection('status-follow-ups');
   const followupRowHtml = (it) => {
     const kind = FOLLOWUP_KIND[it.kind] || FOLLOWUP_KIND.task;
@@ -2432,7 +2434,7 @@ function renderPlan() {
 // Plan status sections — order (top→bottom), colors (match the Notion status dots),
 // and label normalization. Unknown statuses keep their own label and sort last.
 const PLAN_STATUS_ORDER = ['Doing', 'Planned', 'Agenda', 'Waiting', 'Billing', 'Done'];
-const PLAN_STATUS_COLOR = { doing:'var(--green)', planned:'var(--text-4)', agenda:'#5d9cec', waiting:'var(--amber)', billing:'var(--accent)', done:'var(--text-4)' };
+const PLAN_STATUS_COLOR = { doing:'var(--green)', planned:'#5d9cec', agenda:'#d472a8', waiting:'var(--amber)', billing:'var(--accent)', done:'var(--text-4)' };
 function PLAN_STATUS_LABEL(s) {
   const match = PLAN_STATUS_ORDER.find(x => x.toLowerCase() === (s || '').toLowerCase());
   return match || (s && s.trim() ? s : 'Planned');
