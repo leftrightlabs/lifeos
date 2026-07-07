@@ -858,10 +858,7 @@ body { overflow-x: hidden; }
     <!-- RIGHT COLUMN: action items for the day -->
     <div class="col-right">
 
-      <!-- 3. The One Thing — hides when marked done -->
-      <div id="oneThingArea"></div>
-
-      <!-- 4. Morning Startup — own card; hides when all items checked -->
+      <!-- Morning Startup — own card; hides when all items checked -->
       <div class="ritual" id="morningRitual"></div>
 
       <!-- 5. Today's Plan — hides when all tasks done -->
@@ -893,11 +890,8 @@ body { overflow-x: hidden; }
         </div>
       </div>
 
-      <!-- 6. Evening Routine — own card; hides when all items checked -->
+      <!-- Evening Routine — own card; hides when all items checked -->
       <div class="ritual evening" id="eveningRitual"></div>
-
-      <!-- 7. Streaks — hide when today's streak is locked in -->
-      <div class="streak-strip" id="streakStrip"></div>
 
     </div>
 
@@ -1091,16 +1085,11 @@ function renderNav() {
 }
 
 // ── STREAKS ──
+// Streaks retired (2026-07 — pressure mechanic, not motivating). No-op so every
+// existing caller stays safe; the streak card container was removed from the DOM.
 function renderStreaks() {
   const strip = document.getElementById('streakStrip');
-  const showWork = state.mode !== 'personal';
-  const showLife = state.mode !== 'work';
-  strip.innerHTML = (showWork ? streakCard('work') : '') + (showLife ? streakCard('life') : '');
-  if (showWork) _restoreCardCollapse('streak-work', '[data-persist-key="streak-work"]');
-  if (showLife) _restoreCardCollapse('streak-life', '[data-persist-key="streak-life"]');
-  const workOk = !showWork || state.workSatisfied;
-  const lifeOk = !showLife || state.lifeSatisfied;
-  setCardDone('streakStrip', workOk && lifeOk);
+  if (strip) strip.innerHTML = '';
 }
 
 function streakCard(type) {
@@ -1186,7 +1175,16 @@ function oneThingEmpty(kind) {
     </div>`;
 }
 
+// The One Thing card is retired (2026-07). Today is now just Current Focus +
+// Morning + the Plan list; finishing the list is the reward. This no-op keeps
+// every caller safe; the #oneThingArea container was removed. The full legacy
+// renderer is preserved (unused) below as _legacyRenderOneThing for reference.
 function renderOneThing() {
+  const area = document.getElementById('oneThingArea');
+  if (area) area.innerHTML = '';
+}
+
+function _legacyRenderOneThing() {
   setCardDone('oneThingArea', false); // reset; done paths below will override to true
   const area = document.getElementById('oneThingArea');
 
@@ -2241,13 +2239,15 @@ function showReschedule(i) {
 
 // The Today's Plan header counts the task list only; the morning and evening
 // rituals carry their own completion state on their own rows.
+let _planCelebratedDay = null; // day we last fired the "list cleared" celebration
 function renderPlan() {
   const today = todayISO();
   const visible = state.mode === 'all' ? plan : plan.filter(t => t.type === state.mode || !t.type);
   // Count the task list only — rituals carry their own progress on their rows.
   const doneCt  = visible.filter(p => p.done).length;
   const totalCt = visible.length;
-  document.getElementById('planCount').textContent = totalCt > 0 ? `· ${doneCt} of ${totalCt} done` : '';
+  const allDoneNow = totalCt > 0 && doneCt === totalCt;
+  document.getElementById('planCount').textContent = totalCt > 0 ? (allDoneNow ? `· 🎉 all ${totalCt} done` : `· ${doneCt} of ${totalCt} done`) : '';
   const shown = state.hideDone ? visible.filter(t => !t.done) : visible;
 
   const rowHtml = (t, collapsedRow) => {
@@ -2293,6 +2293,10 @@ function renderPlan() {
   list.innerHTML = html || `<div style="padding:10px 4px;color:var(--text-3);font-size:var(--fs-body-sm)">Nothing on My Day yet.</div>`;
   const allPlanDone = visible.length > 0 && visible.every(t => t.done);
   setCardDone('card-plan', allPlanDone);
+  // Clearing the whole list is the reward — celebrate once per day when it flips
+  // to all-done (no streaks, no pressure).
+  if (allPlanDone && _planCelebratedDay !== today) { _planCelebratedDay = today; try { fireConfetti(); } catch (e) {} }
+  if (!allPlanDone) _planCelebratedDay = null;
   if (!list._clickBound) {
     list.addEventListener('click', (e) => {
       const row = e.target.closest('.qrow'); if (!row) return;
@@ -2975,6 +2979,21 @@ function applyBrief(text) {
   workBriefText = String(text).trim();
   renderBrief();
 }
+
+// Auto-refresh Current Focus so it stays current without a manual browser reload:
+// re-pull the brief when you return to the tab (if it's been >30 min) and every 2h
+// in the background. The server regenerates it per time-of-day bucket.
+let _briefLastFetch = Date.now();
+function refreshBrief() {
+  _briefLastFetch = Date.now();
+  fetch('/api/ai/daily-focus').then(r => r.ok ? r.json() : null).then(v => {
+    if (v && v.brief) { applyBrief(v.brief); }
+  }).catch(() => {});
+}
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && Date.now() - _briefLastFetch > 30 * 60 * 1000) refreshBrief();
+});
+setInterval(() => { if (!document.hidden) refreshBrief(); }, 2 * 60 * 60 * 1000);
 
 // Apply calendar events to vcal
 function applyCalendar(events) {
