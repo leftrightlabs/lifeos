@@ -297,6 +297,13 @@ body {
 .pt-area { background: rgba(84,102,126,.13); color: var(--text-2); }
 .pt-personal { background: var(--personal-soft); color: var(--personal); }
 .pt-work     { background: var(--work-soft);     color: var(--work); }
+.pt-deal     { background: var(--green-soft);    color: var(--green); }
+.pt-touch    { background: var(--accent-soft);   color: #A99EFF; }
+
+/* Follow Ups section rows — live inside Today's Plan; check clears the flag */
+.qdot.status-follow-ups { background: #c99bff; box-shadow: 0 0 6px rgba(201,155,255,.4); }
+.fu-row.clearing { opacity: .3; transition: opacity .2s; }
+.fu-kind { font-size: var(--fs-caption); font-weight: 700; letter-spacing: .04em; padding: 1px 6px; border-radius: 4px; margin-left: 7px; vertical-align: middle; }
 
 /* Inline task-card controls (My Day + date on the card, not a 3-dot menu) */
 .plan-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto; }
@@ -930,6 +937,13 @@ body { overflow-x: hidden; }
     <div class="tm-field" id="tmAssigneeField"><label>Assigned to</label><select id="tmAssignee"><option value="">— unassigned —</option></select></div>
     <div class="tm-field" id="tmFollowingField"><label>Following</label><div id="tmFollowingList" class="tm-checklist"></div></div>
     <label class="tm-check"><input type="checkbox" id="tmMyDay"> Pin to My Day</label>
+    <label class="tm-check"><input type="checkbox" id="tmFollowUp" onchange="tmFollowUpToggle()"> Flag for follow-up</label>
+    <div id="tmFollowByField" style="display:none;">
+      <div class="tm-2col">
+        <div class="tm-field"><label>Follow up owner</label><select id="tmFollowOwner"></select></div>
+        <div class="tm-field"><label>Follow up by <button type="button" class="tm-clear" onclick="document.getElementById('tmFollowBy').value=''">Clear</button></label><input type="date" id="tmFollowBy"></div>
+      </div>
+    </div>
     <div class="tm-2col">
       <div class="tm-field"><label>Status</label><select id="tmStatus">
         <option>Planned</option><option>Doing</option><option>Waiting</option><option>Agenda</option><option>Billing</option><option>Done</option>
@@ -998,7 +1012,7 @@ const IS_WEEKEND = [0, 6].includes(new Date().getDay()); // 0=Sun, 6=Sat
 // ── CURRENT USER ──
 // Personal mode (and its life data) is gated per-user by the server. Team
 // members get a work-only view with their own name; the owner sees all modes.
-let CURRENT_USER = { name: '', email: '', firstName: '' };
+let CURRENT_USER = { name: '', email: '', firstName: '', notionUserId: null };
 let CAN_PERSONAL = true; // assume unlocked until /api/me says otherwise
 const escName = (s) => String(s || '').replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 
@@ -1961,6 +1975,19 @@ function populateAssigneeSelect(selEl, currentIds, currentNames) {
     all.map(m => `<option value="${m.id}">${escName(m.name)}${m.isBot ? ' ·' : ''}</option>`).join('');
   selEl.value = (currentIds && currentIds.length) ? currentIds[0] : '';
 }
+// Follow-up owner picker — every workspace member, defaulting to the given id
+// (or the current user). Unlike assignee it's never "unassigned": a follow-up
+// always has an owner (that's who it shows up for).
+function populateOwnerSelect(selEl, currentId) {
+  const members = _workspaceMembers || [];
+  const me = CURRENT_USER.notionUserId;
+  const memberIds = new Set(members.map(m => m.id));
+  // Ensure the current user is always an option even if the members list is empty.
+  const all = [...members];
+  if (me && !memberIds.has(me)) all.unshift({ id: me, name: (CURRENT_USER.name || 'Me') + ' (me)' });
+  selEl.innerHTML = all.map(m => `<option value="${m.id}">${escName(m.name)}${m.id === me ? ' · me' : ''}</option>`).join('');
+  selEl.value = currentId || me || (all[0] && all[0].id) || '';
+}
 function populateFollowingList(listEl, currentIds) {
   const members = _workspaceMembers || [];
   listEl.innerHTML = members
@@ -2057,6 +2084,11 @@ function openTaskModal(i) {
     }
   });
   document.getElementById('tmMyDay').checked = true;
+  document.getElementById('tmFollowUp').checked = !!t.followUpOwnerId;
+  document.getElementById('tmFollowBy').value = t.followUpBy ? t.followUpBy.slice(0, 10) : '';
+  populateOwnerSelect(document.getElementById('tmFollowOwner'), t.followUpOwnerId);
+  loadWorkspaceMembers().then(() => { if (_editIdx === i) populateOwnerSelect(document.getElementById('tmFollowOwner'), t.followUpOwnerId); });
+  tmFollowUpToggle();
   document.getElementById('tmStatus').value = ['Planned', 'Doing', 'Waiting', 'Agenda', 'Billing', 'Done'].includes(t.status) ? t.status : 'Planned';
   const up = (t.priority || '').toUpperCase();
   document.getElementById('tmPriority').value = ['URGENT','HIGH','MEDIUM','LOW','NONE'].includes(up) ? up : '';
@@ -2066,6 +2098,11 @@ function openTaskModal(i) {
   document.getElementById('tmdp-cal').style.display = 'none';
   document.getElementById('tmdp-field').classList.remove('open');
   document.getElementById('taskModal').classList.add('open');
+}
+// Show the "Follow up by" date field only when the flag is on.
+function tmFollowUpToggle() {
+  document.getElementById('tmFollowByField').style.display =
+    document.getElementById('tmFollowUp').checked ? '' : 'none';
 }
 function closeTaskModal() { document.getElementById('taskModal').classList.remove('open'); _editIdx = null; }
 function openInNotionFromModal() { if (_editIdx != null) openInNotion(_editIdx); }
@@ -2086,8 +2123,11 @@ function saveTaskModal() {
   const followingChecked = !isPersonal
     ? Array.from(document.querySelectorAll('#tmFollowingList input[type=checkbox]:checked')).map(cb => cb.value)
     : undefined;
+  const followUp = document.getElementById('tmFollowUp').checked;
+  const followUpOwnerId = followUp ? (document.getElementById('tmFollowOwner').value || CURRENT_USER.notionUserId || null) : null;
+  const followUpBy = followUp ? (document.getElementById('tmFollowBy').value || null) : null;
   if (t.id) {
-    const body = { name, projectId, status, priority, estHours, dueStart, myDay };
+    const body = { name, projectId, status, priority, estHours, dueStart, myDay, followUp, followUpOwnerId, followUpBy };
     if (assigneeIds !== undefined) body.assigneeIds = assigneeIds;
     if (followingChecked !== undefined) body.followingIds = followingChecked;
     fetch('/api/tasks/' + t.id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -2101,6 +2141,9 @@ function saveTaskModal() {
   t.priority = priority;
   t.est = estHours;
   t.dueStart = dueStart;
+  t.followUpOwnerId = followUpOwnerId;
+  t.followUp = !!followUpOwnerId;
+  t.followUpBy = followUpBy;
   t.done = status === 'Done';
   if (assigneeIds !== undefined) {
     t.assigneeIds = assigneeIds;
@@ -2283,12 +2326,52 @@ function renderPlan() {
     </div>`;
   };
 
+  // A follow-up row (task/deal/touchpoint) — looks like a task row but the check
+  // clears the flag and the sub-line shows context (project or sales hint).
+  const FU_COLOR = '#c99bff';
+  const fuCollapsed = getSection('status-follow-ups');
+  const followupRowHtml = (it) => {
+    const kind = FOLLOWUP_KIND[it.kind] || FOLLOWUP_KIND.task;
+    const ctx = followupContext(it);
+    const by = it.followUpBy ? it.followUpBy.slice(0, 10) : '';
+    const overdue = by && by < today;
+    const dueTxt = !by ? '' : (by === today ? 'Today'
+      : (overdue ? 'Overdue' : new Date(by + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })));
+    const dueCls = !by ? 'unset' : (overdue ? 'overdue' : (by === today ? 'today' : ''));
+    return `
+    <div class="qrow fu-row ${fuCollapsed ? 'qrow-hidden' : ''}" data-no-drag data-followup-id="${escName(it.id)}" data-followup-idx="${it.planIdx}" data-followup-url="${escName(it.url || '')}">
+      <div class="qcheck" data-fact="clear" title="Mark handled"></div>
+      <span class="qdot status-follow-ups" title="Follow up"></span>
+      <div class="qbody" data-fact="open">
+        <div class="qtitle">${escName(it.title)}<span class="fu-kind ${kind.cls}">${kind.label}</span></div>
+        ${ctx ? `<div class="qproject">${escName(ctx)}</div>` : ''}
+      </div>
+      <div class="qmeta">${dueTxt ? `<span class="qdue ${dueCls}">${dueTxt}</span>` : ''}</div>
+    </div>`;
+  };
+
+  // Follow Ups queue (flagged tasks + sales items). Compute first so flagged tasks
+  // can be pulled OUT of their status group — they render only in Follow Ups.
+  const fuItems = collectFollowups();
+  const fuIds = new Set(fuItems.map(i => i.id));
+
   // Group by status, render each as a collapsible, color-coded, drop-target section.
   const groups = {};
-  shown.forEach(t => { const s = PLAN_STATUS_LABEL(t.status); (groups[s] = groups[s] || []).push(t); });
+  shown.forEach(t => {
+    if (t.id && fuIds.has(t.id)) return; // rendered in the Follow Ups section instead
+    const s = PLAN_STATUS_LABEL(t.status); (groups[s] = groups[s] || []).push(t);
+  });
   const order = PLAN_STATUS_ORDER.filter(s => groups[s]?.length);
   Object.keys(groups).forEach(s => { if (!order.includes(s)) order.push(s); }); // any non-standard statuses last
+
+  // Follow Ups section first — the "circle back" queue.
   let html = '';
+  if (fuItems.length) {
+    html += `<div class="plan-status-div" data-no-drag data-status="Follow Ups" onclick="toggleStatusSection('follow-ups')" style="--sdiv:${FU_COLOR}">
+      <span style="color:${FU_COLOR}"><span class="wchev">${fuCollapsed ? '▶' : '▼'}</span> Follow Ups · ${fuItems.length}</span></div>`;
+    html += fuItems.map(followupRowHtml).join('');
+  }
+
   order.forEach(status => {
     const sk = status.toLowerCase().replace(/\s+/g, '-');
     const collapsed = getSection('status-' + sk);
@@ -2307,6 +2390,18 @@ function renderPlan() {
   if (!allPlanDone) _planCelebratedDay = null;
   if (!list._clickBound) {
     list.addEventListener('click', (e) => {
+      // Follow-up rows: check = clear the flag; body = open the task modal (if it's
+      // a live My Day task) or open the item in Notion (deals/touchpoints/other).
+      const fu = e.target.closest('.fu-row');
+      if (fu) {
+        const fact = e.target.closest('[data-fact]')?.dataset.fact;
+        if (fact === 'clear') return clearFollowup(fu.dataset.followupId);
+        const pidx = parseInt(fu.dataset.followupIdx);
+        if (!isNaN(pidx) && pidx >= 0) return openTaskModal(pidx);
+        const url = fu.dataset.followupUrl;
+        if (url && window.openNotion) window.openNotion(url);
+        return;
+      }
       const row = e.target.closest('.qrow'); if (!row) return;
       const idx = parseInt(row.dataset.planIdx);
       const act = e.target.closest('[data-act]')?.dataset.act;
@@ -2762,6 +2857,84 @@ function renderBrief() {
   document.getElementById('briefLines').innerHTML = txt ? `<p class="brief-text">${txt}</p>` : '';
 }
 
+// ── FOLLOW-UPS ──
+// Items flagged "Follow Up" across tasks, deals, and sales touchpoints. Rather
+// than a separate card, they surface as a "Follow Ups" SECTION inside Today's
+// Plan (see renderPlan). Checking a follow-up row clears the flag (universal
+// PATCH /api/followup/:id) — "I circled back, done with it".
+const FOLLOWUP_KIND = {
+  task:       { label: 'TASK',       cls: 'pt-work' },
+  deal:       { label: 'DEAL',       cls: 'pt-deal' },
+  touchpoint: { label: 'TOUCHPOINT', cls: 'pt-touch' },
+  contact:    { label: 'CONTACT',    cls: 'pt-touch' },
+  speaking:   { label: 'SPEAKING',   cls: 'pt-deal' },
+};
+// Build the unified follow-up list. The server list (_followups) is authoritative
+// for what's flagged (deals, touchpoints, tasks — My Day or not). When an item
+// also lives in `plan` we enrich it with the live task (fresher name/project) and
+// its plan index so clicking opens the task modal. A local optimistic flag not
+// yet reflected server-side is appended so newly-flagged rows appear instantly.
+function collectFollowups() {
+  const planById = new Map(plan.filter(t => t.id).map((t, i) => [t.id, { t, i: plan.indexOf(t) }]));
+  const items = [];
+  const seen = new Set();
+  (_followups || []).forEach(it => {
+    seen.add(it.id);
+    const pm = planById.get(it.id);
+    if (pm && pm.t.done) return; // completed task → drop from the queue
+    items.push({
+      ...it,
+      title: pm ? pm.t.name : it.title,
+      projectId: pm ? (pm.t.projectId || null) : (it.projectId || null),
+      planIdx: pm ? pm.i : -1,
+    });
+  });
+  // Local optimistic flags owned by ME not yet reflected server-side (a teammate-
+  // owned flag stays off my Today — the server list is the source of truth).
+  const me = CURRENT_USER.notionUserId;
+  plan.forEach((t, i) => {
+    if (t.id && me && t.followUpOwnerId === me && !t.done && !seen.has(t.id)) {
+      items.push({ id: t.id, kind: 'task', title: t.name, projectId: t.projectId || null,
+        followUpBy: t.followUpBy || null, url: t.notionUrl || null, planIdx: i });
+    }
+  });
+  // Undated first, then soonest date.
+  items.sort((a, b) => {
+    if (!a.followUpBy && b.followUpBy) return -1;
+    if (a.followUpBy && !b.followUpBy) return 1;
+    if (a.followUpBy && b.followUpBy) return a.followUpBy.localeCompare(b.followUpBy);
+    return 0;
+  });
+  return items;
+}
+// Context sub-line: tasks → project name; deals/touchpoints → a sales hint.
+function followupContext(it) {
+  if (it.kind === 'task') {
+    const proj = it.projectId && _projectMap[it.projectId] ? _projectMap[it.projectId].name : '';
+    return proj || '';
+  }
+  if (it.kind === 'deal') return 'Sales deal' + (it.status ? ' · ' + it.status : '');
+  if (it.kind === 'touchpoint') return 'Sales touchpoint' + (it.channel ? ' · ' + it.channel : '');
+  if (it.kind === 'contact') return 'Contact' + (it.status ? ' · ' + it.status : '');
+  if (it.kind === 'speaking') return 'Speaking outreach' + (it.status ? ' · ' + it.status : '');
+  return '';
+}
+// Check-off = clear the Follow Up flag. Optimistic: fade the row, drop it from
+// local state, re-render the plan (the row returns to its status group if it's a
+// live My Day task, or just disappears).
+function clearFollowup(id) {
+  const row = document.querySelector(`.fu-row[data-followup-id="${id}"]`);
+  if (row) row.classList.add('clearing');
+  fetch('/api/followup/' + id, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ followUp: false }),
+  }).catch(() => {});
+  _followups = (_followups || []).filter(x => x.id !== id);
+  const pt = plan.find(t => t.id === id);
+  if (pt) pt.followUp = false;
+  setTimeout(renderPlan, 200);
+}
+
 function _reRenderAll() {
   renderBrief();
   renderOneThing();
@@ -2778,6 +2951,7 @@ let _oneThingTask = null;
 let _oneThingDone = null;   // {name, rock} captured when the work One Thing is marked done
 let _personalOneThingTask = null;
 let _loadedGoals = [];
+let _followups = [];     // items flagged "Follow Up" (tasks + deals + touchpoints)
 let _dataLoaded = false; // gates the loading overlay; flips true after first load
 
 function todayISO() {
@@ -2845,6 +3019,9 @@ function taskToPlanItem(t) {
     est: (t.estHours != null ? t.estHours : null),
     dueStart: t.dueStart || null,
     dueEnd: t.dueEnd || null,
+    followUp: !!t.followUpOwnerId,
+    followUpOwnerId: t.followUpOwnerId || null,
+    followUpBy: t.followUpBy || null,
     assigneeIds: t.assigneeIds || [],
     assigneeNames: t.assigneeNames || [],
     followingIds: t.followingIds || [],
@@ -3476,6 +3653,7 @@ async function loadTodayData() {
   const pWealth = j('/api/wealth/summary');
   const pFin    = j('/api/finance/xero');
   const pPipe   = j('/api/convert/pipeline');
+  const pFollow = j('/api/followups');
   const pState  = loadTodayStateFromServer(); // cross-device One Thing pick/status
 
   // Projects only decorate task rows with a project label — patch in when ready.
@@ -3519,6 +3697,7 @@ async function loadTodayData() {
   Promise.all([pFin, pPipe]).then(([f, p]) => {
     if (ok(f) || ok(p)) { applyFinance(ok(f) ? f : null, ok(p) ? p : null); _reRenderAll(); }
   });
+  pFollow.then(v => { if (ok(v)) { _followups = v.items || []; renderPlan(); } });
 }
 
 // ── INIT ──
@@ -3530,6 +3709,7 @@ function loadCurrentUser() {
       CURRENT_USER.email = me.email || '';
       CURRENT_USER.name = me.name || me.email || '';
       CURRENT_USER.firstName = (CURRENT_USER.name.trim().split(/\s+/)[0]) || '';
+      CURRENT_USER.notionUserId = me.notionUserId || null;
       // personalEnabled is the server's per-user gate for the personal/all views.
       CAN_PERSONAL = me.personalEnabled === true || me.role === 'owner';
     }

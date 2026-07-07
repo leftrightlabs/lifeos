@@ -43,6 +43,13 @@ function isAllowedEmail(email) {
 }
 const WORK_TASKS_DS = '28c458f08cd9818599e7000bc2115872';
 const LIFE_TASKS_DS = '265458f08cd981699efe000b4de14ca4';
+// Follow-up sources beyond the two task DBs (deals + sales touchpoints). All
+// four DBs share the "Follow Up" checkbox + "Follow Up By" date properties, so
+// the toggle endpoint is DB-agnostic.
+const SALES_PIPELINE_DS = 'cec1b3e9-791d-4a55-bd80-b0226552f543';
+const SALES_ACTIVITY_DS = 'b5d8dd3c-303b-49c2-96cf-23b2cfa476ae';
+// CONTACTS_DS is imported from ./src/config/convert.js above.
+const SPEAKING_OUTREACH_DS = '96f47e7e-9797-4d96-9abb-e5dcb7df13a3'; // SPEAKING OUTREACH [DB]
 const WORK_PROJECTS_DS = '28c458f08cd98131a475000b81db3c1b';
 const LIFE_PROJECTS_DS = '265458f08cd9814eaf0e000bceaa7f80';
 const PROJECT_AREA_DS = 'd5b03c5c-9322-4345-91ea-f5731bf6d141';   // work AREA relation target
@@ -193,14 +200,14 @@ function makeOAuthClient(req, callbackPath = '/auth/google/callback') {
 // reliably supports one level of compound nesting (and-of-properties or or-of-
 // properties), so callers that need (A AND B) OR (C AND D) should make two
 // separate calls and merge, rather than trying to nest and-inside-or.
-async function pageThroughDS(dataSourceId, filter) {
+async function pageThroughDS(dataSourceId, filter, sorts = [{ property: 'Due', direction: 'ascending' }]) {
   const results = [];
   let cursor;
   do {
     const r = await notion.dataSources.query({
       data_source_id: dataSourceId,
       filter,
-      sorts: [{ property: 'Due', direction: 'ascending' }],
+      ...(sorts ? { sorts } : {}),
       page_size: 100,
       start_cursor: cursor,
     });
@@ -287,6 +294,10 @@ function simplifyTask(page, source) {
     recurInterval: props['Recur Interval']?.number || null,
     estHours: props['Est Hours']?.number ?? null,
     priority: props.Priority?.select?.name || null,
+    followUp: (props['Follow Up Owner']?.people || []).length > 0,
+    followUpBy: props['Follow Up By']?.date?.start || null,
+    followUpOwnerId: (props['Follow Up Owner']?.people || [])[0]?.id || null,
+    followUpOwnerName: (props['Follow Up Owner']?.people || [])[0]?.name || null,
     project: null,
     projectId: (props.Project?.relation || [])[0]?.id || null,
     assigneeIds: assignees,
@@ -867,7 +878,7 @@ app.get('/api/tasks/life-all', async (_req, res) => {
 });
 
 function invalidateTaskCaches() {
-  const bases = ['work-myday', 'life-myday', 'work-all', 'life-all', 'tasks-all', 'tasks-all-board', 'goals', 'review', 'xero-finance', 'journal-rings', 'calendar-today'];
+  const bases = ['work-myday', 'life-myday', 'work-all', 'life-all', 'tasks-all', 'tasks-all-board', 'goals', 'review', 'xero-finance', 'journal-rings', 'calendar-today', 'followups-all'];
   for (const key of [...cache.keys()]) {
     if (bases.includes(key.split('::')[0])) cache.delete(key); // clears every per-user variant
   }
@@ -1369,9 +1380,12 @@ app.patch('/api/projects/:id', async (req, res) => {
 app.patch('/api/tasks/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { id } = req.params;
-  const { name, status, dueStart, dueEnd, myDay, priority, projectId, estHours, assigneeIds, followingIds } = req.body || {};
+  const { name, status, dueStart, dueEnd, myDay, priority, projectId, estHours, assigneeIds, followingIds, followUp, followUpBy, followUpOwnerId } = req.body || {};
   try {
     const properties = {};
+    if (followUp !== undefined || followUpBy !== undefined || followUpOwnerId !== undefined) {
+      applyFollowupProps(properties, { followUp, followUpBy, followUpOwnerId });
+    }
     if (name !== undefined && name !== null) {
       properties.Name = { title: [{ text: { content: String(name) } }] };
     }
@@ -1449,6 +1463,113 @@ app.post('/api/tasks/:id/follow', async (req, res) => {
       invalidateTaskCaches();
     }
     res.json({ ok: true, following: next.includes(me) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Follow-ups -----------------------------------------------------------
+// A universal follow-up flag on work tasks, life tasks, deals, and sales
+// touchpoints. Every follow-up has an OWNER (the "Follow Up Owner" person) so
+// the queue is personal: GET returns only items owned by the current user, whose
+// "Follow Up By" is empty OR on/before today (future-dated reminders stay quiet).
+// Flagging assigns an owner (default: yourself, but you can hand it to a teammate).
+// PATCH is DB-agnostic: all four DBs share the same property names.
+const FOLLOWUP_SOURCES = [
+  { ds: WORK_TASKS_DS, kind: 'task', source: 'work', titleProp: 'Name' },
+  { ds: LIFE_TASKS_DS, kind: 'task', source: 'personal', titleProp: 'Name' },
+  { ds: SALES_PIPELINE_DS, kind: 'deal', source: 'sales', titleProp: 'Deal Name' },
+  { ds: SALES_ACTIVITY_DS, kind: 'touchpoint', source: 'sales', titleProp: 'Description' },
+  { ds: CONTACTS_DS, kind: 'contact', source: 'sales', titleProp: 'Full Name' },
+  { ds: SPEAKING_OUTREACH_DS, kind: 'speaking', source: 'sales', titleProp: 'Name' },
+];
+
+async function fetchFollowupsFor({ ds, kind, source, titleProp }, today, nid) {
+  // Owner-scoped: only items whose Follow Up Owner is the current user. No shared
+  // sort property across the four DBs → skip Notion sorting; sort merged in JS.
+  const pages = await pageThroughDS(ds, { and: [{ property: 'Follow Up Owner', people: { contains: nid } }] }, null);
+  const out = [];
+  for (const pg of pages) {
+    const props = pg.properties || {};
+    const by = props['Follow Up By']?.date?.start || null;
+    // Surface only when no date is set, or the date has arrived (Chicago day).
+    const due = !by || by.slice(0, 10) <= today;
+    if (!due) continue;
+    out.push({
+      id: pg.id,
+      title: (props[titleProp]?.title?.[0]?.plain_text || '(untitled)'),
+      kind,
+      source,
+      followUpBy: by,
+      followUpOwnerId: (props['Follow Up Owner']?.people || [])[0]?.id || null,
+      status: props.Status?.status?.name || props['Pipeline Status']?.status?.name || props.Stage?.select?.name || null,
+      // Context: tasks resolve a project name client-side from this id; deals/
+      // touchpoints carry a channel/type hint the client can show as a sub-line.
+      projectId: (props.Project?.relation || [])[0]?.id || null,
+      channel: props.Channel?.select?.name || props['Touchpoint Type']?.select?.name || null,
+      edited: pg.last_edited_time || null,
+      url: pg.url,
+    });
+  }
+  return out;
+}
+
+app.get('/api/followups', async (_req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    const nid = currentNotionUserId();
+    if (!nid) return res.json({ items: [], count: 0 }); // no Notion identity → nothing to scope to
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
+    const items = await cached('followups-all', async () => {
+      const groups = await Promise.all(FOLLOWUP_SOURCES.map((s) => fetchFollowupsFor(s, today, nid)));
+      const flat = groups.flat();
+      // Undated first, then by soonest follow-up date; stable-ish by edited time.
+      flat.sort((a, b) => {
+        if (!a.followUpBy && b.followUpBy) return -1;
+        if (a.followUpBy && !b.followUpBy) return 1;
+        if (a.followUpBy && b.followUpBy) return a.followUpBy.localeCompare(b.followUpBy);
+        return (b.edited || '').localeCompare(a.edited || '');
+      });
+      return flat;
+    });
+    res.json({ items, count: items.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Apply follow-up changes to a Notion `properties` object (shared by this toggle
+// and the task/deal PATCH + touchpoint create). The OWNER is the single source of
+// truth — a follow-up is "flagged" iff it has a Follow Up Owner.
+//   followUp === false            → clear the flag entirely (owner + date)
+//   followUpOwnerId provided      → set/clear the owner
+//   followUpBy provided           → set/clear the reminder date
+function applyFollowupProps(properties, { followUp, followUpBy, followUpOwnerId }) {
+  if (followUp === false) {
+    properties['Follow Up Owner'] = { people: [] };
+    properties['Follow Up By'] = { date: null };
+    return;
+  }
+  if (followUpOwnerId !== undefined) {
+    properties['Follow Up Owner'] = followUpOwnerId
+      ? { people: [{ id: dashifyId(followUpOwnerId) }] } : { people: [] };
+  }
+  if (followUpBy !== undefined) {
+    properties['Follow Up By'] = followUpBy ? { date: { start: followUpBy } } : { date: null };
+  }
+}
+
+// Universal toggle — works on any of the four follow-up DBs (shared property
+// names). Body: { followUp?, followUpBy?, followUpOwnerId? }.
+app.patch('/api/followup/:id', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    const properties = {};
+    applyFollowupProps(properties, req.body || {});
+    if (!Object.keys(properties).length) return res.status(400).json({ error: 'No fields to update' });
+    await notion.pages.update({ page_id: dashifyId(req.params.id), properties });
+    clearCached('followups-all');
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

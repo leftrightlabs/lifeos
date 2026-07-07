@@ -486,6 +486,23 @@ body.state-calm .calm-hero { display:flex; }
       </div>
       <div class="modal-row">
         <div class="modal-field">
+          <label class="modal-label" style="display:flex;align-items:center;gap:7px;cursor:pointer;">
+            <input type="checkbox" id="log-followup" onchange="logFollowUpToggle()"> Flag for follow-up
+          </label>
+        </div>
+      </div>
+      <div class="modal-row" id="log-followby-field" style="display:none;">
+        <div class="modal-field">
+          <label class="modal-label">Follow up owner</label>
+          <select class="modal-select" id="log-followowner"></select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Follow up by <button type="button" class="tm-clear" onclick="document.getElementById('log-followby').value=''">Clear</button></label>
+          <input class="modal-input" id="log-followby" type="date">
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
           <label class="modal-label">Logged By</label>
           <div class="log-toggle" id="log-by">
             <button type="button" data-by="Gretchen" class="on">Gretchen</button>
@@ -603,6 +620,23 @@ body.state-calm .calm-hero { display:flex; }
           <input class="modal-input" id="deal-won" type="date">
         </div>
       </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label class="modal-label" style="display:flex;align-items:center;gap:7px;cursor:pointer;">
+            <input type="checkbox" id="deal-followup" onchange="dealFollowUpToggle()"> Flag for follow-up
+          </label>
+        </div>
+      </div>
+      <div class="modal-row" id="deal-followby-field" style="display:none;">
+        <div class="modal-field">
+          <label class="modal-label">Follow up owner</label>
+          <select class="modal-select" id="deal-followowner"></select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Follow up by <button type="button" class="tm-clear" onclick="document.getElementById('deal-followby').value=''">Clear</button></label>
+          <input class="modal-input" id="deal-followby" type="date">
+        </div>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn-primary" id="deal-save" onclick="submitDeal()" style="width:100%">Save</button>
@@ -628,6 +662,31 @@ let DATA = null;        // /api/convert payload
 let PULSE = null;       // /api/convert/pulse payload
 let ME = 'all';         // me-mode: gretchen | trina | all
 let TODAY = null;       // ISO date (Chicago) — taken from payload asOf
+
+// ─── Follow-up owner picker (deal modal + touchpoint form) ───────────────────
+let _fuMembers = null;      // workspace members [{id,name}]
+let _myNotionId = null;     // current user's Notion id (default owner)
+async function loadFuMembers() {
+  if (_fuMembers) return _fuMembers;
+  try {
+    const [m, me] = await Promise.all([
+      fetch('/api/workspace/members').then(r => r.json()).catch(() => ({})),
+      fetch('/api/me').then(r => r.json()).catch(() => ({})),
+    ]);
+    _fuMembers = m.members || [];
+    _myNotionId = me.notionUserId || null;
+  } catch (_) { _fuMembers = _fuMembers || []; }
+  return _fuMembers;
+}
+function populateFuOwner(selEl, currentId) {
+  const members = _fuMembers || [];
+  const me = _myNotionId;
+  const ids = new Set(members.map(m => m.id));
+  const all = [...members];
+  if (me && !ids.has(me)) all.unshift({ id: me, name: 'Me' });
+  selEl.innerHTML = all.map(m => `<option value="${m.id}">${esc(m.name)}${m.id === me ? ' · me' : ''}</option>`).join('');
+  selEl.value = currentId || me || (all[0] && all[0].id) || '';
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 const fmtMoney = (n) => '$' + Math.round(n).toLocaleString();
@@ -1108,6 +1167,11 @@ function openLog(name, id, url) {
   document.getElementById('log-type').selectedIndex = 0;
   document.getElementById('log-channel').selectedIndex = 0;
   document.getElementById('log-note').value = '';
+  document.getElementById('log-followup').checked = false;
+  document.getElementById('log-followby').value = '';
+  populateFuOwner(document.getElementById('log-followowner'), null);
+  loadFuMembers().then(() => populateFuOwner(document.getElementById('log-followowner'), null));
+  logFollowUpToggle();
   dpSetDate(isoToday());
   document.getElementById('dp-cal').style.display = 'none';
   document.getElementById('dp-field').classList.remove('open');
@@ -1120,6 +1184,10 @@ function openLog(name, id, url) {
   document.getElementById('log-modal').classList.add('open');
 }
 function closeLog() { document.getElementById('log-modal').classList.remove('open'); }
+function logFollowUpToggle() {
+  document.getElementById('log-followby-field').style.display =
+    document.getElementById('log-followup').checked ? '' : 'none';
+}
 document.getElementById('log-by').addEventListener('click', (e) => {
   const btn = e.target.closest('button'); if (!btn) return;
   logBy = btn.dataset.by;
@@ -1194,6 +1262,9 @@ async function submitLog() {
         notes: document.getElementById('log-note').value,
         loggedBy: logBy,
         timestamp: dateStr,
+        followUp: document.getElementById('log-followup').checked,
+        followUpOwnerId: document.getElementById('log-followup').checked ? (document.getElementById('log-followowner').value || _myNotionId || null) : null,
+        followUpBy: document.getElementById('log-followup').checked ? (document.getElementById('log-followby').value || null) : null,
       })
     });
     if (!r.ok) throw new Error((await r.json()).error || 'failed');
@@ -1405,8 +1476,17 @@ async function openDeal(id) {
   document.getElementById('deal-touched').value = fmtDealDate(deal.lastTouched);
   document.getElementById('deal-callbooked').value = deal.callBooked ? deal.callBooked.slice(0, 10) : '';
   document.getElementById('deal-won').value = deal.dateWon ? deal.dateWon.slice(0, 10) : '';
+  document.getElementById('deal-followup').checked = !!deal.followUpOwnerId;
+  document.getElementById('deal-followby').value = deal.followUpBy ? deal.followUpBy.slice(0, 10) : '';
+  populateFuOwner(document.getElementById('deal-followowner'), deal.followUpOwnerId);
+  loadFuMembers().then(() => { if (_dealId === id) populateFuOwner(document.getElementById('deal-followowner'), deal.followUpOwnerId); });
+  dealFollowUpToggle();
   dealProdSelect((deal.productIds || [])[0] || '');
   document.getElementById('deal-prod-list').classList.remove('show');
+}
+function dealFollowUpToggle() {
+  document.getElementById('deal-followby-field').style.display =
+    document.getElementById('deal-followup').checked ? '' : 'none';
 }
 function closeDeal() { document.getElementById('deal-modal').classList.remove('open'); _dealId = null; }
 
@@ -1423,6 +1503,9 @@ async function submitDeal() {
     productIds: prodId ? [prodId] : [],
     callBooked: document.getElementById('deal-callbooked').value || null,
     dateWon: document.getElementById('deal-won').value || null,
+    followUp: document.getElementById('deal-followup').checked,
+    followUpOwnerId: document.getElementById('deal-followup').checked ? (document.getElementById('deal-followowner').value || _myNotionId || null) : null,
+    followUpBy: document.getElementById('deal-followup').checked ? (document.getElementById('deal-followby').value || null) : null,
   };
   btn.disabled = true; btn.textContent = 'Saving…';
   try {

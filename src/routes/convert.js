@@ -4,6 +4,25 @@ import { serializeDeal, serializeContactRow, queryAllDeals, fetchSalesProductMap
 export function registerConvertRoutes(app, ctx) {
   const { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID, currentNotionUserId, computeXeroFinance, computeXeroQuotes, computeRecurringAvg, anthropic } = ctx;
 
+  // Follow-up ownership (mirrors server.js applyFollowupProps). The owner is the
+  // single source of truth: assigning an owner flags the item; clearing removes it.
+  function applyFollowupProps(properties, { followUp, followUpBy, followUpOwnerId }) {
+    if (followUp === false) {
+      properties['Follow Up Owner'] = { people: [] };
+      properties['Follow Up By'] = { date: null };
+      return;
+    }
+    if (followUpOwnerId !== undefined) {
+      properties['Follow Up Owner'] = followUpOwnerId
+        ? { people: [{ id: dashifyId(followUpOwnerId) }] } : { people: [] };
+    }
+    if (followUpBy !== undefined) {
+      properties['Follow Up By'] = followUpBy ? { date: { start: followUpBy } } : { date: null };
+    }
+  }
+  // followups-all is cached per-user ("followups-all::<user>") — clear all variants.
+  const clearFollowupsCache = () => { for (const k of [...cache.keys()]) if (k.split('::')[0] === 'followups-all') cache.delete(k); };
+
 
 // GET /api/convert/pipeline — open deals grouped by stage + headline metrics.
 app.get('/api/convert/pipeline', async (req, res) => {
@@ -86,9 +105,10 @@ app.get('/api/convert/deal-meta', async (_req, res) => {
 // computed from logged touchpoints and is therefore read-only.)
 app.patch('/api/convert/deal/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  const { name, status, value, typeOfSale, productIds, callBooked, dateWon, dateLost } = req.body || {};
+  const { name, status, value, typeOfSale, productIds, callBooked, dateWon, dateLost, followUp, followUpBy, followUpOwnerId } = req.body || {};
   try {
     const properties = {};
+    applyFollowupProps(properties, { followUp, followUpBy, followUpOwnerId });
     if (name !== undefined && String(name).trim()) {
       properties['Deal Name'] = { title: [{ text: { content: String(name).trim().slice(0, 200) } }] };
     }
@@ -108,6 +128,7 @@ app.patch('/api/convert/deal/:id', async (req, res) => {
     await notion.pages.update({ page_id: dashifyId(req.params.id), properties });
     cache.delete('sales-pipeline');
     cache.delete('convert-page');
+    clearFollowupsCache();
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -337,7 +358,7 @@ app.get('/api/convert/contacts', async (req, res) => {
 // POST /api/convert/touchpoint — log an activity + bump the contact's Last Touched.
 app.post('/api/convert/touchpoint', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  const { contactId, contactName, touchpointType, channel, notes, loggedBy, timestamp } = req.body || {};
+  const { contactId, contactName, touchpointType, channel, notes, loggedBy, timestamp, followUp, followUpBy, followUpOwnerId } = req.body || {};
   if (!contactId || !touchpointType) return res.status(400).json({ error: 'contactId and touchpointType are required' });
   const when = /^\d{4}-\d{2}-\d{2}$/.test(timestamp || '') ? timestamp : chicagoTodayISODate();
   try {
@@ -351,11 +372,18 @@ app.post('/api/convert/touchpoint', async (req, res) => {
     };
     if (channel) properties.Channel = { select: { name: channel } };
     if (notes && String(notes).trim()) properties.Notes = { rich_text: [{ text: { content: String(notes).slice(0, 1900) } }] };
+    if (followUp) {
+      applyFollowupProps(properties, {
+        followUpOwnerId: followUpOwnerId || currentNotionUserId() || undefined,
+        followUpBy: /^\d{4}-\d{2}-\d{2}$/.test(followUpBy || '') ? followUpBy : undefined,
+      });
+    }
     const page = await notion.pages.create({ parent: { type: 'data_source_id', data_source_id: SALES_ACTIVITY_DS }, properties });
     // Bump Last Touched on the contact to the interaction date.
     try { await notion.pages.update({ page_id: dashifyId(contactId), properties: { 'Last Touched': { date: { start: when } } } }); } catch (e) { console.error('Last Touched update failed:', e.message); }
     cache.delete('sales-pulse');
     for (const k of cache.keys()) if (k.startsWith('sales-overdue')) cache.delete(k);
+    if (followUp) clearFollowupsCache();
     res.json({ ok: true, id: page.id });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
