@@ -977,7 +977,7 @@ function finBoard(el, d){
       ['Collected', collected, 'collected'],
       ['Invoiced', invoiced, 'invoiced'],
       ...(quotes != null ? [['Approved quotes', quotes, 'quotes']] : []),
-      [`Recurring (${p.remainingMonths != null ? p.remainingMonths + ' mo' : 'proj'})`, recur, 'recur'],
+      ...(recur > 0 ? [[`Recurring (${p.remainingMonths} mo)`, recur, 'recur']] : []),
     ];
     const pctOf = (v) => goal ? Math.max(0, Math.min(100, (v / goal) * 100)) : 0;
     const gap = (goal != null && proj != null) ? goal - proj : null;

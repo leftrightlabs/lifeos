@@ -497,8 +497,12 @@ export function registerScaleRoutes(app, {
         : null;
       const mkPeriod = (goal, collected, endMonth) => {
         const endDate = `${year}-${pad2(endMonth)}-${pad2(lastDay(year, endMonth))}`;
-        const months = Math.max(0, endMonth - currentMonthNum + 1); // months left incl. current
-        const recRest = recurringMonthly != null ? Math.round(recurringMonthly * months) : null;
+        // Recurring projection counts FUTURE months only (after the current month).
+        // The current month's recurring is already billed — it lives in Collected
+        // (if paid) or Invoiced/A/R (billed, awaiting Stripe release) — so counting
+        // it here too would double-dip with A/R.
+        const months = Math.max(0, endMonth - currentMonthNum);
+        const recRest = (recurringMonthly != null && months > 0) ? Math.round(recurringMonthly * months) : null;
         const q = quotesThrough(endDate);
         const projected = collected != null ? Math.round((collected || 0) + (ar || 0) + (q || 0) + (recRest || 0)) : null;
         return { goal, actual: collected, ar, acceptedQuotes: q, recurringMonthly, recurringRest: recRest, remainingMonths: months, projected };
