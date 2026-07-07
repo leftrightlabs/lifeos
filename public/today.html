@@ -982,6 +982,24 @@ body { overflow-x: hidden; }
   </div>
 </div>
 
+<!-- Edit Follow-up modal — works for any follow-up (task/deal/contact/speaking) -->
+<div class="task-modal" id="fuModal" onclick="if(event.target===this)closeFuModal()">
+  <div class="tm-content">
+    <div class="tm-head"><div class="tm-title">Edit Follow-up</div><button class="tm-close" onclick="closeFuModal()" aria-label="Close">×</button></div>
+    <div class="tm-field"><label>Item</label><div id="fuName" style="font-size:var(--fs-body);color:var(--text);line-height:1.35;"></div></div>
+    <div class="tm-2col">
+      <div class="tm-field"><label>Follow up owner</label><select id="fuOwner"></select></div>
+      <div class="tm-field"><label>Follow up by <button type="button" class="tm-clear" onclick="document.getElementById('fuBy').value=''">Clear</button></label><input type="date" id="fuBy"></div>
+    </div>
+    <label class="tm-check"><input type="checkbox" id="fuOnDay"> Show on my Today list</label>
+    <div class="tm-actions">
+      <button class="tm-btn ghost" onclick="fuModalComplete()" title="Mark this follow-up complete">✓ Complete</button>
+      <button class="tm-btn ghost" onclick="fuModalOpenNotion()">Open in Notion ↗</button>
+      <button class="tm-btn primary" onclick="saveFuModal()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Brain dump FAB -->
 <button class="fab" onclick="openCapture()" title="Quick capture">
   <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4.5 13.5H11L10 22 20.5 10.5H14Z"/></svg>
@@ -2366,6 +2384,7 @@ function renderPlan() {
   // Follow Ups queue (flagged tasks + sales items). Compute first so flagged tasks
   // can be pulled OUT of their status group — they render only in Follow Ups.
   const fuItems = collectFollowups();
+  _fuItems = fuItems;   // cache for the Edit Follow-up modal lookup
   const fuIds = new Set(fuItems.map(i => i.id));
 
   // Group by status, render each as a collapsible, color-coded, drop-target section.
@@ -2405,18 +2424,14 @@ function renderPlan() {
   if (!list._clickBound) {
     list.addEventListener('click', (e) => {
       // Follow-up rows work like to-dos: checkbox = complete (clears the follow-up);
-      // star = take off today (keeps it assigned + dated); body = open the task modal
-      // (if it's a live My Day task) or open the item in Notion.
+      // star = take off today (keeps it assigned + dated); body = open the Edit
+      // Follow-up modal (owner / due / on-day / complete / open in Notion).
       const fu = e.target.closest('.fu-row');
       if (fu) {
         const fact = e.target.closest('[data-fact]')?.dataset.fact;
         if (fact === 'complete') return completeFollowup(fu.dataset.followupId);
         if (fact === 'offday') { e.stopPropagation(); return removeFollowupFromDay(fu.dataset.followupId); }
-        const pidx = parseInt(fu.dataset.followupIdx);
-        if (!isNaN(pidx) && pidx >= 0) return openTaskModal(pidx);
-        const url = fu.dataset.followupUrl;
-        if (url && window.openNotion) window.openNotion(url);
-        return;
+        return openFuModal(fu.dataset.followupId);
       }
       const row = e.target.closest('.qrow'); if (!row) return;
       const idx = parseInt(row.dataset.planIdx);
@@ -2957,6 +2972,52 @@ function completeFollowup(id) {
 // Star = take off today but stay assigned: just untick the on-list checkbox.
 function removeFollowupFromDay(id) {
   _dropFollowupRow(id, { onList: false }, (pt) => { pt.followUp = false; });
+}
+
+// ── Edit Follow-up modal ──
+// Opens for any follow-up row (task/deal/contact/speaking, My Day or not). Edits
+// the follow-up fields via the universal /api/followup/:id — owner, due date, and
+// on-my-day — plus Complete and an Open-in-Notion handoff.
+let _fuItems = [];        // last-rendered follow-up items (for lookup)
+let _fuEdit = null;       // { id, url }
+function openFuModal(id) {
+  const it = (_fuItems || []).find(x => x.id === id);
+  if (!it) return;
+  _fuEdit = { id, url: it.url || null };
+  document.getElementById('fuName').textContent = it.title || '(untitled)';
+  document.getElementById('fuBy').value = it.followUpBy ? it.followUpBy.slice(0, 10) : '';
+  document.getElementById('fuOnDay').checked = true; // everything shown is on-list
+  const ownerSel = document.getElementById('fuOwner');
+  populateOwnerSelect(ownerSel, it.followUpOwnerId || CURRENT_USER.notionUserId);
+  loadWorkspaceMembers().then(() => { if (_fuEdit && _fuEdit.id === id) populateOwnerSelect(ownerSel, it.followUpOwnerId || CURRENT_USER.notionUserId); });
+  document.getElementById('fuModal').classList.add('open');
+}
+function closeFuModal() { document.getElementById('fuModal').classList.remove('open'); _fuEdit = null; }
+function fuModalOpenNotion() { if (_fuEdit && _fuEdit.url && window.openNotion) window.openNotion(_fuEdit.url); }
+function saveFuModal() {
+  if (!_fuEdit) return;
+  const id = _fuEdit.id;
+  const ownerId = document.getElementById('fuOwner').value || CURRENT_USER.notionUserId || null;
+  const onList = document.getElementById('fuOnDay').checked;
+  const followUpBy = document.getElementById('fuBy').value || null;
+  fetch('/api/followup/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ followUpOwnerId: ownerId, onList, followUpBy }) }).catch(() => {});
+  const me = CURRENT_USER.notionUserId;
+  // Optimistic: mirror into server-list + plan, then re-render.
+  const srv = (_followups || []).find(x => x.id === id);
+  if (srv) { srv.followUpOwnerId = ownerId; srv.followUpBy = followUpBy; }
+  const pt = plan.find(t => t.id === id);
+  if (pt) { pt.followUpOwnerId = ownerId; pt.followUp = onList; pt.followUpBy = followUpBy; }
+  // If it left my list (off-day or reassigned away), drop from the server list so it disappears.
+  if (!onList || ownerId !== me) _followups = (_followups || []).filter(x => x.id !== id);
+  closeFuModal();
+  renderPlan();
+}
+function fuModalComplete() {
+  if (!_fuEdit) return;
+  const id = _fuEdit.id;
+  closeFuModal();
+  completeFollowup(id);
 }
 
 function _reRenderAll() {
