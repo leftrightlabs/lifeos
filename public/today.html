@@ -943,6 +943,7 @@ body { overflow-x: hidden; }
         <div class="tm-field"><label>Follow up owner</label><select id="tmFollowOwner"></select></div>
         <div class="tm-field"><label>Follow up by <button type="button" class="tm-clear" onclick="document.getElementById('tmFollowBy').value=''">Clear</button></label><input type="date" id="tmFollowBy"></div>
       </div>
+      <label class="tm-check" style="margin-top:8px;"><input type="checkbox" id="tmFollowOnDay"> Show on the owner's Today list</label>
     </div>
     <div class="tm-2col">
       <div class="tm-field"><label>Status</label><select id="tmStatus">
@@ -2084,7 +2085,10 @@ function openTaskModal(i) {
     }
   });
   document.getElementById('tmMyDay').checked = true;
+  // A follow-up exists when there's an owner; the on-day checkbox reflects the
+  // Follow Up (on-list) flag. New flags default to on-day.
   document.getElementById('tmFollowUp').checked = !!t.followUpOwnerId;
+  document.getElementById('tmFollowOnDay').checked = t.followUpOwnerId ? !!t.followUp : true;
   document.getElementById('tmFollowBy').value = t.followUpBy ? t.followUpBy.slice(0, 10) : '';
   populateOwnerSelect(document.getElementById('tmFollowOwner'), t.followUpOwnerId);
   loadWorkspaceMembers().then(() => { if (_editIdx === i) populateOwnerSelect(document.getElementById('tmFollowOwner'), t.followUpOwnerId); });
@@ -2123,11 +2127,15 @@ function saveTaskModal() {
   const followingChecked = !isPersonal
     ? Array.from(document.querySelectorAll('#tmFollowingList input[type=checkbox]:checked')).map(cb => cb.value)
     : undefined;
+  // Follow-up: flagged → assign owner (default me) + due + on-day choice; unflagged → clear.
   const followUp = document.getElementById('tmFollowUp').checked;
   const followUpOwnerId = followUp ? (document.getElementById('tmFollowOwner').value || CURRENT_USER.notionUserId || null) : null;
+  const followUpOnDay = followUp ? document.getElementById('tmFollowOnDay').checked : false;
   const followUpBy = followUp ? (document.getElementById('tmFollowBy').value || null) : null;
   if (t.id) {
-    const body = { name, projectId, status, priority, estHours, dueStart, myDay, followUp, followUpOwnerId, followUpBy };
+    const body = { name, projectId, status, priority, estHours, dueStart, myDay };
+    if (followUp) { body.followUpOwnerId = followUpOwnerId; body.onList = followUpOnDay; body.followUpBy = followUpBy; }
+    else body.clearFollowUp = true;
     if (assigneeIds !== undefined) body.assigneeIds = assigneeIds;
     if (followingChecked !== undefined) body.followingIds = followingChecked;
     fetch('/api/tasks/' + t.id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -2142,7 +2150,7 @@ function saveTaskModal() {
   t.est = estHours;
   t.dueStart = dueStart;
   t.followUpOwnerId = followUpOwnerId;
-  t.followUp = !!followUpOwnerId;
+  t.followUp = followUp && followUpOnDay;
   t.followUpBy = followUpBy;
   t.done = status === 'Done';
   if (assigneeIds !== undefined) {
@@ -2338,15 +2346,18 @@ function renderPlan() {
     const dueTxt = !by ? '' : (by === today ? 'Today'
       : (overdue ? 'Overdue' : new Date(by + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })));
     const dueCls = !by ? 'unset' : (overdue ? 'overdue' : (by === today ? 'today' : ''));
+    // To-do controls: checkbox = complete the follow-up; star = on/off my day.
+    const star = `<button class="qstar on" data-fact="offday" title="Remove from today (stays assigned to you)" aria-label="Remove from today"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>`;
     return `
     <div class="qrow fu-row ${fuCollapsed ? 'qrow-hidden' : ''}" data-no-drag data-followup-id="${escName(it.id)}" data-followup-idx="${it.planIdx}" data-followup-url="${escName(it.url || '')}">
-      <div class="qcheck" data-fact="clear" title="Mark handled"></div>
+      <div class="qcheck" data-fact="complete" title="Mark follow-up complete"></div>
       <span class="qdot status-follow-ups" title="Follow up"></span>
       <div class="qbody" data-fact="open">
         <div class="qtitle">${escName(it.title)}<span class="fu-kind ${kind.cls}">${kind.label}</span></div>
         ${ctx ? `<div class="qproject">${escName(ctx)}</div>` : ''}
       </div>
       <div class="qmeta">${dueTxt ? `<span class="qdue ${dueCls}">${dueTxt}</span>` : ''}</div>
+      ${star}
     </div>`;
   };
 
@@ -2390,12 +2401,14 @@ function renderPlan() {
   if (!allPlanDone) _planCelebratedDay = null;
   if (!list._clickBound) {
     list.addEventListener('click', (e) => {
-      // Follow-up rows: check = clear the flag; body = open the task modal (if it's
-      // a live My Day task) or open the item in Notion (deals/touchpoints/other).
+      // Follow-up rows work like to-dos: checkbox = complete (clears the follow-up);
+      // star = take off today (keeps it assigned + dated); body = open the task modal
+      // (if it's a live My Day task) or open the item in Notion.
       const fu = e.target.closest('.fu-row');
       if (fu) {
         const fact = e.target.closest('[data-fact]')?.dataset.fact;
-        if (fact === 'clear') return clearFollowup(fu.dataset.followupId);
+        if (fact === 'complete') return completeFollowup(fu.dataset.followupId);
+        if (fact === 'offday') { e.stopPropagation(); return removeFollowupFromDay(fu.dataset.followupId); }
         const pidx = parseInt(fu.dataset.followupIdx);
         if (!isNaN(pidx) && pidx >= 0) return openTaskModal(pidx);
         const url = fu.dataset.followupUrl;
@@ -2888,11 +2901,12 @@ function collectFollowups() {
       planIdx: pm ? pm.i : -1,
     });
   });
-  // Local optimistic flags owned by ME not yet reflected server-side (a teammate-
-  // owned flag stays off my Today — the server list is the source of truth).
+  // Local optimistic flags owned by ME and on my list, not yet reflected
+  // server-side (a teammate-owned or off-list flag stays off my Today — the
+  // server list is the source of truth).
   const me = CURRENT_USER.notionUserId;
   plan.forEach((t, i) => {
-    if (t.id && me && t.followUpOwnerId === me && !t.done && !seen.has(t.id)) {
+    if (t.id && me && t.followUpOwnerId === me && t.followUp && !t.done && !seen.has(t.id)) {
       items.push({ id: t.id, kind: 'task', title: t.name, projectId: t.projectId || null,
         followUpBy: t.followUpBy || null, url: t.notionUrl || null, planIdx: i });
     }
@@ -2917,20 +2931,29 @@ function followupContext(it) {
   if (it.kind === 'speaking') return 'Speaking outreach' + (it.status ? ' · ' + it.status : '');
   return '';
 }
-// Check-off = clear the Follow Up flag. Optimistic: fade the row, drop it from
-// local state, re-render the plan (the row returns to its status group if it's a
-// live My Day task, or just disappears).
-function clearFollowup(id) {
+// Optimistically drop a follow-up row from Today, then persist `patch` and
+// re-render. Shared by complete (clear the whole follow-up) and off-day (just
+// untick the on-list checkbox, keeping owner + due).
+function _dropFollowupRow(id, patch, mutatePlan) {
   const row = document.querySelector(`.fu-row[data-followup-id="${id}"]`);
   if (row) row.classList.add('clearing');
   fetch('/api/followup/' + id, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ followUp: false }),
+    body: JSON.stringify(patch),
   }).catch(() => {});
   _followups = (_followups || []).filter(x => x.id !== id);
   const pt = plan.find(t => t.id === id);
-  if (pt) pt.followUp = false;
+  if (pt) mutatePlan(pt);
   setTimeout(renderPlan, 200);
+}
+// Checkbox = complete the follow-up: clears owner + on-list + date. The underlying
+// task returns to its status group (its own checkbox marks it Done).
+function completeFollowup(id) {
+  _dropFollowupRow(id, { clear: true }, (pt) => { pt.followUp = false; pt.followUpOwnerId = null; pt.followUpBy = null; });
+}
+// Star = take off today but stay assigned: just untick the on-list checkbox.
+function removeFollowupFromDay(id) {
+  _dropFollowupRow(id, { onList: false }, (pt) => { pt.followUp = false; });
 }
 
 function _reRenderAll() {
@@ -3017,7 +3040,7 @@ function taskToPlanItem(t) {
     est: (t.estHours != null ? t.estHours : null),
     dueStart: t.dueStart || null,
     dueEnd: t.dueEnd || null,
-    followUp: !!t.followUpOwnerId,
+    followUp: !!t.followUp,                       // on-my-day checkbox
     followUpOwnerId: t.followUpOwnerId || null,
     followUpBy: t.followUpBy || null,
     assigneeIds: t.assigneeIds || [],

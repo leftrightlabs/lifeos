@@ -610,14 +610,21 @@ body.state-calm .calm-hero { display:flex; }
           </label>
         </div>
       </div>
-      <div class="modal-row" id="deal-followby-field" style="display:none;">
-        <div class="modal-field">
-          <label class="modal-label">Follow up owner</label>
-          <select class="modal-select" id="deal-followowner"></select>
+      <div id="deal-followby-field" style="display:none;">
+        <div class="modal-row">
+          <div class="modal-field">
+            <label class="modal-label">Follow up owner</label>
+            <select class="modal-select" id="deal-followowner"></select>
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">Follow up by <button type="button" class="tm-clear" onclick="document.getElementById('deal-followby').value=''">Clear</button></label>
+            <input class="modal-input" id="deal-followby" type="date">
+          </div>
         </div>
         <div class="modal-field">
-          <label class="modal-label">Follow up by <button type="button" class="tm-clear" onclick="document.getElementById('deal-followby').value=''">Clear</button></label>
-          <input class="modal-input" id="deal-followby" type="date">
+          <label class="modal-label" style="display:flex;align-items:center;gap:7px;cursor:pointer;">
+            <input type="checkbox" id="deal-followonday"> Show on the owner's Today list
+          </label>
         </div>
       </div>
     </div>
@@ -1448,6 +1455,7 @@ async function openDeal(id) {
   document.getElementById('deal-callbooked').value = deal.callBooked ? deal.callBooked.slice(0, 10) : '';
   document.getElementById('deal-won').value = deal.dateWon ? deal.dateWon.slice(0, 10) : '';
   document.getElementById('deal-followup').checked = !!deal.followUpOwnerId;
+  document.getElementById('deal-followonday').checked = deal.followUpOwnerId ? !!deal.followUp : true;
   document.getElementById('deal-followby').value = deal.followUpBy ? deal.followUpBy.slice(0, 10) : '';
   populateFuOwner(document.getElementById('deal-followowner'), deal.followUpOwnerId);
   loadFuMembers().then(() => { if (_dealId === id) populateFuOwner(document.getElementById('deal-followowner'), deal.followUpOwnerId); });
@@ -1474,10 +1482,14 @@ async function submitDeal() {
     productIds: prodId ? [prodId] : [],
     callBooked: document.getElementById('deal-callbooked').value || null,
     dateWon: document.getElementById('deal-won').value || null,
-    followUp: document.getElementById('deal-followup').checked,
-    followUpOwnerId: document.getElementById('deal-followup').checked ? (document.getElementById('deal-followowner').value || _myNotionId || null) : null,
-    followUpBy: document.getElementById('deal-followup').checked ? (document.getElementById('deal-followby').value || null) : null,
   };
+  if (document.getElementById('deal-followup').checked) {
+    body.followUpOwnerId = document.getElementById('deal-followowner').value || _myNotionId || null;
+    body.onList = document.getElementById('deal-followonday').checked;
+    body.followUpBy = document.getElementById('deal-followby').value || null;
+  } else {
+    body.clearFollowUp = true;
+  }
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
     const r = await fetch('/api/convert/deal/' + encodeURIComponent(_dealId), {

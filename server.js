@@ -293,7 +293,7 @@ function simplifyTask(page, source) {
     recurInterval: props['Recur Interval']?.number || null,
     estHours: props['Est Hours']?.number ?? null,
     priority: props.Priority?.select?.name || null,
-    followUp: (props['Follow Up Owner']?.people || []).length > 0,
+    followUp: !!props['Follow Up']?.checkbox,   // "on my Today list" flag
     followUpBy: props['Follow Up By']?.date?.start || null,
     followUpOwnerId: (props['Follow Up Owner']?.people || [])[0]?.id || null,
     followUpOwnerName: (props['Follow Up Owner']?.people || [])[0]?.name || null,
@@ -1379,11 +1379,11 @@ app.patch('/api/projects/:id', async (req, res) => {
 app.patch('/api/tasks/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   const { id } = req.params;
-  const { name, status, dueStart, dueEnd, myDay, priority, projectId, estHours, assigneeIds, followingIds, followUp, followUpBy, followUpOwnerId } = req.body || {};
+  const { name, status, dueStart, dueEnd, myDay, priority, projectId, estHours, assigneeIds, followingIds, clearFollowUp, onList, followUpBy, followUpOwnerId } = req.body || {};
   try {
     const properties = {};
-    if (followUp !== undefined || followUpBy !== undefined || followUpOwnerId !== undefined) {
-      applyFollowupProps(properties, { followUp, followUpBy, followUpOwnerId });
+    if (clearFollowUp || onList !== undefined || followUpBy !== undefined || followUpOwnerId !== undefined) {
+      applyFollowupProps(properties, { clear: clearFollowUp, onList, followUpBy, followUpOwnerId });
     }
     if (name !== undefined && name !== null) {
       properties.Name = { title: [{ text: { content: String(name) } }] };
@@ -1485,16 +1485,18 @@ const FOLLOWUP_SOURCES = [
 ];
 
 async function fetchFollowupsFor({ ds, kind, source, titleProp }, today, nid) {
-  // Owner-scoped: only items whose Follow Up Owner is the current user. No shared
-  // sort property across the four DBs → skip Notion sorting; sort merged in JS.
-  const pages = await pageThroughDS(ds, { and: [{ property: 'Follow Up Owner', people: { contains: nid } }] }, null);
+  // Owner-scoped AND on-my-list: only items whose Follow Up Owner is the current
+  // user and whose Follow Up (on-list) checkbox is on. The checkbox — not the due
+  // date — is the visibility gate, so the owner controls their own Today list.
+  // No shared sort property across the DBs → skip Notion sorting; sort in JS.
+  const pages = await pageThroughDS(ds, { and: [
+    { property: 'Follow Up Owner', people: { contains: nid } },
+    { property: 'Follow Up', checkbox: { equals: true } },
+  ] }, null);
   const out = [];
   for (const pg of pages) {
     const props = pg.properties || {};
     const by = props['Follow Up By']?.date?.start || null;
-    // Surface only when no date is set, or the date has arrived (Chicago day).
-    const due = !by || by.slice(0, 10) <= today;
-    if (!due) continue;
     out.push({
       id: pg.id,
       title: (props[titleProp]?.title?.[0]?.plain_text || '(untitled)'),
@@ -1539,14 +1541,19 @@ app.get('/api/followups', async (_req, res) => {
 });
 
 // Apply follow-up changes to a Notion `properties` object (shared by this toggle
-// and the task/deal PATCH + touchpoint create). The OWNER is the single source of
-// truth — a follow-up is "flagged" iff it has a Follow Up Owner.
-//   followUp === false            → clear the flag entirely (owner + date)
-//   followUpOwnerId provided      → set/clear the owner
-//   followUpBy provided           → set/clear the reminder date
-function applyFollowupProps(properties, { followUp, followUpBy, followUpOwnerId }) {
-  if (followUp === false) {
+// and the task/deal PATCH). A follow-up behaves like a to-do:
+//   • Follow Up Owner (person) — who's doing it (single assignment)
+//   • Follow Up By  (date)     — the due date
+//   • Follow Up     (checkbox) — "on my Today list" (the owner's declutter control)
+// Options:
+//   clear:true               → complete/resolve: clear owner + on-list + date
+//   onList (bool)            → set the on-my-day checkbox
+//   followUpOwnerId provided → set/clear the owner
+//   followUpBy provided      → set/clear the due date
+function applyFollowupProps(properties, { clear, onList, followUpBy, followUpOwnerId }) {
+  if (clear) {
     properties['Follow Up Owner'] = { people: [] };
+    properties['Follow Up'] = { checkbox: false };
     properties['Follow Up By'] = { date: null };
     return;
   }
@@ -1554,13 +1561,14 @@ function applyFollowupProps(properties, { followUp, followUpBy, followUpOwnerId 
     properties['Follow Up Owner'] = followUpOwnerId
       ? { people: [{ id: dashifyId(followUpOwnerId) }] } : { people: [] };
   }
+  if (onList !== undefined) properties['Follow Up'] = { checkbox: !!onList };
   if (followUpBy !== undefined) {
     properties['Follow Up By'] = followUpBy ? { date: { start: followUpBy } } : { date: null };
   }
 }
 
-// Universal toggle — works on any of the four follow-up DBs (shared property
-// names). Body: { followUp?, followUpBy?, followUpOwnerId? }.
+// Universal toggle — works on any follow-up DB (shared property names).
+// Body: { clear? (complete), onList? (on my day), followUpBy?, followUpOwnerId? }.
 app.patch('/api/followup/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {

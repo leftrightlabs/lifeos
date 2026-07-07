@@ -33,7 +33,7 @@ export function serializeDeal(page, productMap, opts = {}) {
     callCompleted: p['Call Completed']?.date?.start || null,
     dateWon: p['Date Won']?.date?.start || null,
     dateLost: p['Date Lost']?.date?.start || null,
-    followUp: (p['Follow Up Owner']?.people || []).length > 0,
+    followUp: !!p['Follow Up']?.checkbox,   // "on my Today list" flag
     followUpBy: p['Follow Up By']?.date?.start || null,
     followUpOwnerId: (p['Follow Up Owner']?.people || [])[0]?.id || null,
     followUpOwnerName: (p['Follow Up Owner']?.people || [])[0]?.name || null,

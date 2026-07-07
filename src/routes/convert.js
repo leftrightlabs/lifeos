@@ -4,11 +4,13 @@ import { serializeDeal, serializeContactRow, queryAllDeals, fetchSalesProductMap
 export function registerConvertRoutes(app, ctx) {
   const { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID, currentNotionUserId, computeXeroFinance, computeXeroQuotes, computeRecurringAvg, anthropic } = ctx;
 
-  // Follow-up ownership (mirrors server.js applyFollowupProps). The owner is the
-  // single source of truth: assigning an owner flags the item; clearing removes it.
-  function applyFollowupProps(properties, { followUp, followUpBy, followUpOwnerId }) {
-    if (followUp === false) {
+  // Follow-up (mirrors server.js applyFollowupProps). Owner = who; Follow Up
+  // checkbox = "on my Today list"; Follow Up By = due date.
+  //   clear:true → complete (clear owner + on-list + date); onList → the checkbox.
+  function applyFollowupProps(properties, { clear, onList, followUpBy, followUpOwnerId }) {
+    if (clear) {
       properties['Follow Up Owner'] = { people: [] };
+      properties['Follow Up'] = { checkbox: false };
       properties['Follow Up By'] = { date: null };
       return;
     }
@@ -16,6 +18,7 @@ export function registerConvertRoutes(app, ctx) {
       properties['Follow Up Owner'] = followUpOwnerId
         ? { people: [{ id: dashifyId(followUpOwnerId) }] } : { people: [] };
     }
+    if (onList !== undefined) properties['Follow Up'] = { checkbox: !!onList };
     if (followUpBy !== undefined) {
       properties['Follow Up By'] = followUpBy ? { date: { start: followUpBy } } : { date: null };
     }
@@ -105,10 +108,10 @@ app.get('/api/convert/deal-meta', async (_req, res) => {
 // computed from logged touchpoints and is therefore read-only.)
 app.patch('/api/convert/deal/:id', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
-  const { name, status, value, typeOfSale, productIds, callBooked, dateWon, dateLost, followUp, followUpBy, followUpOwnerId } = req.body || {};
+  const { name, status, value, typeOfSale, productIds, callBooked, dateWon, dateLost, clearFollowUp, onList, followUpBy, followUpOwnerId } = req.body || {};
   try {
     const properties = {};
-    applyFollowupProps(properties, { followUp, followUpBy, followUpOwnerId });
+    applyFollowupProps(properties, { clear: clearFollowUp, onList, followUpBy, followUpOwnerId });
     if (name !== undefined && String(name).trim()) {
       properties['Deal Name'] = { title: [{ text: { content: String(name).trim().slice(0, 200) } }] };
     }
