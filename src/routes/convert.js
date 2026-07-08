@@ -1,5 +1,5 @@
-import { SALES_STAGES, SALES_STAGE_GROUP, SALES_PIPELINE_DS, CONTACTS_DS, SALES_ACTIVITY_DS, TRINA_USER_ID, PULSE_RELATIONSHIPS, PULSE_TOUCHPOINTS, PULSE_GOAL, SALES_GOAL, CONVERT_FOLLOWUP_STAGES } from '../config/convert.js';
-import { serializeDeal, serializeContactRow, queryAllDeals, fetchSalesProductMap } from '../providers/notion/convert.js';
+import { SALES_STAGES, SALES_STAGE_GROUP, SALES_PIPELINE_DS, CONTACTS_DS, SALES_ACTIVITY_DS, SPEAKING_OUTREACH_DS, SPEAKING_STAGES, TRINA_USER_ID, PULSE_RELATIONSHIPS, PULSE_TOUCHPOINTS, PULSE_GOAL, SALES_GOAL, CONVERT_FOLLOWUP_STAGES } from '../config/convert.js';
+import { serializeDeal, serializeContactRow, serializeSpeakingRow, queryAllDeals, fetchSalesProductMap } from '../providers/notion/convert.js';
 
 export function registerConvertRoutes(app, ctx) {
   const { notion, cache, cached, userContext, currentQuarter, chicagoToday, chicagoTodayISODate, fetchVtoGoals, dashifyId, GRETCHEN_USER_ID, currentNotionUserId, computeXeroFinance, computeXeroQuotes, computeRecurringAvg, anthropic } = ctx;
@@ -625,6 +625,88 @@ app.post('/api/convert/draft', async (req, res) => {
       + `\nRules: 3–5 sentences. Friendly, human, professional. Use their first name. No subject line, no placeholders, no preamble — just the message text ready to send.`;
     const msg = await anthropic.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 400, messages: [{ role: 'user', content: prompt }] });
     res.json({ name, message: (msg.content?.[0]?.text || '').trim() });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/convert/network — the full Network Partner roster (Contacts where
+// Relationship = "Network Partner", not archived), each with lastTouched +
+// daysSince so the client can group "due for a touch" (>=30d or never) vs the
+// rest and drive the same status-dot cadence the Reach Out list uses.
+app.get('/api/convert/network', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    if (req.query.fresh === '1') { for (const k of [...cache.keys()]) if (k.split('::')[0] === 'sales-network') cache.delete(k); }
+    const data = await cached('sales-network', async () => {
+      const all = [];
+      let cursor;
+      do {
+        const r = await notion.dataSources.query({
+          data_source_id: CONTACTS_DS,
+          filter: { and: [
+            { property: 'Archive', checkbox: { equals: false } },
+            { property: 'Relationship', select: { equals: 'Network Partner' } },
+          ] },
+          page_size: 100,
+          start_cursor: cursor,
+        });
+        all.push(...r.results);
+        cursor = r.has_more ? r.next_cursor : null;
+      } while (cursor);
+      const today = chicagoTodayISODate();
+      const partners = all.map(serializeContactRow);
+      partners.forEach((c) => {
+        c.daysSince = c.lastTouched ? Math.max(0, Math.round((new Date(today) - new Date(c.lastTouched)) / 864e5)) : null;
+      });
+      // Never-touched first, then oldest-touched first (most overdue at top).
+      partners.sort((a, b) => {
+        if (!a.lastTouched && !b.lastTouched) return a.name.localeCompare(b.name);
+        if (!a.lastTouched) return -1;
+        if (!b.lastTouched) return 1;
+        return a.lastTouched.localeCompare(b.lastTouched);
+      });
+      return { partners, total: partners.length };
+    });
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/convert/stages — the speaking pipeline (SPEAKING OUTREACH) as rows
+// grouped by Status, in funnel order. Powers the STAGES tab.
+app.get('/api/convert/stages', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    if (req.query.fresh === '1') { for (const k of [...cache.keys()]) if (k.split('::')[0] === 'sales-stages') cache.delete(k); }
+    const data = await cached('sales-stages', async () => {
+      const all = [];
+      let cursor;
+      do {
+        const r = await notion.dataSources.query({ data_source_id: SPEAKING_OUTREACH_DS, page_size: 100, start_cursor: cursor });
+        all.push(...r.results);
+        cursor = r.has_more ? r.next_cursor : null;
+      } while (cursor);
+      const rows = all.map(serializeSpeakingRow);
+      return { rows, statuses: SPEAKING_STAGES.map((s) => s.name) };
+    });
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// PATCH /api/convert/stage/:id — edit a speaking opportunity (status + dates).
+app.patch('/api/convert/stage/:id', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  const { status, datePitched, eventDate, bookingConfirmed } = req.body || {};
+  const validStatus = new Set(SPEAKING_STAGES.map((s) => s.name));
+  try {
+    const properties = {};
+    if (status !== undefined && validStatus.has(status)) properties['Status'] = { status: { name: status } };
+    const setDate = (key, v) => { if (v !== undefined) properties[key] = v ? { date: { start: v } } : { date: null }; };
+    setDate('Date Pitched', datePitched);
+    setDate('Event Date', eventDate);
+    setDate('Booking Confirmed', bookingConfirmed);
+    if (!Object.keys(properties).length) return res.status(400).json({ error: 'no supported fields to update' });
+    await notion.pages.update({ page_id: dashifyId(req.params.id), properties });
+    for (const k of [...cache.keys()]) if (k.split('::')[0] === 'sales-stages') cache.delete(k);
+    res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

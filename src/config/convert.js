@@ -21,6 +21,19 @@ export const SALES_STAGE_INDEX = Object.fromEntries(SALES_STAGES.map((s, i) => [
 export const SALES_STAGE_GROUP = Object.fromEntries(SALES_STAGES.map((s) => [s.name, s.group]));
 export const CONTACTS_DS = '28d458f0-8cd9-8178-b291-000bdc3fb399';
 export const SALES_ACTIVITY_DS = 'b5d8dd3c-303b-49c2-96cf-23b2cfa476ae';
+export const SPEAKING_OUTREACH_DS = '96f47e7e-9797-4d96-9abb-e5dcb7df13a3';
+// Speaking pipeline (the "Stages" tab): funnel order + active-vs-closed grouping.
+// Mirrors the Status options in Notion's SPEAKING OUTREACH board.
+export const SPEAKING_STAGES = [
+  { name: 'Researching', group: 'open' },
+  { name: 'Pitched', group: 'open' },
+  { name: 'Following Up', group: 'open' },
+  { name: 'Scheduled', group: 'open' },
+  { name: 'Completed', group: 'closed' },
+  { name: 'Not A Fit', group: 'closed' },
+  { name: 'Declined', group: 'closed' },
+  { name: 'No Response', group: 'closed' },
+];
 export const TRINA_USER_ID = 'eea4c3fe-668e-4ce7-a8e8-30314ff7f986';
 export const PULSE_RELATIONSHIPS = ['Alumni', 'Network Partner', 'Lead', 'Active Client'];
 // Touchpoint types that count as low-lift "pulse" outreach (vs. real sales moves)

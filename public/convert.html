@@ -270,7 +270,11 @@ body.state-calm .calm-hero { display:flex; }
 .tm-clear { background:none; border:none; color:var(--text-3); font-size:10px; font-weight:600; cursor:pointer; padding:0 0 0 6px; text-transform:uppercase; letter-spacing:.04em; float:right; }
 .tm-clear:hover { color:var(--text-2); }
 #deal-prod-list { position:absolute; left:0; right:0; top:100%; z-index:20; background:var(--surface); box-shadow:0 12px 32px rgba(0,0,0,.45); }
-#deal-callbooked, #deal-won, #deal-followby { color-scheme:dark; }
+#deal-callbooked, #deal-won, #deal-followby, #stage-pitched, #stage-event, #stage-booked { color-scheme:dark; }
+.net-hint { font-size:12px; color:var(--navy-3, var(--text-3)); margin-bottom:12px; line-height:1.4; }
+.net-group { font-size:11px; letter-spacing:.14em; text-transform:uppercase; font-weight:800; color:var(--text-3); margin:14px 0 6px; }
+.net-group:first-child { margin-top:2px; }
+.kan-card-sub { font-size:11px; color:var(--text-3); margin-top:3px; }
 .tp-hist-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
 .tp-hist-scroll { max-height:160px; overflow-y:auto; }
 .tp-hist-row { display:flex; gap:8px; padding:6px 0; border-bottom:1px solid var(--border-soft); align-items:baseline; font-size:12px; line-height:1.4; }
@@ -442,19 +446,28 @@ body.state-calm .calm-hero { display:flex; }
 
   <!-- NETWORK TAB -->
   <section class="exec-panel" data-panel="network">
-    <div class="placeholder-tab">
-      <div class="placeholder-icon">🌐</div>
-      <div class="placeholder-title">Network</div>
-      <div class="placeholder-body">Referral sources, partner relationships, and warm intro tracking — coming soon.</div>
+    <div class="t-card" data-persist-key="convert-network">
+      <div class="sec-head">
+        <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Network Partners <span class="count" id="net-count"></span></div></div>
+        <button class="pw-log-btn" style="width:auto;padding:5px 12px;margin:0" onclick="openLog('','')">+ Log Touchpoint</button>
+      </div>
+      <div class="t-body">
+        <div class="net-hint">Keep partner relationships warm — anyone not touched in 30 days surfaces up top. Tap a partner to log a touchpoint.</div>
+        <div class="ro-list" id="net-list"><div class="ro-empty">Loading…</div></div>
+      </div>
     </div>
   </section>
 
-  <!-- STAGES TAB -->
+  <!-- STAGES TAB (speaking pipeline) -->
   <section class="exec-panel" data-panel="stages">
-    <div class="placeholder-tab">
-      <div class="placeholder-icon">🗂</div>
-      <div class="placeholder-title">Stages</div>
-      <div class="placeholder-body">Deal stage configuration and conversion rate tracking — coming soon.</div>
+    <div class="t-card" data-persist-key="convert-stages">
+      <div class="sec-head">
+        <div class="card-toggle" onclick="toggleCard(this)"><span class="chev">▾</span><div class="sec-title">Speaking Pipeline <span class="count" id="stages-meta"></span></div></div>
+      </div>
+      <div class="t-body">
+        <div class="net-hint">Podcasts, events, and stages you're pitching to speak on. Tap any card to update its status or dates.</div>
+        <div class="kanban" id="stages-board"><div class="ro-empty">Loading…</div></div>
+      </div>
     </div>
   </section>
 
@@ -630,6 +643,37 @@ body.state-calm .calm-hero { display:flex; }
     </div>
     <div class="modal-foot">
       <button class="btn-primary" id="deal-save" onclick="submitDeal()" style="width:100%">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT SPEAKING OPPORTUNITY MODAL (Stages tab) -->
+<div class="modal-overlay" id="stage-modal">
+  <div class="modal">
+    <div class="modal-head"><h3>Edit Speaking Opportunity</h3><a id="stage-notion-link" href="#" target="_blank" class="modal-notion-link" style="display:none">Open in Notion ↗</a><button class="modal-close" onclick="closeStage()">×</button></div>
+    <div class="modal-body">
+      <div class="modal-field"><label class="modal-label">Opportunity</label><div id="stage-name" style="font-size:14px;color:var(--navy);line-height:1.35;font-weight:600;"></div></div>
+      <div class="modal-field">
+        <label class="modal-label">Status</label>
+        <select class="modal-select" id="stage-status"></select>
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label class="modal-label">Date Pitched <button type="button" class="tm-clear" onclick="document.getElementById('stage-pitched').value=''">Clear</button></label>
+          <input class="modal-input" id="stage-pitched" type="date">
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Event Date <button type="button" class="tm-clear" onclick="document.getElementById('stage-event').value=''">Clear</button></label>
+          <input class="modal-input" id="stage-event" type="date">
+        </div>
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Booking Confirmed <button type="button" class="tm-clear" onclick="document.getElementById('stage-booked').value=''">Clear</button></label>
+        <input class="modal-input" id="stage-booked" type="date">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-primary" id="stage-save" onclick="submitStage()" style="width:100%">Save</button>
     </div>
   </div>
 </div>
@@ -1253,6 +1297,7 @@ async function submitLog() {
     // Refresh contacts/deals (Reach Out last-touched, pipeline) without letting a
     // stale pulse read clobber the optimistic count; pulse reconciles separately.
     try { DATA = await fetchJSON('/api/convert?fresh=1'); renderPipelineBar(); renderCalm(); renderDoNext(); renderFollowUps(); renderPipeline(); renderReachOut(); } catch (_) {}
+    if (NET_LOADED) loadNetwork(true);   // a logged touch bumps a partner's Last Touched
     reconcilePulse(target);
   } catch (err) { toast('Couldn\'t log: ' + err.message); }
   finally { btn.disabled = false; btn.textContent = 'Log it'; }
@@ -1503,6 +1548,107 @@ async function submitDeal() {
   finally { btn.disabled = false; btn.textContent = 'Save'; }
 }
 
+// ─── Network partners (cadence) ──────────────────────────────────────────────
+let NET_DATA = null, NET_LOADED = false;
+function netRowHtml(c) {
+  const ds = daysSince(c.lastTouched);
+  let dotClass = 'green', whenText = '', whenClass = '';
+  if (ds === Infinity)   { dotClass = 'red';   whenText = 'never touched'; whenClass = 'never'; }
+  else if (ds >= 30)     { dotClass = 'red';   whenText = ds + 'd ago';    whenClass = 'never'; }
+  else if (ds >= 15)     { dotClass = 'amber'; whenText = ds + 'd ago';    whenClass = 'stale'; }
+  else                   { dotClass = 'green'; whenText = ds === 0 ? 'today' : ds + 'd ago'; }
+  return `<div class="ro-row" onclick="openLog('${esc(c.name)}','${c.id}','${esc(c.url||'')}')">
+    <div class="ro-dot ${dotClass}"></div>
+    <span class="ro-name">${esc(c.name)}</span>
+    <span class="ro-when ${whenClass}">${whenText}</span>
+  </div>`;
+}
+function renderNetwork() {
+  const list = document.getElementById('net-list');
+  if (!NET_DATA) return;
+  const partners = NET_DATA.partners || [];
+  document.getElementById('net-count').textContent = '· ' + partners.length;
+  if (!partners.length) { list.innerHTML = '<div class="ro-empty">No network partners yet</div>'; return; }
+  const isDue = (c) => { const d = daysSince(c.lastTouched); return d === Infinity || d >= 30; };
+  const due = partners.filter(isDue), rest = partners.filter((c) => !isDue(c));
+  let html = '';
+  if (due.length)  html += `<div class="net-group">Due for a touch · ${due.length}</div>` + due.map(netRowHtml).join('');
+  if (rest.length) html += `<div class="net-group">Recently touched · ${rest.length}</div>` + rest.map(netRowHtml).join('');
+  list.innerHTML = html;
+}
+async function loadNetwork(fresh) {
+  try {
+    NET_DATA = await fetchJSON('/api/convert/network' + (fresh ? '?fresh=1' : ''));
+    NET_LOADED = true; renderNetwork();
+  } catch (e) { document.getElementById('net-list').innerHTML = '<div class="ro-empty">Couldn\'t load partners — reopen the tab.</div>'; }
+}
+
+// ─── Speaking pipeline (Stages) ──────────────────────────────────────────────
+let STAGES_DATA = null, STAGES_LOADED = false, _stageId = null;
+const STAGE_COLS = ['Researching', 'Pitched', 'Following Up', 'Scheduled', 'Completed'];
+const fmtShort = (iso) => { if (!iso) return ''; const [y,m,d] = iso.slice(0,10).split('-').map(Number); return new Date(y, m-1, d).toLocaleDateString('en-US', { month:'short', day:'numeric' }); };
+function stageCardHtml(r) {
+  const bits = [];
+  if (r.type) bits.push(r.type);
+  if (r.audience) bits.push(r.audience.toLocaleString() + ' reach');
+  const dateStr = r.eventDate ? ('Event ' + fmtShort(r.eventDate)) : (r.datePitched ? ('Pitched ' + fmtShort(r.datePitched)) : '');
+  const sub = [bits.join(' · '), dateStr].filter(Boolean).join(' · ');
+  return `<div class="kan-card" onclick="openStage('${r.id}')" style="cursor:pointer">
+    <div class="kan-card-name">${esc(r.name)}</div>
+    ${sub ? `<div class="kan-card-sub">${esc(sub)}</div>` : ''}
+  </div>`;
+}
+function renderStages() {
+  const board = document.getElementById('stages-board');
+  if (!STAGES_DATA) return;
+  const rows = STAGES_DATA.rows || [];
+  const openCount = rows.filter((r) => STAGE_COLS.includes(r.status)).length;
+  document.getElementById('stages-meta').textContent = '· ' + openCount + ' active';
+  board.innerHTML = STAGE_COLS.map((col) => {
+    const inCol = rows.filter((r) => r.status === col);
+    const cards = inCol.length ? inCol.map(stageCardHtml).join('') : '<div class="kan-empty">—</div>';
+    return `<div class="kan-col"><div class="kan-col-head"><span class="kan-col-title">${col}</span><span class="kan-col-count">${inCol.length}</span></div>${cards}</div>`;
+  }).join('');
+}
+async function loadStages(fresh) {
+  try {
+    STAGES_DATA = await fetchJSON('/api/convert/stages' + (fresh ? '?fresh=1' : ''));
+    STAGES_LOADED = true; renderStages();
+  } catch (e) { document.getElementById('stages-board').innerHTML = '<div class="ro-empty">Couldn\'t load pipeline — reopen the tab.</div>'; }
+}
+function openStage(id) {
+  const r = (STAGES_DATA?.rows || []).find((x) => x.id === id); if (!r) return;
+  _stageId = id;
+  document.getElementById('stage-name').textContent = r.name;
+  const sel = document.getElementById('stage-status');
+  sel.innerHTML = (STAGES_DATA.statuses || STAGE_COLS).map((s) => `<option${s === r.status ? ' selected' : ''}>${esc(s)}</option>`).join('');
+  document.getElementById('stage-pitched').value = r.datePitched ? r.datePitched.slice(0, 10) : '';
+  document.getElementById('stage-event').value = r.eventDate ? r.eventDate.slice(0, 10) : '';
+  document.getElementById('stage-booked').value = r.bookingConfirmed ? r.bookingConfirmed.slice(0, 10) : '';
+  const nl = document.getElementById('stage-notion-link');
+  if (r.url) { nl.style.display = ''; nl.onclick = (e) => { e.preventDefault(); if (window.openNotion) window.openNotion(r.url); else window.open(r.url, '_blank', 'noopener'); }; }
+  else nl.style.display = 'none';
+  document.getElementById('stage-modal').classList.add('open');
+}
+function closeStage() { document.getElementById('stage-modal').classList.remove('open'); _stageId = null; }
+async function submitStage() {
+  if (!_stageId) return;
+  const btn = document.getElementById('stage-save');
+  const body = {
+    status: document.getElementById('stage-status').value,
+    datePitched: document.getElementById('stage-pitched').value || null,
+    eventDate: document.getElementById('stage-event').value || null,
+    bookingConfirmed: document.getElementById('stage-booked').value || null,
+  };
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await fetch('/api/convert/stage/' + encodeURIComponent(_stageId), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error((await r.json()).error || 'failed');
+    toast('Updated ✓'); closeStage(); await loadStages(true);
+  } catch (err) { toast("Couldn't save: " + err.message); }
+  finally { btn.disabled = false; btn.textContent = 'Save'; }
+}
+
 // ─── Tab switcher ─────────────────────────────────────────────────────────────
 (() => {
   const panels = [...document.querySelectorAll('.exec-panel')];
@@ -1511,6 +1657,8 @@ async function submitDeal() {
     panels.forEach(p => p.classList.toggle('active', p.dataset.panel === name));
     btns.forEach(b => b.classList.toggle('active', b.dataset.go === name));
     try { localStorage.setItem('lrl-win-panel', name); } catch(e) {}
+    if (name === 'network' && !NET_LOADED) loadNetwork();      // lazy-load on first open
+    if (name === 'stages' && !STAGES_LOADED) loadStages();
   }
   btns.forEach(b => b.addEventListener('click', () => showPanel(b.dataset.go)));
   let start = 'pulse';

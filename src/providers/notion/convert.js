@@ -72,6 +72,27 @@ function meKey(name) {
   return /trina/i.test(name || '') ? 'trina' : /gretchen/i.test(name || '') ? 'gretchen' : (name ? 'other' : null);
 }
 
+// SPEAKING OUTREACH row → the "Stages" (speaking pipeline) shape.
+export function serializeSpeakingRow(page) {
+  const p = page.properties || {};
+  return {
+    id: page.id,
+    url: page.url,
+    name: p['Name']?.title?.[0]?.plain_text || '(untitled)',
+    status: p['Status']?.status?.name || null,
+    type: p['Type']?.select?.name || null,
+    host: p['Host']?.rich_text?.[0]?.plain_text || '',
+    audience: typeof p['Est. Audience Size']?.number === 'number' ? p['Est. Audience Size'].number : null,
+    datePitched: p['Date Pitched']?.date?.start || null,
+    eventDate: p['Event Date']?.date?.start || null,
+    bookingConfirmed: p['Booking Confirmed']?.date?.start || null,
+    pitchDeadline: p['Pitch / App Deadline']?.date?.start || null,
+    website: p['Website']?.url || null,
+    contactName: '', // resolved client-side if needed; relation ids below
+    contactIds: (p['Contact']?.relation || []).map((r) => r.id),
+  };
+}
+
 export function serializeContactRow(page) {
   const p = page.properties || {};
   const lt = p['Last Touched']?.date?.start || null;
