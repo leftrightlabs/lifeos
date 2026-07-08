@@ -3265,8 +3265,32 @@ document.addEventListener('visibilitychange', () => {
 });
 setInterval(() => { if (!document.hidden) refreshBrief(); }, 2 * 60 * 60 * 1000);
 
-// Apply calendar events to vcal
+// ── Keep Today's Schedule live ──
+// The "NOW" marker + past/future split are clock-derived, so re-apply the cached
+// events every minute (client-only, no network) to advance the timeline. Re-fetch
+// from the server every 15 min (and on tab-return) to pick up event changes.
+let _calLastFetch = Date.now();
+function refreshCalendar() {
+  _calLastFetch = Date.now();
+  fetch('/api/calendar/today').then(r => r.ok ? r.json() : null).then(v => {
+    if (v && !v.error) applyCalendar(v.events || []);
+  }).catch(() => {});
+}
+setInterval(() => { if (!document.hidden && _calEvents) applyCalendar(); }, 60 * 1000);
+setInterval(() => { if (!document.hidden) refreshCalendar(); }, 15 * 60 * 1000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && Date.now() - _calLastFetch > 15 * 60 * 1000) refreshCalendar();
+  else if (!document.hidden && _calEvents) applyCalendar(); // cheap: snap the NOW marker to current time
+});
+
+// Apply calendar events to vcal. Events are cached so the schedule can be
+// re-rendered on a timer (see below) — the "NOW" marker and the past/future
+// split are computed from the current clock, so a periodic re-apply keeps the
+// timeline live without a page refresh.
+let _calEvents = null;
 function applyCalendar(events) {
+  if (events) _calEvents = events;
+  events = _calEvents || [];
   const tz = 'America/Chicago';
   const now = new Date();
   const nowStr = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(now);
