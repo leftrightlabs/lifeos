@@ -103,6 +103,14 @@
   .quest-star .fillp { fill: none; stroke: rgba(var(--ink-rgb), 0.4); stroke-width: 1.6; transition: all 0.2s; }
   .quest-star.on .fillp { fill: var(--lime); stroke: var(--lime); }
   .quest-star.on { animation: lrl-check-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  /* "Made a move" control + reflow animation (digital autofocus) */
+  .quest-moved { appearance: none; -webkit-appearance: none; border: 0; background: none; cursor: pointer; padding: 3px; line-height: 0; flex-shrink: 0; border-radius: 6px; color: rgba(var(--ink-rgb), 0.4); opacity: 0.6; transition: all 0.15s; }
+  .quest-moved:hover { opacity: 1; color: var(--lime); background: rgba(var(--edge-rgb), 0.06); }
+  .quest-moved svg { width: 17px; height: 17px; }
+  .quest-item.quest-striking { opacity: 0.45; transform: translateX(8px); transition: opacity 0.3s, transform 0.3s; }
+  .quest-item.quest-striking .quest-text { text-decoration: line-through; }
+  @keyframes lrl-worked-land { from { background: rgba(168,197,74,0.18); } to { background: transparent; } }
+  .quest-item.quest-landed { animation: lrl-worked-land 0.9s ease-out; }
   .quest-follow { appearance: none; -webkit-appearance: none; border: 0; background: none; cursor: pointer; padding: 3px; line-height: 0; flex-shrink: 0; border-radius: 6px; transition: background 0.15s; }
   .quest-follow:hover { background: rgba(var(--edge-rgb), 0.06); }
   .quest-follow svg { width: 17px; height: 17px; fill: none; stroke: rgba(var(--ink-rgb), 0.38); stroke-width: 1.8; transition: stroke 0.2s; }
@@ -1596,7 +1604,9 @@ function row(t){
     subParts.push('<span class="quest-sub-status">'+t.status+'</span>');
   }
   if(t.source==='work' && !t.assignedToMe && t.assigneeNames && t.assigneeNames.length) subParts.push('<span class="quest-sub-assignee">'+escapeHtml(t.assigneeNames.join(', '))+'</span>');
-  if(ui.sort==='touched' && lt){
+  if(t.lastWorked){
+    subParts.push('<span class="quest-sub-touched">worked '+relTime(new Date(t.lastWorked))+'</span>');
+  } else if(ui.sort==='touched' && lt){
     subParts.push('<span class="quest-sub-touched">touched '+relTime(lt)+'</span>');
   }
   const sub = subParts.length
@@ -1620,6 +1630,8 @@ function row(t){
   const followBtn = (t.source==='work' && !t.assignedToMe)
     ? '<button class="quest-follow '+(t.followingMe?'on':'')+'" data-act="follow" title="'+(t.followingMe?'Following — tap to unfollow':'Follow this task')+'" aria-label="Follow task"><svg viewBox="0 0 24 24"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/></svg></button>'
     : '';
+  // "Made a move" — worked on it but not done: strike + send to bottom of group.
+  const moved = t.done ? '' : '<button class="quest-moved" data-act="moved" title="I worked on this — move it down" aria-label="Made progress"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m8 11 4 4 4-4"/><path d="M5 20h14"/></svg></button>';
   const doneCls = t.done ? ' done' : '';
   const checkedCls = t.done ? 'checked' : '';
   const statusKey = (t.status || 'Planned').toLowerCase().replace(/\s+/g,'-');
@@ -1632,6 +1644,7 @@ function row(t){
     +'<div class="quest-text" data-act="open">'+escapeHtml(t.name)+repeatIcon+sub+'</div>'
     +'<div class="quest-meta-tags">'+priHtml+estHtml+dueHtml+sourceTag+'</div>'
     +followBtn
+    +moved
     +star
     +'</div>';
 }
@@ -1763,6 +1776,25 @@ el('list').addEventListener('click',e=>{
         }});
       })
       .catch(err=>{state.edits[id].myDay=prevMyDay;saveState();render();window.lrl.toast('Sync failed: '+err.message,'error');});
+    return;
+  }
+  if(act==='moved'){
+    // Digital autofocus: worked on it, not done → strike, send to bottom of its
+    // group, persist "Last Reviewed"=now (durable, cross-device). No full re-render
+    // (that would re-sort); the DOM move gives the immediate churn.
+    const t=task(id); if(t && t.done) return;
+    const nowIso=new Date().toISOString();
+    state.touched[id]=nowIso; if(BASE[id]) BASE[id].lastWorked=nowIso; saveState();
+    window.lrl && window.lrl.haptic && window.lrl.haptic('tap');
+    fetch('/api/tasks/'+id+'/worked',{method:'POST'}).catch(()=>{});
+    rowEl.classList.add('quest-striking');
+    setTimeout(()=>{
+      const gbody=rowEl.closest('.gbody');
+      if(gbody) gbody.appendChild(rowEl);
+      rowEl.classList.remove('quest-striking');
+      rowEl.classList.add('quest-landed');
+      setTimeout(()=>rowEl.classList.remove('quest-landed'),900);
+    },460);
     return;
   }
   if(act==='follow'){

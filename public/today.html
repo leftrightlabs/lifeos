@@ -358,6 +358,15 @@ body {
 .qstar svg { width: 18px; height: 18px; }
 .qstar .fillp { fill: none; stroke: var(--text-4); stroke-width: 1.6; transition: all .2s; }
 .qstar.on .fillp { fill: var(--accent); stroke: var(--accent); }
+/* "Made a move" control + progress signal (digital autofocus) */
+.qmoved { background: none; border: 0; cursor: pointer; padding: 3px; line-height: 0; flex-shrink: 0; border-radius: 6px; color: var(--text-4); opacity: .55; transition: all .15s; }
+.qmoved:hover { opacity: 1; color: var(--accent); background: var(--accent-soft); }
+.qmoved svg { width: 17px; height: 17px; }
+.qworked { font-size: var(--fs-caption); color: var(--text-4); font-style: italic; margin-top: 2px; }
+.qrow-striking { opacity: .45; transform: translateX(8px); transition: opacity .3s, transform .3s; }
+.qrow-striking .qtitle { text-decoration: line-through; color: var(--text-3); }
+@keyframes qland { from { background: var(--accent-soft); } to { background: transparent; } }
+.qrow-landed { animation: qland .9s ease-out; border-radius: 8px; }
 .plan-status-div { display: flex; align-items: center; gap: 10px; padding: 15px 0 9px; cursor: pointer; user-select: none; }
 .plan-status-div span { font-size: var(--fs-caption); letter-spacing: .2em; text-transform: uppercase; font-weight: 800; white-space: nowrap; }
 .plan-status-div .wchev { letter-spacing: 0; font-size: 9px; }
@@ -2341,6 +2350,9 @@ function renderPlan() {
     const dueTxt = !t.dueStart ? '+ date' : (t.dueStart === today ? 'Today'
       : new Date(t.dueStart + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
     const star = `<button class="qstar on" data-act="star" title="Remove from My Day" aria-label="Remove from My Day"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>`;
+    // "Made a move" — worked on it but not done: strike + send to bottom of group.
+    const moved = !t.done ? `<button class="qmoved" data-act="moved" title="I worked on this — move it down" aria-label="Made progress"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m8 11 4 4 4-4"/><path d="M5 20h14"/></svg></button>` : '';
+    const worked = t.lastWorked ? `<div class="qworked">${escName(workedAgo(t.lastWorked))}</div>` : '';
     return `
     <div class="qrow ${t.done ? 'done' : ''} ${collapsedRow ? 'qrow-hidden' : ''}" data-plan-idx="${origIdx}" data-task-id="${t.id || ''}">
       <div class="qcheck ${t.done ? 'checked' : ''}" data-act="check"></div>
@@ -2348,9 +2360,10 @@ function renderPlan() {
       <div class="qbody" data-act="open">
         <div class="qtitle ${t.done ? 'struck' : ''}">${escName(t.name)}</div>
         ${(() => { const pn = (t.projectId && _projectMap[t.projectId]) ? _projectMap[t.projectId].name : (t.project || ''); return pn ? `<div class="qproject">${escName(pn)}</div>` : ''; })()}
+        ${worked}
       </div>
       <div class="qmeta">${priHtml}${estHtml}<span class="qdue ${dueCls}" data-act="due">${dueTxt}</span></div>
-      ${star}
+      ${moved}${star}
     </div>`;
   };
 
@@ -2438,6 +2451,7 @@ function renderPlan() {
       const act = e.target.closest('[data-act]')?.dataset.act;
       if (act === 'check') return togglePlan(idx);
       if (act === 'star') return removeFromMyDay(idx);
+      if (act === 'moved') { e.stopPropagation(); return markMoved(idx); }
       if (act === 'due') { e.stopPropagation(); return showReschedule(idx); }
       openTaskModal(idx);
     });
@@ -2457,6 +2471,41 @@ function PLAN_STATUS_LABEL(s) {
 function toggleStatusSection(sk) {
   setSection('status-' + sk, !getSection('status-' + sk));
   renderPlan();
+}
+
+// "worked Xm ago" relative-time label for the last-worked stamp.
+function workedAgo(iso) {
+  const ms = Date.now() - new Date(iso).getTime();
+  const m = Math.round(ms / 60000);
+  if (m < 1) return 'worked just now';
+  if (m < 60) return 'worked ' + m + 'm ago';
+  const h = Math.round(m / 60);
+  if (h < 24) return 'worked ' + h + 'h ago';
+  const d = Math.round(h / 24);
+  return 'worked ' + d + 'd ago';
+}
+// Digital autofocus: "I worked on this but it's not done." Strike the row, send
+// it to the bottom of its status group, stamp "worked just now", persist to Notion.
+function markMoved(i) {
+  const t = plan[i];
+  if (!t || t.done) return;
+  const row = document.querySelector(`.qrow[data-plan-idx="${i}"]`);
+  t.lastWorked = new Date().toISOString();
+  if (t.id) fetch('/api/tasks/' + t.id + '/worked', { method: 'POST' }).catch(() => {});
+  // Reorder in `plan`: pull t out and re-insert after the last task in its group.
+  const grp = PLAN_STATUS_LABEL(t.status);
+  const cur = plan.indexOf(t);
+  if (cur >= 0) plan.splice(cur, 1);
+  let insertAt = plan.length;
+  for (let j = plan.length - 1; j >= 0; j--) { if (PLAN_STATUS_LABEL(plan[j].status) === grp) { insertAt = j + 1; break; } }
+  plan.splice(insertAt, 0, t);
+  // Strike-through beat, then reflow to the bottom (and flash where it landed).
+  if (row) {
+    row.classList.add('qrow-striking');
+    setTimeout(() => { renderPlan(); if (t.id) { const r = document.querySelector(`.qrow[data-task-id="${t.id}"]`); if (r) { r.classList.add('qrow-landed'); setTimeout(() => r.classList.remove('qrow-landed'), 900); } } }, 460);
+  } else {
+    renderPlan();
+  }
 }
 
 function togglePlan(i) {
@@ -3107,6 +3156,8 @@ function taskToPlanItem(t) {
     followUp: !!t.followUp,                       // on-my-day checkbox
     followUpOwnerId: t.followUpOwnerId || null,
     followUpBy: t.followUpBy || null,
+    lastWorked: t.lastWorked || null,             // "made a move" progress signal
+
     assigneeIds: t.assigneeIds || [],
     assigneeNames: t.assigneeNames || [],
     followingIds: t.followingIds || [],

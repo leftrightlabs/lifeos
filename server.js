@@ -297,6 +297,9 @@ function simplifyTask(page, source) {
     followUpBy: props['Follow Up By']?.date?.start || null,
     followUpOwnerId: (props['Follow Up Owner']?.people || [])[0]?.id || null,
     followUpOwnerName: (props['Follow Up Owner']?.people || [])[0]?.name || null,
+    // "Last worked" — the digital-autofocus progress signal. Reuses the (otherwise
+    // unused) Ultimate Brain "Last Reviewed" date so it's durable + cross-device.
+    lastWorked: props['Last Reviewed']?.date?.start || null,
     project: null,
     projectId: (props.Project?.relation || [])[0]?.id || null,
     assigneeIds: assignees,
@@ -1462,6 +1465,21 @@ app.post('/api/tasks/:id/follow', async (req, res) => {
       invalidateTaskCaches();
     }
     res.json({ ok: true, following: next.includes(me) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// "Made a move" — mark that I worked on a task without completing it (digital
+// autofocus). Stamps "Last Reviewed" = now so the progress is durable + cross-
+// device; the UI strikes + reflows the row and shows a "worked Xm ago" chip.
+app.post('/api/tasks/:id/worked', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    const when = new Date().toISOString();
+    await notion.pages.update({ page_id: dashifyId(req.params.id), properties: { 'Last Reviewed': { date: { start: when } } } });
+    invalidateTaskCaches();
+    res.json({ ok: true, lastWorked: when });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
