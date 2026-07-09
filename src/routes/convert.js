@@ -23,8 +23,9 @@ export function registerConvertRoutes(app, ctx) {
       properties['Follow Up By'] = followUpBy ? { date: { start: followUpBy } } : { date: null };
     }
   }
-  // followups-all is cached per-user ("followups-all::<user>") — clear all variants.
-  const clearFollowupsCache = () => { for (const k of [...cache.keys()]) if (k.split('::')[0] === 'followups-all') cache.delete(k); };
+  // followups caches are per-user ("followups-all::<user>", "followups-mine-all::<user>")
+  // — clear every follow-up cache variant (Today list + Planning aggregate).
+  const clearFollowupsCache = () => { for (const k of [...cache.keys()]) if (k.split('::')[0].startsWith('followups-')) cache.delete(k); };
 
 
 // GET /api/convert/pipeline — open deals grouped by stage + headline metrics.

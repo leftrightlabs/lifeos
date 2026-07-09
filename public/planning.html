@@ -819,6 +819,26 @@
 .cal-week-label { font-size: var(--fs-body-sm); font-weight: 700; color: var(--text-2); flex: 1; }
 .cal-nav-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text-3); border-radius: 8px; padding: 6px 12px; font-size: var(--fs-caption); font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; }
 .cal-nav-btn:hover { color: var(--text); border-color: var(--text-4); }
+
+/* ── Follow-Ups aggregate tab ── */
+.fu-empty { padding: 16px 4px; color: var(--text-3); font-size: var(--fs-body-sm); }
+.fu-group { margin-bottom: 22px; }
+.fu-group-head { display: flex; align-items: center; gap: 8px; font-size: var(--fs-caption); letter-spacing: .12em; text-transform: uppercase; font-weight: 800; color: var(--text-3); margin: 0 0 8px; }
+.fu-group-head .fu-count { color: var(--text-4); font-weight: 700; }
+.fu-arow { display: flex; align-items: center; gap: 12px; padding: 11px 13px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 9px; margin-bottom: 6px; transition: opacity .2s; }
+.fu-arow.clearing { opacity: .3; }
+.fu-check { width: 19px; height: 19px; border: 1.5px solid var(--text-4); border-radius: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: var(--fs-body-sm); cursor: pointer; transition: all .15s; }
+.fu-check:hover { border-color: var(--green); color: var(--green); }
+.fu-main { flex: 1; min-width: 0; }
+.fu-title { font-size: var(--fs-body); color: var(--text); cursor: pointer; }
+.fu-title:hover { color: var(--accent); }
+.fu-kind { font-size: var(--fs-caption); font-weight: 700; letter-spacing: .04em; padding: 1px 6px; border-radius: 4px; margin-left: 7px; background: rgba(84,102,126,.14); color: var(--text-2); vertical-align: middle; }
+.fu-sub { display: flex; gap: 8px; align-items: center; margin-top: 3px; }
+.fu-due { font-size: var(--fs-caption); color: var(--text-3); }
+.fu-due.overdue { color: var(--amber); font-weight: 600; }
+.fu-daybtn { flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); color: var(--text-3); border-radius: 999px; padding: 4px 11px; font-size: var(--fs-caption); font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all .15s; }
+.fu-daybtn:hover { border-color: var(--text-4); color: var(--text); }
+.fu-daybtn.on { background: var(--accent-soft); border-color: transparent; color: #A99EFF; }
 </style>
 <script src="/sample-data.js"></script>
 <script src="/privacy.js"></script>
@@ -833,6 +853,7 @@
   <div class="tab-bar">
     <button class="exec-tab-btn active" data-go="projects">PROJECTS</button>
     <button class="exec-tab-btn" data-go="tasks">TASKS</button>
+    <button class="exec-tab-btn" data-go="followups">FOLLOW-UPS</button>
     <button class="exec-tab-btn" data-go="review">REVIEW</button>
     <button class="exec-tab-btn" data-go="calendar">CALENDAR</button>
   </div>
@@ -895,6 +916,12 @@
     </div>
   </section>
 
+  <!-- FOLLOW-UPS (aggregate) -->
+  <section class="exec-panel" data-panel="followups">
+    <div class="exec-head"><p>Everything you own a follow-up on — across tasks, deals, contacts, and speaking. Toggle which show on your Today list, or check them off when handled.</p></div>
+    <div id="fu-agg"><div class="fu-empty">Loading…</div></div>
+  </section>
+
   <!-- REVIEW -->
   <section class="exec-panel" data-panel="review">
     <div class="exec-head"><p>Round up loose ends. Fix in place, clear to zero. The goal is no flags left.</p></div>
@@ -953,6 +980,22 @@ function populateAssigneeSelect(selEl, currentIds, currentNames) {
   selEl.innerHTML = '<option value="">— unassigned —</option>' +
     all.map(m => `<option value="${m.id}">${escapeHtml(m.name)}${m.isBot ? ' ·' : ''}</option>`).join('');
   selEl.value = (currentIds && currentIds.length) ? currentIds[0] : '';
+}
+// Follow-up owner picker — every member, default to the given id (or the current
+// user). A follow-up always has one owner. _myNotionId is fetched once on load.
+let _myNotionId = null;
+fetch('/api/me').then(r => r.json()).then(me => { _myNotionId = me.notionUserId || null; }).catch(() => {});
+function populateOwnerSelect(selEl, currentId) {
+  const members = _workspaceMembers || [];
+  const me = _myNotionId;
+  const ids = new Set(members.map(m => m.id));
+  const all = [...members];
+  if (me && !ids.has(me)) all.unshift({ id: me, name: 'Me' });
+  selEl.innerHTML = all.map(m => `<option value="${m.id}">${escapeHtml(m.name)}${m.id === me ? ' · me' : ''}</option>`).join('');
+  selEl.value = currentId || me || (all[0] && all[0].id) || '';
+}
+function tmFollowUpToggle() {
+  document.getElementById('tmFollowByField').style.display = document.getElementById('tmFollowUp').checked ? '' : 'none';
 }
 function populateFollowingList(listEl, currentIds) {
   const members = _workspaceMembers || [];
@@ -1029,6 +1072,13 @@ window.openTaskEdit = function(t) {
     }
   });
   document.getElementById('tmMyDay').checked = !!t.myDay;
+  // Follow-up: a follow-up exists when there's an owner; on-day = the Follow Up checkbox.
+  document.getElementById('tmFollowUp').checked = !!t.followUpOwnerId;
+  document.getElementById('tmFollowOnDay').checked = t.followUpOwnerId ? !!t.followUp : true;
+  document.getElementById('tmFollowBy').value = t.followUpBy ? t.followUpBy.slice(0, 10) : '';
+  populateOwnerSelect(document.getElementById('tmFollowOwner'), t.followUpOwnerId);
+  loadWorkspaceMembers().then(() => { if (_editTask === t) populateOwnerSelect(document.getElementById('tmFollowOwner'), t.followUpOwnerId); });
+  tmFollowUpToggle();
   const validStatus = ['Planned','Doing','Waiting','Agenda','Billing','Done'];
   document.getElementById('tmStatus').value = validStatus.includes(t.status) ? t.status : 'Planned';
   const up = (t.priority || '').toUpperCase();
@@ -1059,18 +1109,27 @@ function saveTaskModal() {
   const followingChecked = !isPersonal
     ? Array.from(document.querySelectorAll('#tmFollowingList input[type=checkbox]:checked')).map(cb => cb.value)
     : undefined;
+  // Follow-up: flagged → owner (default me) + on-day choice + due; unflagged → clear.
+  const followUp = document.getElementById('tmFollowUp').checked;
+  const followUpOwnerId = followUp ? (document.getElementById('tmFollowOwner').value || _myNotionId || null) : null;
+  const followUpOnDay = followUp ? document.getElementById('tmFollowOnDay').checked : false;
+  const followUpBy = followUp ? (document.getElementById('tmFollowBy').value || null) : null;
   if (id) {
     const body = { name, projectId, status, priority, estHours, dueStart, myDay };
     if (assigneeIds !== undefined) body.assigneeIds = assigneeIds;
     if (followingChecked !== undefined) body.followingIds = followingChecked;
+    if (followUp) { body.followUpOwnerId = followUpOwnerId; body.onList = followUpOnDay; body.followUpBy = followUpBy; }
+    else body.clearFollowUp = true;
     fetch('/api/tasks/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body) }).catch(() => {});
+    FU_AGG_LOADED = false; // aggregate tab reloads next open to reflect the change
   }
   const assigneeNames = (assigneeIds || []).map(aid => (_workspaceMembers || []).find(m => m.id === aid)?.name).filter(Boolean);
   const followingNames = (followingChecked || []).map(fid => (_workspaceMembers || []).find(m => m.id === fid)?.name).filter(Boolean);
+  const fuFields = { followUpOwnerId, followUp: !!followUpOwnerId && followUpOnDay, followUpBy };
   // Update tasks tab store
   if (typeof BASE !== 'undefined' && BASE && id && BASE[id]) {
-    Object.assign(BASE[id], { name: name || BASE[id].name, projectId, status, priority, estHours, dueStart, myDay, assigneeIds: assigneeIds ?? BASE[id].assigneeIds, assigneeNames: assigneeIds !== undefined ? assigneeNames : BASE[id].assigneeNames, followingIds: followingChecked ?? BASE[id].followingIds, followingNames: followingChecked !== undefined ? followingNames : BASE[id].followingNames });
+    Object.assign(BASE[id], { name: name || BASE[id].name, projectId, status, priority, estHours, dueStart, myDay, assigneeIds: assigneeIds ?? BASE[id].assigneeIds, assigneeNames: assigneeIds !== undefined ? assigneeNames : BASE[id].assigneeNames, followingIds: followingChecked ?? BASE[id].followingIds, followingNames: followingChecked !== undefined ? followingNames : BASE[id].followingNames, ...fuFields });
     if (typeof state !== 'undefined' && state.edits) {
       state.edits[id] = Object.assign({}, state.edits[id], { name: name || BASE[id].name, projectId, status, priority, estHours, dueStart, myDay });
       if (typeof saveState === 'function') saveState();
@@ -1082,7 +1141,7 @@ function saveTaskModal() {
     for (const key of Object.keys(REVIEW_DATA)) {
       if (!Array.isArray(REVIEW_DATA[key])) continue;
       const item = REVIEW_DATA[key].find(t => t.id === id);
-      if (item) Object.assign(item, { name: name || item.name, projectId, status, priority, dueStart, myDay });
+      if (item) Object.assign(item, { name: name || item.name, projectId, status, priority, dueStart, myDay, ...fuFields });
     }
     if (typeof renderReview === 'function') renderReview({ skipVictory: true });
   }
@@ -2787,6 +2846,65 @@ window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderRevie
 
 <!-- =========================== MARKETING PUBLISHING =========================== -->
 <script>
+// ---- Follow-Ups aggregate tab ----
+// Every follow-up the current user owns (on-day + off-day), grouped so you can
+// triage: toggle what shows on Today, check off what's handled, or open the item.
+const FU_KIND_LABEL = { task: 'TASK', deal: 'DEAL', contact: 'CONTACT', speaking: 'SPEAKING' };
+let FU_AGG = null, FU_AGG_LOADED = false;
+function fuAggEsc(s){ return (window.escapeHtml ? escapeHtml(String(s ?? '')) : String(s ?? '')); }
+function fuAggRow(it){
+  const esc = fuAggEsc;
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }); // YYYY-MM-DD, Chicago
+  const by = it.followUpBy ? it.followUpBy.slice(0,10) : '';
+  const overdue = by && by < today;
+  const dueTxt = !by ? 'No date' : (by === today ? 'Due today' : (overdue ? 'Overdue · ' + by : 'By ' + by));
+  const kind = FU_KIND_LABEL[it.kind] || 'TASK';
+  const url = esc(it.url || '');
+  return `<div class="fu-arow" data-id="${esc(it.id)}">
+    <div class="fu-check" title="Mark complete" onclick="fuAggComplete('${esc(it.id)}')"></div>
+    <div class="fu-main">
+      <div class="fu-title"${url ? ` onclick="(window.openNotion?openNotion('${url}'):window.open('${url}','_blank'))"` : ''}>${esc(it.title)}<span class="fu-kind">${kind}</span></div>
+      <div class="fu-sub"><span class="fu-due${overdue ? ' overdue' : ''}">${esc(dueTxt)}</span></div>
+    </div>
+    <button class="fu-daybtn ${it.onList ? 'on' : ''}" onclick="fuAggToggleDay('${esc(it.id)}', ${it.onList ? 'true' : 'false'})">${it.onList ? '★ On today' : '+ Add to today'}</button>
+  </div>`;
+}
+function renderFuAgg(){
+  const host = document.getElementById('fu-agg');
+  if (!host) return;
+  const items = (FU_AGG && FU_AGG.items) || [];
+  if (!items.length) { host.innerHTML = '<div class="fu-empty">No follow-ups assigned to you. Flag a task, deal, contact, or speaking opportunity to see it here.</div>'; return; }
+  const byDue = (a, b) => { if (!a.followUpBy && b.followUpBy) return 1; if (a.followUpBy && !b.followUpBy) return -1; return (a.followUpBy||'').localeCompare(b.followUpBy||''); };
+  const onDay = items.filter(i => i.onList).sort(byDue);
+  const off   = items.filter(i => !i.onList).sort(byDue);
+  let html = '';
+  if (onDay.length) html += `<div class="fu-group"><div class="fu-group-head">On my Today list <span class="fu-count">· ${onDay.length}</span></div>${onDay.map(fuAggRow).join('')}</div>`;
+  if (off.length)   html += `<div class="fu-group"><div class="fu-group-head">Not on my day <span class="fu-count">· ${off.length}</span></div>${off.map(fuAggRow).join('')}</div>`;
+  host.innerHTML = html;
+}
+async function loadFuAgg(){
+  try {
+    const r = await fetch('/api/followups?scope=all');
+    FU_AGG = await r.json(); FU_AGG_LOADED = true; renderFuAgg();
+  } catch(e){ document.getElementById('fu-agg').innerHTML = '<div class="fu-empty">Couldn\'t load follow-ups — reopen the tab.</div>'; }
+}
+function _fuAggPatch(id, body){
+  const row = document.querySelector(`.fu-arow[data-id="${id}"]`);
+  if (row) row.classList.add('clearing');
+  return fetch('/api/followup/' + id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }).catch(()=>{});
+}
+function fuAggComplete(id){
+  _fuAggPatch(id, { clear: true });
+  if (FU_AGG) FU_AGG.items = (FU_AGG.items||[]).filter(x => x.id !== id);
+  setTimeout(renderFuAgg, 180);
+}
+function fuAggToggleDay(id, isOn){
+  _fuAggPatch(id, { onList: !isOn });
+  const it = FU_AGG && (FU_AGG.items||[]).find(x => x.id === id);
+  if (it) it.onList = !isOn;
+  setTimeout(renderFuAgg, 180);
+}
+
 // ---- Execute sub-panel switcher ----
 (function(){
   const panels = [...document.querySelectorAll('.exec-panel')];
@@ -2796,6 +2914,7 @@ window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderRevie
     panels.forEach(p => p.classList.toggle('active', p.dataset.panel === name));
     btns.forEach(b => b.classList.toggle('active', b.dataset.go === name));
     if (name === 'projects' && window.maybeLoadProjects) window.maybeLoadProjects();
+    if (name === 'followups' && !FU_AGG_LOADED) loadFuAgg();
     if (name === 'review' && !reviewLoaded && typeof fetchReview === 'function') { reviewLoaded = true; fetchReview(); }
     if (name === 'calendar' && window.calendarLoad) window.calendarLoad();
     try { localStorage.setItem('lrl-exec-panel', name); } catch(e){}
@@ -2824,6 +2943,14 @@ window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderRevie
     <div class="tm-field" id="tmAssigneeField"><label>Assigned to</label><select id="tmAssignee"><option value="">— unassigned —</option></select></div>
     <div class="tm-field" id="tmFollowingField"><label>Following</label><div id="tmFollowingList" class="tm-checklist"></div></div>
     <label class="tm-check"><input type="checkbox" id="tmMyDay"> Pin to My Day</label>
+    <label class="tm-check"><input type="checkbox" id="tmFollowUp" onchange="tmFollowUpToggle()"> Flag for follow-up</label>
+    <div id="tmFollowByField" style="display:none;">
+      <div class="tm-2col">
+        <div class="tm-field"><label>Follow up owner</label><select id="tmFollowOwner"></select></div>
+        <div class="tm-field"><label>Follow up by <button type="button" class="tm-clear" onclick="document.getElementById('tmFollowBy').value=''">Clear</button></label><input type="date" id="tmFollowBy"></div>
+      </div>
+      <label class="tm-check" style="margin-top:8px;"><input type="checkbox" id="tmFollowOnDay"> Show on the owner's Today list</label>
+    </div>
     <div class="tm-2col">
       <div class="tm-field"><label>Status</label><select id="tmStatus">
         <option>Planned</option><option>Doing</option><option>Waiting</option><option>Agenda</option><option>Billing</option><option>Done</option>

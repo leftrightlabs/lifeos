@@ -877,7 +877,7 @@ app.get('/api/tasks/life-all', async (_req, res) => {
 });
 
 function invalidateTaskCaches() {
-  const bases = ['work-myday', 'life-myday', 'work-all', 'life-all', 'tasks-all', 'tasks-all-board', 'goals', 'review', 'xero-finance', 'journal-rings', 'calendar-today', 'followups-all'];
+  const bases = ['work-myday', 'life-myday', 'work-all', 'life-all', 'tasks-all', 'tasks-all-board', 'goals', 'review', 'xero-finance', 'journal-rings', 'calendar-today', 'followups-all', 'followups-mine-all'];
   for (const key of [...cache.keys()]) {
     if (bases.includes(key.split('::')[0])) cache.delete(key); // clears every per-user variant
   }
@@ -1484,15 +1484,15 @@ const FOLLOWUP_SOURCES = [
   { ds: SPEAKING_OUTREACH_DS, kind: 'speaking', source: 'sales', titleProp: 'Name' },
 ];
 
-async function fetchFollowupsFor({ ds, kind, source, titleProp }, today, nid) {
-  // Owner-scoped AND on-my-list: only items whose Follow Up Owner is the current
-  // user and whose Follow Up (on-list) checkbox is on. The checkbox — not the due
-  // date — is the visibility gate, so the owner controls their own Today list.
+async function fetchFollowupsFor({ ds, kind, source, titleProp }, today, nid, includeOffList = false) {
+  // Owner-scoped: items whose Follow Up Owner is the current user. By default also
+  // requires the Follow Up (on-list) checkbox — that's the Today visibility gate,
+  // so the owner controls their own list. `includeOffList` drops the checkbox
+  // condition for the Planning aggregate view (see every follow-up, on-day or not).
   // No shared sort property across the DBs → skip Notion sorting; sort in JS.
-  const pages = await pageThroughDS(ds, { and: [
-    { property: 'Follow Up Owner', people: { contains: nid } },
-    { property: 'Follow Up', checkbox: { equals: true } },
-  ] }, null);
+  const cond = [{ property: 'Follow Up Owner', people: { contains: nid } }];
+  if (!includeOffList) cond.push({ property: 'Follow Up', checkbox: { equals: true } });
+  const pages = await pageThroughDS(ds, { and: cond }, null);
   const out = [];
   for (const pg of pages) {
     const props = pg.properties || {};
@@ -1503,6 +1503,7 @@ async function fetchFollowupsFor({ ds, kind, source, titleProp }, today, nid) {
       kind,
       source,
       followUpBy: by,
+      onList: !!props['Follow Up']?.checkbox,
       followUpOwnerId: (props['Follow Up Owner']?.people || [])[0]?.id || null,
       status: props.Status?.status?.name || props['Pipeline Status']?.status?.name || props.Stage?.select?.name || null,
       // Context: tasks resolve a project name client-side from this id; deals/
@@ -1516,14 +1517,17 @@ async function fetchFollowupsFor({ ds, kind, source, titleProp }, today, nid) {
   return out;
 }
 
-app.get('/api/followups', async (_req, res) => {
+app.get('/api/followups', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
     const nid = currentNotionUserId();
     if (!nid) return res.json({ items: [], count: 0 }); // no Notion identity → nothing to scope to
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
-    const items = await cached('followups-all', async () => {
-      const groups = await Promise.all(FOLLOWUP_SOURCES.map((s) => fetchFollowupsFor(s, today, nid)));
+    // ?scope=all → every follow-up I own (on-day + off-day), for the Planning
+    // aggregate. Default → only on-my-day, for the Today section.
+    const all = req.query.scope === 'all';
+    const items = await cached(all ? 'followups-mine-all' : 'followups-all', async () => {
+      const groups = await Promise.all(FOLLOWUP_SOURCES.map((s) => fetchFollowupsFor(s, today, nid, all)));
       const flat = groups.flat();
       // Undated first, then by soonest follow-up date; stable-ish by edited time.
       flat.sort((a, b) => {
@@ -1576,7 +1580,7 @@ app.patch('/api/followup/:id', async (req, res) => {
     applyFollowupProps(properties, req.body || {});
     if (!Object.keys(properties).length) return res.status(400).json({ error: 'No fields to update' });
     await notion.pages.update({ page_id: dashifyId(req.params.id), properties });
-    clearCached('followups-all');
+    clearCached('followups-all'); clearCached('followups-mine-all');
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
