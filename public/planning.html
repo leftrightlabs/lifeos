@@ -832,6 +832,7 @@
 .fu-main { flex: 1; min-width: 0; }
 .fu-title { font-size: var(--fs-body); color: var(--text); cursor: pointer; }
 .fu-title:hover { color: var(--accent); }
+.fu-proj { font-size: var(--fs-caption); color: var(--text-3); margin-top: 3px; }
 .fu-kind { font-size: var(--fs-caption); font-weight: 700; letter-spacing: .04em; padding: 1px 6px; border-radius: 4px; margin-left: 7px; background: rgba(84,102,126,.14); color: var(--text-2); vertical-align: middle; }
 .fu-sub { display: flex; gap: 8px; align-items: center; margin-top: 3px; }
 .fu-due { font-size: var(--fs-caption); color: var(--text-3); }
@@ -2850,7 +2851,7 @@ window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderRevie
 // Every follow-up the current user owns (on-day + off-day), grouped so you can
 // triage: toggle what shows on Today, check off what's handled, or open the item.
 const FU_KIND_LABEL = { task: 'TASK', deal: 'DEAL', contact: 'CONTACT', speaking: 'SPEAKING' };
-let FU_AGG = null, FU_AGG_LOADED = false;
+let FU_AGG = null, FU_AGG_LOADED = false, _fuProjMap = {};
 function fuAggEsc(s){ return (window.escapeHtml ? escapeHtml(String(s ?? '')) : String(s ?? '')); }
 function fuAggRow(it){
   const esc = fuAggEsc;
@@ -2860,10 +2861,13 @@ function fuAggRow(it){
   const dueTxt = !by ? 'No date' : (by === today ? 'Due today' : (overdue ? 'Overdue · ' + by : 'By ' + by));
   const kind = FU_KIND_LABEL[it.kind] || 'TASK';
   const url = esc(it.url || '');
+  // For task follow-ups, resolve the project name so it's clear where it belongs.
+  const proj = (it.kind === 'task' && it.projectId) ? _fuProjMap[it.projectId] : '';
   return `<div class="fu-arow" data-id="${esc(it.id)}">
     <div class="fu-check" title="Mark complete" onclick="fuAggComplete('${esc(it.id)}')"></div>
     <div class="fu-main">
       <div class="fu-title"${url ? ` onclick="(window.openNotion?openNotion('${url}'):window.open('${url}','_blank'))"` : ''}>${esc(it.title)}<span class="fu-kind">${kind}</span></div>
+      ${proj ? `<div class="fu-proj">${esc(proj)}</div>` : ''}
       <div class="fu-sub"><span class="fu-due${overdue ? ' overdue' : ''}">${esc(dueTxt)}</span></div>
     </div>
     <button class="fu-daybtn ${it.onList ? 'on' : ''}" onclick="fuAggToggleDay('${esc(it.id)}', ${it.onList ? 'true' : 'false'})">${it.onList ? '★ On today' : '+ Add to today'}</button>
@@ -2884,8 +2888,18 @@ function renderFuAgg(){
 }
 async function loadFuAgg(){
   try {
-    const r = await fetch('/api/followups?scope=all');
-    FU_AGG = await r.json(); FU_AGG_LOADED = true; renderFuAgg();
+    // Fetch the aggregate + a projects map (reuse REVIEW_PROJECTS if already loaded)
+    // so task follow-ups can show which project they belong to.
+    const [r, projs] = await Promise.all([
+      fetch('/api/followups?scope=all'),
+      (typeof REVIEW_PROJECTS !== 'undefined' && REVIEW_PROJECTS)
+        ? Promise.resolve(REVIEW_PROJECTS)
+        : fetch('/api/projects').then(x => x.json()).then(d => d.projects || []).catch(() => []),
+    ]);
+    FU_AGG = await r.json();
+    _fuProjMap = {};
+    (projs || []).forEach(p => { if (p && p.id) _fuProjMap[p.id] = p.name; });
+    FU_AGG_LOADED = true; renderFuAgg();
   } catch(e){ document.getElementById('fu-agg').innerHTML = '<div class="fu-empty">Couldn\'t load follow-ups — reopen the tab.</div>'; }
 }
 function _fuAggPatch(id, body){
