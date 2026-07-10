@@ -848,6 +848,22 @@
 .fu-daybtn { flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); color: var(--text-3); border-radius: 999px; padding: 4px 11px; font-size: var(--fs-caption); font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all .15s; }
 .fu-daybtn:hover { border-color: var(--text-4); color: var(--text); }
 .fu-daybtn.on { background: var(--accent-soft); border-color: transparent; color: #A99EFF; }
+/* PROGRESS tab — "moved forward" credit + daily piles */
+.pg-credit { font-size: var(--fs-body); color: var(--text-2); margin: 0 0 18px; }
+.pg-credit b { color: #e8843f; font-weight: 800; }
+.pg-credit .pg-c2 { color: var(--text-3); }
+.pg-group { margin-bottom: 22px; }
+.pg-group-head { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-caption); letter-spacing: .12em; text-transform: uppercase; font-weight: 800; color: var(--text-3); margin: 0 0 8px; }
+.pg-group-head .pg-count { color: var(--text-4); font-weight: 700; }
+.pg-row { display: flex; align-items: center; gap: 12px; padding: 11px 13px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 9px; margin-bottom: 6px; }
+.pg-dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; background: #e8843f; }
+.pg-row.done .pg-dot { background: var(--good, #4caf82); }
+.pg-main { flex: 1; min-width: 0; }
+.pg-name { font-size: var(--fs-body); color: var(--text); cursor: pointer; }
+.pg-name:hover { color: var(--accent); }
+.pg-row.done .pg-name { text-decoration: line-through; color: var(--text-3); }
+.pg-proj { font-size: var(--fs-caption); color: var(--text-3); margin-top: 3px; }
+.pg-time { flex-shrink: 0; font-size: var(--fs-caption); color: var(--text-4); white-space: nowrap; }
 </style>
 <script src="/sample-data.js"></script>
 <script src="/privacy.js"></script>
@@ -863,6 +879,7 @@
     <button class="exec-tab-btn active" data-go="projects">PROJECTS</button>
     <button class="exec-tab-btn" data-go="tasks">TASKS</button>
     <button class="exec-tab-btn" data-go="followups">FOLLOW-UPS</button>
+    <button class="exec-tab-btn" data-go="progress">PROGRESS</button>
     <button class="exec-tab-btn" data-go="review">REVIEW</button>
     <button class="exec-tab-btn" data-go="calendar">CALENDAR</button>
   </div>
@@ -929,6 +946,13 @@
   <section class="exec-panel" data-panel="followups">
     <div class="exec-head"><p>Everything you own a follow-up on — across tasks, deals, contacts, and speaking. Toggle which show on your Today list, or check them off when handled.</p></div>
     <div id="fu-agg"><div class="fu-empty">Loading…</div></div>
+  </section>
+
+  <!-- PROGRESS (moved forward) -->
+  <section class="exec-panel" data-panel="progress">
+    <div class="exec-head"><p>Everything you moved forward — the tasks you worked on but couldn't call done yet. Real progress, credited daily.</p></div>
+    <div class="pg-credit" id="pg-credit"></div>
+    <div id="pg-body"><div class="fu-empty">Loading…</div></div>
   </section>
 
   <!-- REVIEW -->
@@ -1780,13 +1804,14 @@ el('list').addEventListener('click',e=>{
   }
   if(act==='moved'){
     // Digital autofocus: worked on it, not done → strike, send to bottom of its
-    // group, persist "Last Reviewed"=now (durable, cross-device). No full re-render
+    // group, persist "Last Worked"=now (durable, cross-device). No full re-render
     // (that would re-sort); the DOM move gives the immediate churn.
     const t=task(id); if(t && t.done) return;
     const nowIso=new Date().toISOString();
     state.touched[id]=nowIso; if(BASE[id]) BASE[id].lastWorked=nowIso; saveState();
     window.lrl && window.lrl.haptic && window.lrl.haptic('tap');
     fetch('/api/tasks/'+id+'/worked',{method:'POST'}).catch(()=>{});
+    try { PG_LOADED=false; } catch(_){} // Progress tab reloads next open to credit this move
     rowEl.classList.add('quest-striking');
     setTimeout(()=>{
       const gbody=rowEl.closest('.gbody');
@@ -2951,6 +2976,75 @@ function fuAggToggleDay(id, isOn){
   setTimeout(renderFuAgg, 180);
 }
 
+// ---- Progress tab (moved forward) ----
+// The management-console companion to Today's "Moved Forward Today" pile: every
+// task you worked on but couldn't call done, over the last week, grouped by day.
+// Same "Last Worked" data as Today, just a wider window + credit total.
+let PG_DATA = null, PG_LOADED = false;
+function pgDayLabel(dayKey, today){
+  if (dayKey === today) return 'Today';
+  const d = new Date(dayKey + 'T12:00:00');
+  const yd = new Date(today + 'T12:00:00'); yd.setDate(yd.getDate() - 1);
+  const ydKey = yd.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+  if (dayKey === ydKey) return 'Yesterday';
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+}
+function pgTime(iso){
+  if (!iso) return '';
+  if (iso.length === 10) return ''; // date-only, no time to show
+  try { return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }); } catch(e){ return ''; }
+}
+function pgRow(it){
+  const esc = fuAggEsc;
+  const proj = it.projectId ? _fuProjMap[it.projectId] : '';
+  const url = esc(it.url || '');
+  return `<div class="pg-row${it.done ? ' done' : ''}">
+    <div class="pg-dot"></div>
+    <div class="pg-main">
+      <div class="pg-name"${url ? ` onclick="(window.openNotion?openNotion('${url}'):window.open('${url}','_blank'))"` : ''}>${esc(it.name)}</div>
+      ${proj ? `<div class="pg-proj">${esc(proj)}</div>` : ''}
+    </div>
+    <div class="pg-time">${esc(pgTime(it.lastWorked))}</div>
+  </div>`;
+}
+function renderProgress(){
+  const host = document.getElementById('pg-body');
+  const credit = document.getElementById('pg-credit');
+  if (!host) return;
+  const items = (PG_DATA && PG_DATA.items) || [];
+  const today = (PG_DATA && PG_DATA.today) || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+  if (credit) {
+    const todayCt = (PG_DATA && PG_DATA.todayCount) || 0;
+    credit.innerHTML = items.length
+      ? `<b>${items.length}</b> moved forward this week<span class="pg-c2"> · ${todayCt} today</span>`
+      : '';
+  }
+  if (!items.length) { host.innerHTML = '<div class="fu-empty">Nothing moved forward yet this week. Tap the ↓ on a task you worked on — even if it\'s not done — to give yourself credit.</div>'; return; }
+  // group by dayKey, preserving the server's newest-first order
+  const groups = [];
+  const idx = {};
+  items.forEach(it => {
+    const k = it.dayKey || today;
+    if (!(k in idx)) { idx[k] = groups.length; groups.push({ key: k, rows: [] }); }
+    groups[idx[k]].rows.push(it);
+  });
+  host.innerHTML = groups.map(g =>
+    `<div class="pg-group"><div class="pg-group-head">${fuAggEsc(pgDayLabel(g.key, today))} <span class="pg-count">· ${g.rows.length}</span></div>${g.rows.map(pgRow).join('')}</div>`
+  ).join('');
+}
+async function loadProgress(){
+  try {
+    const [r, projs] = await Promise.all([
+      fetch('/api/tasks/worked?days=7'),
+      (Object.keys(_fuProjMap).length ? Promise.resolve(null)
+        : fetch('/api/projects').then(x => x.json()).then(d => d.projects || []).catch(() => [])),
+    ]);
+    PG_DATA = await r.json();
+    if (projs) { _fuProjMap = {}; projs.forEach(p => { if (p && p.id) _fuProjMap[p.id] = p.name; }); }
+    PG_LOADED = true; renderProgress();
+  } catch(e){ document.getElementById('pg-body').innerHTML = '<div class="fu-empty">Couldn\'t load progress — reopen the tab.</div>'; }
+}
+
 // ---- Execute sub-panel switcher ----
 (function(){
   const panels = [...document.querySelectorAll('.exec-panel')];
@@ -2961,6 +3055,7 @@ function fuAggToggleDay(id, isOn){
     btns.forEach(b => b.classList.toggle('active', b.dataset.go === name));
     if (name === 'projects' && window.maybeLoadProjects) window.maybeLoadProjects();
     if (name === 'followups' && !FU_AGG_LOADED) loadFuAgg();
+    if (name === 'progress' && !PG_LOADED) loadProgress();
     if (name === 'review' && !reviewLoaded && typeof fetchReview === 'function') { reviewLoaded = true; fetchReview(); }
     if (name === 'calendar' && window.calendarLoad) window.calendarLoad();
     try { localStorage.setItem('lrl-exec-panel', name); } catch(e){}

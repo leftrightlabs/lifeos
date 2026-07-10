@@ -297,9 +297,9 @@ function simplifyTask(page, source) {
     followUpBy: props['Follow Up By']?.date?.start || null,
     followUpOwnerId: (props['Follow Up Owner']?.people || [])[0]?.id || null,
     followUpOwnerName: (props['Follow Up Owner']?.people || [])[0]?.name || null,
-    // "Last worked" — the digital-autofocus progress signal. Reuses the (otherwise
-    // unused) Ultimate Brain "Last Reviewed" date so it's durable + cross-device.
-    lastWorked: props['Last Reviewed']?.date?.start || null,
+    // "Last worked" — the digital-autofocus progress signal (dedicated Notion date,
+    // separate from UB's "Last Reviewed" so the pile only reflects real "made a move" taps).
+    lastWorked: props['Last Worked']?.date?.start || null,
     project: null,
     projectId: (props.Project?.relation || [])[0]?.id || null,
     assigneeIds: assignees,
@@ -882,7 +882,8 @@ app.get('/api/tasks/life-all', async (_req, res) => {
 function invalidateTaskCaches() {
   const bases = ['work-myday', 'life-myday', 'work-all', 'life-all', 'tasks-all', 'tasks-all-board', 'goals', 'review', 'xero-finance', 'journal-rings', 'calendar-today', 'followups-all', 'followups-mine-all'];
   for (const key of [...cache.keys()]) {
-    if (bases.includes(key.split('::')[0])) cache.delete(key); // clears every per-user variant
+    const base = key.split('::')[0];
+    if (bases.includes(base) || base.startsWith('tasks-worked')) cache.delete(key); // clears every per-user variant
   }
 }
 
@@ -1472,14 +1473,53 @@ app.post('/api/tasks/:id/follow', async (req, res) => {
 
 // "Made a move" — mark that I worked on a task without completing it (digital
 // autofocus). Stamps "Last Reviewed" = now so the progress is durable + cross-
-// device; the UI strikes + reflows the row and shows a "worked Xm ago" chip.
+// device; the UI logs it into the "Moved Forward Today" pile + credit count.
 app.post('/api/tasks/:id/worked', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
     const when = new Date().toISOString();
-    await notion.pages.update({ page_id: dashifyId(req.params.id), properties: { 'Last Reviewed': { date: { start: when } } } });
+    await notion.pages.update({ page_id: dashifyId(req.params.id), properties: { 'Last Worked': { date: { start: when } } } });
     invalidateTaskCaches();
     res.json({ ok: true, lastWorked: when });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// The "Moved Forward" pile — tasks worked on (Last Reviewed) within the last N
+// Chicago days. Powers the Today "Moved Forward Today" card + credit count and
+// the Planning PROGRESS tab (grouped by day). Derived, so no extra tracking.
+app.get('/api/tasks/worked', async (req, res) => {
+  if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+  try {
+    const days = Math.max(1, Math.min(30, parseInt(req.query.days, 10) || 1));
+    const fmt = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(d);
+    const today = fmt(new Date());
+    const sinceDay = fmt(new Date(Date.now() - (days - 1) * 864e5));
+    // Query generously (extra day) because Last Reviewed is a UTC datetime; we
+    // bucket by the Chicago calendar day in JS.
+    const notionSince = fmt(new Date(Date.now() - (days + 1) * 864e5));
+    const data = await cached(`tasks-worked-${days}`, async () => {
+      const grab = (ds, source) => pageThroughDS(ds, { and: [{ property: 'Last Worked', date: { on_or_after: notionSince } }] }, null)
+        .then((pages) => pages.map((pg) => {
+          const p = pg.properties || {};
+          const lw = p['Last Worked']?.date?.start || null;
+          return {
+            id: pg.id, source,
+            name: p.Name?.title?.[0]?.plain_text || '(untitled)',
+            projectId: (p.Project?.relation || [])[0]?.id || null,
+            lastWorked: lw,
+            dayKey: lw ? (lw.length === 10 ? lw : fmt(new Date(lw))) : null,
+            done: p.Status?.status?.name === 'Done',
+            url: pg.url,
+          };
+        }));
+      const all = [...await grab(WORK_TASKS_DS, 'work'), ...await grab(LIFE_TASKS_DS, 'personal')]
+        .filter((t) => t.dayKey && t.dayKey >= sinceDay && t.dayKey <= today);
+      all.sort((a, b) => (b.lastWorked || '').localeCompare(a.lastWorked || ''));
+      return { items: all, todayCount: all.filter((t) => t.dayKey === today).length, today };
+    });
+    res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

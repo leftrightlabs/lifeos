@@ -367,6 +367,14 @@ body {
 .qrow-striking .qtitle { text-decoration: line-through; color: var(--text-3); }
 @keyframes qland { from { background: var(--accent-soft); } to { background: transparent; } }
 .qrow-landed { animation: qland .9s ease-out; border-radius: 8px; }
+/* "Moved Forward Today" pile — struck-through entries, like a page of cross-offs */
+.moved-list { display: flex; flex-direction: column; gap: 4px; }
+.moved-row { display: flex; align-items: baseline; gap: 8px; padding: 7px 10px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 8px; }
+.moved-name { font-size: var(--fs-body-sm); color: var(--text-3); text-decoration: line-through; flex-shrink: 1; min-width: 0; }
+.moved-proj { font-size: var(--fs-caption); color: var(--text-4); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.moved-time { font-size: var(--fs-caption); color: var(--text-4); margin-left: auto; flex-shrink: 0; }
+@keyframes moved-flash { 0% { background: var(--green-soft); transform: translateY(-4px); } 100% { background: var(--surface); transform: none; } }
+.moved-row.moved-flash { animation: moved-flash .9s ease-out; }
 .plan-status-div { display: flex; align-items: center; gap: 10px; padding: 15px 0 9px; cursor: pointer; user-select: none; }
 .plan-status-div span { font-size: var(--fs-caption); letter-spacing: .2em; text-transform: uppercase; font-weight: 800; white-space: nowrap; }
 .plan-status-div .wchev { letter-spacing: 0; font-size: 9px; }
@@ -911,6 +919,18 @@ body { overflow-x: hidden; }
             <div class="plan-add-msg" id="planAddMsg" style="display:none;"></div>
           </div>
         </div>
+      </div>
+
+      <!-- Moved Forward Today — the "progress pile": tasks you worked on but didn't
+           finish. Fills through the day so effort gets visible credit. Hides when empty. -->
+      <div class="t-card" id="card-moved" data-persist-key="moved" style="display:none;">
+        <div class="sec-head">
+          <div class="card-toggle" onclick="toggleCard(this)">
+            <span class="chev">▾</span>
+            <div class="sec-title">💪 Moved Forward Today <span class="count" id="movedCount"></span></div>
+          </div>
+        </div>
+        <div class="t-body"><div class="moved-list" id="movedList"></div></div>
       </div>
 
       <!-- Evening / End of Day — own card; hides when all items checked -->
@@ -2335,7 +2355,9 @@ function renderPlan() {
   const doneCt  = visible.filter(p => p.done).length;
   const totalCt = visible.length;
   const allDoneNow = totalCt > 0 && doneCt === totalCt;
-  document.getElementById('planCount').textContent = totalCt > 0 ? (allDoneNow ? `· 🎉 all ${totalCt} done` : `· ${doneCt} of ${totalCt} done`) : '';
+  const movedCt = (_movedToday || []).length;
+  const movedCredit = movedCt > 0 ? ` · ${movedCt} moved forward` : '';
+  document.getElementById('planCount').textContent = totalCt > 0 ? (allDoneNow ? `· 🎉 all ${totalCt} done${movedCredit}` : `· ${doneCt} of ${totalCt} done${movedCredit}`) : (movedCt > 0 ? `· ${movedCt} moved forward` : '');
   const shown = state.hideDone ? visible.filter(t => !t.done) : visible;
 
   const rowHtml = (t, collapsedRow) => {
@@ -2484,28 +2506,44 @@ function workedAgo(iso) {
   const d = Math.round(h / 24);
   return 'worked ' + d + 'd ago';
 }
-// Digital autofocus: "I worked on this but it's not done." Strike the row, send
-// it to the bottom of its status group, stamp "worked just now", persist to Notion.
+// Digital autofocus: "I worked on this but it's not done." Strike the row, then
+// drop it into the "Moved Forward Today" pile (with a flash) and tick the credit
+// count. The task stays put in the plan; progress accumulates visibly in the pile.
 function markMoved(i) {
   const t = plan[i];
   if (!t || t.done) return;
   const row = document.querySelector(`.qrow[data-plan-idx="${i}"]`);
-  t.lastWorked = new Date().toISOString();
+  const nowIso = new Date().toISOString();
+  t.lastWorked = nowIso;
   if (t.id) fetch('/api/tasks/' + t.id + '/worked', { method: 'POST' }).catch(() => {});
-  // Reorder in `plan`: pull t out and re-insert after the last task in its group.
-  const grp = PLAN_STATUS_LABEL(t.status);
-  const cur = plan.indexOf(t);
-  if (cur >= 0) plan.splice(cur, 1);
-  let insertAt = plan.length;
-  for (let j = plan.length - 1; j >= 0; j--) { if (PLAN_STATUS_LABEL(plan[j].status) === grp) { insertAt = j + 1; break; } }
-  plan.splice(insertAt, 0, t);
-  // Strike-through beat, then reflow to the bottom (and flash where it landed).
+  // Add/refresh in today's pile (dedupe by id, newest first).
+  _movedToday = (_movedToday || []).filter(m => m.id !== t.id);
+  _movedToday.unshift({ id: t.id, name: t.name, projectId: t.projectId || null, lastWorked: nowIso, done: t.done });
   if (row) {
     row.classList.add('qrow-striking');
-    setTimeout(() => { renderPlan(); if (t.id) { const r = document.querySelector(`.qrow[data-task-id="${t.id}"]`); if (r) { r.classList.add('qrow-landed'); setTimeout(() => r.classList.remove('qrow-landed'), 900); } } }, 460);
+    setTimeout(() => { renderPlan(); renderMovedToday(true); }, 460);
   } else {
-    renderPlan();
+    renderPlan(); renderMovedToday(true);
   }
+}
+
+// The "Moved Forward Today" pile — struck-through entries that accumulate as you
+// tap "made a move", giving visible credit for progress that isn't completion.
+function renderMovedToday(flashFirst) {
+  const card = document.getElementById('card-moved');
+  const list = document.getElementById('movedList');
+  if (!card || !list) return;
+  const items = _movedToday || [];
+  const cnt = document.getElementById('movedCount');
+  if (cnt) cnt.textContent = items.length ? '· ' + items.length : '';
+  if (!items.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  list.innerHTML = items.map(m => {
+    const pn = (m.projectId && _projectMap[m.projectId]) ? _projectMap[m.projectId].name : '';
+    const time = m.lastWorked ? new Date(m.lastWorked).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
+    return `<div class="moved-row"><span class="moved-name">${escapeHtml(m.name)}</span>${pn ? `<span class="moved-proj">${escapeHtml(pn)}</span>` : ''}<span class="moved-time">${time}</span></div>`;
+  }).join('');
+  if (flashFirst) { const f = list.querySelector('.moved-row'); if (f) { f.classList.add('moved-flash'); setTimeout(() => f.classList.remove('moved-flash'), 1000); } }
 }
 
 function togglePlan(i) {
@@ -3074,6 +3112,7 @@ function _reRenderAll() {
   renderOneThing();
   renderStreaks();
   renderPlan();
+  renderMovedToday();
   renderRitual('morning');
   renderRitual('evening');
 }
@@ -3086,6 +3125,7 @@ let _oneThingDone = null;   // {name, rock} captured when the work One Thing is 
 let _personalOneThingTask = null;
 let _loadedGoals = [];
 let _followups = [];     // items flagged "Follow Up" (tasks + deals + touchpoints)
+let _movedToday = [];    // "Moved Forward Today" pile — tasks worked on today (Last Reviewed)
 let _dataLoaded = false; // gates the loading overlay; flips true after first load
 
 function todayISO() {
@@ -3814,6 +3854,7 @@ async function loadTodayData() {
   const pFin    = j('/api/finance/xero');
   const pPipe   = j('/api/convert/pipeline');
   const pFollow = j('/api/followups');
+  const pMoved  = j('/api/tasks/worked?days=1');
   const pState  = loadTodayStateFromServer(); // cross-device One Thing pick/status
 
   // Projects only decorate task rows with a project label — patch in when ready.
@@ -3858,6 +3899,7 @@ async function loadTodayData() {
     if (ok(f) || ok(p)) { applyFinance(ok(f) ? f : null, ok(p) ? p : null); _reRenderAll(); }
   });
   pFollow.then(v => { if (ok(v)) { _followups = v.items || []; renderPlan(); } });
+  pMoved.then(v => { if (ok(v)) { _movedToday = (v.items || []).map(m => ({ id: m.id, name: m.name, projectId: m.projectId || null, lastWorked: m.lastWorked, done: m.done })); renderMovedToday(); renderPlan(); } });
 }
 
 // ── INIT ──
