@@ -862,6 +862,8 @@
 .pg-name { font-size: var(--fs-body); color: var(--text); cursor: pointer; }
 .pg-name:hover { color: var(--accent); }
 .pg-row.done .pg-name { text-decoration: line-through; color: var(--text-3); }
+.pg-prev { color: var(--text-3); text-decoration: line-through; }
+.pg-arrow { color: var(--text-4); }
 .pg-proj { font-size: var(--fs-caption); color: var(--text-3); margin-top: 3px; }
 .pg-time { flex-shrink: 0; font-size: var(--fs-caption); color: var(--text-4); white-space: nowrap; }
 </style>
@@ -1803,23 +1805,10 @@ el('list').addEventListener('click',e=>{
     return;
   }
   if(act==='moved'){
-    // Digital autofocus: worked on it, not done → strike, send to bottom of its
-    // group, persist "Last Worked"=now (durable, cross-device). No full re-render
-    // (that would re-sort); the DOM move gives the immediate churn.
+    // Digital autofocus: worked on it, not done. Open the reframe modal — rewrite
+    // the task into its next step (or just move it). See submitPlanMove.
     const t=task(id); if(t && t.done) return;
-    const nowIso=new Date().toISOString();
-    state.touched[id]=nowIso; if(BASE[id]) BASE[id].lastWorked=nowIso; saveState();
-    window.lrl && window.lrl.haptic && window.lrl.haptic('tap');
-    fetch('/api/tasks/'+id+'/worked',{method:'POST'}).catch(()=>{});
-    try { PG_LOADED=false; } catch(_){} // Progress tab reloads next open to credit this move
-    rowEl.classList.add('quest-striking');
-    setTimeout(()=>{
-      const gbody=rowEl.closest('.gbody');
-      if(gbody) gbody.appendChild(rowEl);
-      rowEl.classList.remove('quest-striking');
-      rowEl.classList.add('quest-landed');
-      setTimeout(()=>rowEl.classList.remove('quest-landed'),900);
-    },460);
+    openPlanMove(id);
     return;
   }
   if(act==='follow'){
@@ -1870,6 +1859,49 @@ el('list').addEventListener('click',e=>{
     window.openTaskEdit && window.openTaskEdit(t,'focus');
   }
 });
+
+// ---- "Made a move" reframe modal (autofocus rewrite on the Tasks list) ----
+let _pMoveId=null;
+function openPlanMove(id){
+  const t=task(id); if(!t||t.done) return;
+  _pMoveId=id;
+  const cur=document.getElementById('pmCur'); if(cur) cur.textContent=t.name;
+  const inp=document.getElementById('pmNext'); if(inp){ inp.value=''; inp.placeholder='e.g. '+t.name; }
+  const m=document.getElementById('planMoveModal'); if(m){ m.classList.add('open'); setTimeout(()=>inp&&inp.focus(),60); }
+}
+function closePlanMove(){ const m=document.getElementById('planMoveModal'); if(m) m.classList.remove('open'); _pMoveId=null; }
+// justMove=true skips the reframe (the "Just move it" button).
+function submitPlanMove(justMove){
+  const id=_pMoveId; const t=id&&task(id);
+  if(!t){ closePlanMove(); return; }
+  const inp=document.getElementById('pmNext');
+  const next=(!justMove && inp ? inp.value : '').trim();
+  const oldName=t.name; const reframed=!!next && next!==oldName;
+  const nowIso=new Date().toISOString();
+  state.touched[id]=nowIso;
+  if(BASE[id]){ BASE[id].lastWorked=nowIso; if(reframed) BASE[id].name=next; }
+  saveState();
+  window.lrl && window.lrl.haptic && window.lrl.haptic('tap');
+  fetch('/api/tasks/'+id+'/worked',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(reframed?{nextStep:next}:{})}).catch(()=>{});
+  try { PG_LOADED=false; } catch(_){} // Progress tab reloads next open to credit this move
+  closePlanMove();
+  const rowEl=document.querySelector('.quest-item[data-task-id="'+id+'"]');
+  if(!rowEl) return;
+  const gbody=rowEl.closest('.gbody');
+  rowEl.classList.add('quest-striking');
+  setTimeout(()=>{
+    // Rebuild the row so a reframed title shows, then drop it to the bottom of its group.
+    if(reframed) rowEl.outerHTML=row(task(id));
+    const el2=(gbody||document).querySelector('.quest-item[data-task-id="'+id+'"]');
+    if(el2){
+      if(gbody) gbody.appendChild(el2);
+      el2.classList.remove('quest-striking');
+      el2.classList.add('quest-landed');
+      setTimeout(()=>el2.classList.remove('quest-landed'),900);
+    }
+  },460);
+}
+window.submitPlanMove=submitPlanMove; window.closePlanMove=closePlanMove;
 
 // Refresh autofocus list when task modal saves
 window.addEventListener('lrl-refresh-focus', async () => {
@@ -2998,10 +3030,14 @@ function pgRow(it){
   const esc = fuAggEsc;
   const proj = it.projectId ? _fuProjMap[it.projectId] : '';
   const url = esc(it.url || '');
+  // Reframed: strike the step finished, show the new next step after an arrow.
+  const nameHtml = it.prevStep
+    ? `<span class="pg-prev">${esc(it.prevStep)}</span> <span class="pg-arrow">→</span> ${esc(it.name)}`
+    : esc(it.name);
   return `<div class="pg-row${it.done ? ' done' : ''}">
     <div class="pg-dot"></div>
     <div class="pg-main">
-      <div class="pg-name"${url ? ` onclick="(window.openNotion?openNotion('${url}'):window.open('${url}','_blank'))"` : ''}>${esc(it.name)}</div>
+      <div class="pg-name"${url ? ` onclick="(window.openNotion?openNotion('${url}'):window.open('${url}','_blank'))"` : ''}>${nameHtml}</div>
       ${proj ? `<div class="pg-proj">${esc(proj)}</div>` : ''}
     </div>
     <div class="pg-time">${esc(pgTime(it.lastWorked))}</div>
@@ -3069,6 +3105,22 @@ async function loadProgress(){
 })();
 </script>
 <!-- Edit Task modal -->
+<!-- Made a move / reframe modal (Tasks list) -->
+<div class="task-modal" id="planMoveModal" onclick="if(event.target===this)closePlanMove()">
+  <div class="tm-content" style="max-width:440px;">
+    <div class="tm-head"><div class="tm-title">Made a move 👏</div><button class="tm-close" onclick="closePlanMove()" aria-label="Close">×</button></div>
+    <div class="tm-field"><label>Worked on</label><div id="pmCur" style="font-size:15px;color:var(--text-3);line-height:1.35;text-decoration:line-through;"></div></div>
+    <div class="tm-field">
+      <label>What's the next step? <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--navy-dim);">— rewrite it, or leave blank to just move it</span></label>
+      <input type="text" id="pmNext" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();submitPlanMove()}">
+    </div>
+    <div class="tm-actions">
+      <button class="tm-btn ghost" onclick="submitPlanMove(true)" title="Credit the work without renaming">Just move it</button>
+      <button class="tm-btn primary" onclick="submitPlanMove()">Move forward</button>
+    </div>
+  </div>
+</div>
+
 <div class="task-modal" id="taskModal" onclick="if(event.target===this)closeTaskModal()">
   <div class="tm-content">
     <div class="tm-head"><div class="tm-title">Edit Task</div><button class="tm-close" onclick="closeTaskModal()" aria-label="Close">×</button></div>

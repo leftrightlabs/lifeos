@@ -371,6 +371,8 @@ body {
 .moved-list { display: flex; flex-direction: column; gap: 4px; }
 .moved-row { display: flex; align-items: baseline; gap: 8px; padding: 7px 10px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 8px; }
 .moved-name { font-size: var(--fs-body-sm); color: var(--text-3); text-decoration: line-through; flex-shrink: 1; min-width: 0; }
+.moved-arrow { font-size: var(--fs-body-sm); color: var(--text-4); flex-shrink: 0; }
+.moved-next { font-size: var(--fs-body-sm); color: var(--text); flex-shrink: 1; min-width: 0; }
 .moved-proj { font-size: var(--fs-caption); color: var(--text-4); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .moved-time { font-size: var(--fs-caption); color: var(--text-4); margin-left: auto; flex-shrink: 0; }
 @keyframes moved-flash { 0% { background: var(--green-soft); transform: translateY(-4px); } 100% { background: var(--surface); transform: none; } }
@@ -1025,6 +1027,23 @@ body { overflow-x: hidden; }
       <button class="tm-btn ghost" onclick="fuModalComplete()" title="Mark this follow-up complete">✓ Complete</button>
       <button class="tm-btn ghost" onclick="fuModalOpenNotion()">Open in Notion ↗</button>
       <button class="tm-btn primary" onclick="saveFuModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Made a move / reframe modal -->
+<div class="task-modal" id="moveModal" onclick="if(event.target===this)closeMoveModal()">
+  <div class="tm-content">
+    <div class="tm-head"><div class="tm-title">Made a move 👏</div><button class="tm-close" onclick="closeMoveModal()" aria-label="Close">×</button></div>
+    <div class="tm-field"><label>Worked on</label><div id="moveCurName" style="font-size:var(--fs-body);color:var(--text-3);line-height:1.35;text-decoration:line-through;"></div></div>
+    <div class="tm-field">
+      <label>What's the next step? <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-4);">— rewrite it, or leave blank to just move it</span></label>
+      <input type="text" id="moveNext" autocomplete="off"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();submitMove()}">
+    </div>
+    <div class="tm-actions">
+      <button class="tm-btn ghost" onclick="submitMove(true)" title="Credit the work without renaming">Just move it</button>
+      <button class="tm-btn primary" onclick="submitMove()">Move forward</button>
     </div>
   </div>
 </div>
@@ -2506,19 +2525,50 @@ function workedAgo(iso) {
   const d = Math.round(h / 24);
   return 'worked ' + d + 'd ago';
 }
-// Digital autofocus: "I worked on this but it's not done." Strike the row, then
-// drop it into the "Moved Forward Today" pile (with a flash) and tick the credit
-// count. The task stays put in the plan; progress accumulates visibly in the pile.
+// Digital autofocus: "I worked on this but it's not done." Tapping ↓ opens a small
+// modal where you can REWRITE the task into its next step (autofocus's reframe —
+// "Read ch.3" → "Read ch.7") or just move it. Either way it drops into the "Moved
+// Forward Today" pile with a flash and ticks the credit count. The task stays in
+// the plan; if reframed, its line now reads the honest next action.
+let _moveIdx = -1;
 function markMoved(i) {
   const t = plan[i];
   if (!t || t.done) return;
+  _moveIdx = i;
+  const cur = document.getElementById('moveCurName');
+  if (cur) cur.textContent = t.name;
+  const inp = document.getElementById('moveNext');
+  if (inp) { inp.value = ''; inp.placeholder = 'e.g. ' + t.name; }
+  const m = document.getElementById('moveModal');
+  if (m) { m.classList.add('open'); setTimeout(() => inp && inp.focus(), 60); }
+}
+function closeMoveModal() {
+  const m = document.getElementById('moveModal');
+  if (m) m.classList.remove('open');
+  _moveIdx = -1;
+}
+// justMove=true → skip the reframe even if text was typed (the "Just move it" btn).
+function submitMove(justMove) {
+  const i = _moveIdx;
+  const t = plan[i];
+  if (!t) { closeMoveModal(); return; }
+  const inp = document.getElementById('moveNext');
+  const next = (!justMove && inp ? inp.value : '').trim();
+  const oldName = t.name;
+  const reframed = !!next && next !== oldName;
   const row = document.querySelector(`.qrow[data-plan-idx="${i}"]`);
   const nowIso = new Date().toISOString();
   t.lastWorked = nowIso;
-  if (t.id) fetch('/api/tasks/' + t.id + '/worked', { method: 'POST' }).catch(() => {});
-  // Add/refresh in today's pile (dedupe by id, newest first).
+  if (reframed) t.name = next;
+  if (t.id) fetch('/api/tasks/' + t.id + '/worked', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(reframed ? { nextStep: next } : {}),
+  }).catch(() => {});
+  // Add/refresh in today's pile (dedupe by id, newest first). prevStep drives the
+  // "✓ old → now: new" display when the task was reframed.
   _movedToday = (_movedToday || []).filter(m => m.id !== t.id);
-  _movedToday.unshift({ id: t.id, name: t.name, projectId: t.projectId || null, lastWorked: nowIso, done: t.done });
+  _movedToday.unshift({ id: t.id, name: t.name, prevStep: reframed ? oldName : null, projectId: t.projectId || null, lastWorked: nowIso, done: t.done });
+  closeMoveModal();
   if (row) {
     row.classList.add('qrow-striking');
     setTimeout(() => { renderPlan(); renderMovedToday(true); }, 460);
@@ -2541,7 +2591,11 @@ function renderMovedToday(flashFirst) {
   list.innerHTML = items.map(m => {
     const pn = (m.projectId && _projectMap[m.projectId]) ? _projectMap[m.projectId].name : '';
     const time = m.lastWorked ? new Date(m.lastWorked).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
-    return `<div class="moved-row"><span class="moved-name">${escapeHtml(m.name)}</span>${pn ? `<span class="moved-proj">${escapeHtml(pn)}</span>` : ''}<span class="moved-time">${time}</span></div>`;
+    // Reframed: strike the step you finished, show the new next step after an arrow.
+    const nameHtml = m.prevStep
+      ? `<span class="moved-name">${escapeHtml(m.prevStep)}</span><span class="moved-arrow">→</span><span class="moved-next">${escapeHtml(m.name)}</span>`
+      : `<span class="moved-name">${escapeHtml(m.name)}</span>`;
+    return `<div class="moved-row">${nameHtml}${pn ? `<span class="moved-proj">${escapeHtml(pn)}</span>` : ''}<span class="moved-time">${time}</span></div>`;
   }).join('');
   if (flashFirst) { const f = list.querySelector('.moved-row'); if (f) { f.classList.add('moved-flash'); setTimeout(() => f.classList.remove('moved-flash'), 1000); } }
 }
@@ -3899,7 +3953,7 @@ async function loadTodayData() {
     if (ok(f) || ok(p)) { applyFinance(ok(f) ? f : null, ok(p) ? p : null); _reRenderAll(); }
   });
   pFollow.then(v => { if (ok(v)) { _followups = v.items || []; renderPlan(); } });
-  pMoved.then(v => { if (ok(v)) { _movedToday = (v.items || []).map(m => ({ id: m.id, name: m.name, projectId: m.projectId || null, lastWorked: m.lastWorked, done: m.done })); renderMovedToday(); renderPlan(); } });
+  pMoved.then(v => { if (ok(v)) { _movedToday = (v.items || []).map(m => ({ id: m.id, name: m.name, prevStep: m.prevStep || null, projectId: m.projectId || null, lastWorked: m.lastWorked, done: m.done })); renderMovedToday(); renderPlan(); } });
 }
 
 // ── INIT ──

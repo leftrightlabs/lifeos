@@ -1477,10 +1477,31 @@ app.post('/api/tasks/:id/follow', async (req, res) => {
 app.post('/api/tasks/:id/worked', async (req, res) => {
   if (!notion) return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
   try {
+    const pageId = dashifyId(req.params.id);
     const when = new Date().toISOString();
-    await notion.pages.update({ page_id: dashifyId(req.params.id), properties: { 'Last Worked': { date: { start: when } } } });
+    const nextStep = typeof req.body?.nextStep === 'string' ? req.body.nextStep.trim() : '';
+    const props = { 'Last Worked': { date: { start: when } } };
+    let prevStep = null, newName = null;
+    // Autofocus "reframe": if the user renamed the task to its next step, stamp the
+    // OLD wording into the Progress Log trail (newest-first) and set the new title.
+    // The page id never changes, so time logs / project relations stay intact.
+    if (nextStep) {
+      const page = await notion.pages.retrieve({ page_id: pageId });
+      const cur = page.properties || {};
+      const oldName = (cur.Name?.title || []).map((t) => t.plain_text).join('') || '';
+      if (oldName && oldName !== nextStep) {
+        prevStep = oldName;
+        const dateLabel = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: TZ });
+        const existing = (cur['Progress Log']?.rich_text || []).map((t) => t.plain_text).join('');
+        const trail = (`${dateLabel} · ${oldName}` + (existing ? `\n${existing}` : '')).slice(0, 1990);
+        props.Name = { title: [{ text: { content: nextStep.slice(0, 2000) } }] };
+        props['Progress Log'] = { rich_text: [{ text: { content: trail } }] };
+        newName = nextStep;
+      }
+    }
+    await notion.pages.update({ page_id: pageId, properties: props });
     invalidateTaskCaches();
-    res.json({ ok: true, lastWorked: when });
+    res.json({ ok: true, lastWorked: when, name: newName, prevStep });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1504,9 +1525,16 @@ app.get('/api/tasks/worked', async (req, res) => {
         .then((pages) => pages.map((pg) => {
           const p = pg.properties || {};
           const lw = p['Last Worked']?.date?.start || null;
+          // prevStep = the step this task was reframed FROM on its latest move
+          // (the newest line of the Progress Log trail: "MMM d · old title").
+          const trail = (p['Progress Log']?.rich_text || []).map((t) => t.plain_text).join('');
+          const firstLine = trail.split('\n')[0] || '';
+          const sep = firstLine.indexOf(' · ');
+          const prevStep = sep >= 0 ? firstLine.slice(sep + 3).trim() : null;
           return {
             id: pg.id, source,
             name: p.Name?.title?.[0]?.plain_text || '(untitled)',
+            prevStep: prevStep || null,
             projectId: (p.Project?.relation || [])[0]?.id || null,
             lastWorked: lw,
             dayKey: lw ? (lw.length === 10 ? lw : fmt(new Date(lw))) : null,
