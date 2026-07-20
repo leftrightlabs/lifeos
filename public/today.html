@@ -133,6 +133,8 @@ body {
 .brief-lines { max-width: 100%; }
 /* Current Focus reads as a flowing 2–3 sentence summary (no bullets). */
 .brief-text { font-size: var(--fs-body); line-height: 1.65; color: var(--text-2); margin: 0; }
+.brief-text.brief-muted { color: var(--text-3); }
+.brief-text.brief-muted b { color: var(--text-2); font-weight: 600; }
 .brief-text strong { color: var(--text); font-weight: 600; }
 
 /* ── STREAK STRIP ── */
@@ -861,13 +863,14 @@ body { overflow-x: hidden; }
     <!-- LEFT COLUMN: Current Focus + Today's Schedule -->
     <div class="col-left">
 
-      <!-- Current Focus — always visible, never "done" -->
+      <!-- Current Focus — reflects the day you've planned; refreshed on demand -->
       <div class="t-card" id="card-briefing" data-persist-key="briefing">
         <div class="sec-head">
           <div class="card-toggle" onclick="toggleCard(this)">
             <span class="chev">▾</span>
             <div class="sec-title">🎯 Current Focus</div>
           </div>
+          <button class="mini-btn" id="briefReflectBtn" onclick="event.stopPropagation();reflectNow()" title="Play back the day you've planned">↻ Reflect</button>
         </div>
         <div class="t-body">
           <div class="brief-lines" id="briefLines"></div>
@@ -3023,10 +3026,17 @@ function saveRitualInput(which, i, rawValue) {
 let workBriefText = '';
 // Demo-mode brief (privacy "sample") — the real summary names real clients, so
 // swap in safe demo copy when demoing.
-const DEMO_BRIEF = "Northpeak Wellness — Brand Sprint is your highest-leverage move today, so start there this morning. Two Launch LRLOS App milestones are due this week — block time right after. You're otherwise clear until a 4:30 sync, so protect the deep-work block.";
+const DEMO_BRIEF = "You've put three things on your day: the Northpeak Wellness brand sprint and two Launch LRLOS App milestones. The calendar's open until a 4:30 sync. Nothing personal on the list today.";
 function renderBrief() {
+  const el = document.getElementById('briefLines');
+  if (!el) return;
+  if (_briefReflecting) { el.innerHTML = `<p class="brief-text brief-muted">Reading back your plan…</p>`; return; }
   const txt = (window.LRLPrivacy && LRLPrivacy.get() === 'sample') ? DEMO_BRIEF : workBriefText;
-  document.getElementById('briefLines').innerHTML = txt ? `<p class="brief-text">${txt}</p>` : '';
+  // Reflect-on-demand: no cached reflection yet → invite her to plan, then reflect.
+  // (No auto-generation; a reflection describes the plan she set, so it waits for her.)
+  el.innerHTML = txt
+    ? `<p class="brief-text">${txt}</p>`
+    : `<p class="brief-text brief-muted">Plan your day on the list, then tap <b>↻ Reflect</b> and I'll play it back to you.</p>`;
 }
 
 // ── FOLLOW-UPS ──
@@ -3378,37 +3388,42 @@ function applyStreaks(data) {
   renderStreaks();
 }
 
-// Apply AI brief text → brief-lines
-function applyBrief(text) {
+// Apply AI reflection text → brief-lines. `fresh` = she just tapped Reflect (expand
+// the card so the new reflection isn't hidden); a peek on load never force-expands.
+function applyBrief(text, fresh) {
   if (!text) return;
-  // Exception to "stay collapsed": when the briefing content is new (changed since
-  // last seen), reopen the Current Focus card so the new message isn't hidden.
-  const sig = String(text).trim();
-  let bs = {};
-  try { bs = JSON.parse(localStorage.getItem('today-brief-sig') || '{}'); } catch (e) {}
-  if (bs.sig !== sig) {
-    try { localStorage.setItem('today-brief-sig', JSON.stringify({ sig })); } catch (e) {}
-    document.getElementById('card-briefing')?.classList.remove('collapsed');
-    setSection('briefing', false);
+  if (fresh) {
+    const sig = String(text).trim();
+    let bs = {};
+    try { bs = JSON.parse(localStorage.getItem('today-brief-sig') || '{}'); } catch (e) {}
+    if (bs.sig !== sig) {
+      try { localStorage.setItem('today-brief-sig', JSON.stringify({ sig })); } catch (e) {}
+      document.getElementById('card-briefing')?.classList.remove('collapsed');
+      setSection('briefing', false);
+    }
   }
   workBriefText = String(text).trim();
+  _briefReflecting = false;
   renderBrief();
 }
 
-// Auto-refresh Current Focus so it stays current without a manual browser reload:
-// re-pull the brief when you return to the tab (if it's been >30 min) and every 2h
-// in the background. The server regenerates it per time-of-day bucket.
-let _briefLastFetch = Date.now();
-function refreshBrief() {
-  _briefLastFetch = Date.now();
-  fetch('/api/ai/daily-focus').then(r => r.ok ? r.json() : null).then(v => {
-    if (v && v.brief) { applyBrief(v.brief); }
-  }).catch(() => {});
+// Reflect-on-demand. Current Focus no longer auto-generates or predicts on a timer;
+// it plays back the plan she's set, only when she asks. Tapping Reflect (force=1)
+// regenerates from her current My Day + calendar. On load we only PEEK (see loader)
+// — show today's existing reflection, never generate a guess before she's planned.
+let _briefReflecting = false;
+function reflectNow() {
+  if (_briefReflecting) return;
+  _briefReflecting = true;
+  document.getElementById('card-briefing')?.classList.remove('collapsed');
+  setSection('briefing', false);
+  renderBrief(); // shows "Reading back your plan…"
+  fetch('/api/ai/daily-focus?force=1').then(r => r.ok ? r.json() : null).then(v => {
+    _briefReflecting = false;
+    if (v && v.brief) applyBrief(v.brief, true);
+    else renderBrief();
+  }).catch(() => { _briefReflecting = false; renderBrief(); });
 }
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && Date.now() - _briefLastFetch > 30 * 60 * 1000) refreshBrief();
-});
-setInterval(() => { if (!document.hidden) refreshBrief(); }, 2 * 60 * 60 * 1000);
 
 // ── Keep Today's Schedule live ──
 // The "NOW" marker + past/future split are clock-derived, so re-apply the cached
@@ -3902,7 +3917,7 @@ async function loadTodayData() {
   const pProj   = j('/api/projects');
   const pRings  = j('/api/journal/rings');
   const pRitual = j('/api/ritual/today');
-  const pBrief  = j('/api/ai/daily-focus');
+  const pBrief  = j('/api/ai/daily-focus?peek=1'); // peek: show today's reflection if any, never generate
   const pCal    = j('/api/calendar/today');
   const pWealth = j('/api/wealth/summary');
   const pFin    = j('/api/finance/xero');
@@ -3946,7 +3961,7 @@ async function loadTodayData() {
     _reRenderAll();
   });
   pRitual.then(v => { if (ok(v)) { applyRitual(v); _reRenderAll(); } });
-  pBrief.then(v  => { if (ok(v)) { applyBrief(v.brief); _reRenderAll(); } });
+  pBrief.then(v  => { if (ok(v)) { if (v.brief) applyBrief(v.brief); else renderBrief(); _reRenderAll(); } });
   pCal.then(v    => { if (ok(v)) { applyCalendar(v.events || []); _reRenderAll(); } });
   pWealth.then(v => { if (ok(v)) { applyWealth(v); _reRenderAll(); } });
   Promise.all([pFin, pPipe]).then(([f, p]) => {

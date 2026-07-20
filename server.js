@@ -2143,21 +2143,20 @@ app.get('/api/calendar/week', async (req, res) => {
 
 // ----- AI: Daily Brief -----
 
-const BRIEF_SYSTEM = (name) => `You write a live Daily Focus briefing for ${name || 'the signed-in user'}, addressed directly to them.
+const BRIEF_SYSTEM = (name) => `You play back the day ${name || 'the signed-in user'} has planned, addressed directly to them. You REFLECT the plan they set — you never plan for them, predict, prioritize, or advise.
 
-CRITICAL: This is a LIVE check based on the current time, NOT a recap of the whole day. Focus only on:
-- What's UPCOMING on your calendar (events starting after now)
-- Tasks still open on your My Day list
-- Anything time-sensitive that's slipping (overdue, deadline approaching)
-- One forward-looking observation: what to prioritize next, what to skip, what's worth pausing for
+You are given the tasks they chose for their My Day list and the events still on their calendar. Describe the shape of the day they've set up: what they've put in front of themselves, how it sits around their fixed commitments, where the day is full and where it's open.
 
-DO NOT recap events or work already completed. DO NOT mention things in the past. Look forward.
+HARD RULES:
+- Reference ONLY the tasks and events explicitly listed below. Never invent, infer, or pull in anything not given (no overdue items, no goals, nothing they didn't put on the list).
+- Do NOT tell them what to prioritize, what to skip, what order to work in, or to "knock out" / "clear" / "protect" anything. No advice, no sequencing, no urgency.
+- Keep work and personal separate. Never suggest fitting personal tasks into work time or vice versa.
+- A fixed fact is fine to state plainly (a meeting time, a genuinely tight gap between two events) — as a fact, not a warning.
+- If the My Day list is empty, say so plainly and invite them to add what they want to focus on. Do not manufacture a focus.
 
-Voice: direct, warm, casual. Like a friend who knows your day. Uses ellipses sometimes; never em-dashes. No corporate tone. No "let's" or "looks like you've got a busy afternoon!" Skip preambles.
+Voice: direct, warm, calm. Like a friend playing back what you told them. Ellipses ok, never em-dashes. No corporate tone, no cheerleading, no "let's". Skip preambles.
 
-Format: 3-4 short key points, each a single crisp sentence — no run-ons, no compound clauses. Each point is a distinct observation. Plain text — no markdown, no bullets, no headers. Write like a briefing card, not a paragraph.
-
-Reference real specifics: names, times, project names. Surface tension if something matters (overdue, soon-due). End with one grounding observation about what's ahead.`;
+Format: 2-3 short sentences, plain text — no markdown, bullets, or headers. Reflect, don't instruct.`;
 
 function chicagoTodayDateLabel() {
   const now = new Date();
@@ -2191,7 +2190,7 @@ function chicagoNowParts() {
 }
 
 const briefCache = new Map();
-const BRIEF_TTL_MS = 1000 * 60 * 60 * 2;
+const BRIEF_TTL_MS = 1000 * 60 * 60 * 16; // a day's reflection persists ~all day until she re-reflects
 
 // ----- REVIEW (inbox-zero queries) -----
 
@@ -2812,49 +2811,53 @@ function buildBriefUserPrompt({ calEvents, workMyDay, lifeMyDay, goals }) {
   const workWaiting = workMyDay.filter((t) => isWaiting(t) && !isDone(t));
   const lifeActionable = lifeMyDay.filter((t) => !isWaiting(t) && !isDone(t));
   const lifeWaiting = lifeMyDay.filter((t) => isWaiting(t) && !isDone(t));
-  const goalsLines = goals.map((g) => {
-    const pct = g.progress.total ? Math.round((g.progress.done / g.progress.total) * 100) : 0;
-    return `  - [${g.source}] ${g.name} — ${g.progress.done}/${g.progress.total} milestones (${pct}%)${g.targetDeadline ? `, target ${g.targetDeadline}` : ''}`;
-  });
   const waitingTotal = workWaiting.length + lifeWaiting.length;
+  const planEmpty = workActionable.length === 0 && lifeActionable.length === 0 && workWaiting.length === 0 && lifeWaiting.length === 0;
   return [
     `It is ${dateLabel} — ${timeLabel} (America/Chicago).`,
     '',
-    `UPCOMING events (after now) (${upcoming.length}):`,
+    `This is the day they have PLANNED — reflect it back, do not add to it.`,
+    '',
+    `Events still on their calendar today (${upcoming.length}):`,
     upcomingLines.length ? upcomingLines.join('\n') : '  (nothing left on the calendar today)',
     pastSummary,
     '',
-    `Work ACTIONABLE tasks — Doing/Planned/Agenda (${workActionable.length}):`,
+    `Work tasks they put on My Day (${workActionable.length}):`,
     workActionable.length ? workActionable.map(taskLine).join('\n') : '  (none)',
     '',
-    `Personal ACTIONABLE tasks (${lifeActionable.length}):`,
+    `Personal tasks they put on My Day (${lifeActionable.length}):`,
     lifeActionable.length ? lifeActionable.map(taskLine).join('\n') : '  (none)',
     '',
-    `WAITING-ON tasks (${waitingTotal}) — blocked on someone else, DO NOT nudge her to action these. At most: suggest a follow-up nudge if it's been a while.`,
+    `On My Day but waiting on someone else (${waitingTotal}) — mention only as "waiting", never as something to do:`,
     waitingTotal ? [...workWaiting, ...lifeWaiting].map(taskLine).join('\n') : '  (none)',
     '',
-    `Active goals (${goals.length}):`,
-    goalsLines.length ? goalsLines.join('\n') : '  (none flagged)',
-    '',
-    'Write the Daily Focus. Look forward, not back. Only mention tasks from the ACTIONABLE buckets as things to do today. The WAITING-ON tasks are blocked — never tell her to do them; you may suggest a brief follow-up nudge if relevant.',
+    planEmpty
+      ? 'Their My Day list is empty. Say so plainly and invite them to add what they want to focus on — do not manufacture a focus or pull in anything else.'
+      : 'Play back the day they have planned in 2-3 calm sentences. Reflect ONLY the tasks and events listed above. Do not advise, prioritize, sequence, warn, or add anything not listed. Keep work and personal separate.',
   ].join('\n');
 }
 
 async function dailyFocusHandler(req, res) {
   if (!anthropic) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
   const today = chicagoTodayISODate();
-  const { bucket } = chicagoNowParts();
   const force = req.query.force === '1' || req.query.force === 'true';
-  // Scope the cache per signed-in user so one person's focus (and their calendar/
-  // tasks) is never served to another.
+  // peek = return today's reflection if one exists, but NEVER generate. The page
+  // uses this on load so it shows the last reflection without guessing a new one;
+  // a fresh reflection only happens when she taps "Reflect" (force=1).
+  const peek = req.query.peek === '1' || req.query.peek === 'true';
+  // Scope the cache per signed-in user so one person's reflection (and their
+  // calendar/tasks) is never served to another. Keyed by DAY only (not time-of-day)
+  // — a reflection is about the plan she set, not the clock; it stands until she
+  // re-reflects.
   const u = currentUser();
   const userKey = u ? (u.id || u.email) : 'anon';
-  const cacheKey = `focus-${today}-${bucket}-${userKey}`;
+  const cacheKey = `focus-${today}-${userKey}`;
   if (!force) {
     const hit = briefCache.get(cacheKey);
     if (hit && Date.now() - hit.t < BRIEF_TTL_MS) {
-      return res.json({ brief: hit.v, cached: true, ts: hit.t, bucket });
+      return res.json({ brief: hit.v, cached: true, ts: hit.t });
     }
+    if (peek) return res.json({ brief: null, cached: false }); // don't generate on a peek
   }
   try {
     const ctx = await gatherTodayContext();
@@ -2869,7 +2872,7 @@ async function dailyFocusHandler(req, res) {
     });
     const text = msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
     briefCache.set(cacheKey, { v: text, t: Date.now() });
-    res.json({ brief: text, cached: false, ts: Date.now(), bucket });
+    res.json({ brief: text, cached: false, ts: Date.now() });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
