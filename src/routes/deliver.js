@@ -249,7 +249,7 @@ export function registerDeliverRoutes(app, ctx) {
 
     // ── Section data ──
     const taskRow = (t) => ({
-      id: t.id, name: t.name, url: t.url, projectName: t.projectName, av: t.av,
+      id: t.id, name: t.name, url: t.url, projectName: t.projectName, projectId: t.projectId, av: t.av,
       status: t.status, due: t.due, est: t.est, logged: t.logged, outsourced: t.outsourced,
       overdue: t.overdue, dueToday: t.dueToday, dueTomorrow: t.dueTomorrow,
       overdueDays: t.overdue ? Math.abs(dayDiff(t.due, today)) : 0,

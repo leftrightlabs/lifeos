@@ -207,6 +207,15 @@ body:not([data-state]) .dv-content { display:none; }
 .mw-group-sec.collapsed .mw-group-head { margin-bottom:0; opacity:.72; }
 .mw-gname { flex:1; }
 .mw-gcount { color:var(--text-4); font-weight:700; }
+.mw-add { margin-left:10px; font-size:11px; font-weight:700; color:var(--accent); background:none; border:1px solid var(--border); border-radius:6px; padding:2px 9px; cursor:pointer; font-family:inherit; letter-spacing:.02em; text-transform:none; transition:border-color .12s; }
+.mw-add:hover { border-color:var(--accent); }
+.mw-addform { display:flex; gap:7px; align-items:center; margin-bottom:8px; }
+.mw-addinput { flex:1; min-width:0; background:#0A0F1E; border:1px solid var(--border); border-radius:8px; padding:9px 12px; color:var(--text); font-family:inherit; font-size:14px; }
+.mw-addinput:focus { outline:none; border-color:var(--accent); }
+.mw-addsave { flex-shrink:0; background:var(--accent); color:#fff; border:none; border-radius:8px; padding:9px 15px; font-weight:700; cursor:pointer; font-family:inherit; font-size:13px; }
+.mw-addsave:disabled { opacity:.6; cursor:default; }
+.mw-addcancel { flex-shrink:0; background:none; border:none; color:var(--text-3); font-size:20px; line-height:1; cursor:pointer; padding:0 6px; }
+.mw-addcancel:hover { color:var(--text); }
 /* Notion-matched status pills (Planned=blue, Agenda=pink, Doing=green, Waiting=amber, Billing=purple, Done=gray) */
 .stchip { display:inline-flex; align-items:center; gap:5px; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:5px; letter-spacing:.02em; white-space:nowrap; vertical-align:middle; }
 .stchip::before { content:''; width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; }
@@ -583,8 +592,11 @@ function renderMyWork() {
     const rows = groups.get(k).map((t) => taskRowHTML(t, { showStatus: true, actions: [t.est == null ? A.est(t) : A.log(t), A.done(t)] })).join('');
     const gkey = MW_GROUP + ':' + k;
     const col = !!MW_COLLAPSED[gkey];
+    // In project grouping, offer "+ Task" to add a task already tied to this project.
+    const pid = groups.get(k)[0].projectId;
+    const addBtn = (MW_GROUP === 'project' && pid) ? `<button class="mw-add" data-proj="${esc(pid)}" data-projname="${esc(k)}" title="Add a task to this project">+ Task</button>` : '';
     return `<div class="mw-group-sec${col ? ' collapsed' : ''}" data-gkey="${esc(gkey)}">
-      <div class="mw-group-head" role="button"><span class="mw-caret">▾</span><span class="mw-gname">${esc(k)}</span> <span class="mw-gcount">${groups.get(k).length}</span></div>
+      <div class="mw-group-head" role="button"><span class="mw-caret">▾</span><span class="mw-gname">${esc(k)}</span> <span class="mw-gcount">${groups.get(k).length}</span>${addBtn}</div>
       <div class="mw-group-body"><div class="rows">${rows}</div></div>
     </div>`;
   }).join('');
@@ -610,8 +622,11 @@ document.getElementById('mw-filter').addEventListener('click', (e) => {
 });
 function setMyWorkGroup(g) { MW_GROUP = g; try { localStorage.setItem('lrl-mywork-group', g); } catch (e) {} renderMyWork(); }
 document.querySelectorAll('#mw-group .mw-gbtn').forEach((b) => b.addEventListener('click', () => setMyWorkGroup(b.dataset.grp)));
-// Collapse / expand a group by clicking its header (delegated — the body re-renders).
+// Collapse / expand a group, and the per-project "+ Task" add-form (delegated).
 document.getElementById('mw-body').addEventListener('click', (e) => {
+  const addBtn = e.target.closest('.mw-add');
+  if (addBtn) { mwOpenAdd(addBtn); return; }        // + Task → open the inline form
+  if (e.target.closest('.mw-addform')) return;      // clicks inside the form don't collapse
   const head = e.target.closest('.mw-group-head'); if (!head) return;
   const sec = head.closest('.mw-group-sec'); if (!sec) return;
   const gkey = sec.dataset.gkey;
@@ -619,6 +634,46 @@ document.getElementById('mw-body').addEventListener('click', (e) => {
   MW_COLLAPSED[gkey] = nowCollapsed;
   try { localStorage.setItem('lrl-mywork-collapsed', JSON.stringify(MW_COLLAPSED)); } catch (e) {}
 });
+// Inline "add a task to this project" form. Creates a work task already tied to
+// the project and assigned to the signed-in user (POST /api/tasks auto-assigns),
+// so it lands in this project group and in My Work. Defaults to Planned.
+function mwOpenAdd(btn) {
+  const sec = btn.closest('.mw-group-sec');
+  sec.classList.remove('collapsed'); // make sure the group is open
+  const body = sec.querySelector('.mw-group-body');
+  const existing = body.querySelector('.mw-addform');
+  if (existing) { existing.querySelector('.mw-addinput').focus(); return; }
+  const projId = btn.dataset.proj, projName = btn.dataset.projname;
+  const form = document.createElement('div');
+  form.className = 'mw-addform';
+  form.innerHTML = `<input class="mw-addinput" placeholder="New task in ${esc(projName)}…" autocomplete="off"><button class="mw-addsave">Add</button><button class="mw-addcancel" title="Cancel">×</button>`;
+  body.insertBefore(form, body.firstChild);
+  const input = form.querySelector('.mw-addinput');
+  const saveBtn = form.querySelector('.mw-addsave');
+  input.focus();
+  const submit = async () => {
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    saveBtn.disabled = true; saveBtn.textContent = '…';
+    try {
+      const r = await fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source: 'work', name, projectId: projId, status: 'Planned' }) });
+      const j = await r.json();
+      if (!r.ok || j.error) throw new Error(j.error || 'failed');
+      toast('Task added ✓');
+      await reloadFresh();
+    } catch (err) { toast('Couldn\'t add: ' + err.message); saveBtn.disabled = false; saveBtn.textContent = 'Add'; }
+  };
+  saveBtn.addEventListener('click', submit);
+  form.querySelector('.mw-addcancel').addEventListener('click', () => form.remove());
+  input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); submit(); } else if (ev.key === 'Escape') form.remove(); });
+}
+// Re-fetch the deliver payload fresh (bypassing the cache) after a mutation.
+async function reloadFresh() {
+  try {
+    const d = await fetch('/api/deliver?me=0&fresh=1').then((r) => r.json());
+    if (!d.error) { DATA = d; render(); }
+  } catch (e) {}
+}
 
 // ── Actions ──
 let modalMode = 'log', modalTaskId = null;
