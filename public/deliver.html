@@ -304,6 +304,21 @@ body:not([data-state]) .dv-content { display:none; }
 <a href="/" class="fab" title="Back to Today">⚡</a>
 
 <script>
+// Route every Notion link on this page through the app-first opener (shell.js's
+// window.openNotion → notion:// with a browser fallback). Client project/task
+// links here are plain <a target="_blank">, some rendered dynamically, so a single
+// capture-phase delegate covers them all — including future ones — without editing
+// each template. Non-Notion links (internal nav, Xero) pass through untouched.
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[href]');
+  if (!a) return;
+  var href = a.getAttribute('href');
+  if (!href || !/notion\.(so|com)/i.test(href)) return;
+  e.preventDefault();
+  if (window.openNotion) window.openNotion(href);
+  else window.open(href, '_blank', 'noopener');
+}, true);
+
 const BURST = '<svg class="burst" viewBox="0 0 512 512"><path fill="#4FD6A0" d="M507.2,257.1c-125.4,19.1-225.5,115-250.7,238.3-.2.8-1.3.8-1.5,0-25.2-123.2-125.3-219.2-250.7-238.3-.9-.1-.9-1.4,0-1.5,125.4-19.1,225.5-115,250.7-238.3.2-.8,1.3-.8,1.5,0,25.2,123.2,125.3,219.2,250.7,238.3.9.1.9,1.4,0,1.5Z"/></svg>';
 let ME = 0;
 let DATA = null, REV_DATA = null;
