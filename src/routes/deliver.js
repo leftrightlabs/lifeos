@@ -274,12 +274,31 @@ export function registerDeliverRoutes(app, ctx) {
     const stressedCount = overdueTasks.length + atRiskProjects.length + staleClientWaits.length;
     const nextDeadline = activeProjs.filter((p) => p.deadline && p.deadline >= today).sort((a, b) => a.deadline < b.deadline ? -1 : 1)[0] || null;
 
+    // ── MY WORK (execution view) ── always the SIGNED-IN user's own actionable
+    // production tasks, independent of the Me toggle (this view is inherently
+    // "me"). Strict: assigned to me only — never unassigned, never someone else's.
+    // Grouped client-side (by project / status / due). Computed from the raw
+    // active set so the Overview's me-scoping never narrows it.
+    const myWork = data.active.map(tagT)
+      .filter((t) => t.assignees.includes(meId) && !(t.snooze && t.snooze > today) && !t.recurring)
+      .sort((a, b) => (a.due || '9999') < (b.due || '9999') ? -1 : 1)
+      .map(taskRow);
+
+    // ── NEEDS AN OWNER (PM surface) ── active tasks with no assignee. With the
+    // strict Me scope, these no longer masquerade as anyone's work, so the PM
+    // Overview surfaces them explicitly: "these need an owner assigned".
+    const needsOwner = data.active.map(tagT)
+      .filter((t) => t.assignees.length === 0 && !(t.snooze && t.snooze > today) && !t.recurring)
+      .sort((a, b) => (a.due || '9999') < (b.due || '9999') ? -1 : 1)
+      .map(taskRow);
+
     return {
       asOf: data.asOf, today, me, isCalm, conditions,
       banner: { stressedCount, overdue: overdueTasks.length, atRisk: atRiskProjects.length, staleWaits: staleClientWaits.length },
       hero,
       pulse: { shippedThisWeek, lastWeek, streak, onTimeRate, momentum },
-      sections: { comingDue, atRisk: atRiskRows, waiting, delegated, dataToFix, readyToBill, onTrack, onHold, notStarted },
+      sections: { comingDue, atRisk: atRiskRows, waiting, delegated, dataToFix, readyToBill, onTrack, onHold, notStarted, needsOwner },
+      myWork, myWorkCount: myWork.length,
       calm: { activeCount: activeProjs.length, nextDeadline: nextDeadline ? { name: nextDeadline.name, deadline: nextDeadline.deadline } : null },
     };
   }

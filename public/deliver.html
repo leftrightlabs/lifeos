@@ -190,6 +190,17 @@ body:not([data-state]) .dv-content { display:none; }
 @keyframes payoffPop { 0%{transform:scale(0) rotate(-20deg)} 60%{transform:scale(1.15) rotate(6deg)} 100%{transform:scale(1) rotate(0)} }
 #dv-loading { padding:60px 0; text-align:center; color:var(--text-3); font-size:13px; }
 #dv-error { display:none; background:var(--red-soft); border:1px solid rgba(242,109,109,.25); color:var(--red); border-radius:var(--radius); padding:14px 18px; font-size:13px; margin-bottom:18px; }
+/* MY WORK tab */
+.mw-head { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:16px; }
+.mw-sub { font-size:13px; color:var(--text-3); }
+.mw-group { display:flex; align-items:center; gap:6px; }
+.mw-group-lbl { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-4); margin-right:2px; }
+.mw-gbtn { padding:5px 12px; border:1px solid var(--border); border-radius:999px; background:none; color:var(--text-3); font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s; }
+.mw-gbtn:hover { color:var(--text-2); border-color:var(--text-4); }
+.mw-gbtn.on { background:var(--accent-soft); color:var(--accent); border-color:transparent; }
+.mw-group-sec { margin-bottom:22px; }
+.mw-group-head { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--text-2); margin:0 0 9px; padding-bottom:7px; border-bottom:1px solid var(--border-soft); }
+.mw-gcount { color:var(--text-4); font-weight:700; }
 </style>
 <script src="/sample-data.js"></script>
 <script src="/privacy.js"></script>
@@ -204,7 +215,8 @@ body:not([data-state]) .dv-content { display:none; }
   </div>
 
   <div class="tab-bar">
-    <button class="exec-tab-btn active" data-go="clients">CLIENTS</button>
+    <button class="exec-tab-btn active" data-go="clients">OVERVIEW</button>
+    <button class="exec-tab-btn" data-go="mywork">MY WORK</button>
     <button class="exec-tab-btn" data-go="offers">OFFERS</button>
   </div>
 
@@ -214,7 +226,6 @@ body:not([data-state]) .dv-content { display:none; }
 
   <div class="dv-content card-stack">
     <div class="statebanner" id="banner"></div>
-    <div class="hero show-stressed" id="hero"></div>
     <div class="calmpayoff show-calm" id="calmpayoff"></div>
     <div class="pulsestrip" id="pulse"></div>
 
@@ -233,6 +244,7 @@ body:not([data-state]) .dv-content { display:none; }
     </div>
 
     <div class="section show-stressed t-card" data-persist-key="deliver-comingdue" id="sec-comingdue"></div>
+    <div class="section show-stressed t-card" data-persist-key="deliver-needsowner" id="sec-needsowner"></div>
     <div class="section show-stressed t-card" data-persist-key="deliver-atrisk" id="sec-atrisk"></div>
     <div class="section show-stressed t-card" data-persist-key="deliver-waiting" id="sec-waiting"></div>
     <div class="grid2 show-stressed">
@@ -248,6 +260,19 @@ body:not([data-state]) .dv-content { display:none; }
     </div>
     <div class="section show-calm t-card" data-persist-key="deliver-clean" id="sec-clean"></div>
   </div>
+  </section>
+
+  <section class="exec-panel" data-panel="mywork">
+    <div class="mw-head">
+      <div class="mw-sub" id="mw-sub">Your client work — everything assigned to you.</div>
+      <div class="mw-group" id="mw-group">
+        <span class="mw-group-lbl">Group by</span>
+        <button class="mw-gbtn" data-grp="project">Project</button>
+        <button class="mw-gbtn" data-grp="status">Status</button>
+        <button class="mw-gbtn" data-grp="due">Due date</button>
+      </div>
+    </div>
+    <div id="mw-body"><div class="empty-line">Loading your work…</div></div>
   </section>
 
   <section class="exec-panel" data-panel="offers">
@@ -417,28 +442,8 @@ function render() {
     document.getElementById('banner').innerHTML = `<span class="bigicon">🔥</span><div class="txt"><h2 class="scotch">${b.stressedCount} thing${b.stressedCount === 1 ? '' : 's'} need you today</h2><p>${esc(parts.join(' · ') || 'A few items need attention')}. Knock out the top one first.</p></div>`;
   }
 
-  const h = d.hero;
-  if (h) {
-    const flag = h.blocks > 0 ? `<div class="amberflag">⚠ This is the #1 domino — ${h.blocks} other task${h.blocks > 1 ? 's' : ''} on this project unblock${h.blocks > 1 ? '' : 's'} once it's done.</div>` : (h.stale ? `<div class="amberflag">⚠ No movement in ${h.staleDays} days — still live?</div>` : '');
-    document.getElementById('hero').innerHTML = `
-      <div class="eyebrow">⚡ Do this next</div>
-      <h1 class="scotch">${esc(h.name)}</h1>
-      <p class="sub">${h.overdue ? `Overdue ${h.overdueDays} days · ` : h.dueToday ? 'Due today · ' : ''}${esc(h.projectName)}</p>
-      <div class="meta">
-        ${h.overdue ? `<span class="m"><span class="dot" style="background:var(--red)"></span> <b>Overdue ${h.overdueDays}d</b></span>` : ''}
-        <span class="m">Project <b>${esc(h.projectName)}</b></span>
-        ${avEl(h.av)}
-        <span class="m">Est <b>${h.est != null ? h.est + 'h' : '—'}</b> · logged <b>${(h.logged || 0)}h</b></span>
-      </div>
-      <div class="actions">
-        <button class="btn btn-primary" onclick="markDone('${h.id}',this,true)">✓ Mark done</button>
-        <button class="btn btn-ghost" onclick='openLog("${h.id}",${JSON.stringify(h.name)})'>⏱ Log time</button>
-        <a class="btn btn-ghost" href="${h.url}" target="_blank">→ Open in Notion</a>
-        <button class="btn btn-ghost" onclick="snoozeMenu(this,'${h.id}')">Snooze</button>
-      </div>${flag}`;
-  } else {
-    document.getElementById('hero').innerHTML = `<div class="eyebrow">⚡ Do this next</div><h1 class="scotch">Nothing urgent assigned to you.</h1><p class="sub">No overdue or due-soon production tasks in this view.</p>`;
-  }
+  // ('Do this next' hero retired — Overview is a pure PM status view now. What to
+  // work on next lives on the MY WORK tab, scoped strictly to the signed-in user.)
   const c = d.calm;
   document.getElementById('calmpayoff').innerHTML = `${BURST}<h1 class="scotch">Everything's handled.</h1><p>All ${c.activeCount} active production project${c.activeCount === 1 ? '' : 's'} are on track. No overdue tasks, no stale client waits, nothing unbilled.</p>${c.nextDeadline ? `<p style="color:var(--text-3); font-size:12px;">Next deadline — <b style="color:var(--text-2)">${esc(c.nextDeadline.name)}, ${fmtDate(c.nextDeadline.deadline)}</b>.</p>` : ''}<div class="gozone"><a href="/marketing">→ Go to Marketing</a><a href="/sales">→ Go to Sales</a><a href="/scale">→ Go to Scale</a></div>`;
 
@@ -454,6 +459,8 @@ function render() {
   const s = d.sections;
   renderRows('sec-comingdue', '⏰ Needs you now', 'Coming due', s.comingDue.length, 'red',
     s.comingDue.map((t) => taskRowHTML(t, { showNoEst: true, actions: [t.est == null ? A.est(t) : A.log(t), t.outsourced ? A.nudge(t) : A.done(t)] })));
+  renderRows('sec-needsowner', '🧭 Needs an owner', 'Unassigned tasks', s.needsOwner.length, 'amber',
+    s.needsOwner.slice(0, 12).map((t) => taskRowHTML(t, { line: 'l-amber', actions: [A.open(t)] })), s.needsOwner.length);
   renderRows('sec-atrisk', '📉 Protect the deadline', 'Projects at risk', s.atRisk.length, 'red',
     s.atRisk.map((pp) => projRowHTML(pp)));
   renderRows('sec-waiting', '⏳ Stalled — chase it', 'Waiting on others', s.waiting.length, 'amber',
@@ -471,6 +478,7 @@ function render() {
     s.notStarted.map((pp) => projRowHTML(pp, { line: 'l-zone' })));
   document.getElementById('sec-clean').innerHTML = `<div class="clean"><span class="ic">✓</span> Delivery data is clean — nothing overdue, every project owned and dated.</div>`;
 
+  renderMyWork();
   document.getElementById('dv-loading').style.display = 'none';
   if (window.restoreCards) restoreCards();   // re-apply persisted card collapse after async render
 }
@@ -488,6 +496,44 @@ function renderDataFix(df) {
   const total = df.missingEstimates.count + df.doneNoTime.count + df.missingDeadlines.count;
   document.getElementById('sec-datafix').innerHTML = sectionHead('🩹 Backfill the gaps', 'Data to fix', total, 'amber') + (rows.length ? `<div class="rows">${rows.join('')}</div>` : `<div class="empty-line">All clean.</div>`);
 }
+
+// ── MY WORK (execution view) ── the signed-in user's own production tasks,
+// grouped by Project (default) / Status / Due. Independent of the ME toggle:
+// this tab is inherently "me" (DATA.myWork is server-scoped to the signed-in user).
+let MW_GROUP = 'project';
+try { const s = localStorage.getItem('lrl-mywork-group'); if (['project', 'status', 'due'].includes(s)) MW_GROUP = s; } catch (e) {}
+const MW_STATUS_ORDER = ['Doing', 'Agenda', 'Planned', 'Waiting'];
+const MW_DUE_ORDER = ['Overdue', 'Due today', 'This week', 'Later', 'No date'];
+const orderIdx = (arr, k) => { const i = arr.indexOf(k); return i < 0 ? arr.length : i; };
+function mwDueBucket(t) {
+  if (t.overdue) return 'Overdue';
+  if (t.dueToday) return 'Due today';
+  if (!t.due) return 'No date';
+  const in7 = new Date(DATA.today + 'T00:00:00Z'); in7.setUTCDate(in7.getUTCDate() + 7);
+  return t.due <= in7.toISOString().slice(0, 10) ? 'This week' : 'Later';
+}
+function renderMyWork() {
+  const el = document.getElementById('mw-body'); if (!el) return;
+  const tasks = (DATA && DATA.myWork) || [];
+  document.getElementById('mw-sub').textContent = tasks.length
+    ? `${tasks.length} task${tasks.length === 1 ? '' : 's'} assigned to you`
+    : 'Your client work — everything assigned to you.';
+  document.querySelectorAll('#mw-group .mw-gbtn').forEach((b) => b.classList.toggle('on', b.dataset.grp === MW_GROUP));
+  if (!tasks.length) { el.innerHTML = `<div class="empty-line">Nothing assigned to you in production right now. 🎉</div>`; return; }
+  const groups = new Map();
+  const keyOf = (t) => MW_GROUP === 'project' ? (t.projectName || '—') : MW_GROUP === 'status' ? (t.status || '—') : mwDueBucket(t);
+  tasks.forEach((t) => { const k = keyOf(t); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); });
+  let keys = [...groups.keys()];
+  if (MW_GROUP === 'status') keys.sort((a, b) => orderIdx(MW_STATUS_ORDER, a) - orderIdx(MW_STATUS_ORDER, b) || a.localeCompare(b));
+  else if (MW_GROUP === 'due') keys.sort((a, b) => orderIdx(MW_DUE_ORDER, a) - orderIdx(MW_DUE_ORDER, b));
+  else keys.sort((a, b) => a.localeCompare(b));
+  el.innerHTML = keys.map((k) => {
+    const rows = groups.get(k).map((t) => taskRowHTML(t, { actions: [t.est == null ? A.est(t) : A.log(t), A.done(t)] })).join('');
+    return `<div class="mw-group-sec"><div class="mw-group-head">${esc(k)} <span class="mw-gcount">${groups.get(k).length}</span></div><div class="rows">${rows}</div></div>`;
+  }).join('');
+}
+function setMyWorkGroup(g) { MW_GROUP = g; try { localStorage.setItem('lrl-mywork-group', g); } catch (e) {} renderMyWork(); }
+document.querySelectorAll('#mw-group .mw-gbtn').forEach((b) => b.addEventListener('click', () => setMyWorkGroup(b.dataset.grp)));
 
 // ── Actions ──
 let modalMode = 'log', modalTaskId = null;
@@ -579,8 +625,12 @@ async function markInvoiced(id, el) {
 // ── Load ──
 async function load(me) {
   try {
+    // Overview is the whole-team PM lens (always team-scoped); the personal view
+    // is the MY WORK tab (DATA.myWork, server-scoped to the signed-in user). So we
+    // no longer narrow this fetch by the ME toggle — that was the source of the
+    // "someone else's task showing in ME mode" confusion.
     const [d, rev] = await Promise.all([
-      fetch('/api/deliver?me=' + (me ? 1 : 0)).then(r => r.json()),
+      fetch('/api/deliver?me=0').then(r => r.json()),
       fetch('/api/convert').then(r => r.json()).catch(() => null),
     ]);
     if (d.error) throw new Error(d.error);
