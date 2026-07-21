@@ -207,6 +207,16 @@ body:not([data-state]) .dv-content { display:none; }
 .mw-group-sec.collapsed .mw-group-head { margin-bottom:0; opacity:.72; }
 .mw-gname { flex:1; }
 .mw-gcount { color:var(--text-4); font-weight:700; }
+/* Notion-matched status pills (Planned=blue, Agenda=pink, Doing=green, Waiting=amber, Billing=purple, Done=gray) */
+.stchip { display:inline-flex; align-items:center; gap:5px; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:5px; letter-spacing:.02em; white-space:nowrap; vertical-align:middle; }
+.stchip::before { content:''; width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; }
+.st-planned { color:#6ba6f0; background:rgba(93,156,236,.15); }
+.st-agenda  { color:#de8fbe; background:rgba(212,114,168,.15); }
+.st-doing   { color:#4FD6A0; background:rgba(79,214,160,.15); }
+.st-waiting { color:#e6ac5f; background:rgba(224,164,88,.16); }
+.st-billing { color:#a99eff; background:rgba(155,135,245,.16); }
+.st-done    { color:#93a0b4; background:rgba(138,148,166,.14); }
+.st-default { color:#93a0b4; background:rgba(138,148,166,.14); }
 </style>
 <script src="/sample-data.js"></script>
 <script src="/privacy.js"></script>
@@ -360,6 +370,9 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&':
 const fmtDate = (iso) => { if (!iso) return '—'; const d = new Date(iso + 'T00:00:00Z'); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }); };
 const avEl = (av) => av ? `<span class="av ${av.cls}">${esc(av.init)}</span>` : '';
 const dueLabel = (t) => t.overdue ? `<span style="color:var(--red)">Overdue ${t.overdueDays}d</span>` : t.dueToday ? `<span style="color:var(--amber)">Due today</span>` : t.dueTomorrow ? `<span style="color:var(--amber)">Due tomorrow</span>` : (t.due ? `Due ${fmtDate(t.due)}` : '');
+// Notion-matched status pill so the stage reads at a glance in any grouping.
+const ST_KEYS = { doing: 'doing', agenda: 'agenda', planned: 'planned', waiting: 'waiting', billing: 'billing', done: 'done' };
+const statusChip = (t) => { if (!t.status) return ''; const k = ST_KEYS[String(t.status).toLowerCase()] || 'default'; return `<span class="stchip st-${k}">${esc(t.status)}</span>`; };
 
 function toast(msg) { document.getElementById('toast-text').textContent = msg; const t = document.getElementById('toast'); t.classList.add('show'); clearTimeout(window._tt); window._tt = setTimeout(() => t.classList.remove('show'), 2600); }
 
@@ -377,7 +390,7 @@ function taskRowHTML(t, opts = {}) {
   const out = t.outsourced ? '<span class="chip outsource">outsourced</span>' : '';
   return `<div class="row ${lcls}" data-task="${t.id}">
     ${avEl(t.av)}
-    <div class="main"><div class="title"><a href="${t.url}" target="_blank">${esc(t.name)}</a> ${out}</div>
+    <div class="main"><div class="title"><a href="${t.url}" target="_blank">${esc(t.name)}</a> ${opts.showStatus ? statusChip(t) : ''} ${out}</div>
     <div class="meta">${metaBits.join(' <span class="sep">·</span> ')}</div></div>
     <div class="right">${right}</div></div>`;
 }
@@ -540,7 +553,7 @@ function renderMyWork() {
   else if (MW_GROUP === 'due') keys.sort((a, b) => orderIdx(MW_DUE_ORDER, a) - orderIdx(MW_DUE_ORDER, b));
   else keys.sort((a, b) => a.localeCompare(b));
   el.innerHTML = keys.map((k) => {
-    const rows = groups.get(k).map((t) => taskRowHTML(t, { actions: [t.est == null ? A.est(t) : A.log(t), A.done(t)] })).join('');
+    const rows = groups.get(k).map((t) => taskRowHTML(t, { showStatus: true, actions: [t.est == null ? A.est(t) : A.log(t), A.done(t)] })).join('');
     const gkey = MW_GROUP + ':' + k;
     const col = !!MW_COLLAPSED[gkey];
     return `<div class="mw-group-sec${col ? ' collapsed' : ''}" data-gkey="${esc(gkey)}">
