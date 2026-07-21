@@ -279,10 +279,14 @@ export function registerDeliverRoutes(app, ctx) {
     // "me"). Strict: assigned to me only — never unassigned, never someone else's.
     // Grouped client-side (by project / status / due). Computed from the raw
     // active set so the Overview's me-scoping never narrows it.
-    const myWork = data.active.map(tagT)
-      .filter((t) => t.assignees.includes(meId) && !(t.snooze && t.snooze > today) && !t.recurring)
-      .sort((a, b) => (a.due || '9999') < (b.due || '9999') ? -1 : 1)
-      .map(taskRow);
+    // allWork = every active production task (any assignee); myWork = just mine.
+    // The ME toggle switches between them on the client (ME on → myWork). Rows
+    // carry an avatar, so in the all-team view you can see who owns each task.
+    const workBase = data.active.map(tagT)
+      .filter((t) => !(t.snooze && t.snooze > today) && !t.recurring)
+      .sort((a, b) => (a.due || '9999') < (b.due || '9999') ? -1 : 1);
+    const allWork = workBase.map(taskRow);
+    const myWork = workBase.filter((t) => t.assignees.includes(meId)).map(taskRow);
 
     // ── NEEDS AN OWNER (PM surface) ── active tasks with no assignee. With the
     // strict Me scope, these no longer masquerade as anyone's work, so the PM
@@ -298,7 +302,7 @@ export function registerDeliverRoutes(app, ctx) {
       hero,
       pulse: { shippedThisWeek, lastWeek, streak, onTimeRate, momentum },
       sections: { comingDue, atRisk: atRiskRows, waiting, delegated, dataToFix, readyToBill, onTrack, onHold, notStarted, needsOwner },
-      myWork, myWorkCount: myWork.length,
+      myWork, myWorkCount: myWork.length, allWork, allWorkCount: allWork.length,
       calm: { activeCount: activeProjs.length, nextDeadline: nextDeadline ? { name: nextDeadline.name, deadline: nextDeadline.deadline } : null },
     };
   }

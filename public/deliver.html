@@ -199,7 +199,13 @@ body:not([data-state]) .dv-content { display:none; }
 .mw-gbtn:hover { color:var(--text-2); border-color:var(--text-4); }
 .mw-gbtn.on { background:var(--accent-soft); color:var(--accent); border-color:transparent; }
 .mw-group-sec { margin-bottom:22px; }
-.mw-group-head { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--text-2); margin:0 0 9px; padding-bottom:7px; border-bottom:1px solid var(--border-soft); }
+.mw-group-head { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--text-2); margin:0 0 9px; padding-bottom:7px; border-bottom:1px solid var(--border-soft); cursor:pointer; user-select:none; }
+.mw-group-head:hover { color:var(--text); }
+.mw-caret { display:inline-block; font-size:10px; color:var(--text-4); transition:transform .15s; }
+.mw-group-sec.collapsed .mw-caret { transform:rotate(-90deg); }
+.mw-group-sec.collapsed .mw-group-body { display:none; }
+.mw-group-sec.collapsed .mw-group-head { margin-bottom:0; opacity:.72; }
+.mw-gname { flex:1; }
 .mw-gcount { color:var(--text-4); font-weight:700; }
 </style>
 <script src="/sample-data.js"></script>
@@ -502,6 +508,10 @@ function renderDataFix(df) {
 // this tab is inherently "me" (DATA.myWork is server-scoped to the signed-in user).
 let MW_GROUP = 'project';
 try { const s = localStorage.getItem('lrl-mywork-group'); if (['project', 'status', 'due'].includes(s)) MW_GROUP = s; } catch (e) {}
+// Per-group collapse state, keyed "<groupMode>:<groupKey>" so a project stays
+// closed independently of a status group, and it survives reloads.
+let MW_COLLAPSED = {};
+try { MW_COLLAPSED = JSON.parse(localStorage.getItem('lrl-mywork-collapsed') || '{}') || {}; } catch (e) {}
 const MW_STATUS_ORDER = ['Doing', 'Agenda', 'Planned', 'Waiting'];
 const MW_DUE_ORDER = ['Overdue', 'Due today', 'This week', 'Later', 'No date'];
 const orderIdx = (arr, k) => { const i = arr.indexOf(k); return i < 0 ? arr.length : i; };
@@ -514,12 +524,14 @@ function mwDueBucket(t) {
 }
 function renderMyWork() {
   const el = document.getElementById('mw-body'); if (!el) return;
-  const tasks = (DATA && DATA.myWork) || [];
-  document.getElementById('mw-sub').textContent = tasks.length
-    ? `${tasks.length} task${tasks.length === 1 ? '' : 's'} assigned to you`
-    : 'Your client work — everything assigned to you.';
+  // ME on → just my assigned tasks; ME off → the whole team's production tasks.
+  const meOn = !!(window.LRLShell && LRLShell.meMode());
+  const tasks = (DATA && (meOn ? DATA.myWork : DATA.allWork)) || [];
+  document.getElementById('mw-sub').textContent = !DATA ? 'Loading…'
+    : meOn ? `${tasks.length} task${tasks.length === 1 ? '' : 's'} assigned to you`
+    : `${tasks.length} task${tasks.length === 1 ? '' : 's'} across the team · turn on ME to see just yours`;
   document.querySelectorAll('#mw-group .mw-gbtn').forEach((b) => b.classList.toggle('on', b.dataset.grp === MW_GROUP));
-  if (!tasks.length) { el.innerHTML = `<div class="empty-line">Nothing assigned to you in production right now. 🎉</div>`; return; }
+  if (!tasks.length) { el.innerHTML = `<div class="empty-line">${meOn ? 'Nothing assigned to you in production right now. 🎉' : 'No active production tasks.'}</div>`; return; }
   const groups = new Map();
   const keyOf = (t) => MW_GROUP === 'project' ? (t.projectName || '—') : MW_GROUP === 'status' ? (t.status || '—') : mwDueBucket(t);
   tasks.forEach((t) => { const k = keyOf(t); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); });
@@ -529,11 +541,25 @@ function renderMyWork() {
   else keys.sort((a, b) => a.localeCompare(b));
   el.innerHTML = keys.map((k) => {
     const rows = groups.get(k).map((t) => taskRowHTML(t, { actions: [t.est == null ? A.est(t) : A.log(t), A.done(t)] })).join('');
-    return `<div class="mw-group-sec"><div class="mw-group-head">${esc(k)} <span class="mw-gcount">${groups.get(k).length}</span></div><div class="rows">${rows}</div></div>`;
+    const gkey = MW_GROUP + ':' + k;
+    const col = !!MW_COLLAPSED[gkey];
+    return `<div class="mw-group-sec${col ? ' collapsed' : ''}" data-gkey="${esc(gkey)}">
+      <div class="mw-group-head" role="button"><span class="mw-caret">▾</span><span class="mw-gname">${esc(k)}</span> <span class="mw-gcount">${groups.get(k).length}</span></div>
+      <div class="mw-group-body"><div class="rows">${rows}</div></div>
+    </div>`;
   }).join('');
 }
 function setMyWorkGroup(g) { MW_GROUP = g; try { localStorage.setItem('lrl-mywork-group', g); } catch (e) {} renderMyWork(); }
 document.querySelectorAll('#mw-group .mw-gbtn').forEach((b) => b.addEventListener('click', () => setMyWorkGroup(b.dataset.grp)));
+// Collapse / expand a group by clicking its header (delegated — the body re-renders).
+document.getElementById('mw-body').addEventListener('click', (e) => {
+  const head = e.target.closest('.mw-group-head'); if (!head) return;
+  const sec = head.closest('.mw-group-sec'); if (!sec) return;
+  const gkey = sec.dataset.gkey;
+  const nowCollapsed = sec.classList.toggle('collapsed');
+  MW_COLLAPSED[gkey] = nowCollapsed;
+  try { localStorage.setItem('lrl-mywork-collapsed', JSON.stringify(MW_COLLAPSED)); } catch (e) {}
+});
 
 // ── Actions ──
 let modalMode = 'log', modalTaskId = null;
@@ -640,14 +666,11 @@ async function load(me) {
     const er = document.getElementById('dv-error'); er.style.display = 'block'; er.textContent = "Couldn't load Deliver: " + e.message;
   }
 }
-// The global ME toggle (shell.js) drives the "just me" filter; re-fetch on change.
-window.onMeModeChange = function(){
-  ME = (window.LRLShell && LRLShell.meMode()) ? 1 : 0;
-  document.getElementById('dv-loading').style.display = 'block';
-  load(ME);
-};
-ME = (window.LRLShell && LRLShell.meMode()) ? 1 : 0;
-load(ME);
+// The global ME toggle (shell.js) scopes only the MY WORK tab now (Overview is
+// always the whole-team PM lens). Both work-lists ship in DATA, so toggling just
+// re-renders that tab — no refetch.
+window.onMeModeChange = function(){ renderMyWork(); };
+load(0);
 
 // ── Offers tab ──
 let OFFERS = null, offerRungOpen = null;
