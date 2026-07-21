@@ -150,12 +150,16 @@ export function registerDeliverRoutes(app, ctx) {
       return { init, cls, name: nm };
     };
     const inScope = (ids) => !me || ids.includes(meId) || ids.length === 0;
-    const tagT = (t) => ({
-      ...t, projectName: projName[t.projectId] || '—',
-      mine: t.assignees.includes(meId), outsourced: t.assignees.includes(SUPPORT_USER_ID),
-      av: avatar(t.assignees, t.assigneeNames),
-      overdue: !!t.due && t.due < today, dueToday: t.due === today, dueTomorrow: t.due === addDays(today, 1),
-    });
+    const tagT = (t) => {
+      const isDone = t.status === 'Done';
+      return {
+        ...t, projectName: projName[t.projectId] || '—',
+        mine: t.assignees.includes(meId), outsourced: t.assignees.includes(SUPPORT_USER_ID),
+        av: avatar(t.assignees, t.assigneeNames),
+        // Done tasks are never "overdue/due" — those flags drive urgency styling.
+        overdue: !isDone && !!t.due && t.due < today, dueToday: !isDone && t.due === today, dueTomorrow: !isDone && t.due === addDays(today, 1),
+      };
+    };
 
     // Snoozed tasks drop out of the active surface (hero, sections, conditions)
     // until their Snooze date passes — "deferred, not dismissed; resurfaces later".
@@ -282,7 +286,9 @@ export function registerDeliverRoutes(app, ctx) {
     // allWork = every active production task (any assignee); myWork = just mine.
     // The ME toggle switches between them on the client (ME on → myWork). Rows
     // carry an avatar, so in the all-team view you can see who owns each task.
-    const workBase = data.active.map(tagT)
+    // Active tasks + recently-completed (last ~35d) so the Done status filter can
+    // reveal finished work; Done is hidden by default client-side.
+    const workBase = [...data.active, ...data.doneRecent].map(tagT)
       .filter((t) => !(t.snooze && t.snooze > today) && !t.recurring)
       .sort((a, b) => (a.due || '9999') < (b.due || '9999') ? -1 : 1);
     const allWork = workBase.map(taskRow);

@@ -217,6 +217,15 @@ body:not([data-state]) .dv-content { display:none; }
 .st-billing { color:#a99eff; background:rgba(155,135,245,.16); }
 .st-done    { color:#93a0b4; background:rgba(138,148,166,.14); }
 .st-default { color:#93a0b4; background:rgba(138,148,166,.14); }
+/* Status filter bar (My Work) — toggle which statuses show, in any grouping */
+.mw-filter { display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin:-6px 0 18px; }
+.mw-filter:empty { display:none; }
+.mw-flabel { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-4); margin-right:2px; }
+.stfilter { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700; padding:4px 11px; border-radius:999px; cursor:pointer; font-family:inherit; border:1px solid transparent; transition:opacity .12s, filter .12s; }
+.stfilter::before { content:''; width:7px; height:7px; border-radius:50%; background:currentColor; flex-shrink:0; }
+.stfilter .stf-n { color:var(--text-4); font-weight:700; }
+.stfilter.off { opacity:.4; filter:grayscale(.65); text-decoration:line-through; }
+.stfilter.off .stf-n { text-decoration:none; }
 </style>
 <script src="/sample-data.js"></script>
 <script src="/privacy.js"></script>
@@ -288,6 +297,7 @@ body:not([data-state]) .dv-content { display:none; }
         <button class="mw-gbtn" data-grp="due">Due date</button>
       </div>
     </div>
+    <div class="mw-filter" id="mw-filter"></div>
     <div id="mw-body"><div class="empty-line">Loading your work…</div></div>
   </section>
 
@@ -525,10 +535,22 @@ try { const s = localStorage.getItem('lrl-mywork-group'); if (['project', 'statu
 // closed independently of a status group, and it survives reloads.
 let MW_COLLAPSED = {};
 try { MW_COLLAPSED = JSON.parse(localStorage.getItem('lrl-mywork-collapsed') || '{}') || {}; } catch (e) {}
-const MW_STATUS_ORDER = ['Doing', 'Agenda', 'Planned', 'Waiting'];
-const MW_DUE_ORDER = ['Overdue', 'Due today', 'This week', 'Later', 'No date'];
+// Status filter: which status keys are hidden. Lets you mute Planned/Waiting to
+// focus on Doing, in any grouping. Persisted.
+// Done is hidden by default (you opt in to see recently-completed work); on first
+// run (no saved key) seed { done }, otherwise respect what was saved.
+let MW_HIDDEN;
+try { const raw = localStorage.getItem('lrl-mywork-hidden'); const a = raw ? JSON.parse(raw) : null; MW_HIDDEN = new Set(Array.isArray(a) ? a : ['done']); } catch (e) { MW_HIDDEN = new Set(['done']); }
+const mwSaveHidden = () => { try { localStorage.setItem('lrl-mywork-hidden', JSON.stringify([...MW_HIDDEN])); } catch (e) {} };
+const mwStKey = (t) => ST_KEYS[String(t.status || '').toLowerCase()] || 'default';
+const MW_STATUS_LABEL = { planned: 'Planned', agenda: 'Agenda', doing: 'Doing', waiting: 'Waiting', billing: 'Billing', done: 'Done', default: 'Other' };
+// Notion board order: Planned → Agenda → Doing → Waiting → Billing → Done.
+const MW_STATUS_FILTER_ORDER = ['planned', 'agenda', 'doing', 'waiting', 'billing', 'done', 'default'];
+const MW_STATUS_ORDER = ['Planned', 'Agenda', 'Doing', 'Waiting', 'Billing', 'Done'];
+const MW_DUE_ORDER = ['Overdue', 'Due today', 'This week', 'Later', 'No date', 'Completed'];
 const orderIdx = (arr, k) => { const i = arr.indexOf(k); return i < 0 ? arr.length : i; };
 function mwDueBucket(t) {
+  if (t.status === 'Done') return 'Completed';
   if (t.overdue) return 'Overdue';
   if (t.dueToday) return 'Due today';
   if (!t.due) return 'No date';
@@ -540,14 +562,19 @@ function renderMyWork() {
   // ME on → just my assigned tasks; ME off → the whole team's production tasks.
   const meOn = !!(window.LRLShell && LRLShell.meMode());
   const tasks = (DATA && (meOn ? DATA.myWork : DATA.allWork)) || [];
-  document.getElementById('mw-sub').textContent = !DATA ? 'Loading…'
-    : meOn ? `${tasks.length} task${tasks.length === 1 ? '' : 's'} assigned to you`
-    : `${tasks.length} task${tasks.length === 1 ? '' : 's'} across the team · turn on ME to see just yours`;
   document.querySelectorAll('#mw-group .mw-gbtn').forEach((b) => b.classList.toggle('on', b.dataset.grp === MW_GROUP));
-  if (!tasks.length) { el.innerHTML = `<div class="empty-line">${meOn ? 'Nothing assigned to you in production right now. 🎉' : 'No active production tasks.'}</div>`; return; }
+  renderMwFilter(tasks);
+  if (!tasks.length) { document.getElementById('mw-sub').textContent = ''; el.innerHTML = `<div class="empty-line">${meOn ? 'Nothing assigned to you in production right now. 🎉' : 'No active production tasks.'}</div>`; return; }
+  const shown = tasks.filter((t) => !MW_HIDDEN.has(mwStKey(t)));
+  // Sub-count reflects what's actually shown (respects the status filter).
+  const n = shown.length;
+  document.getElementById('mw-sub').textContent = meOn
+    ? `${n} task${n === 1 ? '' : 's'} assigned to you`
+    : `${n} task${n === 1 ? '' : 's'} across the team · turn on ME to see just yours`;
+  if (!shown.length) { el.innerHTML = `<div class="empty-line">All statuses are hidden — tap a status above to show it.</div>`; return; }
   const groups = new Map();
   const keyOf = (t) => MW_GROUP === 'project' ? (t.projectName || '—') : MW_GROUP === 'status' ? (t.status || '—') : mwDueBucket(t);
-  tasks.forEach((t) => { const k = keyOf(t); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); });
+  shown.forEach((t) => { const k = keyOf(t); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); });
   let keys = [...groups.keys()];
   if (MW_GROUP === 'status') keys.sort((a, b) => orderIdx(MW_STATUS_ORDER, a) - orderIdx(MW_STATUS_ORDER, b) || a.localeCompare(b));
   else if (MW_GROUP === 'due') keys.sort((a, b) => orderIdx(MW_DUE_ORDER, a) - orderIdx(MW_DUE_ORDER, b));
@@ -562,6 +589,25 @@ function renderMyWork() {
     </div>`;
   }).join('');
 }
+// Status filter bar — one toggle chip per status present in the current scope,
+// colored to match the row pills. Click to hide/show that status.
+function renderMwFilter(tasks) {
+  const bar = document.getElementById('mw-filter'); if (!bar) return;
+  const counts = {};
+  tasks.forEach((t) => { const k = mwStKey(t); counts[k] = (counts[k] || 0) + 1; });
+  const present = MW_STATUS_FILTER_ORDER.filter((k) => counts[k]);
+  if (present.length <= 1) { bar.innerHTML = ''; return; } // nothing meaningful to filter
+  bar.innerHTML = `<span class="mw-flabel">Show</span>` + present.map((k) => {
+    const off = MW_HIDDEN.has(k);
+    return `<button class="stfilter st-${k}${off ? ' off' : ''}" data-st="${k}">${MW_STATUS_LABEL[k] || k} <span class="stf-n">${counts[k]}</span></button>`;
+  }).join('');
+}
+document.getElementById('mw-filter').addEventListener('click', (e) => {
+  const b = e.target.closest('.stfilter'); if (!b) return;
+  const k = b.dataset.st;
+  if (MW_HIDDEN.has(k)) MW_HIDDEN.delete(k); else MW_HIDDEN.add(k);
+  mwSaveHidden(); renderMyWork();
+});
 function setMyWorkGroup(g) { MW_GROUP = g; try { localStorage.setItem('lrl-mywork-group', g); } catch (e) {} renderMyWork(); }
 document.querySelectorAll('#mw-group .mw-gbtn').forEach((b) => b.addEventListener('click', () => setMyWorkGroup(b.dataset.grp)));
 // Collapse / expand a group by clicking its header (delegated — the body re-renders).
