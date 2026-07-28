@@ -205,7 +205,9 @@ body:not([data-state]) .dv-content { display:none; }
 .mw-group-sec.collapsed .mw-caret { transform:rotate(-90deg); }
 .mw-group-sec.collapsed .mw-group-body { display:none; }
 .mw-group-sec.collapsed .mw-group-head { margin-bottom:0; opacity:.72; }
-.mw-gname { flex:1; }
+.mw-gname { flex:0 1 auto; }
+.mw-gspacer { flex:1 1 auto; }
+.mw-projstatus { flex-shrink:0; text-transform:none; letter-spacing:0; font-size:10.5px; font-weight:700; color:var(--text-3); background:rgba(138,148,166,.14); padding:2px 8px; border-radius:5px; }
 .mw-gcount { color:var(--text-4); font-weight:700; }
 .mw-add { margin-left:10px; font-size:11px; font-weight:700; color:var(--accent); background:none; border:1px solid var(--border); border-radius:6px; padding:2px 9px; cursor:pointer; font-family:inherit; letter-spacing:.02em; text-transform:none; transition:border-color .12s; }
 .mw-add:hover { border-color:var(--accent); }
@@ -595,8 +597,11 @@ function renderMyWork() {
     // In project grouping, offer "+ Task" to add a task already tied to this project.
     const pid = groups.get(k)[0].projectId;
     const addBtn = (MW_GROUP === 'project' && pid) ? `<button class="mw-add" data-proj="${esc(pid)}" data-projname="${esc(k)}" title="Add a task to this project">+ Task</button>` : '';
+    // In project grouping, show the project's own status next to its name.
+    const projStatus = (MW_GROUP === 'project' && pid && DATA.projectStatus) ? DATA.projectStatus[pid] : '';
+    const projStatusChip = projStatus ? `<span class="mw-projstatus">${esc(projStatus)}</span>` : '';
     return `<div class="mw-group-sec${col ? ' collapsed' : ''}" data-gkey="${esc(gkey)}">
-      <div class="mw-group-head" role="button"><span class="mw-caret">▾</span><span class="mw-gname">${esc(k)}</span> <span class="mw-gcount">${groups.get(k).length}</span>${addBtn}</div>
+      <div class="mw-group-head" role="button"><span class="mw-caret">▾</span><span class="mw-gname">${esc(k)}</span>${projStatusChip}<span class="mw-gspacer"></span><span class="mw-gcount">${groups.get(k).length}</span>${addBtn}</div>
       <div class="mw-group-body"><div class="rows">${rows}</div></div>
     </div>`;
   }).join('');

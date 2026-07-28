@@ -309,6 +309,9 @@ export function registerDeliverRoutes(app, ctx) {
       pulse: { shippedThisWeek, lastWeek, streak, onTimeRate, momentum },
       sections: { comingDue, atRisk: atRiskRows, waiting, delegated, dataToFix, readyToBill, onTrack, onHold, notStarted, needsOwner },
       myWork, myWorkCount: myWork.length, allWork, allWorkCount: allWork.length,
+      // Project status by id — lets My Work show each project's status next to its
+      // name in the group header when grouped by project.
+      projectStatus: Object.fromEntries(data.projects.map((p) => [p.id, p.status || null])),
       calm: { activeCount: activeProjs.length, nextDeadline: nextDeadline ? { name: nextDeadline.name, deadline: nextDeadline.deadline } : null },
     };
   }
