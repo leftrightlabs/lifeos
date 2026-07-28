@@ -2264,6 +2264,12 @@ function isRecurringOrFutureScheduled(props) {
   // Recurring checkbox — accept both "Recurring?" and "Recurring"
   if (props['Recurring?']?.checkbox) return true;
   if (props['Recurring']?.checkbox) return true;
+  // Recur Interval / Recur Unit — many tasks (especially personal ones like
+  // monthly meds or rent) drive recurrence off these with the checkbox left
+  // unchecked (matches simplifyTask). A recurring task legitimately sits until
+  // its next due date, so it's never "stale".
+  if ((props['Recur Interval']?.number || 0) > 0) return true;
+  if (props['Recur Unit']?.select?.name) return true;
   // Next Occurrence — accept a few spellings; could be a date, formula, or text field
   const occCandidates = ['Next Occurrence', 'Next occurrence', 'Next Occurence', 'Next occurence'];
   for (const key of occCandidates) {
