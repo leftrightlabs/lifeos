@@ -360,25 +360,6 @@ body {
 .qstar svg { width: 18px; height: 18px; }
 .qstar .fillp { fill: none; stroke: var(--text-4); stroke-width: 1.6; transition: all .2s; }
 .qstar.on .fillp { fill: var(--accent); stroke: var(--accent); }
-/* "Made a move" control + progress signal (digital autofocus) */
-.qmoved { background: none; border: 0; cursor: pointer; padding: 3px; line-height: 0; flex-shrink: 0; border-radius: 6px; color: var(--text-4); opacity: .55; transition: all .15s; }
-.qmoved:hover { opacity: 1; color: var(--accent); background: var(--accent-soft); }
-.qmoved svg { width: 17px; height: 17px; }
-.qworked { font-size: var(--fs-caption); color: var(--text-4); font-style: italic; margin-top: 2px; }
-.qrow-striking { opacity: .45; transform: translateX(8px); transition: opacity .3s, transform .3s; }
-.qrow-striking .qtitle { text-decoration: line-through; color: var(--text-3); }
-@keyframes qland { from { background: var(--accent-soft); } to { background: transparent; } }
-.qrow-landed { animation: qland .9s ease-out; border-radius: 8px; }
-/* "Moved Forward Today" pile — struck-through entries, like a page of cross-offs */
-.moved-list { display: flex; flex-direction: column; gap: 4px; }
-.moved-row { display: flex; align-items: baseline; gap: 8px; padding: 7px 10px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 8px; }
-.moved-name { font-size: var(--fs-body-sm); color: var(--text-3); text-decoration: line-through; flex-shrink: 1; min-width: 0; }
-.moved-arrow { font-size: var(--fs-body-sm); color: var(--text-4); flex-shrink: 0; }
-.moved-next { font-size: var(--fs-body-sm); color: var(--text); flex-shrink: 1; min-width: 0; }
-.moved-proj { font-size: var(--fs-caption); color: var(--text-4); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.moved-time { font-size: var(--fs-caption); color: var(--text-4); margin-left: auto; flex-shrink: 0; }
-@keyframes moved-flash { 0% { background: var(--green-soft); transform: translateY(-4px); } 100% { background: var(--surface); transform: none; } }
-.moved-row.moved-flash { animation: moved-flash .9s ease-out; }
 .plan-status-div { display: flex; align-items: center; gap: 10px; padding: 15px 0 9px; cursor: pointer; user-select: none; }
 .plan-status-div span { font-size: var(--fs-caption); letter-spacing: .2em; text-transform: uppercase; font-weight: 800; white-space: nowrap; }
 .plan-status-div .wchev { letter-spacing: 0; font-size: 9px; }
@@ -926,18 +907,6 @@ body { overflow-x: hidden; }
         </div>
       </div>
 
-      <!-- Moved Forward Today — the "progress pile": tasks you worked on but didn't
-           finish. Fills through the day so effort gets visible credit. Hides when empty. -->
-      <div class="t-card" id="card-moved" data-persist-key="moved" style="display:none;">
-        <div class="sec-head">
-          <div class="card-toggle" onclick="toggleCard(this)">
-            <span class="chev">▾</span>
-            <div class="sec-title">💪 Moved Forward Today <span class="count" id="movedCount"></span></div>
-          </div>
-        </div>
-        <div class="t-body"><div class="moved-list" id="movedList"></div></div>
-      </div>
-
       <!-- Evening / End of Day — own card; hides when all items checked -->
       <div class="ritual evening" id="eveningRitual"></div>
 
@@ -1030,23 +999,6 @@ body { overflow-x: hidden; }
       <button class="tm-btn ghost" onclick="fuModalComplete()" title="Mark this follow-up complete">✓ Complete</button>
       <button class="tm-btn ghost" onclick="fuModalOpenNotion()">Open in Notion ↗</button>
       <button class="tm-btn primary" onclick="saveFuModal()">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- Made a move / reframe modal -->
-<div class="task-modal" id="moveModal" onclick="if(event.target===this)closeMoveModal()">
-  <div class="tm-content">
-    <div class="tm-head"><div class="tm-title">Made a move 👏</div><button class="tm-close" onclick="closeMoveModal()" aria-label="Close">×</button></div>
-    <div class="tm-field"><label>Worked on</label><div id="moveCurName" style="font-size:var(--fs-body);color:var(--text-3);line-height:1.35;text-decoration:line-through;"></div></div>
-    <div class="tm-field">
-      <label>What's the next step? <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-4);">— rewrite it, or leave blank to just move it</span></label>
-      <input type="text" id="moveNext" autocomplete="off"
-        onkeydown="if(event.key==='Enter'){event.preventDefault();submitMove()}">
-    </div>
-    <div class="tm-actions">
-      <button class="tm-btn ghost" onclick="submitMove(true)" title="Credit the work without renaming">Just move it</button>
-      <button class="tm-btn primary" onclick="submitMove()">Move forward</button>
     </div>
   </div>
 </div>
@@ -2377,9 +2329,7 @@ function renderPlan() {
   const doneCt  = visible.filter(p => p.done).length;
   const totalCt = visible.length;
   const allDoneNow = totalCt > 0 && doneCt === totalCt;
-  const movedCt = (_movedToday || []).length;
-  const movedCredit = movedCt > 0 ? ` · ${movedCt} moved forward` : '';
-  document.getElementById('planCount').textContent = totalCt > 0 ? (allDoneNow ? `· 🎉 all ${totalCt} done${movedCredit}` : `· ${doneCt} of ${totalCt} done${movedCredit}`) : (movedCt > 0 ? `· ${movedCt} moved forward` : '');
+  document.getElementById('planCount').textContent = totalCt > 0 ? (allDoneNow ? `· 🎉 all ${totalCt} done` : `· ${doneCt} of ${totalCt} done`) : '';
   const shown = state.hideDone ? visible.filter(t => !t.done) : visible;
 
   const rowHtml = (t, collapsedRow) => {
@@ -2394,9 +2344,6 @@ function renderPlan() {
     const dueTxt = !t.dueStart ? '+ date' : (t.dueStart === today ? 'Today'
       : new Date(t.dueStart + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
     const star = `<button class="qstar on" data-act="star" title="Remove from My Day" aria-label="Remove from My Day"><svg viewBox="0 0 24 24"><path class="fillp" d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>`;
-    // "Made a move" — worked on it but not done: strike + send to bottom of group.
-    const moved = !t.done ? `<button class="qmoved" data-act="moved" title="I worked on this — move it down" aria-label="Made progress"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m8 11 4 4 4-4"/><path d="M5 20h14"/></svg></button>` : '';
-    const worked = t.lastWorked ? `<div class="qworked">${escName(workedAgo(t.lastWorked))}</div>` : '';
     return `
     <div class="qrow ${t.done ? 'done' : ''} ${collapsedRow ? 'qrow-hidden' : ''}" data-plan-idx="${origIdx}" data-task-id="${t.id || ''}">
       <div class="qcheck ${t.done ? 'checked' : ''}" data-act="check"></div>
@@ -2404,10 +2351,9 @@ function renderPlan() {
       <div class="qbody" data-act="open">
         <div class="qtitle ${t.done ? 'struck' : ''}">${escName(t.name)}</div>
         ${(() => { const pn = (t.projectId && _projectMap[t.projectId]) ? _projectMap[t.projectId].name : (t.project || ''); return pn ? `<div class="qproject">${escName(pn)}</div>` : ''; })()}
-        ${worked}
       </div>
       <div class="qmeta">${priHtml}${estHtml}<span class="qdue ${dueCls}" data-act="due">${dueTxt}</span></div>
-      ${moved}${star}
+      ${star}
     </div>`;
   };
 
@@ -2495,7 +2441,6 @@ function renderPlan() {
       const act = e.target.closest('[data-act]')?.dataset.act;
       if (act === 'check') return togglePlan(idx);
       if (act === 'star') return removeFromMyDay(idx);
-      if (act === 'moved') { e.stopPropagation(); return markMoved(idx); }
       if (act === 'due') { e.stopPropagation(); return showReschedule(idx); }
       openTaskModal(idx);
     });
@@ -2515,92 +2460,6 @@ function PLAN_STATUS_LABEL(s) {
 function toggleStatusSection(sk) {
   setSection('status-' + sk, !getSection('status-' + sk));
   renderPlan();
-}
-
-// "worked Xm ago" relative-time label for the last-worked stamp.
-function workedAgo(iso) {
-  const ms = Date.now() - new Date(iso).getTime();
-  const m = Math.round(ms / 60000);
-  if (m < 1) return 'worked just now';
-  if (m < 60) return 'worked ' + m + 'm ago';
-  const h = Math.round(m / 60);
-  if (h < 24) return 'worked ' + h + 'h ago';
-  const d = Math.round(h / 24);
-  return 'worked ' + d + 'd ago';
-}
-// Digital autofocus: "I worked on this but it's not done." Tapping ↓ opens a small
-// modal where you can REWRITE the task into its next step (autofocus's reframe —
-// "Read ch.3" → "Read ch.7") or just move it. Either way it drops into the "Moved
-// Forward Today" pile with a flash and ticks the credit count. The task stays in
-// the plan; if reframed, its line now reads the honest next action.
-let _moveIdx = -1;
-function markMoved(i) {
-  const t = plan[i];
-  if (!t || t.done) return;
-  _moveIdx = i;
-  const cur = document.getElementById('moveCurName');
-  if (cur) cur.textContent = t.name;
-  const inp = document.getElementById('moveNext');
-  if (inp) { inp.value = ''; inp.placeholder = 'e.g. ' + t.name; }
-  const m = document.getElementById('moveModal');
-  if (m) { m.classList.add('open'); setTimeout(() => inp && inp.focus(), 60); }
-}
-function closeMoveModal() {
-  const m = document.getElementById('moveModal');
-  if (m) m.classList.remove('open');
-  _moveIdx = -1;
-}
-// justMove=true → skip the reframe even if text was typed (the "Just move it" btn).
-function submitMove(justMove) {
-  const i = _moveIdx;
-  const t = plan[i];
-  if (!t) { closeMoveModal(); return; }
-  const inp = document.getElementById('moveNext');
-  const next = (!justMove && inp ? inp.value : '').trim();
-  const oldName = t.name;
-  const reframed = !!next && next !== oldName;
-  const row = document.querySelector(`.qrow[data-plan-idx="${i}"]`);
-  const nowIso = new Date().toISOString();
-  t.lastWorked = nowIso;
-  if (reframed) t.name = next;
-  if (t.id) fetch('/api/tasks/' + t.id + '/worked', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(reframed ? { nextStep: next } : {}),
-  }).catch(() => {});
-  // Add/refresh in today's pile (dedupe by id, newest first). prevStep drives the
-  // "✓ old → now: new" display when the task was reframed.
-  _movedToday = (_movedToday || []).filter(m => m.id !== t.id);
-  _movedToday.unshift({ id: t.id, name: t.name, prevStep: reframed ? oldName : null, projectId: t.projectId || null, lastWorked: nowIso, done: t.done });
-  closeMoveModal();
-  if (row) {
-    row.classList.add('qrow-striking');
-    setTimeout(() => { renderPlan(); renderMovedToday(true); }, 460);
-  } else {
-    renderPlan(); renderMovedToday(true);
-  }
-}
-
-// The "Moved Forward Today" pile — struck-through entries that accumulate as you
-// tap "made a move", giving visible credit for progress that isn't completion.
-function renderMovedToday(flashFirst) {
-  const card = document.getElementById('card-moved');
-  const list = document.getElementById('movedList');
-  if (!card || !list) return;
-  const items = _movedToday || [];
-  const cnt = document.getElementById('movedCount');
-  if (cnt) cnt.textContent = items.length ? '· ' + items.length : '';
-  if (!items.length) { card.style.display = 'none'; return; }
-  card.style.display = '';
-  list.innerHTML = items.map(m => {
-    const pn = (m.projectId && _projectMap[m.projectId]) ? _projectMap[m.projectId].name : '';
-    const time = m.lastWorked ? new Date(m.lastWorked).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
-    // Reframed: strike the step you finished, show the new next step after an arrow.
-    const nameHtml = m.prevStep
-      ? `<span class="moved-name">${escapeHtml(m.prevStep)}</span><span class="moved-arrow">→</span><span class="moved-next">${escapeHtml(m.name)}</span>`
-      : `<span class="moved-name">${escapeHtml(m.name)}</span>`;
-    return `<div class="moved-row">${nameHtml}${pn ? `<span class="moved-proj">${escapeHtml(pn)}</span>` : ''}<span class="moved-time">${time}</span></div>`;
-  }).join('');
-  if (flashFirst) { const f = list.querySelector('.moved-row'); if (f) { f.classList.add('moved-flash'); setTimeout(() => f.classList.remove('moved-flash'), 1000); } }
 }
 
 function togglePlan(i) {
@@ -3173,7 +3032,6 @@ function _reRenderAll() {
   renderOneThing();
   renderStreaks();
   renderPlan();
-  renderMovedToday();
   renderRitual('morning');
   renderRitual('evening');
 }
@@ -3186,7 +3044,6 @@ let _oneThingDone = null;   // {name, rock} captured when the work One Thing is 
 let _personalOneThingTask = null;
 let _loadedGoals = [];
 let _followups = [];     // items flagged "Follow Up" (tasks + deals + touchpoints)
-let _movedToday = [];    // "Moved Forward Today" pile — tasks worked on today (Last Reviewed)
 let _dataLoaded = false; // gates the loading overlay; flips true after first load
 
 function todayISO() {
@@ -3257,7 +3114,6 @@ function taskToPlanItem(t) {
     followUp: !!t.followUp,                       // on-my-day checkbox
     followUpOwnerId: t.followUpOwnerId || null,
     followUpBy: t.followUpBy || null,
-    lastWorked: t.lastWorked || null,             // "made a move" progress signal
 
     assigneeIds: t.assigneeIds || [],
     assigneeNames: t.assigneeNames || [],
@@ -3920,7 +3776,6 @@ async function loadTodayData() {
   const pFin    = j('/api/finance/xero');
   const pPipe   = j('/api/convert/pipeline');
   const pFollow = j('/api/followups');
-  const pMoved  = j('/api/tasks/worked?days=1');
   const pState  = loadTodayStateFromServer(); // cross-device One Thing pick/status
 
   // Projects only decorate task rows with a project label — patch in when ready.
@@ -3965,7 +3820,6 @@ async function loadTodayData() {
     if (ok(f) || ok(p)) { applyFinance(ok(f) ? f : null, ok(p) ? p : null); _reRenderAll(); }
   });
   pFollow.then(v => { if (ok(v)) { _followups = v.items || []; renderPlan(); } });
-  pMoved.then(v => { if (ok(v)) { _movedToday = (v.items || []).map(m => ({ id: m.id, name: m.name, prevStep: m.prevStep || null, projectId: m.projectId || null, lastWorked: m.lastWorked, done: m.done })); renderMovedToday(); renderPlan(); } });
 }
 
 // ── INIT ──

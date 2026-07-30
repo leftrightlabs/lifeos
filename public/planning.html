@@ -85,7 +85,16 @@
   }
   .quest-sub { font-size: var(--fs-caption); color: rgba(var(--ink-rgb), 0.5); margin-top: 3px; line-height: 1.35; font-weight: 500; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .quest-sub .sep { color: rgba(var(--ink-rgb), 0.25); }
-  .quest-sub .quest-sub-status { color: rgba(255,183,77,0.85); font-weight: 600; }
+  /* Status sub-line label — the single status signal on a row (the old coloured
+     dot is gone). Uses the same palette as the SHOW chips + group headings. */
+  .quest-sub .quest-sub-status { font-weight: 600; }
+  .quest-sub .quest-sub-status.qs-planned { color: #6ba6f0; }
+  .quest-sub .quest-sub-status.qs-agenda  { color: #de8fbe; }
+  .quest-sub .quest-sub-status.qs-doing   { color: #4FD6A0; }
+  .quest-sub .quest-sub-status.qs-waiting { color: #e6ac5f; }
+  .quest-sub .quest-sub-status.qs-billing { color: #a99eff; }
+  .quest-sub .quest-sub-status.qs-done,
+  .quest-sub .quest-sub-status.qs-default { color: #93a0b4; }
   .quest-sub .quest-sub-touched { color: rgba(var(--ink-rgb), 0.35); }
   .quest-due { font-size: var(--fs-caption); color: var(--navy-dim); background: var(--cream-2); padding: 3px 8px; border-radius: 999px; }
   .quest-due-inline { font-size: var(--fs-body-sm); color: rgba(var(--ink-rgb), 0.55); white-space: nowrap; letter-spacing: 0.01em; font-weight: 500; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
@@ -103,14 +112,6 @@
   .quest-star .fillp { fill: none; stroke: rgba(var(--ink-rgb), 0.4); stroke-width: 1.6; transition: all 0.2s; }
   .quest-star.on .fillp { fill: var(--lime); stroke: var(--lime); }
   .quest-star.on { animation: lrl-check-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
-  /* "Made a move" control + reflow animation (digital autofocus) */
-  .quest-moved { appearance: none; -webkit-appearance: none; border: 0; background: none; cursor: pointer; padding: 3px; line-height: 0; flex-shrink: 0; border-radius: 6px; color: rgba(var(--ink-rgb), 0.4); opacity: 0.6; transition: all 0.15s; }
-  .quest-moved:hover { opacity: 1; color: var(--lime); background: rgba(var(--edge-rgb), 0.06); }
-  .quest-moved svg { width: 17px; height: 17px; }
-  .quest-item.quest-striking { opacity: 0.45; transform: translateX(8px); transition: opacity 0.3s, transform 0.3s; }
-  .quest-item.quest-striking .quest-text { text-decoration: line-through; }
-  @keyframes lrl-worked-land { from { background: rgba(168,197,74,0.18); } to { background: transparent; } }
-  .quest-item.quest-landed { animation: lrl-worked-land 0.9s ease-out; }
   .quest-follow { appearance: none; -webkit-appearance: none; border: 0; background: none; cursor: pointer; padding: 3px; line-height: 0; flex-shrink: 0; border-radius: 6px; transition: background 0.15s; }
   .quest-follow:hover { background: rgba(var(--edge-rgb), 0.06); }
   .quest-follow svg { width: 17px; height: 17px; fill: none; stroke: rgba(var(--ink-rgb), 0.38); stroke-width: 1.8; transition: stroke 0.2s; }
@@ -129,12 +130,8 @@
   .tag-r2 { background: rgba(196,69,69,0.2); color: var(--danger); }
   .tag-r3 { background: rgba(212,144,49,0.2); color: var(--warn); }
   .tag-r4 { background: rgba(17,34,72,0.1); color: var(--navy); }
-  .quest-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-right: -2px; }
-  .quest-status-dot.status-planned { background: rgba(var(--ink-rgb), 0.22); }
-  .quest-status-dot.status-doing { background: var(--lime); box-shadow: 0 0 6px rgba(167,193,64,0.45); }
-  .quest-status-dot.status-waiting { background: #ffb74d; box-shadow: 0 0 6px rgba(255,183,77,0.4); }
-  .quest-status-dot.status-agenda { background: #5d9cec; box-shadow: 0 0 6px rgba(93,156,236,0.35); }
-  .quest-status-dot.status-done { background: rgba(var(--ink-rgb), 0.15); }
+  /* (status dots retired — the status now reads as a coloured label on the
+      row's sub-line, so there's one status signal instead of two palettes) */
   .lrl-datepop { position: fixed; z-index: 100050; width: 280px; background: var(--cream); border: 1px solid rgba(var(--edge-rgb), 0.14); border-radius: 12px; padding: 12px; box-shadow: 0 20px 55px rgba(0,0,0,0.55); display: none; }
   .lrl-datepop.open { display: block; }
   .lrl-datepop-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
@@ -242,17 +239,17 @@
   .autofocus-app .stat.s-open.active {color:rgba(var(--ink-rgb), 0.7)}
   .autofocus-app .stat.s-work.active {color:var(--work)}
   .autofocus-app .stat.s-personal.active {color:var(--personal)}
-  .autofocus-app .stat.s-today.active {color:#d4a854}
   .autofocus-app .stat.s-over.active {color:#ff7a6b}
-  .autofocus-app .stat.s-myday.active {color:var(--lime)}
+  .autofocus-app .stat.s-myday.active {color:#d4a854}
   .autofocus-app .stat .statn {font-family:var(--font-d);font-weight:800;font-size: var(--fs-heading);color:var(--navy);line-height:1;flex-shrink:0;letter-spacing:-0.02em}
   .autofocus-app .stat .statl {font-size: var(--fs-body-sm);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
   .autofocus-app .stat.s-open {border-top-color:var(--navy)}
   .autofocus-app .stat.s-work {border-top-color:var(--navy)}
   .autofocus-app .stat.s-personal {border-top-color:var(--lime-d)}
-  .autofocus-app .stat.s-today {border-top-color:var(--today)}
   .autofocus-app .stat.s-over {border-top-color:var(--over)}
-  .autofocus-app .stat.s-myday {border-top-color:var(--lime)}
+  /* Gold reads as "today" (it's the Today date-group colour), so it belongs to
+     My Day — the today-ish card. Following takes the accent instead. */
+  .autofocus-app .stat.s-myday {border-top-color:#d4a854}
   .autofocus-app .stat.s-following {border-top-color:var(--lime)}
   .autofocus-app .stat.s-following.active {color:var(--lime)}
   body[data-mode="personal"] .autofocus-app .stat.s-following { display:none; }
@@ -410,8 +407,8 @@
   .autofocus-app .af-pop-opt.on { color: var(--lime); }
   .autofocus-app .stat .statn { color: var(--ink) !important; }
   .autofocus-app .stat.s-personal .statn { color: var(--personal) !important; }
-  .autofocus-app .stat.s-myday .statn { color: var(--lime) !important; }
-  .autofocus-app .stat.s-today .statn { color: #d4a854 !important; }
+  .autofocus-app .stat.s-myday .statn { color: #d4a854 !important; }
+  .autofocus-app .stat.s-following .statn { color: var(--lime) !important; }
   .autofocus-app .stat.s-over .statn { color: #ff7a6b !important; }
   .autofocus-app .statl { color: rgba(var(--ink-rgb), 0.55) !important; }
   .autofocus-app .stat { background: rgba(var(--edge-rgb), 0.03) !important; }
@@ -881,6 +878,8 @@
 /* Task status filter bar (Notion board order, matches Production → My Work) */
 .af-statusbar { display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin:0 0 14px; }
 .af-statusbar:empty { display:none; }
+/* (the read-only stat strip + lens chips were an interim design — replaced by
+    cards as the top-level filter with status chips as the sub-filter) */
 .af-stlabel { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-4); margin-right:2px; }
 .af-stchip { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700; padding:4px 11px; border-radius:999px; cursor:pointer; font-family:inherit; border:1px solid transparent; transition:opacity .12s, filter .12s; }
 .af-stchip::before { content:''; width:7px; height:7px; border-radius:50%; background:currentColor; flex-shrink:0; }
@@ -901,24 +900,6 @@
 .af-stchip.af-sp:first-of-type { margin-left:6px; }
 /* single collapse/expand button flips its chevron when everything is collapsed */
 .af-tbar-btn.flip svg { transform:rotate(180deg); }
-/* PROGRESS tab — "moved forward" credit + daily piles */
-.pg-credit { font-size: var(--fs-body); color: var(--text-2); margin: 0 0 18px; }
-.pg-credit b { color: #e8843f; font-weight: 800; }
-.pg-credit .pg-c2 { color: var(--text-3); }
-.pg-group { margin-bottom: 22px; }
-.pg-group-head { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-caption); letter-spacing: .12em; text-transform: uppercase; font-weight: 800; color: var(--text-3); margin: 0 0 8px; }
-.pg-group-head .pg-count { color: var(--text-4); font-weight: 700; }
-.pg-row { display: flex; align-items: center; gap: 12px; padding: 11px 13px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 9px; margin-bottom: 6px; }
-.pg-dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; background: #e8843f; }
-.pg-row.done .pg-dot { background: var(--good, #4caf82); }
-.pg-main { flex: 1; min-width: 0; }
-.pg-name { font-size: var(--fs-body); color: var(--text); cursor: pointer; }
-.pg-name:hover { color: var(--accent); }
-.pg-row.done .pg-name { text-decoration: line-through; color: var(--text-3); }
-.pg-prev { color: var(--text-3); text-decoration: line-through; }
-.pg-arrow { color: var(--text-4); }
-.pg-proj { font-size: var(--fs-caption); color: var(--text-3); margin-top: 3px; }
-.pg-time { flex-shrink: 0; font-size: var(--fs-caption); color: var(--text-4); white-space: nowrap; }
 </style>
 <script src="/sample-data.js"></script>
 <script src="/privacy.js"></script>
@@ -934,7 +915,6 @@
     <button class="exec-tab-btn active" data-go="projects">PROJECTS</button>
     <button class="exec-tab-btn" data-go="tasks">TASKS</button>
     <button class="exec-tab-btn" data-go="followups">FOLLOW-UPS</button>
-    <button class="exec-tab-btn" data-go="progress">PROGRESS</button>
     <button class="exec-tab-btn" data-go="review">REVIEW</button>
     <button class="exec-tab-btn" data-go="calendar">CALENDAR</button>
   </div>
@@ -997,13 +977,6 @@
   <section class="exec-panel" data-panel="followups">
     <div class="exec-head"><p>Everything you own a follow-up on — across tasks, deals, contacts, and speaking. Toggle which show on your Today list, or check them off when handled.</p></div>
     <div id="fu-agg"><div class="fu-empty">Loading…</div></div>
-  </section>
-
-  <!-- PROGRESS (moved forward) -->
-  <section class="exec-panel" data-panel="progress">
-    <div class="exec-head"><p>Everything you moved forward — the tasks you worked on but couldn't call done yet. Real progress, credited daily.</p></div>
-    <div class="pg-credit" id="pg-credit"></div>
-    <div id="pg-body"><div class="fu-empty">Loading…</div></div>
   </section>
 
   <!-- REVIEW -->
@@ -1622,6 +1595,9 @@ function mineTask(t){ return t.assignedToMe || !(t.assigneeNames && t.assigneeNa
 // The scope shared by visible(), the stat tiles and the SHOW chips: work/personal
 // source plus the Following / ME owner dimension. (Personal tasks have no
 // Following/Assigned, so the owner dimension is skipped there.)
+// Counts computed by updateHeader() and reused by the filter chips (it renders
+// first, so these are always current).
+let AF_STATS={open:0,today:0,overdue:0,myday:0,following:0,recurring:0};
 function afInScope(t){
   if(ui.src!=='all'&&t.source!==ui.src)return false;
   if(ui.src!=='personal'){
@@ -1644,15 +1620,15 @@ function renderAfStatusBar(){
     const off=AF_HIDDEN.has(k);
     return `<button class="af-stchip st-${k}${off?' off':''}" data-st="${k}">${AF_ST_LABEL[k]||k} <span class="af-stn">${counts[k]}</span></button>`;
   }).join('');
-  // "What's included" chips — these replace the old ↻ / ✓ icon toggles so every
-  // list-narrowing control lives in this one row with a visible count.
-  const all=allTasks();
-  const recurN=all.filter(t=>!t.done&&t.recurring&&afInScope(t)).length;
-  const doneN=all.filter(t=>t.done&&afInScope(t)).length;
+  // Recurring is a CARD now (top-level view), so it deliberately has no chip —
+  // that pairing was the duplicate control this cleanup set out to remove.
+  // "Completed" stays a chip: it's an inclusion tweak, not a view.
+  const doneN=allTasks().filter(t=>t.done&&afInScope(t)).length;
   const sp=(key,on,label,n,title)=>`<button class="af-stchip af-sp${on?'':' off'}" data-sp="${key}" title="${title}">${label} <span class="af-stn">${n}</span></button>`;
-  const specials=(recurN?sp('routines',ui.routines,'↻ Recurring',recurN,'Show recurring and not-yet-due tasks'):'')
-               +(doneN?sp('done',ui.showdone,'✓ Done',doneN,'Show completed tasks'):'');
-  bar.innerHTML=(statusChips||specials)?('<span class="af-stlabel">Show</span>'+statusChips+specials):'';
+  const specials=doneN?sp('done',ui.showdone,'✓ Done',doneN,'Show completed tasks'):'';
+  // Sub-filter row: statuses only. The cards above choose the view; these refine
+  // which statuses show inside it.
+  bar.innerHTML=(statusChips||specials)?('<span class="af-stlabel">Status</span>'+statusChips+specials):'';
 }
 document.addEventListener('click',(e)=>{
   const b=e.target.closest('#af-statusbar .af-stchip'); if(!b) return;
@@ -1698,6 +1674,10 @@ function visible(){
       if(sf==='work'&&t.source!=='work')return false;
       if(sf==='personal'&&t.source!=='personal')return false;
       if(sf==='myday'&&!t.myDay)return false;
+      // 'due' = the old Today + Overdue cards merged: anything late or due today.
+      // The card also switches the grouping to date buckets, so the list splits
+      // itself back into Overdue / Today sections.
+      if(sf==='due'){const e=effDate(t);if(!(e&&daysFrom(e)<=0&&!notYetDue(t)))return false;}
       if(sf==='today'){const e=effDate(t);if(!(e&&daysFrom(e)===0&&!notYetDue(t)))return false;}
       if(sf==='overdue'){const e=effDate(t);if(!(e&&daysFrom(e)<0&&!notYetDue(t)))return false;}
     }
@@ -1740,13 +1720,13 @@ function row(t){
   // Secondary line: project · status (if non-default) · touched (if sorted by it)
   const subParts=[];
   if(t.project) subParts.push(escapeHtml(t.project));
-  if(t.status && t.status!=='Planned' && t.status!=='Doing'){
-    subParts.push('<span class="quest-sub-status">'+t.status+'</span>');
+  // Status as a coloured sub-line label (replaces the old status dot — one signal,
+  // not two). Suppressed when grouped BY status, where the heading already says it.
+  if(t.status && ui.group!=='status'){
+    subParts.push('<span class="quest-sub-status qs-'+AF_ST_KEY(t)+'">'+escapeHtml(t.status)+'</span>');
   }
   if(t.source==='work' && !t.assignedToMe && t.assigneeNames && t.assigneeNames.length) subParts.push('<span class="quest-sub-assignee">'+escapeHtml(t.assigneeNames.join(', '))+'</span>');
-  if(t.lastWorked){
-    subParts.push('<span class="quest-sub-touched">worked '+relTime(new Date(t.lastWorked))+'</span>');
-  } else if(ui.sort==='touched' && lt){
+  if(ui.sort==='touched' && lt){
     subParts.push('<span class="quest-sub-touched">touched '+relTime(lt)+'</span>');
   }
   const sub = subParts.length
@@ -1757,9 +1737,12 @@ function row(t){
   const estHtml = (t.estHours != null && t.estHours > 0)
     ? '<span class="quest-est" title="Estimated '+t.estHours+'h — tap to edit">'+(Number.isInteger(t.estHours)?t.estHours:t.estHours.toFixed(1))+'h</span>'
     : (t.source==='work' ? '<span class="quest-est empty" title="No time estimate — tap to add">No EST</span>' : '');
-  const sourceTag = t.source==='work'
-    ? '<span class="quest-tag tag-work">work</span>'
-    : '<span class="quest-tag tag-personal">personal</span>';
+  // Work/personal tag only matters when BOTH are on screen — in a single-mode
+  // view you already know which one you're looking at.
+  const sourceTag = (ui.src!=='all') ? ''
+    : (t.source==='work'
+      ? '<span class="quest-tag tag-work">work</span>'
+      : '<span class="quest-tag tag-personal">personal</span>');
   const dueHtml = dl.txt
     ? '<span class="quest-due-inline '+dl.cls+'" data-act="edit-due">'+dl.txt+'</span>'
     : '<span class="quest-due-inline" data-act="edit-due" style="opacity:0.35">+ date</span>';
@@ -1770,21 +1753,15 @@ function row(t){
   const followBtn = (t.source==='work' && !t.assignedToMe)
     ? '<button class="quest-follow '+(t.followingMe?'on':'')+'" data-act="follow" title="'+(t.followingMe?'Following — tap to unfollow':'Follow this task')+'" aria-label="Follow task"><svg viewBox="0 0 24 24"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/></svg></button>'
     : '';
-  // "Made a move" — worked on it but not done: strike + send to bottom of group.
-  const moved = t.done ? '' : '<button class="quest-moved" data-act="moved" title="I worked on this — move it down" aria-label="Made progress"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m8 11 4 4 4-4"/><path d="M5 20h14"/></svg></button>';
   const doneCls = t.done ? ' done' : '';
   const checkedCls = t.done ? 'checked' : '';
-  const statusKey = (t.status || 'Planned').toLowerCase().replace(/\s+/g,'-');
-  const statusDot = '<span class="quest-status-dot status-'+statusKey+'" title="'+(t.status||'Planned')+'"></span>';
   const repeatLab = recurLabel(t);
   const repeatIcon = repeatLab ? '<span class="quest-repeat" title="Repeats '+escapeHtml(repeatLab.toLowerCase())+'" aria-label="Repeats '+escapeHtml(repeatLab.toLowerCase())+'">↻</span>' : '';
   return '<div class="quest-item'+doneCls+'" data-task-id="'+t.id+'" data-task-url="'+escapeHtml(t.url||'')+'">'
     +'<div class="quest-check '+checkedCls+'" data-act="check"></div>'
-    +statusDot
     +'<div class="quest-text" data-act="open">'+escapeHtml(t.name)+repeatIcon+sub+'</div>'
     +'<div class="quest-meta-tags">'+priHtml+estHtml+dueHtml+sourceTag+'</div>'
     +followBtn
-    +moved
     +star
     +'</div>';
 }
@@ -1853,47 +1830,55 @@ function render(){
   }
 }
 function updateHeader(){
-  // Stat tiles count from the same base as visible(): open tasks, mode-filtered,
-  // excluding future recurrences (unless "show routines" is on), AND scoped to the
-  // same owner filter the list uses — otherwise the counts wouldn't match what
-  // actually renders (e.g. "13 overdue" but none assigned to me).
-  // The status filter (AF_HIDDEN) hides whole statuses from the list, so the tiles
-  // must honour it too — otherwise a muted status makes every count overstate.
-  const stOk = (t) => !(AF_HIDDEN.size && AF_HIDDEN.has(AF_ST_KEY(t)));
-  let base = allTasks().filter(t => !t.done && stOk(t) && !((t.recurring || notYetDue(t)) && !ui.routines));
+  // Card counts are a STABLE dashboard: each one is computed from the same fixed
+  // baseline (work/personal mode + the global ME toggle) — NOT from whichever card
+  // is currently active, and not from the status chips. So clicking a card never
+  // moves the other numbers; it just filters the list. Each count still equals
+  // exactly what you get when you click that card (see wireStatCards), because
+  // clicking sets the same baseline.
+  let base = allTasks().filter(t => !t.done && !((t.recurring || notYetDue(t)) && !ui.routines));
   if (ui.src !== 'all') base = base.filter(t => t.source === ui.src);
   let live = base;
-  if (ui.src !== 'personal'){
-    if (ui.owner === 'following') live = base.filter(t => t.followingMe);
-    else if (meActive()) live = base.filter(mineTask);
-  }
+  if (ui.src !== 'personal' && meActive()) live = base.filter(mineTask);
   const work=live.filter(t=>t.source==='work').length, pers=live.filter(t=>t.source==='personal').length;
   const od=live.filter(t=>{const e=effDate(t);return e&&daysFrom(e)<0;}).length;
   const td=live.filter(t=>{const e=effDate(t);return e&&daysFrom(e)===0;}).length;
   const md=live.filter(t=>t.myDay).length;
   // Recurring tasks are excluded from `base`/`live` (they're behind the routines
-  // gate), so count them independently within the same mode + owner scope.
-  let recurBase=allTasks().filter(t=>!t.done&&t.recurring&&stOk(t));
+  // gate), so count them independently — on the same stable baseline.
+  let recurBase=allTasks().filter(t=>!t.done&&t.recurring);
   if (ui.src!=='all') recurBase=recurBase.filter(t=>t.source===ui.src);
-  if (ui.src!=='personal'){
-    if (ui.owner==='following') recurBase=recurBase.filter(t=>t.followingMe);
-    else if (meActive()) recurBase=recurBase.filter(mineTask);
-  }
+  if (ui.src!=='personal' && meActive()) recurBase=recurBase.filter(mineTask);
   const rc=recurBase.length;
-  const tile=(n,label,cls,filter)=>{
-    const active=ui.statFilter===filter?' active':'';
-    return '<div class="stat '+cls+active+'" data-filter="'+filter+'" role="button" tabindex="0" aria-pressed="'+(active?'true':'false')+'" title="Filter to '+label.toLowerCase()+'"><div class="statn">'+n+'</div><div class="statl">'+label+'</div></div>';
-  };
-  // "Following" card counts the tasks I follow within the current mode, regardless
-  // of the me/following owner scope, so it always shows how many I'm following.
-  // HIDDEN in personal mode: personal tasks have no Following property, so both
-  // visible() and the counts above skip the owner scope there — the tile would be
-  // a permanently-0, no-op button.
+  // "Following" counts the tasks I follow within the current mode, regardless of
+  // the me/following owner scope, so it always shows how many I'm following.
+  // Omitted in personal mode: personal tasks have no Following property.
   const followCount=base.filter(t=>t.followingMe).length;
-  const followActive=ui.owner==='following'?' active':'';
-  const followTile = ui.src==='personal' ? ''
-    : '<div class="stat s-following'+followActive+'" data-scope="following" role="button" tabindex="0" aria-pressed="'+(followActive?'true':'false')+'" title="Show tasks I follow"><div class="statn">'+followCount+'</div><div class="statl">Following</div></div>';
-  el('hdrstats').innerHTML=tile(live.length,'Open','s-open','open')+tile(td,'Today','s-today','today')+tile(od,'Overdue','s-over','overdue')+tile(md,"My Day",'s-myday','myday')+followTile+tile(rc,'Recurring','s-recurring','recurring');
+  AF_STATS={open:live.length,today:td,overdue:od,myday:md,following:followCount,recurring:rc};
+  // ── TOP-LEVEL FILTER: the cards ──
+  // Exactly ONE card is active at a time ("Open" = no narrowing). Because the
+  // view is a single choice, contradictory combinations like "My Day + Following"
+  // are impossible by construction instead of needing a special-case rule.
+  // Statuses are the SUB-filter (chips below) and refine whatever card is active.
+  const activeCard = (ui.owner==='following') ? 'following' : (ui.statFilter || 'open');
+  const tile=(n,label,cls,card)=>{
+    const active = activeCard===card ? ' active' : '';
+    return '<div class="stat '+cls+active+'" data-card="'+card+'" role="button" tabindex="0" aria-pressed="'+(active?'true':'false')+'" title="Show '+label.toLowerCase()+'"><div class="statn">'+n+'</div><div class="statl">'+label+'</div></div>';
+  };
+  const cards=[
+    tile(live.length,'Open','s-open','open'),
+    // Today + Overdue merged into one red "Due" card; clicking it groups the list
+    // by date so Overdue / Today come back as sections.
+    tile(od+td,'Due','s-over','due'),
+    tile(md,'My Day','s-myday','myday'),
+    // Following is omitted in personal mode (personal tasks have no Following).
+    ...(ui.src==='personal'?[]:[tile(followCount,'Following','s-following','following')]),
+    tile(rc,'Recurring','s-recurring','recurring'),
+  ];
+  const host=el('hdrstats');
+  host.className='statgrid';
+  host.style.gridTemplateColumns=`repeat(${cards.length},1fr)`;
+  host.innerHTML=cards.join('');
 }
 
 function afPatch(id, body){
@@ -1945,13 +1930,6 @@ el('list').addEventListener('click',e=>{
       .catch(err=>{state.edits[id].myDay=prevMyDay;saveState();render();window.lrl.toast('Sync failed: '+err.message,'error');});
     return;
   }
-  if(act==='moved'){
-    // Digital autofocus: worked on it, not done. Open the reframe modal — rewrite
-    // the task into its next step (or just move it). See submitPlanMove.
-    const t=task(id); if(t && t.done) return;
-    openPlanMove(id);
-    return;
-  }
   if(act==='follow'){
     e.stopPropagation();
     if(!BASE[id])return;
@@ -2001,53 +1979,6 @@ el('list').addEventListener('click',e=>{
   }
 });
 
-// ---- "Made a move" reframe modal (autofocus rewrite on the Tasks list) ----
-let _pMoveId=null;
-function openPlanMove(id){
-  const t=task(id); if(!t||t.done) return;
-  _pMoveId=id;
-  const cur=document.getElementById('pmCur'); if(cur) cur.textContent=t.name;
-  const inp=document.getElementById('pmNext'); if(inp){ inp.value=''; inp.placeholder='e.g. '+t.name; }
-  const m=document.getElementById('planMoveModal'); if(m){ m.classList.add('open'); setTimeout(()=>inp&&inp.focus(),60); }
-}
-function closePlanMove(){ const m=document.getElementById('planMoveModal'); if(m) m.classList.remove('open'); _pMoveId=null; }
-// justMove=true skips the reframe (the "Just move it" button).
-function submitPlanMove(justMove){
-  const id=_pMoveId; const t=id&&task(id);
-  if(!t){ closePlanMove(); return; }
-  const inp=document.getElementById('pmNext');
-  const next=(!justMove && inp ? inp.value : '').trim();
-  const oldName=t.name; const reframed=!!next && next!==oldName;
-  const nowIso=new Date().toISOString();
-  state.touched[id]=nowIso;
-  if(BASE[id]){ BASE[id].lastWorked=nowIso; if(reframed) BASE[id].name=next; }
-  saveState();
-  window.lrl && window.lrl.haptic && window.lrl.haptic('tap');
-  fetch('/api/tasks/'+id+'/worked',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(reframed?{nextStep:next}:{})}).catch(()=>{});
-  try { PG_LOADED=false; } catch(_){} // Progress tab reloads next open to credit this move
-  closePlanMove();
-  const rowEl=document.querySelector('.quest-item[data-task-id="'+id+'"]');
-  if(!rowEl) return;
-  const gbody=rowEl.closest('.gbody');
-  rowEl.classList.add('quest-striking');
-  setTimeout(()=>{
-    // Rebuild the row so a reframed title shows, then drop it to the bottom of its group.
-    if(reframed) rowEl.outerHTML=row(task(id));
-    const el2=(gbody||document).querySelector('.quest-item[data-task-id="'+id+'"]');
-    if(el2){
-      if(gbody) gbody.appendChild(el2);
-      el2.classList.remove('quest-striking');
-      el2.classList.add('quest-landed');
-      setTimeout(()=>el2.classList.remove('quest-landed'),900);
-    }
-  },460);
-}
-window.submitPlanMove=submitPlanMove; window.closePlanMove=closePlanMove;
-
-// Refresh autofocus list when task modal saves
-window.addEventListener('lrl-refresh-focus', async () => {
-  try { await fetchTasks(); render(); } catch(e){}
-});
 el('q').addEventListener('input',e=>{ui.q=e.target.value;render();});
 function updateSortBtn(){
   const btn=el('sort-btn'),pop=el('sort-pop');
@@ -2090,35 +2021,35 @@ el('group-pop')?.addEventListener('click',e=>{
 document.addEventListener('click',()=>{el('sort-pop')?.classList.remove('open');el('group-pop')?.classList.remove('open');document.getElementById('proj-group-pop')?.classList.remove('open');document.getElementById('proj-area-pop')?.classList.remove('open');});
 
 // Click stat tiles to filter task list. Clicking active tile (or "Open") clears the filter.
-(function wireStatTileFilters(){
+// Cards = the top-level view picker. Exactly one is active, so the old
+// tile-vs-scope tangle (and combinations like "My Day + Following") can't happen.
+(function wireStatCards(){
   const host = el('hdrstats');
   if (!host) return;
-  const apply = (filter) => {
-    const next = (ui.statFilter === filter || filter === 'open') ? null : filter;
-    ui.statFilter = next;
-    try { localStorage.setItem('lrl-stat-filter', next || ''); } catch(_){}
-    // Following is a SCOPE (ui.owner); stat cards are FILTERS within it — they
-    // compose. Previously clicking a card silently cleared the Following scope,
-    // so the card's (Following-scoped) count didn't match what you got after
-    // clicking it — e.g. "Recurring 1" would open all 9 recurring tasks.
+  const apply = (card) => {
+    if (card === 'following') { ui.statFilter = null; ui.owner = 'following'; }
+    else if (card === 'open') { ui.statFilter = null; ui.owner = 'all'; }
+    else { ui.statFilter = card; ui.owner = 'all'; }
+    // "Due" is a date view — switch the grouping to date buckets so the list
+    // splits into Overdue / Today. (Still free to re-group afterwards.)
+    if (card === 'due' && ui.group !== 'bucket') { ui.group = 'bucket'; saveState(); updateGroupBtn(); }
+    try {
+      localStorage.setItem('lrl-stat-filter', ui.statFilter || '');
+      localStorage.setItem('lrl-task-scope', ui.owner);
+    } catch(_){}
     window.lrl?.haptic('tap');
-    render();
+    applyScopeUI(); render();
   };
   host.addEventListener('click', (e) => {
-    const scopeTile = e.target.closest('.stat[data-scope="following"]');
-    if (scopeTile) { setOwner(ui.owner === 'following' ? 'all' : 'following'); return; }
-    const tile = e.target.closest('.stat[data-filter]');
-    if (!tile) return;
-    apply(tile.dataset.filter);
+    const tile = e.target.closest('.stat[data-card]');
+    if (tile) apply(tile.dataset.card);
   });
   host.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
-    const scopeTile = e.target.closest('.stat[data-scope="following"]');
-    if (scopeTile) { e.preventDefault(); setOwner(ui.owner === 'following' ? 'all' : 'following'); return; }
-    const tile = e.target.closest('.stat[data-filter]');
+    const tile = e.target.closest('.stat[data-card]');
     if (!tile) return;
     e.preventDefault();
-    apply(tile.dataset.filter);
+    apply(tile.dataset.card);
   });
 })();
 // Autofocus listens for global mode changes
@@ -3156,79 +3087,6 @@ function fuAggToggleDay(id, isOn){
   setTimeout(renderFuAgg, 180);
 }
 
-// ---- Progress tab (moved forward) ----
-// The management-console companion to Today's "Moved Forward Today" pile: every
-// task you worked on but couldn't call done, over the last week, grouped by day.
-// Same "Last Worked" data as Today, just a wider window + credit total.
-let PG_DATA = null, PG_LOADED = false;
-function pgDayLabel(dayKey, today){
-  if (dayKey === today) return 'Today';
-  const d = new Date(dayKey + 'T12:00:00');
-  const yd = new Date(today + 'T12:00:00'); yd.setDate(yd.getDate() - 1);
-  const ydKey = yd.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
-  if (dayKey === ydKey) return 'Yesterday';
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-}
-function pgTime(iso){
-  if (!iso) return '';
-  if (iso.length === 10) return ''; // date-only, no time to show
-  try { return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }); } catch(e){ return ''; }
-}
-function pgRow(it){
-  const esc = fuAggEsc;
-  const proj = it.projectId ? _fuProjMap[it.projectId] : '';
-  const url = esc(it.url || '');
-  // Reframed: strike the step finished, show the new next step after an arrow.
-  const nameHtml = it.prevStep
-    ? `<span class="pg-prev">${esc(it.prevStep)}</span> <span class="pg-arrow">→</span> ${esc(it.name)}`
-    : esc(it.name);
-  return `<div class="pg-row${it.done ? ' done' : ''}">
-    <div class="pg-dot"></div>
-    <div class="pg-main">
-      <div class="pg-name"${url ? ` onclick="(window.openNotion?openNotion('${url}'):window.open('${url}','_blank'))"` : ''}>${nameHtml}</div>
-      ${proj ? `<div class="pg-proj">${esc(proj)}</div>` : ''}
-    </div>
-    <div class="pg-time">${esc(pgTime(it.lastWorked))}</div>
-  </div>`;
-}
-function renderProgress(){
-  const host = document.getElementById('pg-body');
-  const credit = document.getElementById('pg-credit');
-  if (!host) return;
-  const items = (PG_DATA && PG_DATA.items) || [];
-  const today = (PG_DATA && PG_DATA.today) || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
-  if (credit) {
-    const todayCt = (PG_DATA && PG_DATA.todayCount) || 0;
-    credit.innerHTML = items.length
-      ? `<b>${items.length}</b> moved forward this week<span class="pg-c2"> · ${todayCt} today</span>`
-      : '';
-  }
-  if (!items.length) { host.innerHTML = '<div class="fu-empty">Nothing moved forward yet this week. Tap the ↓ on a task you worked on — even if it\'s not done — to give yourself credit.</div>'; return; }
-  // group by dayKey, preserving the server's newest-first order
-  const groups = [];
-  const idx = {};
-  items.forEach(it => {
-    const k = it.dayKey || today;
-    if (!(k in idx)) { idx[k] = groups.length; groups.push({ key: k, rows: [] }); }
-    groups[idx[k]].rows.push(it);
-  });
-  host.innerHTML = groups.map(g =>
-    `<div class="pg-group"><div class="pg-group-head">${fuAggEsc(pgDayLabel(g.key, today))} <span class="pg-count">· ${g.rows.length}</span></div>${g.rows.map(pgRow).join('')}</div>`
-  ).join('');
-}
-async function loadProgress(){
-  try {
-    const [r, projs] = await Promise.all([
-      fetch('/api/tasks/worked?days=7'),
-      (Object.keys(_fuProjMap).length ? Promise.resolve(null)
-        : fetch('/api/projects').then(x => x.json()).then(d => d.projects || []).catch(() => [])),
-    ]);
-    PG_DATA = await r.json();
-    if (projs) { _fuProjMap = {}; projs.forEach(p => { if (p && p.id) _fuProjMap[p.id] = p.name; }); }
-    PG_LOADED = true; renderProgress();
-  } catch(e){ document.getElementById('pg-body').innerHTML = '<div class="fu-empty">Couldn\'t load progress — reopen the tab.</div>'; }
-}
-
 // ---- Execute sub-panel switcher ----
 (function(){
   const panels = [...document.querySelectorAll('.exec-panel')];
@@ -3239,7 +3097,6 @@ async function loadProgress(){
     btns.forEach(b => b.classList.toggle('active', b.dataset.go === name));
     if (name === 'projects' && window.maybeLoadProjects) window.maybeLoadProjects();
     if (name === 'followups' && !FU_AGG_LOADED) loadFuAgg();
-    if (name === 'progress' && !PG_LOADED) loadProgress();
     if (name === 'review' && !reviewLoaded && typeof fetchReview === 'function') { reviewLoaded = true; fetchReview(); }
     if (name === 'calendar' && window.calendarLoad) window.calendarLoad();
     try { localStorage.setItem('lrl-exec-panel', name); } catch(e){}
@@ -3253,22 +3110,6 @@ async function loadProgress(){
 })();
 </script>
 <!-- Edit Task modal -->
-<!-- Made a move / reframe modal (Tasks list) -->
-<div class="task-modal" id="planMoveModal" onclick="if(event.target===this)closePlanMove()">
-  <div class="tm-content" style="max-width:440px;">
-    <div class="tm-head"><div class="tm-title">Made a move 👏</div><button class="tm-close" onclick="closePlanMove()" aria-label="Close">×</button></div>
-    <div class="tm-field"><label>Worked on</label><div id="pmCur" style="font-size:15px;color:var(--text-3);line-height:1.35;text-decoration:line-through;"></div></div>
-    <div class="tm-field">
-      <label>What's the next step? <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--navy-dim);">— rewrite it, or leave blank to just move it</span></label>
-      <input type="text" id="pmNext" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();submitPlanMove()}">
-    </div>
-    <div class="tm-actions">
-      <button class="tm-btn ghost" onclick="submitPlanMove(true)" title="Credit the work without renaming">Just move it</button>
-      <button class="tm-btn primary" onclick="submitPlanMove()">Move forward</button>
-    </div>
-  </div>
-</div>
-
 <div class="task-modal" id="taskModal" onclick="if(event.target===this)closeTaskModal()">
   <div class="tm-content">
     <div class="tm-head"><div class="tm-title">Edit Task</div><button class="tm-close" onclick="closeTaskModal()" aria-label="Close">×</button></div>
