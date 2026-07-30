@@ -477,13 +477,18 @@ app.use((req, res, next) => {
   next();
 });
 
-// Public health check — reports whether the multi-user store is connected.
+// Public health check — reports whether the multi-user store is connected, plus
+// the commit this instance is actually running. Everything else is behind auth,
+// so this is the only way to confirm from outside which deploy is live.
+// (A second, unreachable /api/health with a stale `version: 'day-6'` used to sit
+// below this one — Express only ever matches the first, so it was dead code.)
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, db: dbEnabled() });
-});
-
-app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, ts: new Date().toISOString(), version: 'day-6' });
+  res.json({
+    ok: true,
+    db: dbEnabled(),
+    commit: (process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7) || 'local',
+    ts: new Date().toISOString(),
+  });
 });
 
 app.get('/login', (req, res) => {
