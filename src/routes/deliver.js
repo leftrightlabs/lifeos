@@ -86,6 +86,7 @@ export function registerDeliverRoutes(app, ctx) {
       assigneeNames: (p.Assigned?.people || []).map((u) => u.name).filter(Boolean),
       projectId: (p.Project?.relation || [])[0]?.id || null,
       due: p.Due?.date?.start || null,
+      myDay: !!p['My Day']?.checkbox,
       est: typeof p['Est Hours']?.number === 'number' ? p['Est Hours'].number : null,
       logged: p['Total Logged (hrs)']?.formula?.number || 0,
       waiting: p.Waiting?.select?.name || null,
@@ -249,7 +250,7 @@ export function registerDeliverRoutes(app, ctx) {
 
     // ── Section data ──
     const taskRow = (t) => ({
-      id: t.id, name: t.name, url: t.url, projectName: t.projectName, projectId: t.projectId, av: t.av,
+      id: t.id, name: t.name, url: t.url, projectName: t.projectName, projectId: t.projectId, myDay: t.myDay, av: t.av,
       status: t.status, due: t.due, est: t.est, logged: t.logged, outsourced: t.outsourced,
       overdue: t.overdue, dueToday: t.dueToday, dueTomorrow: t.dueTomorrow,
       overdueDays: t.overdue ? Math.abs(dayDiff(t.due, today)) : 0,

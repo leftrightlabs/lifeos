@@ -848,6 +848,22 @@
 .fu-daybtn { flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); color: var(--text-3); border-radius: 999px; padding: 4px 11px; font-size: var(--fs-caption); font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all .15s; }
 .fu-daybtn:hover { border-color: var(--text-4); color: var(--text); }
 .fu-daybtn.on { background: var(--accent-soft); border-color: transparent; color: #A99EFF; }
+/* Task status filter bar (Notion board order, matches Production → My Work) */
+.af-statusbar { display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin:0 0 14px; }
+.af-statusbar:empty { display:none; }
+.af-stlabel { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-4); margin-right:2px; }
+.af-stchip { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700; padding:4px 11px; border-radius:999px; cursor:pointer; font-family:inherit; border:1px solid transparent; transition:opacity .12s, filter .12s; }
+.af-stchip::before { content:''; width:7px; height:7px; border-radius:50%; background:currentColor; flex-shrink:0; }
+.af-stchip .af-stn { color:var(--text-4); font-weight:700; }
+.af-stchip.off { opacity:.4; filter:grayscale(.65); text-decoration:line-through; }
+.af-stchip.off .af-stn { text-decoration:none; }
+.af-stchip.st-planned { color:#6ba6f0; background:rgba(93,156,236,.15); }
+.af-stchip.st-agenda  { color:#de8fbe; background:rgba(212,114,168,.15); }
+.af-stchip.st-doing   { color:#4FD6A0; background:rgba(79,214,160,.15); }
+.af-stchip.st-waiting { color:#e6ac5f; background:rgba(224,164,88,.16); }
+.af-stchip.st-billing { color:#a99eff; background:rgba(155,135,245,.16); }
+.af-stchip.st-done,
+.af-stchip.st-default { color:#93a0b4; background:rgba(138,148,166,.14); }
 /* PROGRESS tab — "moved forward" credit + daily piles */
 .pg-credit { font-size: var(--fs-body); color: var(--text-2); margin: 0 0 18px; }
 .pg-credit b { color: #e8843f; font-weight: 800; }
@@ -939,6 +955,7 @@
           <button type="button" class="af-tbar-btn" id="expandall" title="Expand all" aria-label="Expand all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
           </div>
         </div>
+        <div class="af-statusbar" id="af-statusbar"></div>
         <div id="list"></div>
       </div>
     </div>
@@ -1552,6 +1569,14 @@ function recurLabel(t){
 const el=id=>document.getElementById(id);
 const ui={src:'all',sort:'due',group:'bucket',q:'',routines:false,showdone:false,statFilter:null,owner:'all'};
 try { const sf = localStorage.getItem('lrl-stat-filter'); if (sf) ui.statFilter = sf; } catch(e){}
+// Status filter (same idea as Production → My Work): a set of status keys to hide,
+// so you can mute Planned/Waiting and focus on Doing. Notion board order.
+const AF_ST_KEY = (t) => String(t.status || '').toLowerCase().replace(/\s+/g,'-') || 'default';
+const AF_ST_LABEL = { planned:'Planned', agenda:'Agenda', doing:'Doing', waiting:'Waiting', billing:'Billing', done:'Done', default:'Other' };
+const AF_ST_ORDER = ['planned','agenda','doing','waiting','billing','done','default'];
+let AF_HIDDEN = new Set();
+try { const a = JSON.parse(localStorage.getItem('lrl-af-hidden-status') || '[]'); if (Array.isArray(a)) AF_HIDDEN = new Set(a); } catch(e){}
+const afSaveHidden = () => { try { localStorage.setItem('lrl-af-hidden-status', JSON.stringify([...AF_HIDDEN])); } catch(e){} };
 // owner is now only 'all' or 'following' (the page-level Following tile). The
 // "Me" dimension comes from the GLOBAL ME toggle (shell.js) layered on top.
 try { const sc = localStorage.getItem('lrl-task-scope'); if (sc === 'following') ui.owner = 'following'; } catch(e){}
@@ -1559,11 +1584,39 @@ function meActive(){ return !!(window.LRLShell && LRLShell.meMode()); }
 // "Mine" = assigned to me OR unassigned (unassigned items stay visible by design).
 function mineTask(t){ return t.assignedToMe || !(t.assigneeNames && t.assigneeNames.length); }
 
+// Status filter bar — a colored toggle chip per status, matching Production →
+// My Work. Counts come from the current scope IGNORING the status filter, so
+// hidden statuses still show how many they'd reveal.
+function renderAfStatusBar(){
+  const bar=el('af-statusbar'); if(!bar) return;
+  const hold=AF_HIDDEN; AF_HIDDEN=new Set();      // count pre-status-filter
+  let pool; try { pool=visible(); } finally { AF_HIDDEN=hold; }
+  const counts={};
+  pool.forEach(t=>{ const k=AF_ST_KEY(t); counts[k]=(counts[k]||0)+1; });
+  // Include hidden statuses even when the un-filtered pool misses them (e.g. Done
+  // sits behind its own toggle) so you can always un-hide.
+  AF_HIDDEN.forEach(k=>{ if(!counts[k]) counts[k]=0; });
+  const present=AF_ST_ORDER.filter(k=>counts[k]!==undefined);
+  if(present.length<=1){ bar.innerHTML=''; return; }
+  bar.innerHTML='<span class="af-stlabel">Show</span>'+present.map(k=>{
+    const off=AF_HIDDEN.has(k);
+    return `<button class="af-stchip st-${k}${off?' off':''}" data-st="${k}">${AF_ST_LABEL[k]||k} <span class="af-stn">${counts[k]}</span></button>`;
+  }).join('');
+}
+document.addEventListener('click',(e)=>{
+  const b=e.target.closest('#af-statusbar .af-stchip'); if(!b) return;
+  const k=b.dataset.st;
+  if(AF_HIDDEN.has(k)) AF_HIDDEN.delete(k); else AF_HIDDEN.add(k);
+  afSaveHidden(); render();
+});
+
 function visible(){
   const sf=ui.statFilter;
   const q = (ui.q || '').trim().toLowerCase();
   return allTasks().filter(t=>{
     if(t.done&&!ui.showdone)return false;
+    // Status filter — mute whole statuses (applies to every grouping/sort).
+    if(AF_HIDDEN.size && AF_HIDDEN.has(AF_ST_KEY(t))) return false;
     if(ui.src!=='all'&&t.source!==ui.src)return false;
     if(ui.src!=='personal'){
       if(ui.owner==='following'){ if(!t.followingMe)return false; }
@@ -1691,7 +1744,7 @@ function render(){
   else if(ui.group==='project'){const map={};arr.forEach(t=>{const k=t.project||'No Project';(map[k]=map[k]||[]).push(t);});Object.keys(map).sort().forEach(k=>{const pid=(map[k].find(t=>t.projectId)||{}).projectId;const url=pid?'https://www.notion.so/'+String(pid).replace(/-/g,''):null;html+=section('p_'+k,k,map[k],'',url);});}
   else if(ui.group==='status'){const ORDER=['Doing','Planned','Waiting','Agenda','Billing','Done'];const map={};arr.forEach(t=>{const k=t.status||'Planned';(map[k]=map[k]||[]).push(t);});ORDER.forEach(k=>{if(map[k])html+=section('st_'+k,k,map[k]);});Object.keys(map).filter(k=>!ORDER.includes(k)).sort().forEach(k=>{html+=section('st_'+k,k,map[k]);});}
   else{const buckets={};arr.forEach(t=>{const b=bucketOf(t);(buckets[b.key]=buckets[b.key]||{label:b.label,rank:b.rank,items:[]}).items.push(t);});Object.entries(buckets).sort((a,b)=>a[1].rank-b[1].rank).forEach(([key,b])=>{const cls=b.label==='Overdue'?'over':(b.label==='Today'?'today':'');html+=section(key,b.label,b.items,cls);});}
-  L.innerHTML=html;updateHeader();
+  L.innerHTML=html;updateHeader();renderAfStatusBar();
   // Drag-to-reorder per group
   if (typeof Sortable !== 'undefined'){
     L.querySelectorAll('.gbody').forEach(gb => {

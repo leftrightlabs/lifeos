@@ -209,6 +209,11 @@ body:not([data-state]) .dv-content { display:none; }
 .mw-gspacer { flex:1 1 auto; }
 .mw-projstatus { flex-shrink:0; text-transform:none; letter-spacing:0; font-size:10.5px; font-weight:700; color:var(--text-3); background:rgba(138,148,166,.14); padding:2px 8px; border-radius:5px; }
 .mw-gcount { color:var(--text-4); font-weight:700; }
+/* My Day star on My Work rows */
+.mw-star { flex-shrink:0; background:none; border:none; padding:3px; cursor:pointer; line-height:0; border-radius:6px; }
+.mw-star svg { width:19px; height:19px; fill:none; stroke:var(--text-4); stroke-width:1.8; stroke-linejoin:round; transition:stroke .12s, fill .12s; }
+.mw-star:hover svg { stroke:var(--amber); }
+.mw-star.on svg { fill:var(--amber); stroke:var(--amber); }
 .mw-add { margin-left:10px; font-size:11px; font-weight:700; color:var(--accent); background:none; border:1px solid var(--border); border-radius:6px; padding:2px 9px; cursor:pointer; font-family:inherit; letter-spacing:.02em; text-transform:none; transition:border-color .12s; }
 .mw-add:hover { border-color:var(--accent); }
 .mw-addform { display:flex; gap:7px; align-items:center; margin-bottom:8px; }
@@ -409,11 +414,15 @@ function taskRowHTML(t, opts = {}) {
   if (t.est != null) metaBits.push(`Est ${t.est}h`); else if (opts.showNoEst) metaBits.push('<span class="chip ghost">no estimate</span>');
   const right = (opts.actions || []).join('');
   const out = t.outsourced ? '<span class="chip outsource">outsourced</span>' : '';
+  // My Day star (My Work rows) — toggles the task's "My Day" so it shows on Today.
+  const starHtml = (opts.showStar && t.status !== 'Done')
+    ? `<button class="mw-star ${t.myDay ? 'on' : ''}" data-star-id="${t.id}" title="${t.myDay ? 'On My Day — tap to remove' : 'Add to My Day'}" aria-label="Toggle My Day"><svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.8 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></button>`
+    : '';
   return `<div class="row ${lcls}" data-task="${t.id}">
     ${avEl(t.av)}
     <div class="main"><div class="title"><a href="${t.url}" target="_blank">${esc(t.name)}</a> ${opts.showStatus ? statusChip(t) : ''} ${out}</div>
     <div class="meta">${metaBits.join(' <span class="sep">·</span> ')}</div></div>
-    <div class="right">${right}</div></div>`;
+    <div class="right">${starHtml}${right}</div></div>`;
 }
 const A = {
   done: (t) => `<button class="miniact" onclick="markDone('${t.id}',this)">✓ Done</button>`,
@@ -591,7 +600,7 @@ function renderMyWork() {
   else if (MW_GROUP === 'due') keys.sort((a, b) => orderIdx(MW_DUE_ORDER, a) - orderIdx(MW_DUE_ORDER, b));
   else keys.sort((a, b) => a.localeCompare(b));
   el.innerHTML = keys.map((k) => {
-    const rows = groups.get(k).map((t) => taskRowHTML(t, { showStatus: true, actions: [t.est == null ? A.est(t) : A.log(t), A.done(t)] })).join('');
+    const rows = groups.get(k).map((t) => taskRowHTML(t, { showStatus: true, showStar: true, actions: [t.est == null ? A.est(t) : A.log(t), A.done(t)] })).join('');
     const gkey = MW_GROUP + ':' + k;
     const col = !!MW_COLLAPSED[gkey];
     // In project grouping, offer "+ Task" to add a task already tied to this project.
@@ -629,6 +638,8 @@ function setMyWorkGroup(g) { MW_GROUP = g; try { localStorage.setItem('lrl-mywor
 document.querySelectorAll('#mw-group .mw-gbtn').forEach((b) => b.addEventListener('click', () => setMyWorkGroup(b.dataset.grp)));
 // Collapse / expand a group, and the per-project "+ Task" add-form (delegated).
 document.getElementById('mw-body').addEventListener('click', (e) => {
+  const star = e.target.closest('.mw-star');
+  if (star) { e.stopPropagation(); mwToggleMyDay(star); return; } // ★ → My Day
   const addBtn = e.target.closest('.mw-add');
   if (addBtn) { mwOpenAdd(addBtn); return; }        // + Task → open the inline form
   if (e.target.closest('.mw-addform')) return;      // clicks inside the form don't collapse
@@ -639,6 +650,32 @@ document.getElementById('mw-body').addEventListener('click', (e) => {
   MW_COLLAPSED[gkey] = nowCollapsed;
   try { localStorage.setItem('lrl-mywork-collapsed', JSON.stringify(MW_COLLAPSED)); } catch (e) {}
 });
+// Star a task for My Day — flips the Notion "My Day" checkbox so it shows on Today.
+// Optimistic: the star fills immediately, and the in-memory row is updated so a
+// re-render (group/filter change) keeps the new state without a refetch.
+async function mwToggleMyDay(btn) {
+  const id = btn.dataset.starId;
+  const on = !btn.classList.contains('on');
+  btn.classList.toggle('on', on);
+  btn.title = on ? 'On My Day — tap to remove' : 'Add to My Day';
+  [DATA.myWork, DATA.allWork].forEach((list) => {
+    const row = (list || []).find((t) => t.id === id);
+    if (row) row.myDay = on;
+  });
+  try {
+    const r = await fetch('/api/tasks/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ myDay: on }) });
+    if (!r.ok) throw new Error((await r.json()).error || 'failed');
+    toast(on ? 'Added to My Day ★' : 'Removed from My Day');
+  } catch (err) {
+    btn.classList.toggle('on', !on);  // revert
+    [DATA.myWork, DATA.allWork].forEach((list) => {
+      const row = (list || []).find((t) => t.id === id);
+      if (row) row.myDay = !on;
+    });
+    toast('Couldn\'t update My Day: ' + err.message);
+  }
+}
+
 // Inline "add a task to this project" form. Creates a work task already tied to
 // the project and assigned to the signed-in user (POST /api/tasks auto-assigns),
 // so it lands in this project group and in My Work. Defaults to Planned.
