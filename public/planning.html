@@ -1524,7 +1524,25 @@ async function fetchTasks(){
       // hidden as completed. Trust the server status and drop the stale flag.
       if (t.recurring && t.status !== 'Done' && state.done[t.id]) { delete state.done[t.id]; doneCleared = true; }
     });
-    if (doneCleared) saveState();
+    // Reconcile optimistic edits against the server. task() merges state.edits OVER
+    // the server data, and those edits used to persist forever — so any edit that
+    // never landed (failed PATCH, tab closed mid-flight, offline) would mask the
+    // truth permanently. That's how a task with NO due date in Notion could still
+    // show one and sit in the Overdue bucket. Every edit path PATCHes immediately
+    // and invalidateTaskCaches() busts 'tasks-all-board', so a fresh fetch already
+    // reflects anything that landed: the server is authoritative on load, and we
+    // drop edited fields it can answer for. (Trade-off: a change made while offline
+    // is discarded rather than shown as if it saved.)
+    let prunedEdits = false;
+    Object.keys(state.edits || {}).forEach((id) => {
+      const srv = BASE[id];
+      if (!srv) { delete state.edits[id]; prunedEdits = true; return; }   // task deleted upstream
+      Object.keys(state.edits[id]).forEach((k) => {
+        if (k in srv) { delete state.edits[id][k]; prunedEdits = true; }
+      });
+      if (!Object.keys(state.edits[id]).length) delete state.edits[id];
+    });
+    if (doneCleared || prunedEdits) saveState();
     window.lrlCache.save('tasks', SEED_TASKS);
     render();
   } catch(e) { console.error('fetchTasks failed', e); }
