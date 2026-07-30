@@ -317,6 +317,26 @@
   .autofocus-app .ghead.over h2, .autofocus-app .ghead.over .car {color:var(--over)}
   .autofocus-app .ghead.today {border-color:var(--today)}
   .autofocus-app .ghead.today h2, .autofocus-app .ghead.today .car {color:var(--today)}
+  /* Project-grouped headers: tint the title/divider by the PROJECT's status and
+     show a small status badge (mirrors the badge on Production → My Work). */
+  .autofocus-app .ghead .gh-status {display:inline-flex;align-items:center;gap:5px;vertical-align:middle;margin-left:10px;font-family:var(--font-body);font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:5px;white-space:nowrap}
+  .autofocus-app .ghead .gh-status::before {content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+  .autofocus-app .ghead.gs-planned  {border-color:rgba(107,166,240,.5)}
+  .autofocus-app .ghead.gs-planned h2,  .autofocus-app .ghead.gs-planned .car  {color:#6ba6f0}
+  .autofocus-app .ghead .gh-status.gs-planned  {color:#6ba6f0;background:rgba(93,156,236,.15)}
+  .autofocus-app .ghead.gs-active   {border-color:rgba(79,214,160,.5)}
+  .autofocus-app .ghead.gs-active h2,   .autofocus-app .ghead.gs-active .car   {color:#4FD6A0}
+  .autofocus-app .ghead .gh-status.gs-active   {color:#4FD6A0;background:rgba(79,214,160,.15)}
+  .autofocus-app .ghead.gs-ongoing  {border-color:rgba(169,158,255,.5)}
+  .autofocus-app .ghead.gs-ongoing h2,  .autofocus-app .ghead.gs-ongoing .car  {color:#a99eff}
+  .autofocus-app .ghead .gh-status.gs-ongoing  {color:#a99eff;background:rgba(155,135,245,.16)}
+  .autofocus-app .ghead.gs-on-hold  {border-color:rgba(230,172,95,.5)}
+  .autofocus-app .ghead.gs-on-hold h2,  .autofocus-app .ghead.gs-on-hold .car  {color:#e6ac5f}
+  .autofocus-app .ghead .gh-status.gs-on-hold  {color:#e6ac5f;background:rgba(224,164,88,.16)}
+  .autofocus-app .ghead.gs-done     {border-color:rgba(147,160,180,.45)}
+  .autofocus-app .ghead.gs-done h2,     .autofocus-app .ghead.gs-done .car     {color:#93a0b4}
+  .autofocus-app .ghead .gh-status.gs-done     {color:#93a0b4;background:rgba(138,148,166,.14)}
+  .autofocus-app .ghead .gh-status.gs-default  {color:#93a0b4;background:rgba(138,148,166,.14)}
   .autofocus-app .gbody.collapsed {display:none}
   .autofocus-app .row {display:flex;align-items:flex-start;gap:12px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--work);border-radius:10px;padding:11px 14px;margin-top:8px}
   .autofocus-app .row.personal {border-left-color:var(--personal)}
@@ -1731,9 +1751,25 @@ function isCollapsed(k){const m=ui.group;return !!(state.collapsed[m]&&state.col
 function setCollapsed(k,v){const m=ui.group;state.collapsed[m]=state.collapsed[m]||{};state.collapsed[m][k]=v;saveState();}
 const CARET='<svg class="car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>';
 const GH_NOTION_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h7v7"/><path d="M10 14L21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>';
-function section(key,label,items,extraCls,notionUrl){const col=isCollapsed(key);
+// Project status → a colour key for the group divider + badge (values in the
+// PROJECTS DBs: Planned / Active / Ongoing / On Hold / Done).
+const PROJ_ST_KEY=(s)=>{const k=String(s||'').toLowerCase().replace(/\s+/g,'-');return ['planned','active','ongoing','on-hold','done'].includes(k)?k:'default';};
+// id → status, fetched once (server-side cached) so project group headers can show
+// and be coloured by their project's status.
+let PROJ_STATUS={}, _projStatusLoaded=false;
+function ensureProjStatus(){
+  if(_projStatusLoaded) return; _projStatusLoaded=true;
+  fetch('/api/projects').then(r=>r.json()).then(d=>{
+    (d.projects||[]).forEach(p=>{ if(p&&p.id) PROJ_STATUS[p.id]=p.status||null; });
+    render();   // repaint with statuses now known
+  }).catch(()=>{});
+}
+function section(key,label,items,extraCls,notionUrl,statusName){const col=isCollapsed(key);
   const gh=notionUrl?'<a class="gh-notion" href="'+notionUrl+'" target="_blank" rel="noopener" title="Open project in Notion" aria-label="Open project in Notion">'+GH_NOTION_ICON+'</a>':'';
-  return '<div class="group"><div class="ghead '+(extraCls||'')+(col?' collapsed':'')+'" data-gkey="'+key+'">'+CARET+'<h2><span>'+label+'</span>'+gh+'</h2><span class="cnt">'+items.length+'</span></div><div class="gbody'+(col?' collapsed':'')+'">'+items.map(row).join('')+'</div></div>';}
+  const stK=statusName?PROJ_ST_KEY(statusName):'';
+  const stCls=stK?' gs-'+stK:'';
+  const stBadge=statusName?'<span class="gh-status gs-'+stK+'">'+escapeHtml(statusName)+'</span>':'';
+  return '<div class="group"><div class="ghead '+(extraCls||'')+stCls+(col?' collapsed':'')+'" data-gkey="'+key+'">'+CARET+'<h2><span>'+label+'</span>'+stBadge+gh+'</h2><span class="cnt">'+items.length+'</span></div><div class="gbody'+(col?' collapsed':'')+'">'+items.map(row).join('')+'</div></div>';}
 
 function render(){
   const arr=sortTasks(visible());const L=el('list');
@@ -1741,7 +1777,7 @@ function render(){
   let html='';
   if(ui.group==='none'){html=section('all','All Tasks',arr);}
   else if(ui.group==='source'){[['work','Work'],['personal','Personal']].forEach(([k,lab])=>{const g=arr.filter(t=>t.source===k);if(g.length)html+=section(k,lab,g);});}
-  else if(ui.group==='project'){const map={};arr.forEach(t=>{const k=t.project||'No Project';(map[k]=map[k]||[]).push(t);});Object.keys(map).sort().forEach(k=>{const pid=(map[k].find(t=>t.projectId)||{}).projectId;const url=pid?'https://www.notion.so/'+String(pid).replace(/-/g,''):null;html+=section('p_'+k,k,map[k],'',url);});}
+  else if(ui.group==='project'){ensureProjStatus();const map={};arr.forEach(t=>{const k=t.project||'No Project';(map[k]=map[k]||[]).push(t);});Object.keys(map).sort().forEach(k=>{const pid=(map[k].find(t=>t.projectId)||{}).projectId;const url=pid?'https://www.notion.so/'+String(pid).replace(/-/g,''):null;html+=section('p_'+k,k,map[k],'',url,pid?PROJ_STATUS[pid]:null);});}
   else if(ui.group==='status'){const ORDER=['Doing','Planned','Waiting','Agenda','Billing','Done'];const map={};arr.forEach(t=>{const k=t.status||'Planned';(map[k]=map[k]||[]).push(t);});ORDER.forEach(k=>{if(map[k])html+=section('st_'+k,k,map[k]);});Object.keys(map).filter(k=>!ORDER.includes(k)).sort().forEach(k=>{html+=section('st_'+k,k,map[k]);});}
   else{const buckets={};arr.forEach(t=>{const b=bucketOf(t);(buckets[b.key]=buckets[b.key]||{label:b.label,rank:b.rank,items:[]}).items.push(t);});Object.entries(buckets).sort((a,b)=>a[1].rank-b[1].rank).forEach(([key,b])=>{const cls=b.label==='Overdue'?'over':(b.label==='Today'?'today':'');html+=section(key,b.label,b.items,cls);});}
   L.innerHTML=html;updateHeader();renderAfStatusBar();
