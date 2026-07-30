@@ -337,6 +337,16 @@
   .autofocus-app .ghead.gs-done h2,     .autofocus-app .ghead.gs-done .car     {color:#93a0b4}
   .autofocus-app .ghead .gh-status.gs-done     {color:#93a0b4;background:rgba(138,148,166,.14)}
   .autofocus-app .ghead .gh-status.gs-default  {color:#93a0b4;background:rgba(138,148,166,.14)}
+  /* Task-status headings (grouped by status) — same palette as the SHOW chips.
+     planned + done are shared with the project statuses above. */
+  .autofocus-app .ghead.gs-agenda   {border-color:rgba(222,143,190,.5)}
+  .autofocus-app .ghead.gs-agenda h2,   .autofocus-app .ghead.gs-agenda .car   {color:#de8fbe}
+  .autofocus-app .ghead.gs-doing    {border-color:rgba(79,214,160,.5)}
+  .autofocus-app .ghead.gs-doing h2,    .autofocus-app .ghead.gs-doing .car    {color:#4FD6A0}
+  .autofocus-app .ghead.gs-waiting  {border-color:rgba(230,172,95,.5)}
+  .autofocus-app .ghead.gs-waiting h2,  .autofocus-app .ghead.gs-waiting .car  {color:#e6ac5f}
+  .autofocus-app .ghead.gs-billing  {border-color:rgba(169,158,255,.5)}
+  .autofocus-app .ghead.gs-billing h2,  .autofocus-app .ghead.gs-billing .car  {color:#a99eff}
   .autofocus-app .gbody.collapsed {display:none}
   .autofocus-app .row {display:flex;align-items:flex-start;gap:12px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--work);border-radius:10px;padding:11px 14px;margin-top:8px}
   .autofocus-app .row.personal {border-left-color:var(--personal)}
@@ -1778,7 +1788,9 @@ function render(){
   if(ui.group==='none'){html=section('all','All Tasks',arr);}
   else if(ui.group==='source'){[['work','Work'],['personal','Personal']].forEach(([k,lab])=>{const g=arr.filter(t=>t.source===k);if(g.length)html+=section(k,lab,g);});}
   else if(ui.group==='project'){ensureProjStatus();const map={};arr.forEach(t=>{const k=t.project||'No Project';(map[k]=map[k]||[]).push(t);});Object.keys(map).sort().forEach(k=>{const pid=(map[k].find(t=>t.projectId)||{}).projectId;const url=pid?'https://www.notion.so/'+String(pid).replace(/-/g,''):null;html+=section('p_'+k,k,map[k],'',url,pid?PROJ_STATUS[pid]:null);});}
-  else if(ui.group==='status'){const ORDER=['Doing','Planned','Waiting','Agenda','Billing','Done'];const map={};arr.forEach(t=>{const k=t.status||'Planned';(map[k]=map[k]||[]).push(t);});ORDER.forEach(k=>{if(map[k])html+=section('st_'+k,k,map[k]);});Object.keys(map).filter(k=>!ORDER.includes(k)).sort().forEach(k=>{html+=section('st_'+k,k,map[k]);});}
+  // Status groups: Notion board order, and each heading tinted to its status
+  // colour (same palette as the SHOW filter chips) via the shared gs-* classes.
+  else if(ui.group==='status'){const ORDER=['Planned','Agenda','Doing','Waiting','Billing','Done'];const stCls=(k)=>'gs-'+String(k).toLowerCase().replace(/\s+/g,'-');const map={};arr.forEach(t=>{const k=t.status||'Planned';(map[k]=map[k]||[]).push(t);});ORDER.forEach(k=>{if(map[k])html+=section('st_'+k,k,map[k],stCls(k));});Object.keys(map).filter(k=>!ORDER.includes(k)).sort().forEach(k=>{html+=section('st_'+k,k,map[k],stCls(k));});}
   else{const buckets={};arr.forEach(t=>{const b=bucketOf(t);(buckets[b.key]=buckets[b.key]||{label:b.label,rank:b.rank,items:[]}).items.push(t);});Object.entries(buckets).sort((a,b)=>a[1].rank-b[1].rank).forEach(([key,b])=>{const cls=b.label==='Overdue'?'over':(b.label==='Today'?'today':'');html+=section(key,b.label,b.items,cls);});}
   L.innerHTML=html;updateHeader();renderAfStatusBar();
   // Drag-to-reorder per group
