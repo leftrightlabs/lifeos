@@ -894,6 +894,13 @@
 .af-stchip.st-billing { color:#a99eff; background:rgba(155,135,245,.16); }
 .af-stchip.st-done,
 .af-stchip.st-default { color:#93a0b4; background:rgba(138,148,166,.14); }
+/* "What's included" chips (↻ Recurring / ✓ Done) — neutral, no status dot, and
+   set apart from the status chips by a small gap. */
+.af-stchip.af-sp { color:var(--text-2); background:rgba(138,148,166,.10); border-color:var(--border); }
+.af-stchip.af-sp::before { display:none; }
+.af-stchip.af-sp:first-of-type { margin-left:6px; }
+/* single collapse/expand button flips its chevron when everything is collapsed */
+.af-tbar-btn.flip svg { transform:rotate(180deg); }
 /* PROGRESS tab — "moved forward" credit + daily piles */
 .pg-credit { font-size: var(--fs-body); color: var(--text-2); margin: 0 0 18px; }
 .pg-credit b { color: #e8843f; font-weight: 800; }
@@ -974,15 +981,10 @@
             </div>
           </div>
           <div class="af-icon-sep"></div>
-          <button type="button" class="af-tbar-btn" id="tg-routines" title="Show recurring tasks">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
-          </button>
-          <button type="button" class="af-tbar-btn" id="tg-done" title="Show completed">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
-          </button>
-          <div class="af-icon-sep"></div>
-          <button type="button" class="af-tbar-btn" id="collapseall" title="Collapse all" aria-label="Collapse all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
-          <button type="button" class="af-tbar-btn" id="expandall" title="Expand all" aria-label="Expand all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+          <!-- Recurring (↻) and Completed (✓) toggles retired — they now live as
+               labelled chips with counts in the SHOW row, so "what's included in
+               this list" is one place instead of two visual languages. -->
+          <button type="button" class="af-tbar-btn" id="togglecollapse" title="Collapse all" aria-label="Collapse all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
           </div>
         </div>
         <div class="af-statusbar" id="af-statusbar"></div>
@@ -1617,28 +1619,61 @@ function mineTask(t){ return t.assignedToMe || !(t.assigneeNames && t.assigneeNa
 // Status filter bar — a colored toggle chip per status, matching Production →
 // My Work. Counts come from the current scope IGNORING the status filter, so
 // hidden statuses still show how many they'd reveal.
+// The scope shared by visible(), the stat tiles and the SHOW chips: work/personal
+// source plus the Following / ME owner dimension. (Personal tasks have no
+// Following/Assigned, so the owner dimension is skipped there.)
+function afInScope(t){
+  if(ui.src!=='all'&&t.source!==ui.src)return false;
+  if(ui.src!=='personal'){
+    if(ui.owner==='following'){ if(!t.followingMe)return false; }
+    else if(meActive()&&!mineTask(t))return false;
+  }
+  return true;
+}
 function renderAfStatusBar(){
   const bar=el('af-statusbar'); if(!bar) return;
   const hold=AF_HIDDEN; AF_HIDDEN=new Set();      // count pre-status-filter
   let pool; try { pool=visible(); } finally { AF_HIDDEN=hold; }
   const counts={};
   pool.forEach(t=>{ const k=AF_ST_KEY(t); counts[k]=(counts[k]||0)+1; });
-  // Include hidden statuses even when the un-filtered pool misses them (e.g. Done
-  // sits behind its own toggle) so you can always un-hide.
+  // Include hidden statuses even when the un-filtered pool misses them, so you
+  // can always un-hide.
   AF_HIDDEN.forEach(k=>{ if(!counts[k]) counts[k]=0; });
-  const present=AF_ST_ORDER.filter(k=>counts[k]!==undefined);
-  if(present.length<=1){ bar.innerHTML=''; return; }
-  bar.innerHTML='<span class="af-stlabel">Show</span>'+present.map(k=>{
+  // 'done' is owned by its own chip below — don't render it twice.
+  const statusChips=AF_ST_ORDER.filter(k=>k!=='done'&&counts[k]!==undefined).map(k=>{
     const off=AF_HIDDEN.has(k);
     return `<button class="af-stchip st-${k}${off?' off':''}" data-st="${k}">${AF_ST_LABEL[k]||k} <span class="af-stn">${counts[k]}</span></button>`;
   }).join('');
+  // "What's included" chips — these replace the old ↻ / ✓ icon toggles so every
+  // list-narrowing control lives in this one row with a visible count.
+  const all=allTasks();
+  const recurN=all.filter(t=>!t.done&&t.recurring&&afInScope(t)).length;
+  const doneN=all.filter(t=>t.done&&afInScope(t)).length;
+  const sp=(key,on,label,n,title)=>`<button class="af-stchip af-sp${on?'':' off'}" data-sp="${key}" title="${title}">${label} <span class="af-stn">${n}</span></button>`;
+  const specials=(recurN?sp('routines',ui.routines,'↻ Recurring',recurN,'Show recurring and not-yet-due tasks'):'')
+               +(doneN?sp('done',ui.showdone,'✓ Done',doneN,'Show completed tasks'):'');
+  bar.innerHTML=(statusChips||specials)?('<span class="af-stlabel">Show</span>'+statusChips+specials):'';
 }
 document.addEventListener('click',(e)=>{
   const b=e.target.closest('#af-statusbar .af-stchip'); if(!b) return;
+  if(b.dataset.sp){   // ↻ Recurring / ✓ Done — what's included in the list
+    if(b.dataset.sp==='routines') ui.routines=!ui.routines;
+    else if(b.dataset.sp==='done') ui.showdone=!ui.showdone;
+    render(); return;
+  }
   const k=b.dataset.st;
   if(AF_HIDDEN.has(k)) AF_HIDDEN.delete(k); else AF_HIDDEN.add(k);
   afSaveHidden(); render();
 });
+// One button that collapses everything, or expands it all when already collapsed.
+function updateCollapseBtn(){
+  const btn=el('togglecollapse'); if(!btn) return;
+  const heads=[...document.querySelectorAll('#list .ghead')];
+  const allCollapsed=heads.length>0&&heads.every(h=>h.classList.contains('collapsed'));
+  btn.classList.toggle('flip',allCollapsed);
+  btn.title=allCollapsed?'Expand all':'Collapse all';
+  btn.setAttribute('aria-label',btn.title);
+}
 
 function visible(){
   const sf=ui.statFilter;
@@ -1647,11 +1682,7 @@ function visible(){
     if(t.done&&!ui.showdone)return false;
     // Status filter — mute whole statuses (applies to every grouping/sort).
     if(AF_HIDDEN.size && AF_HIDDEN.has(AF_ST_KEY(t))) return false;
-    if(ui.src!=='all'&&t.source!==ui.src)return false;
-    if(ui.src!=='personal'){
-      if(ui.owner==='following'){ if(!t.followingMe)return false; }
-      else if(meActive()&&!mineTask(t))return false;
-    }
+    if(!afInScope(t))return false;
     // A search is a global find within the current work/personal + owner scope:
     // match by name/project and ignore the date-bucket view filters (routines,
     // not-yet-due, stat card) so any matching task surfaces.
@@ -1783,7 +1814,9 @@ function section(key,label,items,extraCls,notionUrl,statusName){const col=isColl
 
 function render(){
   const arr=sortTasks(visible());const L=el('list');
-  if(!arr.length){L.innerHTML='<div class="empty">Nothing here right now.</div>';updateHeader();return;}
+  // Keep the SHOW row rendered even when nothing matches — otherwise muting every
+  // status would empty the list AND remove the chips needed to un-mute it.
+  if(!arr.length){L.innerHTML='<div class="empty">Nothing here right now.</div>';updateHeader();renderAfStatusBar();updateCollapseBtn();return;}
   let html='';
   if(ui.group==='none'){html=section('all','All Tasks',arr);}
   else if(ui.group==='source'){[['work','Work'],['personal','Personal']].forEach(([k,lab])=>{const g=arr.filter(t=>t.source===k);if(g.length)html+=section(k,lab,g);});}
@@ -1792,7 +1825,7 @@ function render(){
   // colour (same palette as the SHOW filter chips) via the shared gs-* classes.
   else if(ui.group==='status'){const ORDER=['Planned','Agenda','Doing','Waiting','Billing','Done'];const stCls=(k)=>'gs-'+String(k).toLowerCase().replace(/\s+/g,'-');const map={};arr.forEach(t=>{const k=t.status||'Planned';(map[k]=map[k]||[]).push(t);});ORDER.forEach(k=>{if(map[k])html+=section('st_'+k,k,map[k],stCls(k));});Object.keys(map).filter(k=>!ORDER.includes(k)).sort().forEach(k=>{html+=section('st_'+k,k,map[k],stCls(k));});}
   else{const buckets={};arr.forEach(t=>{const b=bucketOf(t);(buckets[b.key]=buckets[b.key]||{label:b.label,rank:b.rank,items:[]}).items.push(t);});Object.entries(buckets).sort((a,b)=>a[1].rank-b[1].rank).forEach(([key,b])=>{const cls=b.label==='Overdue'?'over':(b.label==='Today'?'today':'');html+=section(key,b.label,b.items,cls);});}
-  L.innerHTML=html;updateHeader();renderAfStatusBar();
+  L.innerHTML=html;updateHeader();renderAfStatusBar();updateCollapseBtn();
   // Drag-to-reorder per group
   if (typeof Sortable !== 'undefined'){
     L.querySelectorAll('.gbody').forEach(gb => {
@@ -2103,8 +2136,8 @@ function syncAutofocusToMode(){
 // The shell's onShellModeChange (defined above) broadcasts 'lrl-mode-changed';
 // this re-syncs the Tasks view's source filter + stat tiles.
 window.addEventListener('lrl-mode-changed', syncAutofocusToMode);
-function bindTog(id,key){el(id).addEventListener('click',()=>{ui[key]=!ui[key];el(id).classList.toggle('on',ui[key]);render();});}
-bindTog('tg-routines','routines');bindTog('tg-done','showdone');
+// (the old ↻ / ✓ icon toggles are gone — ui.routines / ui.showdone are now driven
+//  by the "↻ Recurring" and "✓ Done" chips in the SHOW row)
 function setOwner(val){
   ui.owner = val;
   // Following (scope) composes with the stat-card filters — see the note in
@@ -2121,8 +2154,12 @@ function applyScopeUI(){
 // when it changes. Other parts of this page also listen for 'lrl-me-changed'.
 window.onMeModeChange = function(){ window.dispatchEvent(new CustomEvent('lrl-me-changed')); };
 window.addEventListener('lrl-me-changed', () => render());
-el('expandall').addEventListener('click',()=>{state.collapsed[ui.group]={};saveState();render();});
-el('collapseall').addEventListener('click',()=>{document.querySelectorAll('.ghead').forEach(h=>setCollapsed(h.dataset.gkey,true));render();});
+el('togglecollapse').addEventListener('click',()=>{
+  const heads=[...document.querySelectorAll('#list .ghead')];
+  if(heads.some(h=>!h.classList.contains('collapsed'))) heads.forEach(h=>setCollapsed(h.dataset.gkey,true));
+  else { state.collapsed[ui.group]={}; saveState(); }
+  render();
+});
 
 (async()=>{await loadState();updateSortBtn();updateGroupBtn();await fetchTasks();syncAutofocusToMode();})();
 })();
