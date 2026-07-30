@@ -1805,9 +1805,13 @@ function updateHeader(){
   };
   // "Following" card counts the tasks I follow within the current mode, regardless
   // of the me/following owner scope, so it always shows how many I'm following.
+  // HIDDEN in personal mode: personal tasks have no Following property, so both
+  // visible() and the counts above skip the owner scope there — the tile would be
+  // a permanently-0, no-op button.
   const followCount=base.filter(t=>t.followingMe).length;
   const followActive=ui.owner==='following'?' active':'';
-  const followTile='<div class="stat s-following'+followActive+'" data-scope="following" role="button" tabindex="0" aria-pressed="'+(followActive?'true':'false')+'" title="Show tasks I follow"><div class="statn">'+followCount+'</div><div class="statl">Following</div></div>';
+  const followTile = ui.src==='personal' ? ''
+    : '<div class="stat s-following'+followActive+'" data-scope="following" role="button" tabindex="0" aria-pressed="'+(followActive?'true':'false')+'" title="Show tasks I follow"><div class="statn">'+followCount+'</div><div class="statl">Following</div></div>';
   el('hdrstats').innerHTML=tile(live.length,'Open','s-open','open')+tile(td,'Today','s-today','today')+tile(od,'Overdue','s-over','overdue')+tile(md,"My Day",'s-myday','myday')+followTile+tile(rc,'Recurring','s-recurring','recurring');
 }
 
