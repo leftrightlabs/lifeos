@@ -1776,7 +1776,10 @@ function updateHeader(){
   // excluding future recurrences (unless "show routines" is on), AND scoped to the
   // same owner filter the list uses — otherwise the counts wouldn't match what
   // actually renders (e.g. "13 overdue" but none assigned to me).
-  let base = allTasks().filter(t => !t.done && !((t.recurring || notYetDue(t)) && !ui.routines));
+  // The status filter (AF_HIDDEN) hides whole statuses from the list, so the tiles
+  // must honour it too — otherwise a muted status makes every count overstate.
+  const stOk = (t) => !(AF_HIDDEN.size && AF_HIDDEN.has(AF_ST_KEY(t)));
+  let base = allTasks().filter(t => !t.done && stOk(t) && !((t.recurring || notYetDue(t)) && !ui.routines));
   if (ui.src !== 'all') base = base.filter(t => t.source === ui.src);
   let live = base;
   if (ui.src !== 'personal'){
@@ -1789,7 +1792,7 @@ function updateHeader(){
   const md=live.filter(t=>t.myDay).length;
   // Recurring tasks are excluded from `base`/`live` (they're behind the routines
   // gate), so count them independently within the same mode + owner scope.
-  let recurBase=allTasks().filter(t=>!t.done&&t.recurring);
+  let recurBase=allTasks().filter(t=>!t.done&&t.recurring&&stOk(t));
   if (ui.src!=='all') recurBase=recurBase.filter(t=>t.source===ui.src);
   if (ui.src!=='personal'){
     if (ui.owner==='following') recurBase=recurBase.filter(t=>t.followingMe);
@@ -2009,8 +2012,10 @@ document.addEventListener('click',()=>{el('sort-pop')?.classList.remove('open');
     const next = (ui.statFilter === filter || filter === 'open') ? null : filter;
     ui.statFilter = next;
     try { localStorage.setItem('lrl-stat-filter', next || ''); } catch(_){}
-    // A stat card is its own standalone view — drop the Following scope if it was on.
-    if (ui.owner === 'following') { ui.owner = 'all'; try { localStorage.setItem('lrl-task-scope','all'); } catch(_){} applyScopeUI(); }
+    // Following is a SCOPE (ui.owner); stat cards are FILTERS within it — they
+    // compose. Previously clicking a card silently cleared the Following scope,
+    // so the card's (Following-scoped) count didn't match what you got after
+    // clicking it — e.g. "Recurring 1" would open all 9 recurring tasks.
     window.lrl?.haptic('tap');
     render();
   };
@@ -2050,8 +2055,9 @@ function bindTog(id,key){el(id).addEventListener('click',()=>{ui[key]=!ui[key];e
 bindTog('tg-routines','routines');bindTog('tg-done','showdone');
 function setOwner(val){
   ui.owner = val;
-  // Following is a standalone view — clear any stat-card filter so it isn't double-filtered.
-  if (val === 'following') { ui.statFilter = null; try { localStorage.setItem('lrl-stat-filter',''); } catch(e){} }
+  // Following (scope) composes with the stat-card filters — see the note in
+  // wireStatTileFilters. Keep any active card so the tile counts, the list, and
+  // the result of clicking a tile all agree.
   try { localStorage.setItem('lrl-task-scope', val); } catch(e){}
   applyScopeUI();
   render();
