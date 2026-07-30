@@ -96,6 +96,7 @@
   .quest-sub .quest-sub-status.qs-done,
   .quest-sub .quest-sub-status.qs-default { color: #93a0b4; }
   .quest-sub .quest-sub-touched { color: rgba(var(--ink-rgb), 0.35); }
+  .quest-sub .quest-sub-followup { color: #e8843f; font-weight: 600; }
   .quest-due { font-size: var(--fs-caption); color: var(--navy-dim); background: var(--cream-2); padding: 3px 8px; border-radius: 999px; }
   .quest-due-inline { font-size: var(--fs-body-sm); color: rgba(var(--ink-rgb), 0.55); white-space: nowrap; letter-spacing: 0.01em; font-weight: 500; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
   .quest-due-inline:hover { background: rgba(var(--edge-rgb), 0.06); color: var(--navy); }
@@ -252,6 +253,9 @@
   .autofocus-app .stat.s-myday {border-top-color:#d4a854}
   .autofocus-app .stat.s-following {border-top-color:var(--lime)}
   .autofocus-app .stat.s-following.active {color:var(--lime)}
+  /* Follow Ups — orange, matching the Follow Ups section on Today */
+  .autofocus-app .stat.s-followup {border-top-color:#e8843f}
+  .autofocus-app .stat.s-followup.active {color:#e8843f}
   body[data-mode="personal"] .autofocus-app .stat.s-following { display:none; }
   .autofocus-app .stat.s-recurring {border-top-color:#5d9cec}
   .autofocus-app .stat.s-recurring.active {color:#5d9cec}
@@ -856,30 +860,9 @@
 .cal-nav-btn:hover { color: var(--text); border-color: var(--text-4); }
 
 /* ── Follow-Ups aggregate tab ── */
-.fu-empty { padding: 16px 4px; color: var(--text-3); font-size: var(--fs-body-sm); }
-.fu-group { margin-bottom: 22px; }
-.fu-group-head { display: flex; align-items: center; gap: 8px; font-size: var(--fs-caption); letter-spacing: .12em; text-transform: uppercase; font-weight: 800; color: var(--text-3); margin: 0 0 8px; }
-.fu-group-head .fu-count { color: var(--text-4); font-weight: 700; }
-.fu-arow { display: flex; align-items: center; gap: 12px; padding: 11px 13px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 9px; margin-bottom: 6px; transition: opacity .2s; }
-.fu-arow.clearing { opacity: .3; }
-.fu-check { width: 19px; height: 19px; border: 1.5px solid var(--text-4); border-radius: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: var(--fs-body-sm); cursor: pointer; transition: all .15s; }
-.fu-check:hover { border-color: var(--green); color: var(--green); }
-.fu-main { flex: 1; min-width: 0; }
-.fu-title { font-size: var(--fs-body); color: var(--text); cursor: pointer; }
-.fu-title:hover { color: var(--accent); }
-.fu-proj { font-size: var(--fs-caption); color: var(--text-3); margin-top: 3px; }
-.fu-kind { font-size: var(--fs-caption); font-weight: 700; letter-spacing: .04em; padding: 1px 6px; border-radius: 4px; margin-left: 7px; background: rgba(84,102,126,.14); color: var(--text-2); vertical-align: middle; }
-.fu-sub { display: flex; gap: 8px; align-items: center; margin-top: 3px; }
-.fu-due { font-size: var(--fs-caption); color: var(--text-3); }
-.fu-due.overdue { color: var(--amber); font-weight: 600; }
-.fu-daybtn { flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); color: var(--text-3); border-radius: 999px; padding: 4px 11px; font-size: var(--fs-caption); font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all .15s; }
-.fu-daybtn:hover { border-color: var(--text-4); color: var(--text); }
-.fu-daybtn.on { background: var(--accent-soft); border-color: transparent; color: #A99EFF; }
-/* Task status filter bar (Notion board order, matches Production → My Work) */
+/* Status sub-filter chips (below the cards) — refine which statuses show. */
 .af-statusbar { display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin:0 0 14px; }
 .af-statusbar:empty { display:none; }
-/* (the read-only stat strip + lens chips were an interim design — replaced by
-    cards as the top-level filter with status chips as the sub-filter) */
 .af-stlabel { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-4); margin-right:2px; }
 .af-stchip { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700; padding:4px 11px; border-radius:999px; cursor:pointer; font-family:inherit; border:1px solid transparent; transition:opacity .12s, filter .12s; }
 .af-stchip::before { content:''; width:7px; height:7px; border-radius:50%; background:currentColor; flex-shrink:0; }
@@ -893,8 +876,7 @@
 .af-stchip.st-billing { color:#a99eff; background:rgba(155,135,245,.16); }
 .af-stchip.st-done,
 .af-stchip.st-default { color:#93a0b4; background:rgba(138,148,166,.14); }
-/* "What's included" chips (↻ Recurring / ✓ Done) — neutral, no status dot, and
-   set apart from the status chips by a small gap. */
+/* "What's included" chip (✓ Done) — neutral, no status dot. */
 .af-stchip.af-sp { color:var(--text-2); background:rgba(138,148,166,.10); border-color:var(--border); }
 .af-stchip.af-sp::before { display:none; }
 .af-stchip.af-sp:first-of-type { margin-left:6px; }
@@ -914,7 +896,6 @@
   <div class="tab-bar">
     <button class="exec-tab-btn active" data-go="projects">PROJECTS</button>
     <button class="exec-tab-btn" data-go="tasks">TASKS</button>
-    <button class="exec-tab-btn" data-go="followups">FOLLOW-UPS</button>
     <button class="exec-tab-btn" data-go="review">REVIEW</button>
     <button class="exec-tab-btn" data-go="calendar">CALENDAR</button>
   </div>
@@ -971,12 +952,6 @@
         <div id="list"></div>
       </div>
     </div>
-  </section>
-
-  <!-- FOLLOW-UPS (aggregate) -->
-  <section class="exec-panel" data-panel="followups">
-    <div class="exec-head"><p>Everything you own a follow-up on — across tasks, deals, contacts, and speaking. Toggle which show on your Today list, or check them off when handled.</p></div>
-    <div id="fu-agg"><div class="fu-empty">Loading…</div></div>
   </section>
 
   <!-- REVIEW -->
@@ -1179,7 +1154,6 @@ function saveTaskModal() {
     else body.clearFollowUp = true;
     fetch('/api/tasks/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body) }).catch(() => {});
-    FU_AGG_LOADED = false; // aggregate tab reloads next open to reflect the change
   }
   const assigneeNames = (assigneeIds || []).map(aid => (_workspaceMembers || []).find(m => m.id === aid)?.name).filter(Boolean);
   const followingNames = (followingChecked || []).map(fid => (_workspaceMembers || []).find(m => m.id === fid)?.name).filter(Boolean);
@@ -1658,6 +1632,14 @@ function visible(){
     if(t.done&&!ui.showdone)return false;
     // Status filter — mute whole statuses (applies to every grouping/sort).
     if(AF_HIDDEN.size && AF_HIDDEN.has(AF_ST_KEY(t))) return false;
+    // Follow-ups I own (was its own tab). Scoped by work/personal ONLY — never by
+    // ME or Following, because a follow-up is usually me chasing someone ELSE's
+    // task. Checked before the routines / not-yet-due gate too, so a follow-up on
+    // a recurring or future-dated task still surfaces — the point is not to miss it.
+    if(sf==='followup'){
+      if(ui.src!=='all'&&t.source!==ui.src)return false;
+      return !!t.followUpOwnerId && (!_myNotionId || t.followUpOwnerId===_myNotionId);
+    }
     if(!afInScope(t))return false;
     // A search is a global find within the current work/personal + owner scope:
     // match by name/project and ignore the date-bucket view filters (routines,
@@ -1726,6 +1708,10 @@ function row(t){
     subParts.push('<span class="quest-sub-status qs-'+AF_ST_KEY(t)+'">'+escapeHtml(t.status)+'</span>');
   }
   if(t.source==='work' && !t.assignedToMe && t.assigneeNames && t.assigneeNames.length) subParts.push('<span class="quest-sub-assignee">'+escapeHtml(t.assigneeNames.join(', '))+'</span>');
+  // In the Follow Ups view, show when it's due to be circled back on.
+  if(ui.statFilter==='followup' && t.followUpBy){
+    subParts.push('<span class="quest-sub-followup">follow up '+escapeHtml(t.followUpBy.slice(0,10))+'</span>');
+  }
   if(ui.sort==='touched' && lt){
     subParts.push('<span class="quest-sub-touched">touched '+relTime(lt)+'</span>');
   }
@@ -1854,7 +1840,11 @@ function updateHeader(){
   // the me/following owner scope, so it always shows how many I'm following.
   // Omitted in personal mode: personal tasks have no Following property.
   const followCount=base.filter(t=>t.followingMe).length;
-  AF_STATS={open:live.length,today:td,overdue:od,myday:md,following:followCount,recurring:rc};
+  // Follow-ups I own. Counted off allTasks() (not `base`) so a follow-up on a
+  // recurring or future-dated task is still counted — matching the filter.
+  const fuCount=allTasks().filter(t=>!t.done && (ui.src==='all'||t.source===ui.src)
+    && !!t.followUpOwnerId && (!_myNotionId || t.followUpOwnerId===_myNotionId)).length;
+  AF_STATS={open:live.length,today:td,overdue:od,myday:md,following:followCount,recurring:rc,followup:fuCount};
   // ── TOP-LEVEL FILTER: the cards ──
   // Exactly ONE card is active at a time ("Open" = no narrowing). Because the
   // view is a single choice, contradictory combinations like "My Day + Following"
@@ -1874,6 +1864,8 @@ function updateHeader(){
     // Following is omitted in personal mode (personal tasks have no Following).
     ...(ui.src==='personal'?[]:[tile(followCount,'Following','s-following','following')]),
     tile(rc,'Recurring','s-recurring','recurring'),
+    // Follow-ups moved out of their own tab and into the Tasks views.
+    tile(fuCount,'Follow Ups','s-followup','followup'),
   ];
   const host=el('hdrstats');
   host.className='statgrid';
@@ -3015,78 +3007,6 @@ window.addEventListener('lrl-mode-changed', () => { if (REVIEW_DATA) renderRevie
 
 <!-- =========================== MARKETING PUBLISHING =========================== -->
 <script>
-// ---- Follow-Ups aggregate tab ----
-// Every follow-up the current user owns (on-day + off-day), grouped so you can
-// triage: toggle what shows on Today, check off what's handled, or open the item.
-const FU_KIND_LABEL = { task: 'TASK', deal: 'DEAL', contact: 'CONTACT', speaking: 'SPEAKING' };
-let FU_AGG = null, FU_AGG_LOADED = false, _fuProjMap = {};
-function fuAggEsc(s){ return (window.escapeHtml ? escapeHtml(String(s ?? '')) : String(s ?? '')); }
-function fuAggRow(it){
-  const esc = fuAggEsc;
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }); // YYYY-MM-DD, Chicago
-  const by = it.followUpBy ? it.followUpBy.slice(0,10) : '';
-  const overdue = by && by < today;
-  const dueTxt = !by ? 'No date' : (by === today ? 'Due today' : (overdue ? 'Overdue · ' + by : 'By ' + by));
-  const kind = FU_KIND_LABEL[it.kind] || 'TASK';
-  const url = esc(it.url || '');
-  // For task follow-ups, resolve the project name so it's clear where it belongs.
-  const proj = (it.kind === 'task' && it.projectId) ? _fuProjMap[it.projectId] : '';
-  return `<div class="fu-arow" data-id="${esc(it.id)}">
-    <div class="fu-check" title="Mark complete" onclick="fuAggComplete('${esc(it.id)}')"></div>
-    <div class="fu-main">
-      <div class="fu-title"${url ? ` onclick="(window.openNotion?openNotion('${url}'):window.open('${url}','_blank'))"` : ''}>${esc(it.title)}<span class="fu-kind">${kind}</span></div>
-      ${proj ? `<div class="fu-proj">${esc(proj)}</div>` : ''}
-      <div class="fu-sub"><span class="fu-due${overdue ? ' overdue' : ''}">${esc(dueTxt)}</span></div>
-    </div>
-    <button class="fu-daybtn ${it.onList ? 'on' : ''}" onclick="fuAggToggleDay('${esc(it.id)}', ${it.onList ? 'true' : 'false'})">${it.onList ? '★ On today' : '+ Add to today'}</button>
-  </div>`;
-}
-function renderFuAgg(){
-  const host = document.getElementById('fu-agg');
-  if (!host) return;
-  const items = (FU_AGG && FU_AGG.items) || [];
-  if (!items.length) { host.innerHTML = '<div class="fu-empty">No follow-ups assigned to you. Flag a task, deal, contact, or speaking opportunity to see it here.</div>'; return; }
-  const byDue = (a, b) => { if (!a.followUpBy && b.followUpBy) return 1; if (a.followUpBy && !b.followUpBy) return -1; return (a.followUpBy||'').localeCompare(b.followUpBy||''); };
-  const onDay = items.filter(i => i.onList).sort(byDue);
-  const off   = items.filter(i => !i.onList).sort(byDue);
-  let html = '';
-  if (onDay.length) html += `<div class="fu-group"><div class="fu-group-head">On my Today list <span class="fu-count">· ${onDay.length}</span></div>${onDay.map(fuAggRow).join('')}</div>`;
-  if (off.length)   html += `<div class="fu-group"><div class="fu-group-head">Not on my day <span class="fu-count">· ${off.length}</span></div>${off.map(fuAggRow).join('')}</div>`;
-  host.innerHTML = html;
-}
-async function loadFuAgg(){
-  try {
-    // Fetch the aggregate + a projects map (reuse REVIEW_PROJECTS if already loaded)
-    // so task follow-ups can show which project they belong to.
-    const [r, projs] = await Promise.all([
-      fetch('/api/followups?scope=all'),
-      (typeof REVIEW_PROJECTS !== 'undefined' && REVIEW_PROJECTS)
-        ? Promise.resolve(REVIEW_PROJECTS)
-        : fetch('/api/projects').then(x => x.json()).then(d => d.projects || []).catch(() => []),
-    ]);
-    FU_AGG = await r.json();
-    _fuProjMap = {};
-    (projs || []).forEach(p => { if (p && p.id) _fuProjMap[p.id] = p.name; });
-    FU_AGG_LOADED = true; renderFuAgg();
-  } catch(e){ document.getElementById('fu-agg').innerHTML = '<div class="fu-empty">Couldn\'t load follow-ups — reopen the tab.</div>'; }
-}
-function _fuAggPatch(id, body){
-  const row = document.querySelector(`.fu-arow[data-id="${id}"]`);
-  if (row) row.classList.add('clearing');
-  return fetch('/api/followup/' + id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }).catch(()=>{});
-}
-function fuAggComplete(id){
-  _fuAggPatch(id, { clear: true });
-  if (FU_AGG) FU_AGG.items = (FU_AGG.items||[]).filter(x => x.id !== id);
-  setTimeout(renderFuAgg, 180);
-}
-function fuAggToggleDay(id, isOn){
-  _fuAggPatch(id, { onList: !isOn });
-  const it = FU_AGG && (FU_AGG.items||[]).find(x => x.id === id);
-  if (it) it.onList = !isOn;
-  setTimeout(renderFuAgg, 180);
-}
-
 // ---- Execute sub-panel switcher ----
 (function(){
   const panels = [...document.querySelectorAll('.exec-panel')];
@@ -3096,7 +3016,6 @@ function fuAggToggleDay(id, isOn){
     panels.forEach(p => p.classList.toggle('active', p.dataset.panel === name));
     btns.forEach(b => b.classList.toggle('active', b.dataset.go === name));
     if (name === 'projects' && window.maybeLoadProjects) window.maybeLoadProjects();
-    if (name === 'followups' && !FU_AGG_LOADED) loadFuAgg();
     if (name === 'review' && !reviewLoaded && typeof fetchReview === 'function') { reviewLoaded = true; fetchReview(); }
     if (name === 'calendar' && window.calendarLoad) window.calendarLoad();
     try { localStorage.setItem('lrl-exec-panel', name); } catch(e){}
