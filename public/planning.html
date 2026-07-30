@@ -882,6 +882,19 @@
 .af-stchip.af-sp:first-of-type { margin-left:6px; }
 /* single collapse/expand button flips its chevron when everything is collapsed */
 .af-tbar-btn.flip svg { transform:rotate(180deg); }
+/* New-task row */
+.af-add-btn.on { color:var(--accent); }
+.af-addrow { display:flex; align-items:center; gap:8px; margin:0 0 14px; }
+.af-addrow[hidden] { display:none; }
+.af-add-src { flex:none; background:#0A0F1E; border:1px solid var(--border); border-radius:8px; padding:9px 10px; color:var(--text); font-family:inherit; font-size:13px; }
+.af-add-name { flex:1; min-width:0; background:#0A0F1E; border:1px solid var(--border); border-radius:8px; padding:9px 12px; color:var(--text); font-family:inherit; font-size:15px; }
+.af-add-name:focus, .af-add-src:focus { outline:none; border-color:var(--accent); }
+.af-add-save { flex:none; background:var(--accent); color:#fff; border:none; border-radius:8px; padding:9px 16px; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit; }
+.af-add-save:disabled { opacity:.6; cursor:default; }
+.af-add-cancel { flex:none; background:none; border:none; color:var(--text-3); font-size:21px; line-height:1; cursor:pointer; padding:0 6px; }
+.af-add-cancel:hover { color:var(--text); }
+.af-add-msg { color:#ff7a6b; font-size:12px; margin:-8px 0 12px; }
+.af-add-msg[hidden] { display:none; }
 </style>
 <script src="/sample-data.js"></script>
 <script src="/privacy.js"></script>
@@ -946,9 +959,19 @@
                labelled chips with counts in the SHOW row, so "what's included in
                this list" is one place instead of two visual languages. -->
           <button type="button" class="af-tbar-btn" id="togglecollapse" title="Collapse all" aria-label="Collapse all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
+          <div class="af-icon-sep"></div>
+          <button type="button" class="af-tbar-btn af-add-btn" id="af-add-btn" title="New task" aria-label="New task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
           </div>
         </div>
         <div class="af-statusbar" id="af-statusbar"></div>
+        <!-- New-task row (hidden until + is tapped) -->
+        <div class="af-addrow" id="af-addrow" hidden>
+          <select id="af-add-src" class="af-add-src"><option value="work">Work</option><option value="personal">Personal</option></select>
+          <input id="af-add-name" class="af-add-name" type="text" placeholder="New task…" autocomplete="off">
+          <button class="af-add-save" id="af-add-save">Add</button>
+          <button class="af-add-cancel" id="af-add-cancel" title="Cancel" aria-label="Cancel">×</button>
+        </div>
+        <div class="af-add-msg" id="af-add-msg" hidden></div>
         <div id="list"></div>
       </div>
     </div>
@@ -1789,8 +1812,13 @@ function render(){
   else if(ui.group==='status'){const ORDER=['Planned','Agenda','Doing','Waiting','Billing','Done'];const stCls=(k)=>'gs-'+String(k).toLowerCase().replace(/\s+/g,'-');const map={};arr.forEach(t=>{const k=t.status||'Planned';(map[k]=map[k]||[]).push(t);});ORDER.forEach(k=>{if(map[k])html+=section('st_'+k,k,map[k],stCls(k));});Object.keys(map).filter(k=>!ORDER.includes(k)).sort().forEach(k=>{html+=section('st_'+k,k,map[k],stCls(k));});}
   else{const buckets={};arr.forEach(t=>{const b=bucketOf(t);(buckets[b.key]=buckets[b.key]||{label:b.label,rank:b.rank,items:[]}).items.push(t);});Object.entries(buckets).sort((a,b)=>a[1].rank-b[1].rank).forEach(([key,b])=>{const cls=b.label==='Overdue'?'over':(b.label==='Today'?'today':'');html+=section(key,b.label,b.items,cls);});}
   L.innerHTML=html;updateHeader();renderAfStatusBar();updateCollapseBtn();
-  // Drag-to-reorder per group
+  // Drag-to-reorder per group. When grouped BY STATUS the groups share a Sortable
+  // group name, so dragging a row into another group RE-ASSIGNS its status (like
+  // dragging between status sections on Today). In every other grouping the lists
+  // stay separate — dragging a task into a different project or date bucket would
+  // imply an edit we can't make from a drop.
   if (typeof Sortable !== 'undefined'){
+    const byStatus = (ui.group === 'status');
     L.querySelectorAll('.gbody').forEach(gb => {
       if (gb._sortable) { try { gb._sortable.destroy(); } catch(_){} }
       gb._sortable = Sortable.create(gb, {
@@ -1799,13 +1827,48 @@ function render(){
         touchStartThreshold: 8,
         animation: 220,
         draggable: '.quest-item',
+        group: byStatus ? 'quest-status' : undefined,
         filter: '[data-no-drag], button, a, input, select, textarea, .quest-check, .quest-star, .quest-due-inline, .quest-due-edit',
         preventOnFilter: false,
         ghostClass: 'quest-drag-ghost',
         chosenClass: 'quest-drag-chosen',
         onStart: () => window.lrl?.haptic('success'),
-        onEnd: () => {
-          // Save global manual order (all rows across all groups, in DOM order)
+        onEnd: (evt) => {
+          // Dropped into a different status group → write the new status.
+          if (byStatus && evt.to !== evt.from){
+            const id = evt.item?.dataset?.taskId;
+            const gkey = evt.to.closest('.group')?.querySelector('.ghead')?.dataset.gkey || '';
+            const newStatus = gkey.startsWith('st_') ? gkey.slice(3) : null;
+            const prevStatus = evt.from.closest('.group')?.querySelector('.ghead')?.dataset.gkey?.slice(3) || null;
+            if (id && newStatus && newStatus !== prevStatus){
+              const isDone = newStatus === 'Done';
+              state.edits[id] = Object.assign({}, state.edits[id], { status: newStatus });
+              if (isDone) state.done[id] = true; else if (state.done[id]) delete state.done[id];
+              state.touched[id] = new Date().toISOString();
+              saveState(); render();
+              window.lrl?.haptic('success');
+              afPatch(id, { status: newStatus })
+                .then(() => {
+                  const nm = (BASE[id] && BASE[id].name) || 'Task';
+                  window.lrl?.toast(`${nm} → ${newStatus}`, 'success', { undo: async () => {
+                    state.edits[id] = Object.assign({}, state.edits[id], { status: prevStatus });
+                    if (prevStatus === 'Done') state.done[id] = true; else delete state.done[id];
+                    saveState(); render();
+                    try { await afPatch(id, { status: prevStatus }); }
+                    catch(err){ window.lrl?.toast('Undo failed: ' + err.message, 'error'); }
+                  }});
+                })
+                .catch(err => {
+                  // roll back the optimistic move
+                  state.edits[id] = Object.assign({}, state.edits[id], { status: prevStatus });
+                  if (prevStatus === 'Done') state.done[id] = true; else delete state.done[id];
+                  saveState(); render();
+                  window.lrl?.toast('Sync failed: ' + err.message, 'error');
+                });
+              return;   // render() already rebuilt the list
+            }
+          }
+          // Same group → just remember the manual order (all rows, DOM order)
           const ids = [...L.querySelectorAll('.quest-item')].map(r => r.dataset.taskId).filter(Boolean);
           try { localStorage.setItem('lrl-quest-order-v1', JSON.stringify(ids)); } catch(_){}
           window.lrl?.haptic('tap');
@@ -2077,6 +2140,52 @@ function applyScopeUI(){
 // when it changes. Other parts of this page also listen for 'lrl-me-changed'.
 window.onMeModeChange = function(){ window.dispatchEvent(new CustomEvent('lrl-me-changed')); };
 window.addEventListener('lrl-me-changed', () => render());
+// ── New task (from the Tasks view) ──
+// Creates a Planned task in the work or personal DB. Honours the current context:
+// single-mode preselects that source, and the My Day card adds it to My Day so the
+// new task actually appears in the view you're looking at.
+function afToggleAdd(show){
+  const row=el('af-addrow'), msg=el('af-add-msg');
+  const open = show===undefined ? row.hasAttribute('hidden') : show;
+  row.toggleAttribute('hidden', !open);
+  msg.setAttribute('hidden','');
+  el('af-add-btn').classList.toggle('on', open);
+  if(open){
+    const src=el('af-add-src');
+    src.value = (ui.src==='personal') ? 'personal' : 'work';
+    src.style.display = (ui.src==='all') ? '' : 'none';   // no choice to make in single mode
+    el('af-add-name').value='';
+    setTimeout(()=>el('af-add-name').focus(),40);
+  }
+}
+async function afSubmitAdd(){
+  const name=(el('af-add-name').value||'').trim();
+  const msg=el('af-add-msg');
+  if(!name){ el('af-add-name').focus(); return; }
+  const btn=el('af-add-save'); btn.disabled=true; btn.textContent='…';
+  try{
+    const body={ source: el('af-add-src').value, name, status:'Planned' };
+    if(ui.statFilter==='myday') body.myDay=true;   // so it shows up in the active view
+    const r=await fetch('/api/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(!r.ok||j.error) throw new Error(j.error||'failed');
+    el('af-add-name').value='';
+    window.lrl?.haptic('success');
+    window.lrl?.toast('Task added','success');
+    await fetchTasks();            // pull it in with a real id + all fields
+    el('af-add-name').focus();     // stay open for a quick second task
+  }catch(e){
+    msg.textContent="Couldn't add: "+e.message; msg.removeAttribute('hidden');
+  }finally{ btn.disabled=false; btn.textContent='Add'; }
+}
+el('af-add-btn')?.addEventListener('click',()=>afToggleAdd());
+el('af-add-save')?.addEventListener('click',afSubmitAdd);
+el('af-add-cancel')?.addEventListener('click',()=>afToggleAdd(false));
+el('af-add-name')?.addEventListener('keydown',(e)=>{
+  if(e.key==='Enter'){ e.preventDefault(); afSubmitAdd(); }
+  else if(e.key==='Escape'){ afToggleAdd(false); }
+});
+
 el('togglecollapse').addEventListener('click',()=>{
   const heads=[...document.querySelectorAll('#list .ghead')];
   if(heads.some(h=>!h.classList.contains('collapsed'))) heads.forEach(h=>setCollapsed(h.dataset.gkey,true));
