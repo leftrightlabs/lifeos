@@ -667,6 +667,16 @@ export function registerScaleRoutes(app, {
       res.json({ ok: true });
     } catch (err) { console.error('scale/issue patch error:', err.message); res.status(500).json({ error: err.message }); }
   });
+  // Delete an issue outright (for the ones that shouldn't be "Done", just gone).
+  // Notion has no hard delete over the API — this moves the page to the workspace
+  // trash, so it's recoverable from Notion for 30 days.
+  app.delete('/api/scale/issue/:id', async (req, res) => {
+    try {
+      if (!notion) return res.status(500).json({ error: 'Notion not configured' });
+      await notion.pages.update({ page_id: req.params.id, in_trash: true });
+      res.json({ ok: true });
+    } catch (err) { console.error('scale/issue delete error:', err.message); res.status(500).json({ error: err.message }); }
+  });
   // Bulk drag-to-reorder: persist the new Board Order for the cards that moved.
   app.post('/api/scale/issues/reorder', async (req, res) => {
     try {

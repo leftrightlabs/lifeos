@@ -185,6 +185,14 @@ body[data-state="calm"] .hero .next { border-left-color:var(--green); }
 .sc-seg button.sel.p-normal { border-color:#a99bff; color:#a99bff; background:rgba(124,109,255,.14); }
 .sc-modal-ft { display:flex; align-items:center; gap:10px; margin-top:22px; }
 .sc-modal-ft .sc-notion { font-size:11.5px; font-weight:600; color:var(--text-3); text-decoration:none; cursor:pointer; margin-right:auto; } .sc-modal-ft .sc-notion:hover { color:var(--zone); }
+/* Left cluster (delete + open-in-Notion) holds the auto margin so the primary
+   buttons stay pinned right whether or not the Notion link is present. */
+.sc-ft-left { display:flex; align-items:center; gap:12px; margin-right:auto; }
+.sc-ft-left .sc-notion { margin-right:0; }
+.sc-trash { background:none; border:1px solid transparent; border-radius:8px; color:var(--text-3); font-size:14px; line-height:1; padding:7px 9px; cursor:pointer; font-family:var(--font-body); transition:all .15s; }
+.sc-trash:hover { color:var(--red); border-color:var(--red); background:rgba(244,63,63,.08); }
+.sc-trash.armed { color:#fff; background:var(--red); border-color:var(--red); font-size:11.5px; font-weight:700; letter-spacing:.03em; padding:8px 12px; }
+.sc-trash:disabled { opacity:.6; cursor:default; font-size:11.5px; }
 .sc-btn { padding:9px 18px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; border:1px solid var(--border); background:none; color:var(--text-2); font-family:var(--font-body); }
 .sc-btn:hover { color:var(--text); }
 .sc-btn.primary { background:var(--zone); border-color:var(--zone); color:#fff; } .sc-btn.primary:hover { filter:brightness(1.08); } .sc-btn.primary:disabled { opacity:.5; cursor:default; }
@@ -907,6 +915,7 @@ let _scEditId=null, _scEditPrio='none', _scEditStatus='Current';
 function scOpenIssueModal(id){
   const it=(window._scIssues||[]).find(x=>x.id===id); if(!it) return;
   _scEditId=id; _scEditPrio=it.priority||'none'; _scEditStatus=it.status||'Current';
+  _scDelArmed=false; clearTimeout(_scDelTimer);   // never open with delete pre-armed
   let bg=document.getElementById('sc-issue-modal');
   if(!bg){ bg=document.createElement('div'); bg.id='sc-issue-modal'; bg.className='sc-modal-bg'; bg.onclick=(e)=>{ if(e.target===bg) scCloseIssueModal(); }; document.body.appendChild(bg); }
   const prios=[['URGENT','p-urgent'],['HIGH','p-high'],['NORMAL','p-normal'],['none','p-none']];
@@ -917,7 +926,10 @@ function scOpenIssueModal(id){
     <div class="sc-field"><label>Priority</label><div class="sc-seg" id="sc-edit-prio">${prios.map(([v,c])=>`<button class="${c} ${(_scEditPrio===v)?'sel':''}" onclick="scModalPick('prio','${v}')">${v==='none'?'None':v}</button>`).join('')}</div></div>
     <div class="sc-field"><label>Status</label><div class="sc-seg" id="sc-edit-status">${stats.map(v=>`<button class="${(_scEditStatus===v)?'sel':''}" onclick="scModalPick('status','${v}')">${v}</button>`).join('')}</div></div>
     <div class="sc-modal-ft">
-      ${it.notionUrl?`<span class="sc-notion" onclick="openNotion('${esc(it.notionUrl)}')">↗ Open in Notion</span>`:''}
+      <div class="sc-ft-left">
+        <button class="sc-trash" id="sc-edit-del" title="Delete issue" onclick="scDeleteIssue()">🗑</button>
+        ${it.notionUrl?`<span class="sc-notion" onclick="openNotion('${esc(it.notionUrl)}')">↗ Open in Notion</span>`:''}
+      </div>
       <button class="sc-btn" onclick="scCloseIssueModal()">Cancel</button>
       <button class="sc-btn primary" id="sc-edit-save" onclick="scSaveIssue()">Save</button>
     </div>
@@ -925,10 +937,40 @@ function scOpenIssueModal(id){
   requestAnimationFrame(()=>bg.classList.add('show'));
   setTimeout(()=>{ const t=document.getElementById('sc-edit-title'); if(t){ t.focus(); t.setSelectionRange(t.value.length,t.value.length); } },60);
 }
-function scCloseIssueModal(){ const bg=document.getElementById('sc-issue-modal'); if(bg){ bg.classList.remove('show'); setTimeout(()=>bg.remove(),200);} _scEditId=null; }
+function scCloseIssueModal(){ const bg=document.getElementById('sc-issue-modal'); if(bg){ bg.classList.remove('show'); setTimeout(()=>bg.remove(),200);} _scEditId=null; _scDelArmed=false; clearTimeout(_scDelTimer); }
 function scModalPick(kind,val){
   if(kind==='prio'){ _scEditPrio=val; document.querySelectorAll('#sc-edit-prio button').forEach(b=>b.classList.toggle('sel', b.textContent===(val==='none'?'None':val))); }
   else { _scEditStatus=val; document.querySelectorAll('#sc-edit-status button').forEach(b=>b.classList.toggle('sel', b.textContent===val)); }
+}
+// Delete an issue (moves the Notion page to the trash — recoverable there for 30
+// days). Two-click: the first click arms the button so a mis-click can't wipe a card.
+let _scDelArmed=false, _scDelTimer=null;
+async function scDeleteIssue(){
+  const id=_scEditId; const arr=window._scIssues||[]; const idx=arr.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  const btn=document.getElementById('sc-edit-del');
+  if(!_scDelArmed){
+    _scDelArmed=true;
+    btn.classList.add('armed'); btn.textContent='Delete?'; btn.title='Click again to delete';
+    clearTimeout(_scDelTimer);
+    _scDelTimer=setTimeout(()=>{ _scDelArmed=false; if(btn.isConnected){ btn.classList.remove('armed'); btn.textContent='🗑'; btn.title='Delete issue'; } },6000);
+    return;
+  }
+  clearTimeout(_scDelTimer); _scDelArmed=false;
+  btn.disabled=true; btn.textContent='Deleting…';
+  const it=arr[idx];
+  arr.splice(idx,1);                                   // optimistic remove
+  paintIssuesBoard(); scUpdateIssueBadge(); scCloseIssueModal();
+  try{
+    const r=await fetch('/api/scale/issue/'+id,{ method:'DELETE' });
+    const d=await r.json();
+    if(!r.ok||d.error) throw new Error(d.error||'failed');
+    toast('Issue deleted');
+  }catch(err){
+    arr.splice(idx,0,it);                              // rollback in place
+    paintIssuesBoard(); scUpdateIssueBadge();
+    toast("Couldn't delete: "+err.message);
+  }
 }
 async function scSaveIssue(){
   const id=_scEditId; const it=(window._scIssues||[]).find(x=>x.id===id); if(!it) return;
