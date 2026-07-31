@@ -597,9 +597,15 @@ app.use(async (req, res, next) => {
   if (!user) {
     const email = (req.session?.userEmail || ALLOWED_EMAIL).toLowerCase();
     const isOwner = email === ALLOWED_EMAIL;
+    // A member signed in without a DB row still needs their Notion identity, or
+    // anything that assigns "to me" (task creation, follow-up owner) silently
+    // no-ops. resolveNotionUserId caches the workspace user list, so this is at
+    // most one extra Notion call per process.
+    let nid = isOwner ? GRETCHEN_USER_ID : null;
+    if (!nid) nid = await resolveNotionUserId(email);
     user = { id: null, email, name: req.session?.userName || 'Gretchen',
       role: isOwner ? 'owner' : 'member',
-      notion_user_id: isOwner ? GRETCHEN_USER_ID : null,
+      notion_user_id: nid,
       personal_enabled: isOwner };
   } else if (user.role === 'owner' && !user.notion_user_id) {
     user.notion_user_id = GRETCHEN_USER_ID;
@@ -3064,9 +3070,13 @@ async function createNotionTask({ source, name, dueStart, dueEnd, myDay, priorit
     if (Number.isFinite(n)) properties['Est Hours'] = { number: n };
   }
   if (projectId) properties.Project = { relation: [{ id: projectId }] };
-  if (source === 'work') {
-    const nid = currentNotionUserId();
-    if (nid) properties.Assigned = { people: [{ id: nid }] };
+  // Assign the task to whoever created it — it landed on their list, so it's
+  // theirs. The two DBs use different person properties: WORK TASKS uses
+  // "Assigned"; LIFE TASKS uses "Assignee" (its "Assigned" column is unused).
+  const creatorId = currentNotionUserId();
+  if (creatorId) {
+    if (source === 'work') properties.Assigned = { people: [{ id: creatorId }] };
+    else properties.Assignee = { people: [{ id: creatorId }] };
   }
   const createArgs = {
     parent: { type: 'data_source_id', data_source_id: dsId },
