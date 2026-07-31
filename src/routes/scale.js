@@ -635,12 +635,16 @@ export function registerScaleRoutes(app, {
       if (!notion) return res.status(500).json({ error: 'Notion not configured' });
       const title = String((req.body && req.body.message) || '').trim();
       if (!title) return res.status(400).json({ error: 'message required' });
-      const priority = (req.body && req.body.severity) === 'red' ? 'HIGH' : 'NORMAL';
+      // An explicit priority/status wins (the in-app "+ Add issue" form); otherwise
+      // fall back to deriving priority from an auto-flag's severity.
+      const priority = String((req.body && req.body.priority) || '').trim()
+        || ((req.body && req.body.severity) === 'red' ? 'HIGH' : 'NORMAL');
+      const status = String((req.body && req.body.status) || '').trim() || 'Current';
       const page = await notion.pages.create({
         parent: { type: 'data_source_id', data_source_id: ISSUES_DS },
         properties: {
           'Task Name': { title: [{ text: { content: title.slice(0, 1900) } }] },
-          Status: { status: { name: 'Current' } },
+          Status: { status: { name: status } },
           Priority: { select: { name: priority } },
         },
       });

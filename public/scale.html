@@ -119,6 +119,11 @@ body[data-state="calm"] .hero .next { border-left-color:var(--green); }
 .open-link { font-size:11px; font-weight:600; color:var(--zone); text-decoration:none; white-space:nowrap; } .open-link:hover { text-decoration:underline; }
 .add-issue-btn { width:100%; padding:10px; background:none; border:1px dashed var(--border); border-radius:var(--radius-sm); color:var(--text-3); font-size:12px; font-weight:600; cursor:pointer; letter-spacing:.03em; transition:all .15s; font-family:var(--font-body); }
 .add-issue-btn:hover { border-color:var(--zone); color:var(--zone); }
+.sc-addrow { display:flex; flex-direction:column; gap:8px; padding:12px; border:1px dashed var(--border); border-radius:var(--radius-sm); }
+.sc-addrow[hidden] { display:none; }  /* class display: beats the UA [hidden] rule */
+.sc-addctl { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+/* Specificity has to beat .sc-input's width:100%, which is declared later. */
+.sc-addctl select.sc-addsel { width:auto; flex:0 0 auto; padding:5px 28px 5px 10px; font-size:11.5px; font-weight:600; border-radius:999px; color:var(--text-2); }
 /* ── Issues board (Current | Agenda) ── */
 .sc-issbar { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
 .sc-chip { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:999px; border:1px solid var(--border); background:none; color:var(--text-3); font-size:11.5px; font-weight:600; cursor:pointer; letter-spacing:.02em; transition:all .15s; font-family:var(--font-body); }
@@ -666,7 +671,16 @@ function renderIssues(d){
   if(calm && !flags.length){
     h += `<div class="empty-state"><div class="ei">✓</div><div class="et">No auto-flags</div><div>Scorecard metrics are on track. No critical system gaps. Revenue pacing to goal.</div></div>`;
   }
-  h += `<button class="add-issue-btn" onclick="toast('Add an issue in Notion → ISSUES [DB]')">+ Add issue in Notion</button>`;
+  h += `<button class="add-issue-btn" id="sc-add-btn" onclick="scShowAddIssue()">+ Add issue</button>
+  <div class="sc-addrow" id="sc-addrow" hidden>
+    <input class="sc-input" id="sc-add-name" placeholder="What's the issue?" maxlength="200" onkeydown="scAddIssueKey(event)">
+    <div class="sc-addctl">
+      <select class="sc-input sc-addsel" id="sc-add-status"><option value="Current">Current</option><option value="Agenda">Agenda</option></select>
+      <select class="sc-input sc-addsel" id="sc-add-prio"><option value="NORMAL">NORMAL</option><option value="URGENT">URGENT</option><option value="HIGH">HIGH</option><option value="none">No priority</option></select>
+      <button class="sc-chip on" id="sc-add-save" onclick="scSubmitAddIssue()">Add issue</button>
+      <button class="sc-chip" onclick="scHideAddIssue()">Cancel</button>
+    </div>
+  </div>`;
   document.getElementById('tab-issues').innerHTML = h;
 }
 
@@ -700,6 +714,45 @@ async function addFlagToIssues(idx, btn){
   } catch(e){
     btn.disabled = false; btn.textContent = '+';
     toast("Couldn't add: "+e.message);
+  }
+}
+
+// ── "+ Add issue" — writes a new issue straight into ISSUES [DB] ──
+function scShowAddIssue(){
+  const btn=document.getElementById('sc-add-btn'), row=document.getElementById('sc-addrow');
+  if(!row) return;
+  btn.hidden=true; row.hidden=false;
+  document.getElementById('sc-add-name').focus();
+}
+function scHideAddIssue(){
+  const btn=document.getElementById('sc-add-btn'), row=document.getElementById('sc-addrow');
+  if(!row) return;
+  row.hidden=true; btn.hidden=false;
+  document.getElementById('sc-add-name').value='';
+}
+function scAddIssueKey(e){
+  if(e.key==='Enter'){ e.preventDefault(); scSubmitAddIssue(); }
+  else if(e.key==='Escape'){ e.preventDefault(); scHideAddIssue(); }
+}
+async function scSubmitAddIssue(){
+  const nameEl=document.getElementById('sc-add-name'), save=document.getElementById('sc-add-save');
+  const message=(nameEl.value||'').trim();
+  if(!message){ nameEl.focus(); return; }
+  const status=document.getElementById('sc-add-status').value;
+  const priority=document.getElementById('sc-add-prio').value;
+  save.disabled=true; save.textContent='Adding…';
+  try{
+    const r=await fetch('/api/scale/issue',{ method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ message, status, priority }) });
+    const d=await r.json();
+    if(!r.ok||d.error) throw new Error(d.error||'failed');
+    scHideAddIssue();
+    toast('Issue added to '+status);
+    await load(true);   // re-render picks it up (fetchIssues is uncached)
+  } catch(e){
+    toast("Couldn't add issue: "+e.message);
+  } finally {
+    save.disabled=false; save.textContent='Add issue';
   }
 }
 
