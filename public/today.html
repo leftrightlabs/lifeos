@@ -1507,7 +1507,7 @@ function syncTodayState() {
     const otPersonal = (() => { try { return JSON.parse(localStorage.getItem(_otKey('personal')) || 'null'); } catch { return null; } })();
     fetch('/api/today/state', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: todayISO(), otWork, otPersonal, onething }),
+      body: JSON.stringify({ date: todayISO(), otWork, otPersonal, onething, planOrder: _planOrder }),
     }).catch(() => {});
   }, 250);
 }
@@ -1523,6 +1523,12 @@ async function loadTodayStateFromServer() {
     if (otWork) localStorage.setItem(_otKey('work'), JSON.stringify(otWork)); else localStorage.removeItem(_otKey('work'));
     if (d.otPersonal) localStorage.setItem(_otKey('personal'), JSON.stringify(d.otPersonal)); else localStorage.removeItem(_otKey('personal'));
     if (d.onething) localStorage.setItem('today-onething', JSON.stringify(d.onething));
+    // Manual plan order from another device (or an earlier session today).
+    if (Array.isArray(d.planOrder) && d.planOrder.length) {
+      _planOrder = d.planOrder;
+      try { localStorage.setItem('today-plan-order', JSON.stringify({ date: todayISO(), ids: _planOrder })); } catch {}
+      if (plan.length) renderPlan();   // this pull may land after the first paint
+    }
   } catch {}
 }
 
@@ -2322,8 +2328,35 @@ function showReschedule(i) {
 // The Today's Plan header counts the task list only; the morning and evening
 // rituals carry their own completion state on their own rows.
 let _planCelebratedDay = null; // day we last fired the "list cleared" celebration
+// ── Manual plan order ──
+// Drag-to-reorder used to live ONLY in the in-memory `plan` array, so any refetch
+// (editing a task, sending the Slack check-in from the morning routine, the periodic
+// auto-refresh) rebuilt the list in server order and silently threw the order away.
+// The id order is now persisted with the rest of the Today state — server-side and
+// keyed to the account, so it survives re-renders and follows you across devices —
+// and re-applied on every render. Scoped to today's date, like the list itself.
+let _planOrder = [];
+try {
+  const s = JSON.parse(localStorage.getItem('today-plan-order') || 'null');
+  if (s && s.date === todayISO() && Array.isArray(s.ids)) _planOrder = s.ids;
+} catch (e) {}
+function savePlanOrder() {
+  _planOrder = plan.map(t => t.id).filter(Boolean);
+  try { localStorage.setItem('today-plan-order', JSON.stringify({ date: todayISO(), ids: _planOrder })); } catch (e) {}
+  syncTodayState();   // pushes planOrder to the server (debounced)
+}
+function applyPlanOrder() {
+  if (!_planOrder.length) return;
+  const idx = new Map(_planOrder.map((id, i) => [id, i]));
+  // Unranked (new/unknown) tasks sort to the end keeping their server order —
+  // Array.sort is stable, and equal ranks compare 0.
+  const rank = (t) => (t.id && idx.has(t.id)) ? idx.get(t.id) : Number.MAX_SAFE_INTEGER;
+  plan.sort((a, b) => rank(a) - rank(b));
+}
+
 function renderPlan() {
   const today = todayISO();
+  applyPlanOrder();
   const visible = state.mode === 'all' ? plan : plan.filter(t => t.type === state.mode || !t.type);
   // Count the task list only — rituals carry their own progress on their rows.
   const doneCt  = visible.filter(p => p.done).length;
@@ -2559,10 +2592,12 @@ function initSortable() {
           if (t.id) fetch('/api/tasks/' + t.id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status }) }).catch(() => {});
         }
       });
-      // Rebuild plan array to match new DOM order
+      // Rebuild plan array to match new DOM order, then PERSIST it (see
+      // savePlanOrder) so a later refetch can't quietly reset it.
       const reordered = rows.map(row => plan[parseInt(row.dataset.planIdx)]).filter(Boolean);
       plan.length = 0;
       reordered.forEach(t => plan.push(t));
+      savePlanOrder();
       renderPlan();
     },
   });

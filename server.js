@@ -726,6 +726,10 @@ app.put('/api/today/state', (req, res) => {
     otWork: b.otWork ?? b.otOverride ?? null,
     otPersonal: b.otPersonal ?? null,
     onething: b.onething ?? null,
+    // Manual drag order for today's plan, as a list of task ids. Stored here (not
+    // just locally) so the order survives refetches AND follows the account across
+    // devices; like the rest of this record it's scoped to `date` and resets daily.
+    planOrder: Array.isArray(b.planOrder) ? b.planOrder.slice(0, 300).map(String) : [],
   };
   _persistTodayState();
   res.json({ ok: true, stored: true });
