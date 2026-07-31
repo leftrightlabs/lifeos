@@ -1670,6 +1670,15 @@ function visible(){
   const sf=ui.statFilter;
   const q = (ui.q || '').trim().toLowerCase();
   return allTasks().filter(t=>{
+    // A SEARCH IS A GLOBAL FIND. It deliberately runs before every other filter
+    // (status mutes, the active card, ME / Following, the routines gate) — only the
+    // work/personal mode still applies. Otherwise typing a name and getting
+    // "Nothing here right now" is a lie: the task exists, it's just muted or
+    // assigned to someone else. Searching is how you go looking for exactly those.
+    if(q){
+      if(ui.src!=='all'&&t.source!==ui.src)return false;
+      return t.name.toLowerCase().includes(q)||(t.project||'').toLowerCase().includes(q);
+    }
     if(t.done&&!ui.showdone)return false;
     // Status filter — mute whole statuses (applies to every grouping/sort).
     if(AF_HIDDEN.size && AF_HIDDEN.has(AF_ST_KEY(t))) return false;
@@ -1682,10 +1691,6 @@ function visible(){
       return !!t.followUpOwnerId && (!_myNotionId || t.followUpOwnerId===_myNotionId);
     }
     if(!afInScope(t))return false;
-    // A search is a global find within the current work/personal + owner scope:
-    // match by name/project and ignore the date-bucket view filters (routines,
-    // not-yet-due, stat card) so any matching task surfaces.
-    if(q) return t.name.toLowerCase().includes(q)||(t.project||'').toLowerCase().includes(q);
     // The Recurring stat card is a standalone view: show ONLY recurring tasks
     // and bypass the routines gate (otherwise they'd all be hidden by it).
     if(sf==='recurring') return t.recurring;
